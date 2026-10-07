@@ -1,0 +1,521 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ТЕРМИНАЛ: САМОСБОР</title>
+    <link href="https://fonts.googleapis.com/css2?family=PT+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root { --term-green: #33ff00; --term-dark: #050505; --paper-color: #d1c2a5; --ink-color: #1c1c1c; }
+        body { margin: 0; overflow: hidden; background-color: var(--term-dark); color: var(--term-green); font-family: 'PT Mono', monospace; font-size: 18px; text-shadow: 0 0 5px var(--term-green); }
+        #bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 1; opacity: 0.85; transition: 0.5s ease; }
+        
+        body.crt-enabled::after { content: ""; display: block; position: absolute; inset: 0; background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.2) 50%); background-size: 100% 4px; z-index: 100; pointer-events: none; animation: scanlines 10s linear infinite; }
+        @keyframes scanlines { 0% { background-position: 0 0; } 100% { background-position: 0 400px; } }
+        body.crt-enabled::before { content: ""; display: block; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.85) 100%); z-index: 101; pointer-events: none; }
+
+        #transition-overlay { position: absolute; inset: 0; z-index: 999; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--term-green); font-size: 24px; font-weight: bold; white-space: pre-wrap; text-align: center; }
+        .door-ascii { white-space: pre; line-height: 1.1; margin-bottom: 20px; text-align: center; }
+
+        .audio-controls { position: absolute; top: 15px; right: 20px; z-index: 200; display: flex; gap: 10px; }
+        .options-menu { position: absolute; top: 50px; right: 20px; background: rgba(0, 15, 0, 0.95); border: 2px solid #33aaff; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 200; }
+        .audio-btn { padding: 5px 10px; font-size: 14px; background: rgba(0, 20, 0, 0.85); color: var(--term-green); border: 1px solid var(--term-green); cursor: pointer; text-shadow: none; font-family: inherit; }
+        .audio-btn.muted { color: #555; border-color: #555; text-decoration: line-through; }
+        .audio-btn.opt-btn { color: #33aaff; border-color: #33aaff; width: 100%; text-align: left; }
+
+        .screen { position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 5, 0, 0.45); }
+        .active-screen { display: flex; }
+        .battle-container { display: flex; justify-content: space-between; align-items: center; width: 95vw; height: 90vh; }
+        
+        .combat-avatar { position: relative; width: 350px; height: 500px; display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; flex-shrink: 0; overflow: hidden; }
+        .combat-avatar.visible { opacity: 1; transform: scale(1); }
+        #enemy-battle-avatar { transform: scale(0.9) translateX(20px); }
+        #enemy-battle-avatar.visible { transform: scale(1) translateX(0); }
+        .combat-avatar img { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: contain; object-position: bottom center; }
+        
+        .vfx-container { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+        @keyframes slash { 0% { clip-path: polygon(0 0, 0 0, 0 0); background: white; } 50% { clip-path: polygon(0 0, 100% 100%, 80% 100%, 0 20%); background: #ff0000; } 100% { clip-path: polygon(100% 100%, 100% 100%, 100% 100%); background: transparent; } }
+        @keyframes crit_slash { 0% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1); } }
+        @keyframes healGlow { 0% { box-shadow: inset 0 0 50px #33ff33; background: rgba(51,255,0,0.2); } 100% { box-shadow: none; background: transparent; } }
+        @keyframes explosion { 0% { background: #fff; opacity: 1; } 100% { background: #fff; opacity: 0; } }
+        @keyframes dodgeShake { 0% { transform: translateX(0); } 25% { transform: translateX(-25px); } 75% { transform: translateX(25px); } 100% { transform: translateX(0); } }
+        @keyframes playerHitFlash { 0% { box-shadow: inset 0 0 100px #ff0000; background: rgba(255,0,0,0.5); opacity: 1; } 100% { box-shadow: inset 0 0 0px #ff0000; background: rgba(255,0,0,0); opacity: 0; } }
+        
+        .vfx-slash::after { content:""; position:absolute; inset:0; animation: slash 0.25s ease-out; }
+        .vfx-crit::after { content:"XXX"; position:absolute; font-size:100px; color:#ff0000; font-weight:bold; top:30%; left:20%; animation: crit_slash 0.4s ease-out; text-shadow: 0 0 20px #ff0000; }
+        .vfx-heal { position:absolute; inset:0; animation: healGlow 0.6s ease-out; border-radius: 10px; }
+        .vfx-explosion::after { content:""; position:fixed; inset:0; z-index:9999; animation: explosion 0.5s ease-out; }
+        .vfx-player-hit { position:absolute; inset:0; border-radius: 10px; z-index:50; animation: playerHitFlash 0.3s ease-out forwards; }
+        .avatar-shake { animation: dodgeShake 0.3s ease-in-out; }
+
+        @keyframes slimeDrop { 0% { top: -20px; opacity: 1; } 100% { top: 100%; opacity: 0; } }
+        .slime-vfx { position: absolute; color: var(--term-green); font-size: 14px; font-weight: bold; pointer-events: none; z-index: 100; animation: slimeDrop 1s linear forwards; text-shadow: 0 0 5px #000; }
+
+        .panel { padding: 30px; border: 2px solid var(--term-green); background: rgba(0, 15, 0, 0.9); text-align: center; box-shadow: inset 0 0 20px rgba(51, 255, 0, 0.2); backdrop-filter: blur(4px); }
+        input { display: block; margin: 15px auto; padding: 10px; width: 80%; background: rgba(0, 0, 0, 0.6); color: var(--term-green); border: 1px solid var(--term-green); font-family: inherit; font-size: 18px; outline: none; }
+        button { font-family: inherit; font-size: 18px; padding: 12px 20px; margin-top: 15px; cursor: pointer; background: rgba(0, 20, 0, 0.85); color: var(--term-green); border: 2px solid var(--term-green); transition: 0.1s; text-transform: uppercase; }
+        button:hover { background: var(--term-green); color: var(--term-dark); box-shadow: 0 0 12px var(--term-green); }
+        button:disabled { border-color: #555 !important; color: #555 !important; cursor: not-allowed; background: rgba(0,0,0,0.8) !important; box-shadow: none !important; }
+        
+        .stats { margin: 10px auto; padding: 20px; border: 1px solid var(--term-green); background: rgba(0, 15, 0, 0.9); text-align: left; min-width: 440px; backdrop-filter: blur(4px); line-height: 1.6; }
+        .progress-bar { width: 100%; height: 16px; border: 1px solid var(--term-green); margin-top: 6px; position: relative; background: rgba(0,0,0,0.5); }
+        .progress-fill { height: 100%; background: var(--term-green); width: 100%; transition: 0.3s; }
+        
+        .bar-hunger { border-color: #ffaa00; } .fill-hunger { background: #ffaa00; }
+        .bar-tox { border-color: #aa33ff; } .fill-tox { background: #aa33ff; }
+
+        .game-controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+
+        .map-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; width: 900px; max-width: 95vw; }
+        .map-node { border: 2px solid var(--term-green); height: 110px; cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; box-sizing: border-box; background-size: cover; background-position: center; transition: 0.15s; }
+        .map-node::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.85) 100%); z-index: 1; transition: 0.3s; }
+        .map-node:hover { transform: scale(1.03); border-color: #fff; box-shadow: 0 0 10px rgba(51,255,0,0.6); }
+        
+        .map-node.locked { border-color: #444; filter: grayscale(100%); }
+        .map-node.locked::before { background: rgba(0,0,0,0.85); }
+        .map-node.locked:hover { transform: none; box-shadow: none; border-color: #ffaa00; }
+        .locked .node-id { color: #888; }
+        .locked .node-name { color: #555; }
+
+        .map-node.can-unlock { border-color: #ffaa00; filter: none; animation: pulseCanUnlock 2s infinite; cursor: pointer; }
+        .map-node.can-unlock::before { background: rgba(0,0,0,0.6); }
+        .map-node.can-unlock .node-id { color: #ffaa00; }
+        .map-node.can-unlock .node-name { color: #ffaa00; text-shadow: 0 0 5px #000; }
+        @keyframes pulseCanUnlock { 0% { box-shadow: 0 0 5px #ffaa00; } 50% { box-shadow: 0 0 20px #ffaa00; } 100% { box-shadow: 0 0 5px #ffaa00; } }
+
+        .node-content { position: relative; z-index: 2; pointer-events: none; }
+        .node-id { font-size: 22px; font-weight: bold; color: var(--term-green); text-shadow: 2px 2px 0 #000; transition: 0.3s; }
+        .node-name { font-size: 14px; color: #ffffff; text-shadow: 1px 1px 0 #000; transition: 0.3s; }
+        .floor-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 2px solid var(--term-green); padding-bottom: 12px; margin-bottom: 10px; }
+        
+        .sector-radar { margin-top: 15px; border-top: 1px solid var(--term-green); padding-top: 10px; }
+        .player-entry { display: flex; justify-content: space-between; align-items: center; padding: 6px; border: 1px dashed #555; margin-bottom: 5px; font-size: 16px; }
+        
+        .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; display: none; justify-content: center; align-items: center; }
+        .dossier { background: var(--paper-color); color: var(--ink-color); width: 1100px; max-width: 95%; height: 600px; padding: 25px; box-sizing: border-box; border-radius: 2px 12px 12px 2px; position: relative; display: flex; flex-direction: column; text-shadow: none; font-weight: bold; }
+        .dossier::before { content: ""; position: absolute; left: -18px; top: 0; height: 100%; width: 18px; background: #b8a688; border-radius: 4px 0 0 4px; } 
+        .dossier-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--ink-color); padding-bottom: 10px; margin-bottom: 15px; font-size: 24px; }
+        .close-dossier { background: transparent; border: none; color: #880000; font-size: 22px; padding: 0; margin: 0; cursor: pointer; }
+        .dossier-content { display: flex; gap: 20px; height: calc(100% - 40px); align-items: stretch; }
+        
+        .polaroid-col { display: flex; flex-direction: column; width: 300px; gap: 15px; flex-shrink: 0; height: 100%; }
+        .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; align-items: center; transform: rotate(-1.5deg); flex-shrink: 0; }
+        
+        .avatar-container { position: relative; width: 280px; height: 280px; background: #333; border: 1px solid #111; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        .avatar-layer { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: contain; object-position: bottom center; }
+        
+        .quest-items-panel { width: 100%; flex: 1; border: 2px solid #880000; padding: 10px; font-size: 14px; background: rgba(136,0,0,0.05); display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; }
+        #quest-items-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        #quest-items-container::-webkit-scrollbar { width: 6px; }
+        #quest-items-container::-webkit-scrollbar-thumb { background: #880000; }
+        
+        .quest-item { padding: 5px; border-bottom: 1px dashed #880000; margin-bottom: 5px; color: #550000; }
+        .quest-item-title { font-weight: bold; font-size: 16px; color: #ffaa00; text-shadow: none; }
+
+        .equipment-panel { width: 250px; font-size: 16px; border-right: 2px dashed rgba(0,0,0,0.3); padding-right: 20px; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; overflow-y: auto; }
+        .equip-slot { border: 2px dashed var(--ink-color); padding: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.1s; background: rgba(255,255,255,0.3); text-shadow: none; }
+        .equip-slot-empty { cursor: default; background: transparent; border-color: rgba(0,0,0,0.3); }
+        
+        .quick-slot { border: 2px solid #880000; padding: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.1s; background: rgba(255,0,0,0.1); text-align: center; text-shadow: none; }
+        .quick-slot:hover { background: rgba(255,0,0,0.2); }
+        
+        .perks-panel { width: 100%; border: 2px dashed #880000; padding: 10px; font-size: 14px; display: flex; flex-direction: column; box-sizing: border-box; flex-grow: 0; min-height: 120px; margin-top: 10px; }
+        #perks-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; text-shadow: none; }
+        #perks-container::-webkit-scrollbar { width: 6px; }
+        #perks-container::-webkit-scrollbar-thumb { background: #880000; }
+        .perk-item { padding: 5px; color: #550000; border-bottom: 1px dotted #880000; margin-bottom: 5px; text-shadow: none; }
+
+        .combat-quick-slots { position: absolute; right: -120px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index:100; }
+        .combat-q-slot { width: 100px; height: 100px; border: 2px solid var(--term-green); background: rgba(0,20,0,0.8); color: var(--term-green); display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; font-size: 12px; text-align: center; padding: 5px; box-sizing: border-box; transition: 0.2s; }
+        .combat-q-slot:hover { background: rgba(0,50,0,0.9); box-shadow: 0 0 10px var(--term-green); }
+        .combat-q-empty { border-color: #555; color: #555; cursor: default; }
+
+        .chest-panel { flex-grow: 1; display: flex; flex-direction: column; height: 100%; }
+        .chest-grid { flex-grow: 1; display: grid; grid-template-columns: repeat(2, 1fr); align-content: start; gap: 10px; overflow-y: auto; padding-right: 10px; }
+        .chest-item { border: 2px solid var(--ink-color); background-color: rgba(255,255,255,0.25); position: relative; padding: 10px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 95px; font-size: 14px; border-bottom: 4px solid var(--ink-color); text-shadow: none; overflow: hidden; transition: transform 0.1s, background-color 0.1s; }
+        .chest-item:hover { transform: translateY(-2px); background-color: rgba(255,255,255,0.45); }
+        .chest-item-icon { width: 44px; height: 44px; object-fit: contain; margin-bottom: 4px; filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.25)); }
+        .item-type { font-size: 11px; color: #555; margin-bottom: 2px; font-weight: bold; }
+
+        .notebook-panel { background: #e8decc; color: #330000; font-family: 'Courier New', Courier, monospace; width: 800px; max-width: 95%; height: 600px; padding: 30px; box-sizing: border-box; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); overflow-y: auto; border: 1px solid #ccc; font-weight: bold; font-size: 18px; line-height: 1.5; }
+        .notebook-entry { margin-bottom: 15px; border-bottom: 1px dashed #880000; padding-bottom: 10px; }
+        .notebook-entry:before { content: "► "; color: #880000; }
+
+        .info-panel { background: rgba(0, 15, 0, 0.98); width: 800px; max-width: 95%; height: 85%; padding: 30px; border: 2px solid #33aaff; color: #ccc; text-shadow: none; box-sizing: border-box; overflow-y: auto; text-align: left; }
+        .info-panel::-webkit-scrollbar { width: 8px; }
+        .info-panel::-webkit-scrollbar-thumb { background: #33aaff; }
+        .info-panel h3 { color: #33aaff; margin-top: 25px; border-bottom: 1px dashed #33aaff; padding-bottom: 5px; text-shadow: 0 0 5px #33aaff; text-transform: uppercase; }
+        .info-panel p { margin-bottom: 12px; line-height: 1.6; font-size: 16px; }
+        .info-panel b { color: #fff; }
+        .info-color-tag { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border: 1px solid #fff; }
+
+        .shop-panel { background: rgba(0, 15, 0, 0.95); width: 1000px; max-width: 95%; padding: 30px; border: 2px solid var(--term-green); color: var(--term-green); text-shadow: 0 0 5px var(--term-green); box-sizing: border-box; }
+        .shop-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--term-green); padding-bottom: 10px; margin-bottom: 20px; font-size: 24px; }
+        .shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px dashed var(--term-green); padding: 10px; margin-bottom: 10px; }
+        .shop-item-left { display: flex; align-items: center; gap: 12px; }
+        .shop-item-icon { width: 36px; height: 36px; object-fit: contain; }
+
+        .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; color: #fff; text-shadow: none; font-size: 16px; }
+        .leaderboard-table th { border-bottom: 2px solid #ffaa00; padding: 10px; text-align: left; color: #ffaa00; }
+        .leaderboard-table td { border-bottom: 1px dashed #555; padding: 8px 10px; }
+        .leaderboard-table tr:hover { background: rgba(255,170,0,0.1); }
+        .lb-rank-1 { color: #ffaa00 !important; font-weight: bold; text-shadow: 0 0 5px #ffaa00; }
+        .lb-rank-2 { color: #ccc !important; font-weight: bold; }
+        .lb-rank-3 { color: #c68 !important; font-weight: bold; }
+
+        /* СТИЛИ ДЛЯ БЕСТИАРИЯ */
+        .bestiary-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; height: 100%; padding-right: 10px; }
+        .bestiary-list::-webkit-scrollbar { width: 6px; }
+        .bestiary-list::-webkit-scrollbar-thumb { background: #33aaff; }
+        .bestiary-list li { padding: 10px; border-bottom: 1px dashed #33aaff; cursor: pointer; transition: 0.2s; color: #ccc; }
+        .bestiary-list li:hover { background: rgba(51, 170, 255, 0.2); color: #fff; }
+        .bestiary-list li.active { background: rgba(51, 170, 255, 0.4); color: #fff; font-weight: bold; border-left: 3px solid #33aaff; }
+
+        .intro-container { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 40px; }
+        .intro-text-side { flex-grow: 1; text-align: left; }
+        .intro-ascii-side { color: #ff3333; font-size: 150px; line-height: 1; text-shadow: 0 0 20px #ff3333; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        .intro-ascii-subtitle { font-family: 'PT Mono', monospace; font-size: 24px; font-weight: bold; margin-top: 15px; text-shadow: 0 0 10px #ff3333; letter-spacing: 2px; }
+
+        #intro-text-container { font-size: 18px; line-height: 1.6; white-space: pre-wrap; min-height: 360px; }
+        .cursor { display: inline-block; width: 12px; height: 18px; background-color: var(--term-green); animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        
+        .combat-btn { flex-grow: 1; padding: 15px !important; font-size: 20px !important; font-weight: bold; }
+        #combat-log { height: 120px; overflow-y: auto; scroll-behavior: smooth; }
+        .critical-hp { color: #ff3333 !important; text-shadow: 0 0 5px #ff3333 !important; }
+        .rating-box { margin-top: 10px; border-top: 1px dashed var(--term-green); padding-top: 10px; font-size: 16px; line-height: 1.5; color: #aaffaa; }
+
+        .ascii-art { font-family: 'Courier New', monospace; white-space: pre; line-height: 1.2; text-align: center; margin: 20px 0; color: #ffaa00; font-weight: bold; text-shadow: 0 0 5px #ffaa00; }
+        .flicker { animation: textFlicker 0.15s infinite alternate; }
+        @keyframes textFlicker { 0% { opacity: 1; } 100% { opacity: 0.7; } }
+        
+        .levelup-btn { width: 100%; padding: 15px; margin-bottom: 15px; text-align: left; background: rgba(0,20,0,0.8); border: 2px solid #ffaa00; color: #fff; cursor: pointer; transition: 0.2s; }
+        .levelup-btn:hover { background: rgba(50,50,0,0.9); box-shadow: 0 0 15px #ffaa00; }
+    </style>
+</head>
+<body class="crt-enabled">
+    <div id="bg-layer" style="background-image: url('assets/locations/bg_safe_room.png');"></div>
+
+    <div id="transition-overlay">
+        <div id="trans-ascii" class="door-ascii"></div>
+        <div id="trans-text" class="flicker">ЗАГРУЗКА...</div>
+    </div>
+
+    <!-- ОКНО ПОВЫШЕНИЯ УРОВНЯ -->
+    <div id="levelup-modal" class="modal-overlay" style="z-index: 90;">
+        <div class="panel" style="width: 650px; max-width: 90%; border-color: #ffaa00;">
+            <h2 style="color: #ffaa00; margin-top: 0; text-shadow: 0 0 10px #ffaa00;">УРОВЕНЬ ПОВЫШЕН!</h2>
+            <div style="margin-bottom: 20px; font-size: 18px;">Выберите один из доступных перков (навыков):</div>
+            <div id="levelup-choices" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
+
+    <!-- ОКНО ЧАТА -->
+    <div id="chat-modal" class="modal-overlay" style="z-index: 75;">
+        <div class="shop-panel" style="width: 700px; display: flex; flex-direction: column; height: 600px; border-color: #55ff55;">
+            <div class="shop-header" style="border-color: #55ff55;">
+                <span style="color: #55ff55; text-shadow: 0 0 5px #55ff55;">ОБЩИЙ КАНАЛ СВЯЗИ [СЕТЬ]</span>
+                <button onclick="document.getElementById('chat-modal').style.display='none';" style="background:transparent; border:none; color:#55ff55; font-size:24px; cursor:pointer; text-shadow: 0 0 5px #55ff55;">[X]</button>
+            </div>
+            <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; text-align: left; padding: 10px; border: 1px solid #55ff55; background: rgba(0,20,0,0.5); margin-bottom: 15px; font-size: 16px; color: #fff;"></div>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="chat-input" placeholder="Введите сообщение..." style="flex-grow: 1; margin: 0; width: auto; border-color: #55ff55; color: #55ff55;" maxlength="100">
+                <button id="btn-send-chat" style="margin: 0; width: 140px; border-color: #55ff55; color: #55ff55;">ОТПРАВИТЬ</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ДОСКА ПОЧЕТА -->
+    <div id="leaderboard-modal" class="modal-overlay" style="z-index: 75;">
+        <div class="shop-panel" style="width: 900px; display: flex; flex-direction: column; height: 600px; border-color: #ffaa00;">
+            <div class="shop-header" style="border-color: #ffaa00;">
+                <span style="color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">ЗАЛ СЛАВЫ ПАРТИИ (ТОП 15)</span>
+                <button onclick="document.getElementById('leaderboard-modal').style.display='none';" style="background:transparent; border:none; color:#ffaa00; font-size:24px; cursor:pointer; text-shadow: 0 0 5px #ffaa00;">[X]</button>
+            </div>
+            <div style="overflow-y: auto; flex-grow: 1;">
+                <table class="leaderboard-table" id="leaderboard-table">
+                    <tr><th>Место</th><th>Имя (№)</th><th>Титул</th><th>Ур.</th><th>Этаж</th><th>Время</th><th>Рейтинг</th></tr>
+                    <tbody id="leaderboard-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- КНОПКИ УПРАВЛЕНИЯ -->
+    <div class="audio-controls">
+        <button id="btn-bestiary" class="audio-btn" style="border-color:#ff33aa; color:#ff33aa; display:none;">📖 БЕСТИАРИЙ</button>
+        <button id="btn-info" class="audio-btn" style="border-color:#33aaff; color:#33aaff;">ℹ️ СПРАВКА</button>
+        <button id="btn-options" class="audio-btn" style="border-color:#ffaa00; color:#ffaa00;">⚙️ ОПЦИИ</button>
+    </div>
+
+    <!-- ВЫПАДАЮЩЕЕ МЕНЮ ОПЦИЙ -->
+    <div id="options-menu" class="options-menu">
+        <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
+        <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
+        <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
+    </div>
+
+    <!-- ОКНО ЛОГИНА -->
+    <div id="login-screen" class="screen active-screen">
+        <div class="panel">
+            <h2 style="font-size: 22px; margin-bottom: 20px;">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
+            <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО">
+            <input type="password" id="password" placeholder="ПАРОЛЬ">
+            <button id="login-btn">ВОЙТИ</button>
+            <div id="auth-error" style="color:#ff3333; margin-top:12px; font-size: 16px;"></div>
+        </div>
+    </div>
+
+    <!-- ОКНО ИНТРО -->
+    <div id="intro-screen" class="screen" style="background: var(--term-dark);">
+        <div class="panel" style="width: 1100px; border: none; box-shadow: none; background: transparent;">
+            <div class="intro-container">
+                <div class="intro-text-side">
+                    <div id="intro-text-container"></div>
+                </div>
+                <div class="intro-ascii-side flicker">
+                    <div>☭</div>
+                    <div class="intro-ascii-subtitle">ПАРТИЯ<br>СВЕТЛЫХ</div>
+                </div>
+            </div>
+            <div style="font-size: 14px; color: #666; margin-top: 30px; animation: blink 2s step-end infinite;">[НАЖМИТЕ ПРОБЕЛ ДЛЯ ПРОПУСКА ИЛИ ПРОДОЛЖЕНИЯ]</div>
+        </div>
+    </div>
+
+    <!-- ОКНО БАЗЫ (ЖИЛЯЧЕЙКА) -->
+    <div id="hub-screen" class="screen">
+        <div class="panel" style="width: 550px;">
+            <h2 style="font-size: 22px; margin-top: 0;">ЖИЛЯЧЕЙКА</h2>
+            <div class="stats" style="min-width: 100%; box-sizing: border-box; position:relative;" id="hub-stats-panel">
+                <div>УРОВЕНЬ: <span class="ui-level" style="color:#ffaa00;">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
+                <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
+                <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
+                <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
+                <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger" style="color:#ffaa00;">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
+                <div style="display:flex; gap:10px;">
+                    <div class="progress-bar bar-hunger"><div class="progress-fill fill-hunger hunger-bar"></div></div>
+                    <div class="progress-bar bar-tox"><div class="progress-fill fill-tox tox-bar" style="width:0%;"></div></div>
+                </div>
+                
+                <div class="rating-box">
+                    <div style="margin-bottom: 5px;">ВРЕМЯ В ИГРЕ: <span class="ui-playtime" style="color:#fff;">00:00:00</span></div>
+                    <div>УБИТО: <span class="ui-kills" style="color:#ffaa00;">0</span> | КОМНАТ: <span class="ui-rooms" style="color:#ffaa00;">0</span></div>
+                    <div>РЕЙТИНГ БЛОКА: <span class="ui-rating" style="color:#ffaa00;">0</span></div>
+                    <div>СТАТУС: <span class="ui-title" style="color:#fff;">Заключенный</span> (#<span class="ui-rank">0</span>)</div>
+                </div>
+                <div id="hub-error" style="color:#ff3333; margin-top: 5px; font-size: 14px; min-height: 20px;"></div>
+            </div>
+            <div class="game-controls">
+                <button id="open-notebook-btn" style="color: #fff; border-color: #fff;">БЛОКНОТ</button>
+                <button id="open-chest-btn">СУНДУК</button>
+                <button id="open-shop-btn" style="color: #ffaa00; border-color: #ffaa00;">РАСПРЕДЕЛИТЕЛЬ</button>
+                <button id="open-craft-btn" style="color: #33aaff; border-color: #33aaff;">ВЕРСТАК</button>
+                <button id="open-chat-btn" style="color: #55ff55; border-color: #55ff55;">СЕТЬ</button>
+                <button id="open-leaderboard-btn" style="color: #ffaa00; border-color: #ffaa00;">РЕЙТИНГ</button>
+                <button id="open-map-btn" style="color: var(--term-green); border-color: var(--term-green); width: 100%;">ВЫХОД В БЛОК</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОКНО КАРТЫ -->
+    <div id="map-screen" class="screen">
+        <div class="panel" style="max-width: 95%;">
+            <div class="floor-controls">
+                <button class="floor-btn" id="btn-floor-down" disabled>▼ ВНИЗ (К ЛИФТУ E4)</button>
+                <div style="font-size: 22px;">ЭТАЖ: <span id="ui-current-floor">0</span></div>
+                <button class="floor-btn" id="btn-floor-up" disabled>ВВЕРХ ▲</button>
+            </div>
+            <div class="map-grid" id="map-container"></div>
+            <button id="close-map-btn" style="margin-top: 15px;">НАЗАД НА БАЗУ</button>
+        </div>
+    </div>
+
+    <!-- ОКНО ИГРЫ (БОЙ И ИССЛЕДОВАНИЕ) -->
+    <div id="game-screen" class="screen">
+        <div class="battle-container">
+            <div id="player-battle-avatar" class="combat-avatar visible">
+                <img id="battle-base-skin" src="" style="z-index: 1;" alt="[СКИН]">
+                <img id="battle-clothes" src="" style="z-index: 2;" alt="">
+                <img id="battle-mask" src="" style="z-index: 3;" alt="">
+                <img id="battle-weapon" src="" style="z-index: 4;" alt="">
+                <div id="player-vfx-container" class="vfx-container"></div>
+                <div class="combat-quick-slots">
+                    <div id="combat-qslot-0" class="combat-q-slot combat-q-empty" onclick="socket.emit('useQuickSlot', 0)">[ПУСТО]</div>
+                    <div id="combat-qslot-1" class="combat-q-slot combat-q-empty" onclick="socket.emit('useQuickSlot', 1)">[ПУСТО]</div>
+                </div>
+            </div>
+
+            <div class="terminal-center">
+                <div class="stats" id="main-stats-panel" style="width: 550px; box-sizing: border-box; position:relative;">
+                    <h2 id="current-location-title" style="margin: 0 0 10px 0; font-size: 22px; border-bottom: 1px solid var(--term-green); padding-bottom: 6px;">ЛОКАЦИЯ</h2>
+                    <div>УРОВЕНЬ: <span class="ui-level" style="color:#ffaa00;">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
+                    <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
+                    <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
+                    <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
+                    <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger" style="color:#ffaa00;">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
+                    
+                    <div class="sector-radar" id="radar-container">
+                        <div style="color:#ffaa00; margin-bottom:5px;">РАДАР:</div>
+                        <div id="players-in-sector">Ожидание...</div>
+                    </div>
+
+                    <div id="combat-log" style="color: #aaffaa; font-size: 16px; margin-top: 10px; border-top: 1px dashed var(--term-green); padding-top: 8px; white-space: pre-wrap;">Ожидание...</div>
+                </div>
+                
+                <div id="robot-panel" style="width: 550px; text-align:left; background: rgba(0,20,0,0.8); border: 1px dashed #33aaff; padding: 10px; box-sizing: border-box; margin-top: 10px; display: none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span id="robot-status" style="color: #33aaff; font-weight:bold;"></span>
+                        <button id="btn-robot-action" class="combat-btn" style="padding: 5px 15px !important; font-size: 14px !important; margin-top: 0;"></button>
+                    </div>
+                </div>
+                
+                <div class="game-controls" id="explore-controls"></div>
+                
+                <div class="game-controls" id="combat-controls" style="display: none; width: 550px; flex-direction: column;">
+                    
+                    <div id="aim-bar-container" style="display:none; width: 100%; height: 20px; border: 1px solid #ff3333; position: relative; margin-bottom: 10px; background: #111;">
+                        <div style="position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(51, 255, 0, 0.3); border-left: 1px solid var(--term-green); border-right: 1px solid var(--term-green);"></div>
+                        <div id="aim-cursor" style="position: absolute; left: 0%; width: 4px; height: 100%; background: #fff; box-shadow: 0 0 5px #fff;"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; width: 100%;">
+                        <button id="btn-attack" class="combat-btn" onclick="toggleAimAttack()" style="color: #ff3333; border-color: #ff3333;">ПРИЦЕЛЬНАЯ АТАКА</button>
+                        <button class="combat-btn" onclick="socket.emit('combatAction', 'dodge')" style="color: #33aaff; border-color: #33aaff;">УКЛОНИТЬСЯ</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="enemy-battle-avatar" class="combat-avatar">
+                <img id="enemy-sprite" src="" style="z-index: 5;" alt="[ВРАГ]">
+                <div id="enemy-vfx-container" class="vfx-container"></div>
+                <div id="enemy-hp-bar" style="position: absolute; bottom: -30px; width: 100%; text-align: center; color: #ff3333; font-weight: bold; display: none;">ВРАГ: <span id="ui-enemy-hp">0</span> HP</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОКНО ВЗЛОМА -->
+    <div id="minigame-modal" class="modal-overlay" style="z-index: 85;">
+        <div class="panel" style="width: 700px;">
+            <h2 id="mg-title" style="color: #ffaa00; margin-top: 0;">ВЗЛОМ</h2>
+            <div id="mg-text" style="font-size: 16px; color: #fff; margin-bottom: 15px; white-space: pre-wrap;"></div>
+            <div id="mg-art" class="ascii-art flicker"></div>
+            <div id="mg-ui" style="margin-top: 20px;"></div>
+            <button id="btn-mg-cancel" onclick="cancelMinigame()" style="color: #ff3333; border-color: #ff3333; margin-top: 20px; width: 100%;">[ ВЕРНУТЬСЯ В ЖИЛЯЧЕЙКУ ]</button>
+        </div>
+    </div>
+
+    <!-- БЕСТИАРИЙ -->
+    <div id="bestiary-modal" class="modal-overlay" style="z-index: 96;">
+        <div class="info-panel" style="width: 1000px; display:flex; padding:0; border-color:#ff33aa;">
+            <div style="width: 30%; border-right: 2px dashed #ff33aa; padding: 20px 0;">
+                <h3 style="color:#ff33aa; text-align:center; margin-top:0; border:none; text-shadow:0 0 5px #ff33aa;">ОБИТАТЕЛИ</h3>
+                <ul class="bestiary-list" id="bestiary-list-ui"></ul>
+            </div>
+            <div style="width: 70%; padding: 30px; position:relative;">
+                <button onclick="document.getElementById('bestiary-modal').style.display='none'" style="position:absolute; right:20px; top:10px; background:transparent; border:none; color:#ff33aa; font-size:24px; cursor:pointer;">[X]</button>
+                <div id="bestiary-details">
+                    <h2 style="color:#555; text-align:center; margin-top:100px;">ВЫБЕРИТЕ ОБЪЕКТ ДЛЯ ПРОСМОТРА ДОСЬЕ</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОКНО СПРАВКИ -->
+    <div id="info-modal" class="modal-overlay" style="z-index: 95;">
+        <div class="info-panel">
+            <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #33aaff; margin-bottom: 20px; padding-bottom: 10px;">
+                <h2 style="margin:0; font-size: 26px; color: #33aaff; text-shadow: 0 0 10px #33aaff;">РУКОВОДСТВО ПО ВЫЖИВАНИЮ</h2>
+                <button onclick="document.getElementById('info-modal').style.display='none'" style="background:transparent; border:none; color:#33aaff; font-size:24px; cursor:pointer;">[X]</button>
+            </div>
+            
+            <h3>= ВВЕДЕНИЕ =</h3>
+            <p>Вы — заключенный в бесконечной Гигахрущевке. Ваша конечная цель — достичь дна комплекса. Для этого вам предстоит спускаться вниз по этажам через <b>Главный Лифт (сектор E4)</b>. Однако лифт сломан, и на каждом этаже вам придется собирать запчасти для его починки.</p>
+
+            <h3>= ВЫЖИВАНИЕ (ГОЛОД И ЗАРАЖЕНИЕ) =</h3>
+            <p>Ваша жизнь зависит от двух шкал: Голода и Токсичности. <b>Голод</b> падает со временем и при переходах. Если он упадет до нуля, вы начнете умирать. Спасайтесь пайками и слизью.</p>
+            <p><b>Заражение</b> растет при получении урона от монстров. При достижении 100% вы получите случайную Мутацию (бафф или дебафф на всю игру). Сбивайте Заражение Химикатами (клик по химикатам в сундуке).</p>
+
+            <h3>= КАРТА И ТУМАН =</h3>
+            <p>Карта состоит из секторов (A0 - E4). Исследование карты требует ресурса <b>ФИЛЬТРА</b>. Заходить можно только в ячейки, которые вы уже открыли.</p>
+            <p>Если локация закрыта, на ней будет написано требование для входа: либо <b>[НУЖЕН КЛЮЧ]</b> (ищите в тумане), либо <b>[ВЗЛОМ СЕТИ]</b>.</p>
+
+            <h3>= БОЕВАЯ СИСТЕМА И РЕЙДЫ =</h3>
+            <p><b>ПРИЦЕЛЬНАЯ АТАКА:</b> Кликните на кнопку атаки, чтобы активировать сканер прицеливания. Нажмите <b>«УДАР!»</b> ровно в центре зеленой зоны для Критического Урона (x2).</p>
+            <p><b>ГЛОБАЛЬНЫЙ БОСС:</b> Битвы в секторе E4 (Лифт) являются массовыми. Все сталкеры сервера, находящиеся в E4, будут бить одного босса с общим запасом здоровья.</p>
+
+            <h3>= ИНВЕНТАРЬ И МОДДИНГ =</h3>
+            <p>Вместимость Сундука ограничена <b>12 слотами</b>. Выбрасывайте мусор (Клик -> Выбросить) или скрафтите Рюкзак и наденьте его в слот "СПИНА".</p>
+            <p>На <b>ВЕРСТАКЕ</b> можно комбинировать Оружие и Хлам. Скрестите оружие с Химикатами, Электроникой или Металлом, чтобы добавить стихийный урон (Огонь 🔥, Шок ⚡, Кровотечение 🩸).</p>
+        </div>
+    </div>
+
+    <!-- ОКНО БЛОКНОТА -->
+    <div id="notebook-modal" class="modal-overlay" style="z-index: 80;">
+        <div class="notebook-panel">
+            <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #880000; margin-bottom: 20px;">
+                <h2 style="margin:0; color:#880000;">ДНЕВНИК ЗАКЛЮЧЕННОГО</h2>
+                <button onclick="document.getElementById('notebook-modal').style.display='none'" style="background:transparent; border:none; color:#880000; font-size:24px; cursor:pointer;">[X]</button>
+            </div>
+            <div id="notebook-content"></div>
+        </div>
+    </div>
+
+    <!-- ОКНО СОБЫТИЙ -->
+    <div id="event-modal" class="modal-overlay" style="z-index: 60;">
+        <div class="panel" style="width: 650px; max-width: 90%;">
+            <h2 id="event-title" style="color: #ffaa00; font-size: 24px; margin-top: 0; border-bottom: 1px solid #ffaa00; padding-bottom: 10px;">СОБЫТИЕ</h2>
+            <div id="event-ascii-box" class="ascii-art flicker" style="font-size: 14px; margin-bottom: 15px; color:#aaffaa;"></div>
+            <div id="event-text" style="margin-bottom: 20px; font-size: 18px; line-height: 1.6; text-align: left; color: #eee;">Текст события...</div>
+            <div id="event-choices" style="display: flex; flex-direction: column; gap: 15px;"></div>
+        </div>
+    </div>
+
+    <!-- ОКНО ИНВЕНТАРЯ И АВАТАРА -->
+    <div id="inventory-modal" class="modal-overlay" style="z-index: 70;">
+        <div class="dossier">
+            <div class="dossier-header"><span>ДЕЛО №7749 // ЗАКЛЮЧЕННЫЙ</span><button class="close-dossier" id="close-inventory-btn">[X]</button></div>
+            <div class="dossier-content">
+                <div class="polaroid-col">
+                    <div class="polaroid">
+                        <div class="avatar-container">
+                            <img id="inv-base-skin" class="avatar-layer" src="" alt="[СКИН]">
+                            <img class="avatar-layer" id="inv-img-clothes" src="" alt="">
+                            <img class="avatar-layer" id="inv-img-mask" src="" alt="">
+                            <img class="avatar-layer" id="inv-img-weapon" src="" alt="">
+                        </div>
+                        <div style="margin-top: 15px; font-size: 16px;">УРОН: <span id="inv-dmg">0</span> | БРОНЯ: <span id="inv-def">0</span></div>
+                    </div>
+                    
+                    <div class="quest-items-panel">
+                        <div style="font-weight:bold; margin-bottom: 5px; color:#880000;">СЮЖЕТНЫЕ ПРЕДМЕТЫ:</div>
+                        <div id="quest-items-container">Пусто</div>
+                    </div>
+                </div>
+                
+                <div class="equipment-panel">
+                    <h3 style="margin-top:0;">НАДЕТО:</h3>
+                    <div id="equip-slot-mask" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'mask')"><div class="item-type">ОРГАНЫ ДЫХАНИЯ</div><div id="inv-mask-name">Пусто</div></div>
+                    <div id="equip-slot-clothes" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'clothes')"><div class="item-type">НАТЕЛЬНАЯ ЗАЩИТА</div><div id="inv-clothes-name">Пусто</div></div>
+                    <div id="equip-slot-backpack" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'backpack')"><div class="item-type">СПИНА (РЮКЗАК)</div><div id="inv-backpack-name">Пусто</div></div>
+                    <div id="equip-slot-weapon" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'weapon')"><div class="item-type">ОРУЖИЕ</div><div id="inv-weapon-name">Пусто</div></div>
+                    
+                    <h3 style="margin-top:10px; color:#ff3333; font-size:14px;">ПОЯС (БЫСТРЫЕ СЛОТЫ В БОЮ):</h3>
+                    <div id="inv-qslot-0" class="quick-slot equip-slot-empty" onclick="socket.emit('unequipQuickSlot', 0)" style="padding: 5px; margin-bottom: 5px;">[ПУСТО]</div>
+                    <div id="inv-qslot-1" class="quick-slot equip-slot-empty" onclick="socket.emit('unequipQuickSlot', 1)" style="padding: 5px;">[ПУСТО]</div>
+
+                    <div class="perks-panel">
+                        <div style="font-weight:bold; color:#880000;">ПЕРКИ И МУТАЦИИ:</div>
+                        <div id="perks-container" style="font-size: 14px; color: #550000; margin-top: 5px;">Пусто</div>
+                    </div>
+                </div>
+                <div class="chest-panel">
+                    <h3 style="margin-top:0;">СУНДУК (ИНВЕНТАРЬ) [<span id="inv-capacity">0/12</span>]:</h3>
+                    <div class="chest-grid" id="chest-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОКНО КРАФТА -->
+    <div id="craft-modal" class="modal-overlay" style="z-index: 70;">
+        <div class="shop-panel" style="width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="shop-header"><span>В
