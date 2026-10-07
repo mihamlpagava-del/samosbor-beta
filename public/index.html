@@ -518,4 +518,983 @@
     <!-- ОКНО КРАФТА -->
     <div id="craft-modal" class="modal-overlay" style="z-index: 70;">
         <div class="shop-panel" style="width: 800px; max-height: 90vh; overflow-y: auto;">
-            <div class="shop-header"><span>В
+            <div class="shop-header"><span>ВЕРСТАК И МОДДИНГ</span><button onclick="document.getElementById('craft-modal').style.display='none';" style="background:transparent; border:none; color:var(--term-green); font-size:24px; cursor:pointer; text-shadow: 0 0 5px var(--term-green);">[X]</button></div>
+            
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <h3 style="color: #33aaff; border-bottom: 1px dashed #33aaff; padding-bottom: 5px;">= СБОРКА ПРЕДМЕТОВ =</h3>
+                    <div class="shop-item"><div>Тяжелый вентиль <span style="color:#888; font-size:12px;"><br>[Металл + Изолента]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'weapon_pipe')" style="border-color:#33aaff; color:#33aaff;">СОБРАТЬ</button></div>
+                    <div class="shop-item"><div>Военная аптечка <span style="color:#888; font-size:12px;"><br>[Химикаты + Брикет слизи]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'food_medkit')" style="border-color:#33aaff; color:#33aaff;">СОБРАТЬ</button></div>
+                    <div class="shop-item"><div>Электрошокер <span style="color:#888; font-size:12px;"><br>[Электроника + Металл]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'special_shocker')" style="border-color:#33aaff; color:#33aaff;">СОБРАТЬ</button></div>
+                    <div class="shop-item"><div>Автосборщик <span style="color:#888; font-size:12px;"><br>[Электроника + Металл + Изолента]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'tool_robot')" style="border-color:#ffaa00; color:#ffaa00;">СОБРАТЬ</button></div>
+                </div>
+                
+                <div style="flex: 1;">
+                    <h3 style="color: #ffaa00; border-bottom: 1px dashed #ffaa00; padding-bottom: 5px;">= МОДИФИКАЦИЯ ОРУЖИЯ =</h3>
+                    <div style="font-size: 14px; margin-bottom: 15px; color: #ccc;">Выберите Оружие и Стихийный материал (Химикаты 🔥, Электроника ⚡, Металл 🩸).</div>
+                    <select id="mod-weapon-select" style="width: 100%; margin-bottom: 10px; background: #000; color: #fff; padding: 5px; border: 1px solid #ffaa00;"><option value="">-- Выберите оружие --</option></select>
+                    <select id="mod-mat-select" style="width: 100%; margin-bottom: 15px; background: #000; color: #fff; padding: 5px; border: 1px solid #ffaa00;"><option value="">-- Выберите материал --</option></select>
+                    <button onclick="sendModRequest()" style="width: 100%; border-color: #ffaa00; color: #ffaa00; margin-top: 0;">МОДИФИЦИРОВАТЬ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОКНО РАСПРЕДЕЛИТЕЛЯ -->
+    <div id="shop-modal" class="modal-overlay" style="z-index: 70;">
+        <div class="shop-panel">
+            <div class="shop-header"><span>ПИЩЕБЛОК И СКЛАД ОРУЖИЯ</span><button class="close-dossier" id="close-shop-btn" style="color: var(--term-green);">[X] ЗАКРЫТЬ</button></div>
+            <div style="text-align: left; margin-bottom: 20px;">ДОСТУПНО ТАЛОНОВ: <span class="ui-score" style="color: #ffaa00; font-size: 24px;">0</span></div>
+            <div style="display: flex; gap: 20px; text-align: left;">
+                <div style="flex: 1;"><h3 style="color: #ffaa00; margin-top:0;">= АССОРТИМЕНТ = <span style="font-size:14px; color:#888;">(ОБНОВЛЕНИЕ ЧЕРЕЗ <span id="shop-timer">10:00</span>)</span></h3><div id="shop-items-container"></div></div>
+                <div style="flex: 1; border-left: 2px dashed var(--term-green); padding-left: 20px;"><h3 style="color: #ffaa00; margin-top:0;">= СДАТЬ ХАБАР =</h3><div id="shop-sell-container" style="max-height: 400px; overflow-y: auto; padding-right:10px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        if (typeof io === 'undefined') {
+            document.getElementById('auth-error').innerHTML = "<b>КРИТИЧЕСКАЯ ОШИБКА:</b> Нет связи с сервером!<br>Вы открыли файл напрямую. Откройте вкладку <b>http://localhost:3000</b>";
+            throw new Error("Socket.io не загружен. Зайдите через http://localhost:3000");
+        }
+
+        let musicEnabled = true; let sfxEnabled = true; let crtEnabled = true;
+        const btnMusic = document.getElementById('btn-toggle-music'); 
+        const btnSfx = document.getElementById('btn-toggle-sfx');
+        const btnCrt = document.getElementById('btn-toggle-crt');
+        const btnOptions = document.getElementById('btn-options');
+        const optionsMenu = document.getElementById('options-menu');
+
+        function formatTime(sec) {
+            let h = Math.floor(sec / 3600).toString().padStart(2, '0');
+            let m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+            let s = (sec % 60).toString().padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        if(btnOptions) {
+            btnOptions.onclick = () => {
+                if (optionsMenu.style.display === 'flex') { optionsMenu.style.display = 'none'; } 
+                else { optionsMenu.style.display = 'flex'; }
+                playSound('click');
+            };
+        }
+
+        if(btnMusic) {
+            btnMusic.onclick = () => {
+                musicEnabled = !musicEnabled;
+                if(musicEnabled) { btnMusic.innerText = "🎵 Музыка (ВКЛ)"; btnMusic.classList.remove('muted'); if (currentAmbient && AMBIENTS[currentAmbient]) AMBIENTS[currentAmbient].play().catch(e=>console.log(e)); } 
+                else { btnMusic.innerText = "🎵 Музыка (ВЫКЛ)"; btnMusic.classList.add('muted'); Object.values(AMBIENTS).forEach(a => a.pause()); }
+                playSound('click');
+            };
+        }
+        
+        if(btnSfx) {
+            btnSfx.onclick = () => {
+                sfxEnabled = !sfxEnabled;
+                if(sfxEnabled) { btnSfx.innerText = "🔊 Звуки (ВКЛ)"; btnSfx.classList.remove('muted'); } 
+                else { btnSfx.innerText = "🔊 Звуки (ВЫКЛ)"; btnSfx.classList.add('muted'); }
+                playSound('click');
+            };
+        }
+        
+        if(btnCrt) {
+            btnCrt.onclick = () => {
+                crtEnabled = !crtEnabled;
+                if(crtEnabled) {
+                    btnCrt.innerText = "📺 CRT-эффект (ВКЛ)"; btnCrt.classList.remove('muted');
+                    document.body.classList.add('crt-enabled');
+                } else {
+                    btnCrt.innerText = "📺 CRT-эффект (ВЫКЛ)"; btnCrt.classList.add('muted');
+                    document.body.classList.remove('crt-enabled');
+                }
+                playSound('click');
+            };
+        }
+
+        const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/sounds/ambient_combat.mp3') };
+        Object.values(AMBIENTS).forEach(a => { a.loop = true; a.volume = 0; });
+        let currentAmbient = null; const AMBIENT_MAX_VOL = 0.35; 
+        
+        function changeAmbient(trackName) {
+            if (currentAmbient === trackName) return;
+            const oldTrackName = currentAmbient; const newTrack = AMBIENTS[trackName]; currentAmbient = trackName;
+            if (oldTrackName && AMBIENTS[oldTrackName]) { let oldAudio = AMBIENTS[oldTrackName]; let fadeOut = setInterval(() => { if (oldAudio.volume > 0.05) oldAudio.volume -= 0.05; else { oldAudio.volume = 0; oldAudio.pause(); clearInterval(fadeOut); } }, 150); }
+            if (newTrack && musicEnabled) { newTrack.volume = 0; newTrack.play().catch(e => console.log(e)); let fadeIn = setInterval(() => { if (newTrack.volume < AMBIENT_MAX_VOL - 0.05) newTrack.volume += 0.05; else { newTrack.volume = AMBIENT_MAX_VOL; clearInterval(fadeIn); } }, 150); }
+        }
+        function restoreAmbient() {
+            let combatControls = document.getElementById('combat-controls');
+            let gameScreen = document.getElementById('game-screen');
+            let mapScreen = document.getElementById('map-screen');
+            
+            if (combatControls && combatControls.style.display === 'flex') changeAmbient('combat');
+            else if (gameScreen && gameScreen.classList.contains('active-screen')) changeAmbient('explore');
+            else if (mapScreen && mapScreen.classList.contains('active-screen')) changeAmbient('map');
+            else changeAmbient('hub');
+        }
+
+        const SOUNDS = { click: new Audio('assets/sounds/click.mp3'), hit_player: new Audio('assets/sounds/hit_player.mp3'), hit_enemy: new Audio('assets/sounds/hit_enemy.mp3'), hit_crit: new Audio('assets/sounds/hit_crit.mp3'), dodge: new Audio('assets/sounds/dodge.mp3'), roar: new Audio('assets/sounds/roar.mp3'), heal: new Audio('assets/sounds/heal.mp3'), special: new Audio('assets/sounds/special.mp3'), victory: new Audio('assets/sounds/victory.mp3'), defeat: new Audio('assets/sounds/defeat.mp3'), low_hp: new Audio('assets/sounds/low_hp.mp3'), equip: new Audio('assets/sounds/equip.mp3'), buy: new Audio('assets/sounds/buy.mp3'), farm: new Audio('assets/sounds/farm.mp3') };
+        Object.values(SOUNDS).forEach(s => s.volume = 0.5);
+        let lowHpWarningPlayed = false;
+        function playSound(name) { if (SOUNDS[name] && sfxEnabled) { let s = SOUNDS[name].cloneNode(); s.volume = SOUNDS[name].volume; s.play().catch(e=>console.log(e)); } }
+        
+        document.addEventListener('click', (e) => { 
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                if(!e.target.classList.contains('opt-btn') && e.target.id !== 'btn-options') {
+                    playSound('click'); 
+                }
+            }
+        });
+
+        let btnOpenChat = document.getElementById('open-chat-btn');
+        if(btnOpenChat) {
+            btnOpenChat.onclick = () => {
+                document.getElementById('chat-modal').style.display = 'flex';
+                let msgBox = document.getElementById('chat-messages');
+                if(msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+                playSound('click');
+            };
+        }
+        
+        let btnOpenLeaderboard = document.getElementById('open-leaderboard-btn');
+        if(btnOpenLeaderboard) {
+            btnOpenLeaderboard.onclick = () => {
+                document.getElementById('leaderboard-modal').style.display = 'flex';
+                playSound('click');
+            };
+        }
+
+        const chatInput = document.getElementById('chat-input');
+        const btnSendChat = document.getElementById('btn-send-chat');
+
+        function sendChat() {
+            if(!chatInput || !btnSendChat) return;
+            let msg = chatInput.value.trim();
+            if(msg) {
+                socket.emit('sendChatMessage', msg);
+                chatInput.value = '';
+                btnSendChat.disabled = true;
+                btnSendChat.innerText = 'ОЖИДАНИЕ...';
+                setTimeout(() => {
+                    btnSendChat.disabled = false;
+                    btnSendChat.innerText = 'ОТПРАВИТЬ';
+                }, 2000); 
+            }
+        }
+        if(btnSendChat) btnSendChat.onclick = sendChat;
+        if(chatInput) {
+            chatInput.addEventListener('keypress', (e) => {
+                if(e.key === 'Enter' && !btnSendChat.disabled) sendChat();
+            });
+        }
+
+        let btnInfo = document.getElementById('btn-info');
+        if(btnInfo) btnInfo.onclick = () => { document.getElementById('info-modal').style.display = 'flex'; playSound('click'); };
+
+        const socket = io();
+        let myUsername = ""; let serverMap = {}; let myUnlockedSectors = []; let myQuestItems = []; let myQuickSlots = [null, null];
+        let GAME_PERKS = []; let GAME_ITEMS = {}; let MUTATIONS = [];
+        let currentShopItems = []; let shopUpdateTimestamp = 0;
+        let isTyping = false, typingTimer, fullLoreText = "", charIndex = 0;
+        let bestiaryRendered = false;
+
+        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen')); document.getElementById(id).classList.add('active-screen'); }
+
+        let loginBtn = document.getElementById('login-btn');
+        if(loginBtn) {
+            loginBtn.onclick = () => { const u = document.getElementById('username').value; const p = document.getElementById('password').value; if (u && p) { socket.emit('login', { username: u, password: p }); } };
+        }
+
+        function startBootSequence() {
+            changeAmbient('hub'); showScreen('intro-screen'); 
+            let itc = document.getElementById('intro-text-container');
+            if(itc) itc.innerHTML = ""; 
+            isTyping = true; charIndex = 0;
+            
+            fullLoreText = `GIGAHOUSE-OS v.19.84 загрузка...\nАВТОРИЗАЦИЯ: ЗАКЛЮЧЕННЫЙ #${myUsername.toUpperCase()}\n\n[СИСТЕМНОЕ ОПОВЕЩЕНИЕ]: СИРЕНА САМОСБОРА В АКТИВНОЙ ФАЗЕ.\n\nПАМЯТЬ ПОВРЕЖДЕНА. ВОССТАНОВЛЕНИЕ ПОСЛЕДНИХ ДАННЫХ:\nНас, приговоренных, загнали в клеть и отправили на нулевой этаж для зачистки.\nВнезапный скрежет. Обрыв троса. Свободное падение.\n\nЯ очнулся в темноте, окруженный воем сирен. Рядом лежал растерзанный конвоир.\nЯ сорвал с него противогаз и заперся в первой попавшейся жилячейке.\n\nПартия Светлых обещала искупление через труд. \nНо здесь нет ничего, кроме Бетона и Слизи.\n\nЦЕЛЬ: Вспомнить свое прошлое. Найти Главный Лифт (E4). Выжить.`;
+            
+            function typeChar() { 
+                if (!isTyping) return; 
+                let el = document.getElementById('intro-text-container');
+                if (charIndex < fullLoreText.length && el) { 
+                    el.innerHTML = fullLoreText.substring(0, charIndex + 1) + '<span class="cursor"></span>'; 
+                    charIndex++; 
+                    if (charIndex % 2 === 0) playSound('click'); 
+                    typingTimer = setTimeout(typeChar, 30); 
+                } else { finishTyping(); } 
+            } 
+            typeChar();
+        }
+        function finishTyping() { 
+            isTyping = false; clearTimeout(typingTimer); 
+            let el = document.getElementById('intro-text-container');
+            if(el) el.innerHTML = fullLoreText + '<span class="cursor"></span>'; 
+        }
+        document.addEventListener('keydown', (e) => { 
+            let introScreen = document.getElementById('intro-screen');
+            if (e.code === 'Space' && introScreen && introScreen.classList.contains('active-screen')) { 
+                if (isTyping) finishTyping(); 
+                else socket.emit('saveCharacter', { created: true }); 
+            } 
+        });
+
+        socket.on('loginSuccess', (data) => { myUsername = data.username; if (data.showIntro) startBootSequence(); else { showScreen('hub-screen'); changeAmbient('hub'); } });
+        
+        socket.on('startGame', () => { 
+            let loginScreen = document.getElementById('login-screen');
+            let introScreen = document.getElementById('intro-screen');
+            if(loginScreen) loginScreen.classList.remove('active-screen'); 
+            if(introScreen) introScreen.classList.remove('active-screen'); 
+        }); 
+        
+        socket.on('chatHistory', (history) => {
+            const box = document.getElementById('chat-messages');
+            if(!box) return;
+            box.innerHTML = '';
+            history.forEach(m => { box.innerHTML += `<div><span style="color:#888;">[${m.time}]</span> <span style="color:#ffaa00;">${m.user}:</span> ${m.text}</div>`; });
+            box.scrollTop = box.scrollHeight;
+        });
+
+        socket.on('chatMessage', (m) => {
+            const box = document.getElementById('chat-messages');
+            if(!box) return;
+            box.innerHTML += `<div><span style="color:#888;">[${m.time}]</span> <span style="color:#ffaa00;">${m.user}:</span> ${m.text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        });
+
+        socket.on('gameState', (data) => {
+            serverMap = data.map; myUnlockedSectors = data.me.unlockedSectors || []; myQuickSlots = data.me.quickSlots || [null, null]; myQuestItems = data.me.questItems || [];
+            if(data.GAME_PERKS) GAME_PERKS = data.GAME_PERKS;
+            if(data.GAME_ITEMS) GAME_ITEMS = data.GAME_ITEMS;
+            if(data.MUTATIONS) MUTATIONS = data.MUTATIONS;
+            if(data.shopItems) currentShopItems = data.shopItems;
+            if(data.nextShopUpdate) shopUpdateTimestamp = data.nextShopUpdate;
+            
+            // Рендер Бестиария
+            if (data.BESTIARY && !bestiaryRendered) {
+                let listUi = document.getElementById('bestiary-list-ui');
+                let detailsUi = document.getElementById('bestiary-details');
+                let btnBes = document.getElementById('btn-bestiary');
+                if (btnBes) {
+                    btnBes.style.display = 'block';
+                    btnBes.onclick = () => { document.getElementById('bestiary-modal').style.display = 'flex'; playSound('click'); };
+                }
+                if (listUi && detailsUi) {
+                    data.BESTIARY.forEach(mob => {
+                        let li = document.createElement('li');
+                        li.innerText = mob.name;
+                        li.onclick = () => {
+                            document.querySelectorAll('.bestiary-list li').forEach(el => el.classList.remove('active'));
+                            li.classList.add('active');
+                            playSound('click');
+                            detailsUi.innerHTML = `
+                                <div style="display:flex; gap:20px; align-items:flex-start;">
+                                    <div style="width:200px; height:200px; border:2px dashed #ffaa00; display:flex; justify-content:center; align-items:center; background:#111;">
+                                        <img src="assets/monsters/${mob.img}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="[НЕТ ИЗОБРАЖЕНИЯ]">
+                                    </div>
+                                    <div style="flex-grow:1;">
+                                        <h2 style="margin-top:0; color:#ffaa00;">${mob.name}</h2>
+                                        <div style="color:#888; font-size:14px; margin-bottom:15px;">МИНИМАЛЬНЫЙ УРОВЕНЬ ЗАГРОЗЫ: ЭТАЖ ${mob.minFloor}</div>
+                                        <div style="font-size:16px; color:#fff; line-height:1.6;">${mob.lore}</div>
+                                    </div>
+                                </div>
+                            `;
+                        };
+                        listUi.appendChild(li);
+                    });
+                }
+                bestiaryRendered = true;
+            }
+
+            if(data.leaderboard) {
+                let lbBody = document.getElementById('leaderboard-body');
+                if(lbBody) {
+                    lbBody.innerHTML = '';
+                    data.leaderboard.forEach(lb => {
+                        let rowClass = '';
+                        if(lb.rank === 1) rowClass = 'lb-rank-1';
+                        else if(lb.rank === 2) rowClass = 'lb-rank-2';
+                        else if(lb.rank === 3) rowClass = 'lb-rank-3';
+                        
+                        let nameHtml = lb.name;
+                        if(lb.name === myUsername) nameHtml = `<span style="color:#33ff33;">${lb.name} (ВЫ)</span>`;
+                        
+                        lbBody.innerHTML += `
+                            <tr class="${rowClass}">
+                                <td>#${lb.rank}</td>
+                                <td>${nameHtml}</td>
+                                <td>${lb.title}</td>
+                                <td>${lb.level}</td>
+                                <td>${lb.floor}</td>
+                                <td>${formatTime(lb.playtime)}</td>
+                                <td style="color:#ffaa00; font-weight:bold;">${lb.rating}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+            
+            renderShop(); 
+            renderMap(); updateUI(data.me, data.sectorPlayers);
+            if (data.me.notebook) {
+                const nbContainer = document.getElementById('notebook-content'); if(nbContainer) { nbContainer.innerHTML = ''; data.me.notebook.slice().reverse().forEach(entry => { nbContainer.innerHTML += `<div class="notebook-entry">${entry}</div>`; }); }
+            }
+        });
+
+        socket.on('showLevelUp', (choices) => {
+            const modal = document.getElementById('levelup-modal'); const container = document.getElementById('levelup-choices'); 
+            if(!modal || !container) return;
+            container.innerHTML = '';
+            choices.forEach(c => {
+                let btn = document.createElement('button'); btn.className = 'levelup-btn';
+                btn.innerHTML = `<span style="color:#ffaa00; font-size:22px;">${c.name}</span><br><span style="font-size:16px; color:#ccc;">${c.desc}</span>`;
+                btn.onclick = () => { socket.emit('selectPerk', c.id); modal.style.display = 'none'; playSound('victory'); };
+                container.appendChild(btn);
+            });
+            modal.style.display = 'flex'; playSound('victory');
+        });
+
+        function renderShop() {
+            const container = document.getElementById('shop-items-container'); 
+            if(!container) return;
+            container.innerHTML = ``;
+            currentShopItems.forEach(id => { 
+                let item = GAME_ITEMS[id]; 
+                if (item) {
+                    let typeLabel = "Экипировка";
+                    if(item.reqLevel) typeLabel += ` | Ур.${item.reqLevel}`;
+                    if(item.type === 'consumable') typeLabel = "Медицина/Расходник";
+                    if(item.type === 'special') typeLabel = "Спецсредство";
+                    if(item.type === 'material') typeLabel = "Материал";
+                    if(item.type === 'tool') typeLabel = "Инструмент";
+                    if(item.type === 'backpack') typeLabel = "Спина (Рюкзак)";
+                    
+                    let iconName = item.iconId || id;
+                    let iconPath = `assets/icons/${iconName}.png`;
+
+                    container.innerHTML += `
+                    <div class="shop-item">
+                        <div class="shop-item-left">
+                            <img class="shop-item-icon" src="${iconPath}" alt="[IMG]">
+                            <div>
+                                <span style="color:${item.color || '#fff'}">${item.name}</span> 
+                                <span style="color:#888; font-size:14px;">[${typeLabel}]</span>
+                            </div>
+                        </div>
+                        <div>
+                            <span style="color:#ffaa00">${item.cost} т.</span> 
+                            <button class="shop-buy-btn" onclick="socket.emit('buyItem', '${id}')">КУПИТЬ</button>
+                        </div>
+                    </div>`; 
+                }
+            });
+        }
+
+        setInterval(() => {
+            if (shopUpdateTimestamp) {
+                let diff = Math.max(0, Math.floor((shopUpdateTimestamp - Date.now()) / 1000));
+                let m = Math.floor(diff / 60).toString().padStart(2, '0');
+                let s = (diff % 60).toString().padStart(2, '0');
+                let el = document.getElementById('shop-timer');
+                if (el) el.innerText = `${m}:${s}`;
+            }
+        }, 1000);
+
+        const ASCII_DOORS = [ "  ______  \n |      | \n |  ><  | \n |______| ", "  ______  \n |  ||  | \n |  ||  | \n |__||__| ", "  ______  \n | |  | | \n | |  | | \n |_|  |_| ", "  ______  \n |      | \n |      | \n |      | " ];
+        
+        socket.on('transition', (data) => {
+            const overlay = document.getElementById('transition-overlay'); const asciiBox = document.getElementById('trans-ascii'); const transText = document.getElementById('trans-text');
+            if(!overlay || !asciiBox || !transText) return;
+            transText.innerText = data.text;
+            overlay.style.display = 'flex'; playSound('equip'); 
+            let frame = 0; let animInterval = setInterval(() => { asciiBox.innerText = ASCII_DOORS[frame]; frame++; if(frame >= ASCII_DOORS.length) clearInterval(animInterval); }, 250);
+            setTimeout(() => { overlay.style.display = 'none'; }, 1800); 
+        });
+
+        function applyVFX(targetId, vfxClass) {
+            const container = document.getElementById(targetId); 
+            if(!container) return;
+            const vfxElement = document.createElement('div');
+            vfxElement.className = vfxClass; container.appendChild(vfxElement);
+            setTimeout(() => { vfxElement.remove(); }, 600); 
+        }
+
+        socket.on('vfxFarm', (amt) => {
+            const container = document.getElementById('hub-stats-panel');
+            if(!container) return;
+            const slime = document.createElement('div'); slime.className = 'slime-vfx'; slime.innerText = `+${amt || 1} СЛИЗЬ`; slime.style.left = (Math.random() * 80 + 10) + '%';
+            container.appendChild(slime); setTimeout(() => slime.remove(), 1000);
+        });
+        
+        socket.on('vfxHeal', () => { applyVFX('player-vfx-container', 'vfx-heal'); });
+
+        socket.on('combatStart', (data) => {
+            changeAmbient('combat'); 
+            let combatLogBox = document.getElementById('combat-log');
+            if(combatLogBox) combatLogBox.innerHTML = `> ВСТРЕЧА С ВРАГОМ: ${data.enemy.name}!\n`; 
+            playSound('roar'); 
+            
+            let ec = document.getElementById('explore-controls'); if(ec) ec.style.display = 'none';
+            let cc = document.getElementById('combat-controls'); if(cc) cc.style.display = 'flex';
+            
+            let es = document.getElementById('enemy-sprite'); if(es) { es.style.display = 'block'; es.src = `assets/monsters/${data.enemy.img}`; }
+            let ehb = document.getElementById('enemy-hp-bar'); if(ehb) ehb.style.display = 'block';
+            let uehp = document.getElementById('ui-enemy-hp'); if(uehp) uehp.innerText = data.enemy.hp;
+            
+            let eba = document.getElementById('enemy-battle-avatar'); if(eba) eba.classList.add('visible');
+            
+            isAiming = false; clearInterval(aimInterval);
+            let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'none';
+            let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+        });
+
+        socket.on('startCombatMinigame', (data) => {
+            if(data.type === 'voltage') {
+                mgStep = 0; mgInput = [0]; mgData = data;
+                let mt = document.getElementById('mg-title'); if(mt) mt.innerText = "ПЕРЕГРУЗКА РЕАКТОРА!";
+                let mtext = document.getElementById('mg-text'); if(mtext) mtext.innerText = "Внимание! Ядро нестабильно. Требуется калибровка.";
+                let bmc = document.getElementById('btn-mg-cancel'); if(bmc) bmc.style.display = 'none'; 
+                updateVoltageUI();
+                let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'flex';
+            }
+        });
+
+        socket.on('combatTick', (data) => {
+            let combatLogBox = document.getElementById('combat-log');
+            if (data.logs && data.logs.length > 0 && combatLogBox) { combatLogBox.innerHTML += data.logs.join('\n') + '\n'; combatLogBox.scrollTop = combatLogBox.scrollHeight; }
+            if (data.enemyHp !== undefined) { let uehp = document.getElementById('ui-enemy-hp'); if(uehp) uehp.innerText = data.enemyHp; }
+            if (data.sounds && data.sounds.length > 0) data.sounds.forEach(snd => playSound(snd));
+            
+            if (data.vfx && data.vfx.length > 0) {
+                data.vfx.forEach(v => {
+                    if (v === 'enemy_hit') applyVFX('enemy-vfx-container', 'vfx-slash');
+                    if (v === 'enemy_crit') { applyVFX('enemy-vfx-container', 'vfx-slash'); applyVFX('enemy-vfx-container', 'vfx-crit'); }
+                    if (v === 'player_hit') { 
+                        applyVFX('player-vfx-container', 'vfx-player-hit'); 
+                        let pba = document.getElementById('player-battle-avatar');
+                        if(pba) { pba.classList.add('avatar-shake'); setTimeout(() => pba.classList.remove('avatar-shake'), 300); }
+                    }
+                    if (v === 'player_dodge') {
+                        let pba = document.getElementById('player-battle-avatar');
+                        if(pba) { pba.classList.add('avatar-shake'); setTimeout(() => pba.classList.remove('avatar-shake'), 300); }
+                    }
+                    if (v === 'heal') applyVFX('player-vfx-container', 'vfx-heal');
+                    if (v === 'explosion') applyVFX('enemy-vfx-container', 'vfx-explosion');
+                });
+            }
+        });
+
+        socket.on('combatEnd', (data) => {
+            restoreAmbient(); 
+            let combatLogBox = document.getElementById('combat-log');
+            if(combatLogBox) { combatLogBox.innerHTML += data.log + '\n'; combatLogBox.scrollTop = combatLogBox.scrollHeight; }
+            if (data.win) playSound('victory'); else playSound('defeat');
+            
+            let cc = document.getElementById('combat-controls'); if(cc) cc.style.display = 'none';
+            let ec = document.getElementById('explore-controls'); if(ec) ec.style.display = 'flex';
+            let ehb = document.getElementById('enemy-hp-bar'); if(ehb) ehb.style.display = 'none';
+            
+            setTimeout(() => { let eba = document.getElementById('enemy-battle-avatar'); if(eba) eba.classList.remove('visible'); }, 3000);
+            
+            isAiming = false; clearInterval(aimInterval);
+            let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'none';
+            let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+        });
+
+        let aimInterval = null; let aimPos = 0; let aimDir = 1; let isAiming = false;
+
+        function toggleAimAttack() {
+            if (!isAiming) {
+                isAiming = true;
+                let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'block';
+                let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'УДАР!';
+                aimPos = 0; aimDir = 1; 
+                aimInterval = setInterval(() => {
+                    aimPos += aimDir * 5; 
+                    if (aimPos >= 100) { aimPos = 100; aimDir = -1; }
+                    if (aimPos <= 0) { aimPos = 0; aimDir = 1; }
+                    let ac = document.getElementById('aim-cursor'); if(ac) ac.style.left = aimPos + '%';
+                }, 30);
+            } else {
+                clearInterval(aimInterval); isAiming = false;
+                let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'none';
+                let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+                
+                if (aimPos >= 40 && aimPos <= 60) { socket.emit('combatAction', 'aimed_success'); } 
+                else { socket.emit('combatAction', 'aimed_fail'); }
+            }
+        }
+
+        let currentGameLoc = null; let mgData = null; let mgStep = 0; let mgInput = [];
+        
+        function cancelMinigame() { playSound('click'); let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameCancel'); }
+
+        socket.on('startMinigame', (data) => {
+            currentGameLoc = data.locId; mgData = data.gameData;
+            const modal = document.getElementById('minigame-modal'); const art = document.getElementById('mg-art'); const ui = document.getElementById('mg-ui'); const text = document.getElementById('mg-text');
+            if(!modal || !art || !ui || !text) return;
+            
+            let bmc = document.getElementById('btn-mg-cancel'); if(bmc) bmc.style.display = 'block'; 
+            let mt = document.getElementById('mg-title'); if(mt) mt.innerText = mgData.title; 
+            text.innerText = mgData.text;
+            playSound('click'); modal.style.display = 'flex';
+            
+            if (mgData.type === 'sequence') {
+                mgStep = 0; mgInput = [];
+                art.innerText = `\n      +-------------------+\n      |   ПОСЛЕДОВАТЕЛЬ   |\n      +-------------------+`;
+                ui.innerHTML = `<div id="mg-seq-display" style="font-size:24px; color:#fff; margin-bottom:15px; min-height:30px;">_ _ _ _</div><div style="display:flex; gap:10px; justify-content:center;" id="mg-seq-btns"></div>`;
+                const btnContainer = document.getElementById('mg-seq-btns');
+                if(btnContainer) { mgData.options.forEach(opt => { btnContainer.innerHTML += `<button onclick="seqClick('${opt}')">${opt}</button>`; }); }
+            } 
+            else if(mgData.type === 'password') {
+                art.innerText = `\n      +-------------------+\n      |  [ КОД ДОСТУПА ]  |\n      |   [1]  [2]  [3]   |\n      |   [4]  [5]  [6]   |\n      |   [7]  [8]  [9]   |\n      |   [*]  [0]  [#]   |\n      +-------------------+`;
+                ui.innerHTML = `<input type="text" id="mg-pass-input" placeholder="____" maxlength="4" style="text-align:center; letter-spacing:10px; font-size:24px; font-weight:bold;">
+                                <button onclick="checkPass()" style="width:100%;">ВВОД</button>`;
+            } 
+            else if (mgData.type === 'voltage') { mgStep = 0; mgInput = [0]; updateVoltageUI(); } 
+            else if (mgData.type === 'boltcutter') { mgStep = 0; updateMashUI(); }
+        });
+
+        function seqClick(val) {
+            mgInput.push(val); playSound('click'); 
+            let msd = document.getElementById('mg-seq-display'); if(msd) msd.innerText = mgInput.join(" - ");
+            if (mgInput.length === mgData.answer.length) {
+                if (JSON.stringify(mgInput) === JSON.stringify(mgData.answer)) { let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } 
+                else { playSound('defeat'); let ma = document.getElementById('mg-art'); if(ma) { ma.style.color = '#ff3333'; setTimeout(() => { ma.style.color = '#ffaa00'; mgInput = []; if(msd) msd.innerText = "_ _ _ _"; }, 500); } }
+            }
+        }
+
+        function checkPass() {
+            let mpi = document.getElementById('mg-pass-input');
+            if(mpi && mpi.value === mgData.answer) { let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } 
+            else { playSound('defeat'); if(mpi) mpi.value = ''; let ma = document.getElementById('mg-art'); if(ma) { ma.style.color = '#ff3333'; setTimeout(() => document.getElementById('mg-art').style.color = '#ffaa00', 500); } }
+        }
+
+        function updateVoltageUI() {
+            const art = document.getElementById('mg-art'); const ui = document.getElementById('mg-ui'); 
+            if(!art || !ui) return;
+            let displayW = mgInput[0].toString().padStart(3, '0');
+            art.innerText = `\n             ___\n            | + |\n            |---|\n            |${displayW}W|\n            |___|`;
+            ui.innerHTML = `<div style="margin-bottom:10px; font-size:20px;">Цель: ${mgData.target}W | Кликов осталось: ${4 - mgStep}</div>
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button onclick="addVolt(30)">+30</button><button onclick="addVolt(20)">+20</button><button onclick="addVolt(10)">+10</button><button onclick="addVolt(-10)">-10</button>
+                </div>`;
+        }
+
+        function addVolt(val) {
+            mgInput[0] += val; mgStep++; playSound('click');
+            if(mgStep >= 4) {
+                if(mgInput[0] === mgData.target) { 
+                    let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; 
+                    let cc = document.getElementById('combat-controls');
+                    if(cc && cc.style.display === 'flex' && !currentGameLoc) {
+                        socket.emit('combatMinigameResult', true);
+                    } else { socket.emit('minigameWon', currentGameLoc); }
+                } 
+                else { 
+                    playSound('defeat');
+                    let cc = document.getElementById('combat-controls');
+                    if(cc && cc.style.display === 'flex' && !currentGameLoc) {
+                        let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none';
+                        socket.emit('combatMinigameResult', false);
+                    } else {
+                        let ui = document.getElementById('mg-ui');
+                        if(ui) ui.innerHTML = `<div style="color:#ff3333; font-size:24px; font-weight:bold; margin-bottom:15px;">ПРОМАХ!</div><button onclick="mgStep=0; mgInput=[0]; updateVoltageUI();" style="width:100%;">ПОВТОРИТЬ</button>`;
+                    }
+                }
+            } else updateVoltageUI();
+        }
+
+        function updateMashUI() {
+            const art = document.getElementById('mg-art'); const ui = document.getElementById('mg-ui'); 
+            if(!art || !ui) return;
+            let maxHits = 15; let bars = "█".repeat(mgStep) + "-".repeat(maxHits - mgStep);
+            art.innerText = `\n  _   _   _   _ \n / \\ / \\ / \\ / \\\n(   )   )   )   )\n \\_/ \\_/ \\_/ \\_/\n\nПРОГРЕСС: [${bars}]`;
+            ui.innerHTML = `<button onclick="doMash()" style="width:100%; padding:20px; font-size:24px;">НАЖМИТЕ, ЧТОБЫ РЕЗАТЬ!</button>`;
+        }
+        function doMash() {
+            mgStep++; playSound('hit_player'); applyVFX('mg-art', 'vfx-dodge');
+            if(mgStep >= 15) { let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } 
+            else updateMashUI();
+        }
+
+        let asciiEventInterval = null; const ASCII_SEARCH = ["[*] Поиск...", "[+] Поиск...", "[x] Поиск...", "[-] Поиск..."];
+        socket.on('combatEventResult', (log) => { 
+            let clb = document.getElementById('combat-log');
+            if(clb) clb.innerHTML = log; 
+            clearInterval(asciiEventInterval); 
+        });
+        
+        socket.on('triggerEvent', (ev) => {
+            let et = document.getElementById('event-title'); if(et) et.innerText = ev.title; 
+            let etxt = document.getElementById('event-text'); if(etxt) etxt.innerText = ev.text;
+            
+            const asciiBox = document.getElementById('event-ascii-box'); 
+            let frame = 0; 
+            if(asciiBox) asciiEventInterval = setInterval(() => { asciiBox.innerText = ASCII_SEARCH[frame % ASCII_SEARCH.length]; frame++; }, 300);
+            
+            const choicesContainer = document.getElementById('event-choices'); 
+            if(choicesContainer) {
+                choicesContainer.innerHTML = '';
+                ev.choices.forEach(choice => {
+                    let btn = document.createElement('button'); btn.innerText = choice.text; btn.style.width = '100%';
+                    if (choice.text.includes('[РИСК]')) { btn.style.borderColor = '#ffaa00'; btn.style.color = '#ffaa00'; }
+                    btn.onclick = () => { socket.emit('resolveEvent', choice.id); let em = document.getElementById('event-modal'); if(em) em.style.display = 'none'; clearInterval(asciiEventInterval); };
+                    choicesContainer.appendChild(btn);
+                });
+            }
+            let em = document.getElementById('event-modal'); if(em) em.style.display = 'flex';
+        });
+
+        socket.on('terminalError', (msg) => {
+            const el = document.getElementById('auth-error'); const hubEl = document.getElementById('hub-error');
+            const loginScreen = document.getElementById('login-screen');
+            const hubScreen = document.getElementById('hub-screen');
+            let clb = document.getElementById('combat-log');
+
+            if (el && loginScreen && loginScreen.classList.contains('active-screen')) el.innerText = msg;
+            else if (hubEl && hubScreen && hubScreen.classList.contains('active-screen')) { hubEl.innerText = msg; setTimeout(() => { hubEl.innerText = ""; }, 4000); }
+            else if (clb) { clb.innerHTML += `> ${msg}\n`; clb.scrollTop = clb.scrollHeight; }
+        });
+
+        function renderMap() {
+            const container = document.getElementById('map-container'); 
+            if(!container) return;
+            container.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D', 'E'];
+            for (let y = 0; y < 5; y++) {
+                for (let x = 0; x < 5; x++) {
+                    let id = `${letters[y]}${x}`; let node = serverMap[id]; let div = document.createElement('div');
+                    if (node) {
+                        let isUnlocked = myUnlockedSectors.includes(id);
+                        let isCanUnlock = false;
+                        
+                        if (!isUnlocked) {
+                            if (node.reqType === 'item' && myQuestItems.includes(node.reqValue)) isCanUnlock = true;
+                            else if (node.reqType === 'minigame' || !node.reqType) isCanUnlock = true;
+                        }
+                        
+                        if (isUnlocked) div.className = 'map-node';
+                        else if (isCanUnlock) div.className = 'map-node can-unlock';
+                        else div.className = 'map-node locked';
+                        
+                        div.style.backgroundImage = `url('assets/locations/${node.bg}')`;
+                        let displayId = isUnlocked || isCanUnlock ? id : '[ЗАКРЫТО]';
+                        
+                        let lockInfo = '';
+                        if (!isUnlocked && isCanUnlock) {
+                           if (node.reqType === 'item') lockInfo = `<div style="color:#ffaa00; font-size:10px; margin-top:5px; text-shadow: 0 0 2px #000;">[ НУЖЕН КЛЮЧ ]</div>`;
+                           else if (node.reqType === 'minigame') lockInfo = `<div style="color:#33aaff; font-size:10px; margin-top:5px; text-shadow: 0 0 2px #000;">[ ВЗЛОМ СЕТИ ]</div>`;
+                        } else if (!isUnlocked && !isCanUnlock) {
+                           if (node.reqType === 'item') lockInfo = `<div style="color:#888; font-size:10px; margin-top:5px;">[ ЗАМОК ]</div>`;
+                           else if (node.reqType === 'minigame') lockInfo = `<div style="color:#888; font-size:10px; margin-top:5px;">[ ТЕРМИНАЛ ]</div>`;
+                        }
+
+                        div.innerHTML = `<div class="node-content"><div class="node-id">${displayId}</div><div class="node-name">${node.name}</div>${lockInfo}</div><div class="node-content"><div class="node-threat">${node.threat}</div></div>`;
+                        div.onclick = () => { socket.emit('changeLocation', id); };
+                    }
+                    container.appendChild(div);
+                }
+            }
+        }
+
+        let pendingEquipIndex = null;
+        function prepareQuickEquip(invIndex) {
+            pendingEquipIndex = invIndex;
+            let q0 = document.getElementById('inv-qslot-0');
+            let q1 = document.getElementById('inv-qslot-1');
+            if(q0) { q0.style.borderColor = '#ff3333'; q0.innerText = "[КЛИКНИ СЮДА]"; }
+            if(q1) { q1.style.borderColor = '#ff3333'; q1.innerText = "[КЛИКНИ СЮДА]"; }
+        }
+
+        function sendModRequest() {
+            let wIdx = document.getElementById('mod-weapon-select').value;
+            let mIdx = document.getElementById('mod-mat-select').value;
+            if (wIdx === "" || mIdx === "") { socket.emit('terminalError', 'ВЫБЕРИТЕ ОРУЖИЕ И МАТЕРИАЛ ДЛЯ МОДДИНГА.'); return; }
+            socket.emit('modWeapon', { wIdx: parseInt(wIdx), mIdx: parseInt(mIdx) });
+        }
+
+        function updateUI(me, sectorPlayers) {
+            if (!me) return;
+            
+            let playtimeEl = document.querySelector('.ui-playtime');
+            if (playtimeEl && me.playtime !== undefined) playtimeEl.innerText = formatTime(me.playtime);
+
+            if (me.appearance && me.appearance.skin) {
+                let skinPath = `assets/character/${me.appearance.skin}.png`;
+                let invSkin = document.getElementById('inv-base-skin');
+                let battleSkin = document.getElementById('battle-base-skin');
+                if (invSkin) { invSkin.src = skinPath; invSkin.style.display = 'block'; }
+                if (battleSkin) { battleSkin.src = skinPath; battleSkin.style.display = 'block'; }
+            }
+            
+            let floorEl = document.getElementById('ui-current-floor');
+            if(floorEl) floorEl.innerText = me.floor;
+            
+            document.querySelectorAll('.ui-level').forEach(el => el.innerText = me.level); document.querySelectorAll('.ui-xp').forEach(el => el.innerText = me.xp); document.querySelectorAll('.ui-max-xp').forEach(el => el.innerText = me.level * 100); document.querySelectorAll('.ui-maxhp').forEach(el => el.innerText = me.stats.maxHp); document.querySelectorAll('.ui-score').forEach(el => el.innerText = me.talons);
+            document.querySelectorAll('.ui-kills').forEach(el => el.innerText = me.monstersKilled || 0); document.querySelectorAll('.ui-rooms').forEach(el => el.innerText = me.roomsCleared || 0); document.querySelectorAll('.ui-rating').forEach(el => el.innerText = me.rating || 0); document.querySelectorAll('.ui-title').forEach(el => el.innerText = me.title); document.querySelectorAll('.ui-rank').forEach(el => el.innerText = me.rankPos);
+            
+            let hpPercentage = (me.stats.hp / me.stats.maxHp) * 100;
+            document.querySelectorAll('.ui-hp').forEach(el => { el.innerText = me.stats.hp; if (hpPercentage < 50) el.classList.add('critical-hp'); else el.classList.remove('critical-hp'); });
+            if (hpPercentage < 50 && me.stats.hp > 0) { if (!lowHpWarningPlayed) { playSound('low_hp'); lowHpWarningPlayed = true; } } else { lowHpWarningPlayed = false; }
+            document.querySelectorAll('.ui-filter').forEach(el => el.innerText = me.stats.filter); document.querySelectorAll('.filter-bar').forEach(el => { el.style.width = me.stats.filter + '%'; el.style.background = (me.stats.filter <= 20) ? '#ff3333' : 'var(--term-green)'; });
+
+            document.querySelectorAll('.ui-hunger').forEach(el => el.innerText = me.hunger);
+            document.querySelectorAll('.hunger-bar').forEach(el => el.style.width = me.hunger + '%');
+            document.querySelectorAll('.ui-tox').forEach(el => el.innerText = me.tox);
+            document.querySelectorAll('.tox-bar').forEach(el => el.style.width = me.tox + '%');
+
+            if (me.equipment) {
+                ['clothes', 'mask', 'weapon'].forEach(slot => {
+                    const itemId = me.equipment[slot]; 
+                    const itemData = GAME_ITEMS[itemId];
+                    const iconId = itemData && itemData.iconId ? itemData.iconId : itemId;
+                    
+                    let invImg = document.getElementById(`inv-img-${slot}`);
+                    let battleImg = document.getElementById(`battle-${slot}`);
+                    const slotDiv = document.getElementById(`equip-slot-${slot}`); const nameDiv = document.getElementById(`inv-${slot}-name`);
+                    
+                    if (itemId && itemData) { 
+                        let imgUrl = `assets/${slot}/${iconId}.png`;
+                        if(invImg) { invImg.src = imgUrl; invImg.style.display = 'block'; }
+                        if(battleImg) { battleImg.src = imgUrl; battleImg.style.display = 'block'; }
+                        if (nameDiv && slotDiv) { 
+                            nameDiv.innerHTML = `<span style="color:${itemData.paperColor || 'var(--ink-color)'}; font-weight:bold;">${itemData.name}</span><div style="font-size:12px; color:#555;">Ур. ${itemData.reqLevel || 1}</div>`; 
+                            slotDiv.classList.remove('equip-slot-empty'); 
+                        } 
+                    } else {
+                        if(invImg) { invImg.src = ''; invImg.style.display = 'none'; }
+                        if(battleImg) { battleImg.src = ''; battleImg.style.display = 'none'; }
+                        if(nameDiv && slotDiv) { nameDiv.innerText = "Пусто"; nameDiv.style.color = '#555'; slotDiv.classList.add('equip-slot-empty'); }
+                    }
+                });
+                
+                let bpItem = GAME_ITEMS[me.equipment.backpack];
+                let bpSlot = document.getElementById('equip-slot-backpack');
+                let bpName = document.getElementById('inv-backpack-name');
+                if (bpItem && bpSlot && bpName) {
+                    bpName.innerHTML = `<span style="color:${bpItem.paperColor || 'var(--ink-color)'}; font-weight:bold;">${bpItem.name}</span><div style="font-size:12px; color:#555;">Слотов: +${bpItem.bonusCap}</div>`;
+                    bpSlot.classList.remove('equip-slot-empty');
+                } else if (bpSlot && bpName) { bpName.innerText = "Пусто"; bpName.style.color = '#555'; bpSlot.classList.add('equip-slot-empty'); }
+
+                let invDmg = document.getElementById('inv-dmg'); if(invDmg) invDmg.innerText = me.stats.dmg; 
+                let invDef = document.getElementById('inv-def'); if(invDef) invDef.innerText = me.stats.def;
+            }
+
+            for (let i=0; i<2; i++) {
+                let itemId = me.quickSlots[i]; let invSlot = document.getElementById(`inv-qslot-${i}`); let combatSlot = document.getElementById(`combat-qslot-${i}`);
+                if (itemId && GAME_ITEMS[itemId]) {
+                    if(invSlot) { invSlot.innerHTML = `<div style="color:${GAME_ITEMS[itemId].paperColor || 'var(--ink-color)'}; font-weight:bold;">${GAME_ITEMS[itemId].name}</div><div style="font-size:11px;">(Клик - Снять)</div>`; invSlot.classList.remove('equip-slot-empty'); }
+                    if(combatSlot) { combatSlot.innerHTML = `<span style="color:${GAME_ITEMS[itemId].color || '#fff'};">${GAME_ITEMS[itemId].name}</span><br><span style="color:#fff;">(ПРИМЕНИТЬ)</span>`; combatSlot.classList.remove('combat-q-empty'); }
+                } else {
+                    if (pendingEquipIndex === null) {
+                        if(invSlot) { invSlot.innerHTML = "[ПУСТО]"; invSlot.classList.add('equip-slot-empty'); }
+                        if(combatSlot) { combatSlot.innerHTML = "[ПУСТО]"; combatSlot.classList.add('combat-q-empty'); }
+                    }
+                }
+            }
+
+            if (me.questItems) {
+                const questContainer = document.getElementById('quest-items-container');
+                if(questContainer) {
+                    if (me.questItems.length === 0) questContainer.innerHTML = '<span style="color:#555;">Пусто... (Ищите предметы в Тумане)</span>';
+                    else { questContainer.innerHTML = ''; me.questItems.forEach(itemId => { let qItem = GAME_ITEMS[itemId]; if(qItem) questContainer.innerHTML += `<div class="quest-item"><div class="quest-item-title" style="color:${qItem.paperColor || '#884400'};">${qItem.name}</div></div>`; }); }
+                }
+            }
+
+            if (me.perks || me.mutations) {
+                const perksContainer = document.getElementById('perks-container');
+                if(perksContainer) {
+                    perksContainer.innerHTML = ''; 
+                    let hasAny = false;
+                    if(me.perks) me.perks.forEach(pId => { let perk = GAME_PERKS.find(pk => pk.id === pId); if(perk) { perksContainer.innerHTML += `<div class="perk-item"><b>${perk.name}</b><br><span style="font-size:12px;">${perk.desc}</span></div>`; hasAny = true; } });
+                    if(me.mutations) me.mutations.forEach(mId => { let mut = MUTATIONS.find(mu => mu.id === mId); if(mut) { perksContainer.innerHTML += `<div class="perk-item" style="color:#aa0000; border-color:#aa0000;"><b>[МУТАЦИЯ] ${mut.name}</b><br><span style="font-size:12px;">${mut.desc}</span></div>`; hasAny = true; } });
+                    if(!hasAny) perksContainer.innerHTML = 'Пусто';
+                }
+            }
+
+            const sellContainer = document.getElementById('shop-sell-container');
+            const chestContainer = document.getElementById('chest-container'); 
+            
+            let capEl = document.getElementById('inv-capacity');
+            if(capEl) capEl.innerText = `${me.inventory.length}/${me.maxInv}`;
+
+            if (sellContainer) sellContainer.innerHTML = '';
+            if (chestContainer) chestContainer.innerHTML = '';
+
+            let wSelect = document.getElementById('mod-weapon-select');
+            let mSelect = document.getElementById('mod-mat-select');
+            if(wSelect) wSelect.innerHTML = '<option value="">-- Выберите оружие --</option>';
+            if(mSelect) mSelect.innerHTML = '<option value="">-- Выберите материал --</option>';
+
+            if (me.inventory) {
+                if (me.inventory.length === 0) {
+                    if(chestContainer) chestContainer.innerHTML = `<div style="color: #555; grid-column: span 2; text-align: center; margin-top: 20px;">Сундук пуст...</div>`;
+                    if(sellContainer) sellContainer.innerHTML = `<div style="color: #555;">Нет предметов для продажи...</div>`;
+                } else {
+                    me.inventory.forEach((itemId, index) => {
+                        const itemData = GAME_ITEMS[itemId];
+                        if (itemData) {
+                            
+                            if (itemData.type === 'weapon' && wSelect && !itemData.isFire && !itemData.isElectro && !itemData.isBleed) {
+                                wSelect.innerHTML += `<option value="${index}">${itemData.name}</option>`;
+                            }
+                            if (itemData.type === 'material' && mSelect && (itemId === 'mat_chem' || itemId === 'mat_electro' || itemId === 'mat_scrap')) {
+                                mSelect.innerHTML += `<option value="${index}">${itemData.name}</option>`;
+                            }
+
+                            let iconName = itemData.iconId || itemId;
+                            let iconPath = `assets/icons/${iconName}.png`;
+
+                            if(chestContainer) {
+                                let div = document.createElement('div'); div.className = 'chest-item';
+                                let actionType = ''; let typeLabel = '';
+                                if (itemData.type === 'consumable') { actionType = 'НАДЕТЬ НА ПОЯС'; typeLabel = 'МЕДИЦИНА'; }
+                                else if (itemData.type === 'special') { actionType = 'НАДЕТЬ НА ПОЯС'; typeLabel = 'СПЕЦСРЕДСТВО'; }
+                                else if (itemData.type === 'material') { actionType = itemData.isCure ? 'ВЫЛЕЧИТЬ ЗАРАЖЕНИЕ' : 'КРАФТ'; typeLabel = 'МАТЕРИАЛ'; }
+                                else if (itemData.type === 'tool') { actionType = 'ИНСТРУМЕНТ'; typeLabel = 'ПАССИВНО'; }
+                                else if (itemData.type === 'backpack') { actionType = 'НАДЕТЬ'; typeLabel = `РЮКЗАК УР.${itemData.reqLevel || 1}`; }
+                                else { actionType = 'НАДЕТЬ'; typeLabel = `ЭКИП. УР.${itemData.reqLevel || 1}`; }
+                                
+                                div.innerHTML = `
+                                    <img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'">
+                                    <div class="item-type">[${typeLabel}]</div>
+                                    <div style="color:${itemData.paperColor || '#000'}; font-weight:bold;">${itemData.name}</div>
+                                    <div style="font-size: 11px; color:#005500; margin-top:3px;">КЛИК - ${actionType}</div>
+                                    <button style="margin-top:5px; padding:2px 5px; font-size:10px; background:#aa0000; color:#fff; border:1px solid #ff0000; z-index: 10; position: relative;" onclick="event.stopPropagation(); socket.emit('dropItem', ${index})">ВЫБРОСИТЬ</button>
+                                `;
+                                div.onclick = () => { 
+                                    if (itemData.type === 'consumable' || itemData.type === 'special' || itemData.isCure) prepareQuickEquip(index);
+                                    else if (itemData.type !== 'material' && itemData.type !== 'tool') socket.emit('equipItem', index); 
+                                };
+                                chestContainer.appendChild(div);
+                            }
+                            if(sellContainer && itemData.type !== 'material' && itemData.type !== 'tool') {
+                                let sellPrice = Math.min(35, Math.max(3, Math.floor(itemData.cost * 0.4)));
+                                sellContainer.innerHTML += `
+                                <div class="shop-item">
+                                    <div class="shop-item-left">
+                                        <img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'">
+                                        <div style="color:${itemData.color || 'var(--term-green)'}">${itemData.name}</div>
+                                    </div>
+                                    <div><span style="color:#ffaa00">+${sellPrice} т.</span> <button class="shop-buy-btn" onclick="socket.emit('sellItem', ${index})" style="border-color:#ff3333; color:#ff3333;">СДАТЬ</button></div>
+                                </div>`;
+                            }
+                        }
+                    });
+                }
+            }
+
+            let robotPanel = document.getElementById('robot-panel');
+            let robotStatus = document.getElementById('robot-status');
+            let robotBtn = document.getElementById('btn-robot-action');
+
+            if (me.location !== 'safe_room') {
+                if(robotPanel) robotPanel.style.display = 'block';
+                if (me.currentRobot !== null) {
+                    if(robotStatus) robotStatus.innerHTML = `🤖 АВТОСБОРЩИК: <span style="color:#ffaa00">${me.currentRobot} / 250 т.</span>`;
+                    if(robotBtn) {
+                        robotBtn.innerText = 'СОБРАТЬ';
+                        robotBtn.onclick = () => { socket.emit('collectRobot'); playSound('click'); };
+                        robotBtn.style.borderColor = '#33aaff'; robotBtn.style.color = '#33aaff';
+                    }
+                } else {
+                    if(robotStatus) robotStatus.innerHTML = `🤖 АВТОСБОРЩИК НЕ УСТАНОВЛЕН`;
+                    if(robotBtn) {
+                        robotBtn.innerText = 'УСТАНОВИТЬ (ИЗ СУНДУКА)';
+                        robotBtn.onclick = () => { socket.emit('installRobot'); playSound('click'); };
+                        robotBtn.style.borderColor = '#ffaa00'; robotBtn.style.color = '#ffaa00';
+                    }
+                }
+            } else { if(robotPanel) robotPanel.style.display = 'none'; }
+
+            let exploreText = me.location === 'E4' ? '[ ЗАПУСТИТЬ ЛИФТ ]' : 'ВЫЛАЗКА В ТУМАН';
+            let exploreColor = me.location === 'E4' ? '#ffaa00' : '#ff3333';
+            
+            let exploreControls = document.getElementById('explore-controls');
+            if(exploreControls) {
+                exploreControls.innerHTML = `
+                    <div style="display:flex; gap:15px; width: 100%;">
+                        <button id="click-btn" onclick="socket.emit('work'); playSound('click');" style="width:100%;">ФАРМ СЛИЗИ</button>
+                        <button id="game-notebook-btn" onclick="document.getElementById('notebook-modal').style.display='flex'; playSound('click');" style="color: #fff; border-color: #fff; width:100%;">БЛОКНОТ</button>
+                    </div>
+                    <button id="explore-btn" onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='> Входим в туман...\\n'; socket.emit('explore'); playSound('click');" style="color: ${exploreColor}; border-color: ${exploreColor}; width:100%; font-weight:bold;">${exploreText}</button>
+                    <button id="return-hub-btn" onclick="socket.emit('changeLocation', 'safe_room'); playSound('click');" style="color: #aaa; border-color: #aaa; width:100%;">ВЕРНУТЬСЯ</button>
+                `;
+            }
+
+            let loginScreen = document.getElementById('login-screen');
+            let introScreen = document.getElementById('intro-screen');
+            
+            if (loginScreen && loginScreen.classList.contains('active-screen')) return; 
+            if (introScreen && introScreen.classList.contains('active-screen')) return; 
+
+            const invModal = document.getElementById('inventory-modal'); const shopModal = document.getElementById('shop-modal'); const minigameModal = document.getElementById('minigame-modal'); const eventModal = document.getElementById('event-modal'); const craftModal = document.getElementById('craft-modal'); const infoModal = document.getElementById('info-modal'); const chatModal = document.getElementById('chat-modal');
+            let mapScreen = document.getElementById('map-screen');
+
+            if (me.location === 'safe_room') {
+                if (mapScreen && !mapScreen.classList.contains('active-screen')) showScreen('hub-screen');
+                let bgLayer = document.getElementById('bg-layer'); if(bgLayer) bgLayer.style.backgroundImage = `url('assets/locations/bg_safe_room.png')`;
+                let ea = document.getElementById('enemy-battle-avatar'); if(ea) ea.classList.remove('visible'); 
+                let cc = document.getElementById('combat-controls'); if(cc) cc.style.display = 'none'; 
+                let ec = document.getElementById('explore-controls'); if(ec) ec.style.display = 'flex'; 
+                let ehb = document.getElementById('enemy-hp-bar'); if(ehb) ehb.style.display = 'none';
+                
+                if ((!invModal || invModal.style.display !== 'flex') && (!shopModal || shopModal.style.display !== 'flex') && (!minigameModal || minigameModal.style.display !== 'flex') && (!eventModal || eventModal.style.display !== 'flex') && (!craftModal || craftModal.style.display !== 'flex') && (!infoModal || infoModal.style.display !== 'flex') && (!chatModal || chatModal.style.display !== 'flex') && (mapScreen && !mapScreen.classList.contains('active-screen'))) { 
+                    changeAmbient('hub'); 
+                }
+            } else {
+                showScreen('game-screen'); const node = serverMap[me.location];
+                let bgLayer = document.getElementById('bg-layer');
+                let clTitle = document.getElementById('current-location-title');
+                
+                if (node) { if(clTitle) clTitle.innerText = node.name; if(bgLayer) bgLayer.style.backgroundImage = `url('assets/locations/${node.bg}')`; }
+                let cc = document.getElementById('combat-controls');
+                if (cc && cc.style.display === 'flex') changeAmbient('combat');
+                else if ((!invModal || invModal.style.display !== 'flex') && (!minigameModal || minigameModal.style.display !== 'flex') && (!eventModal || eventModal.style.display !== 'flex')) changeAmbient('explore');
+
+                const radar = document.getElementById('players-in-sector'); 
+                if(radar) {
+                    radar.innerHTML = '';
+                    sectorPlayers.forEach(p => {
+                        if (p.username !== myUsername) {
+                            let div = document.createElement('div'); div.className = 'player-entry';
+                            div.innerHTML = `<span>[${p.username}] HP:${p.hp}</span> <div>
+                                <button class="pvp-btn" onclick="socket.emit('pvpAttack', '${p.id}')" style="margin-right:5px; border-color:#ff3333; color:#ff3333;">АТАКА</button>
+                                <button class="pvp-btn" onclick="socket.emit('coopHeal', '${p.id}')" style="border-color:#33ff33; color:#33ff33;">ПОМОЧЬ</button>
+                            </div>`;
+                            radar.appendChild(div);
+                        }
+                    });
+                    if(radar.innerHTML === '') radar.innerHTML = '<span style="color:#555">Пусто. Вы здесь одни.</span>';
+                }
+            }
+        }
+        
+        let btnOpenMap = document.getElementById('open-map-btn');
+        if(btnOpenMap) btnOpenMap.onclick = () => { showScreen('map-screen'); changeAmbient('map'); playSound('click'); };
+        
+        let btnCloseMap = document.getElementById('close-map-btn');
+        if(btnCloseMap) btnCloseMap.onclick = () => { showScreen('hub-screen'); changeAmbient('hub'); playSound('click'); };
+        
+        let btnOpenNotebook = document.getElementById('open-notebook-btn');
+        if(btnOpenNotebook) btnOpenNotebook.onclick = () => { document.getElementById('notebook-modal').style.display = 'flex'; playSound('click'); };
+        
+        const invModal = document.getElementById('inventory-modal');
+        function toggleInv() { if(invModal) { invModal.style.display = (invModal.style.display === 'flex') ? 'none' : 'flex'; if (invModal.style.display === 'flex') changeAmbient('chest'); else restoreAmbient(); pendingEquipIndex = null; updateUI({inventory:[]}); playSound('click'); } }
+        let btnOpenChest = document.getElementById('open-chest-btn'); if(btnOpenChest) btnOpenChest.onclick = toggleInv; 
+        let btnCloseInv = document.getElementById('close-inventory-btn'); if(btnCloseInv) btnCloseInv.onclick = toggleInv;
+        
+        const shopModal = document.getElementById('shop-modal');
+        function toggleShop() { if(shopModal) { shopModal.style.display = (shopModal.style.display === 'flex') ? 'none' : 'flex'; if (shopModal.style.display === 'flex') changeAmbient('shop'); else restoreAmbient(); playSound('click'); } }
+        let btnOpenShop = document.getElementById('open-shop-btn'); if(btnOpenShop) btnOpenShop.onclick = toggleShop; 
+        let btnCloseShop = document.getElementById('close-shop-btn'); if(btnCloseShop) btnCloseShop.onclick = toggleShop;
+
+        let btnOpenCraft = document.getElementById('open-craft-btn');
+        if(btnOpenCraft) btnOpenCraft.onclick = () => { document.getElementById('craft-modal').style.display = 'flex'; changeAmbient('chest'); playSound('click'); };
+
+        document.addEventListener('keydown', (e) => { if (e.code === 'Tab') { e.preventDefault(); toggleInv(); } });
+    </script>
+</body>
+</html>
