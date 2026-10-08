@@ -732,12 +732,12 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
+<script src="assets/socket.io.min.js"></script>
 <script>
 if (typeof io === 'undefined') {
-  document.getElementById('auth-error').innerHTML = "<b>ОШИБКА:</b> Нет связи с сервером!";
-  throw new Error("Socket.io не загружен.");
+  document.write('<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"><\/script>');
 }
+</script>
 
 const DEFAULT_NOTEBOOK = [
   "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, 23 заключённых, погрузили в клеть и отправили вниз, на нулевой этаж.",
@@ -788,7 +788,25 @@ document.getElementById('btn-toggle-sfx').onclick = () => { sfxEnabled = !sfxEna
 document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEnabled; document.getElementById('btn-toggle-crt').innerText = crtEnabled ? "📺 CRT-эффект (ВКЛ)" : "📺 CRT-эффект (ВЫКЛ)"; document.body.classList.toggle('crt-enabled', crtEnabled); };
 document.getElementById('btn-info').onclick = () => { document.getElementById('info-modal').style.display = 'flex'; };
 
-const socket = io();
+const BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname.endsWith('alwaysdata.net'))
+  ? undefined
+  : 'https://mikhail-pagava.alwaysdata.net';
+
+const socket = io(BACKEND_URL, {
+  transports: ['polling', 'websocket']
+});
+
+socket.on('connect', () => {
+  console.log('[Socket] Соединение установлено:', socket.id);
+  const errEl = document.getElementById('auth-error');
+  if (errEl && errEl.innerText.includes('соединения')) errEl.innerHTML = '';
+});
+
+socket.on('connect_error', (err) => {
+  console.error('[Socket] Ошибка подключения:', err);
+  const errEl = document.getElementById('auth-error');
+  if (errEl) errEl.innerHTML = '<span style="color:var(--term-danger);">Ошибка подключения к серверу игры!</span>';
+});
 let myUsername = "", clientMe = null, serverMap = {}, myUnlockedSectors = [], myQuestItems = [], myQuickSlots = [null, null];
 let GAME_PERKS = [], GAME_ITEMS = {}, MUTATIONS = [], currentShopItems = [], shopUpdateTimestamp = 0;
 let pendingEquipIndex = null, isAiming = false, aimInterval = null, aimPos = 0, aimDir = 1;
