@@ -1317,16 +1317,99 @@ function sendModRequest() {
   socket.emit('modWeapon', { wIdx: parseInt(w), mIdx: parseInt(m) });
 }
 
+function updateActiveBackground() {
+  const bg = document.getElementById('bg-layer');
+  if (!bg) return;
+  const shopM = document.getElementById('shop-modal');
+  const craftM = document.getElementById('craft-modal');
+  const chatM = document.getElementById('chat-modal');
+  const lbM = document.getElementById('leaderboard-modal');
+  const mapS = document.getElementById('map-screen');
+
+  if (shopM && shopM.style.display === 'flex') {
+    bg.style.backgroundImage = `url('assets/locations/bg_shop.png')`;
+  } else if (craftM && craftM.style.display === 'flex') {
+    bg.style.backgroundImage = `url('assets/locations/bg_craft.png')`;
+  } else if (chatM && chatM.style.display === 'flex') {
+    bg.style.backgroundImage = `url('assets/locations/bg_chat.png')`;
+  } else if (lbM && lbM.style.display === 'flex') {
+    bg.style.backgroundImage = `url('assets/locations/bg_leaderboard.png')`;
+  } else if (mapS && mapS.classList.contains('active-screen')) {
+    bg.style.backgroundImage = `url('assets/locations/bg_map.png')`;
+  } else {
+    if (clientMe && clientMe.location && clientMe.location !== 'safe_room') {
+      const node = serverMap[clientMe.location];
+      if (node && node.bg) bg.style.backgroundImage = `url('assets/locations/${node.bg}')`;
+    } else {
+      bg.style.backgroundImage = `url('assets/locations/bg_safe_room.png')`;
+    }
+  }
+}
+
 document.getElementById('open-notebook-btn').onclick = () => document.getElementById('notebook-modal').style.display = 'flex';
 document.getElementById('open-chest-btn').onclick = () => toggleInv();
 document.getElementById('close-inventory-btn').onclick = () => toggleInv();
-document.getElementById('open-shop-btn').onclick = () => { document.getElementById('shop-modal').style.display = 'flex'; changeAmbient('shop'); };
-document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-modal').style.display = 'none'; restoreAmbient(); };
-document.getElementById('open-craft-btn').onclick = () => { document.getElementById('craft-modal').style.display = 'flex'; changeAmbient('chest'); };
-document.getElementById('open-chat-btn').onclick = () => { document.getElementById('chat-modal').style.display = 'flex'; let m = document.getElementById('chat-messages'); if(m) m.scrollTop = m.scrollHeight; };
-document.getElementById('open-leaderboard-btn').onclick = () => document.getElementById('leaderboard-modal').style.display = 'flex';
-document.getElementById('open-map-btn').onclick = () => { showScreen('map-screen'); changeAmbient('map'); };
-document.getElementById('close-map-btn').onclick = () => { showScreen('hub-screen'); changeAmbient('hub'); };
+
+document.getElementById('open-shop-btn').onclick = () => { 
+  document.getElementById('shop-modal').style.display = 'flex'; 
+  updateActiveBackground();
+  changeAmbient('shop'); 
+};
+document.getElementById('close-shop-btn').onclick = () => { 
+  document.getElementById('shop-modal').style.display = 'none'; 
+  updateActiveBackground();
+  restoreAmbient(); 
+};
+
+document.getElementById('open-craft-btn').onclick = () => { 
+  document.getElementById('craft-modal').style.display = 'flex'; 
+  updateActiveBackground();
+  changeAmbient('chest'); 
+};
+const closeCraftBtn = document.querySelector('#craft-modal .shop-header button');
+if (closeCraftBtn) {
+  closeCraftBtn.onclick = () => {
+    document.getElementById('craft-modal').style.display = 'none';
+    updateActiveBackground();
+  };
+}
+
+document.getElementById('open-chat-btn').onclick = () => { 
+  document.getElementById('chat-modal').style.display = 'flex'; 
+  updateActiveBackground();
+  let m = document.getElementById('chat-messages'); 
+  if(m) m.scrollTop = m.scrollHeight; 
+};
+const closeChatBtn = document.querySelector('#chat-modal .shop-header button');
+if (closeChatBtn) {
+  closeChatBtn.onclick = () => {
+    document.getElementById('chat-modal').style.display = 'none';
+    updateActiveBackground();
+  };
+}
+
+document.getElementById('open-leaderboard-btn').onclick = () => { 
+  document.getElementById('leaderboard-modal').style.display = 'flex'; 
+  updateActiveBackground();
+};
+const closeLbBtn = document.querySelector('#leaderboard-modal .shop-header button');
+if (closeLbBtn) {
+  closeLbBtn.onclick = () => {
+    document.getElementById('leaderboard-modal').style.display = 'none';
+    updateActiveBackground();
+  };
+}
+
+document.getElementById('open-map-btn').onclick = () => { 
+  showScreen('map-screen'); 
+  updateActiveBackground();
+  changeAmbient('map'); 
+};
+document.getElementById('close-map-btn').onclick = () => { 
+  showScreen('hub-screen'); 
+  updateActiveBackground();
+  changeAmbient('hub'); 
+};
 
 function toggleInv() {
   const m = document.getElementById('inventory-modal');
