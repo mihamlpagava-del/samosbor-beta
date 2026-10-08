@@ -1,0 +1,9 @@
+{
+  "static_path": "public",
+  "app_id": 0,
+  "endpoints": {
+    "mobile": "index.html",
+    "m排": "index.html",
+    "web": "index.html"
+  }
+}
