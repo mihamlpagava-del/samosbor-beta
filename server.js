@@ -1020,7 +1020,8 @@ io.on('connection', (socket) => {
                     maxHp: pd.maxHp,
                     dmg: getPlayerStats(pd).dmg,
                     isPlayer: true,
-                    skin: pd.appearance ? pd.appearance.skin : 'skin_1'
+                    skin: pd.appearance ? pd.appearance.skin : 'skin_1',
+                    equipment: pd.equipment || {}
                 }
             });
             io.to(targetId).emit('combatStart', {
@@ -1030,7 +1031,8 @@ io.on('connection', (socket) => {
                     maxHp: pa.maxHp,
                     dmg: getPlayerStats(pa).dmg,
                     isPlayer: true,
-                    skin: pa.appearance ? pa.appearance.skin : 'skin_1'
+                    skin: pa.appearance ? pa.appearance.skin : 'skin_1',
+                    equipment: pa.equipment || {}
                 }
             });
             broadcastGameState();
@@ -1489,11 +1491,35 @@ setInterval(() => {
                 pl.hp = 0;
                 pl.location = 'safe_room';
 
-                let winLog = (winnerCombat ? winnerCombat.logs.join('\n') : '') + `\n>>> ПОБЕДА НАД ${loser}! <<<\n> Захвачено талонов: +${lootTalons}\n> Получено опыта: +60 XP\n`;
-                let loseLog = (loserCombat ? loserCombat.logs.join('\n') : '') + `\n>>> ПОРАЖЕНИЕ В ДУЭЛИ ПРОТИВ ${winner}! <<<\n> Потеряно талонов: -${lootTalons}\n> ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ.\n`;
+                let stolenItemsNames = [];
+                if (Array.isArray(pl.inventory) && pl.inventory.length > 0) {
+                    let numItemsToSteal = Math.min(pl.inventory.length, Math.floor(Math.random() * 2) + 1); // 1-2 предмета
+                    for (let s = 0; s < numItemsToSteal; s++) {
+                        if (pl.inventory.length === 0) break;
+                        let randIdx = Math.floor(Math.random() * pl.inventory.length);
+                        let stolenId = pl.inventory.splice(randIdx, 1)[0];
+                        let itemData = GAME_ITEMS[stolenId];
+                        let itemName = itemData ? itemData.name : stolenId;
+                        stolenItemsNames.push(itemName);
 
-                if (winSocketId) io.to(winSocketId).emit('combatEnd', { log: winLog, enemy: { name: loser, hp: 0, maxHp: pl.maxHp, isPlayer: true, skin: pl.appearance ? pl.appearance.skin : 'skin_1' }, win: true });
-                if (loseSocketId) io.to(loseSocketId).emit('combatEnd', { log: loseLog, enemy: { name: winner, hp: pw.hp, maxHp: pw.maxHp, isPlayer: true, skin: pw.appearance ? pw.appearance.skin : 'skin_1' }, win: false });
+                        if (pw.inventory.length < getMaxInv(pw)) {
+                            pw.inventory.push(stolenId);
+                        } else {
+                            // Если у победителя склад переполнен, возвращаем в талоны
+                            let compensation = Math.max(5, itemData ? Math.floor((itemData.cost || 10) * 0.5) : 5);
+                            pw.talons += compensation;
+                        }
+                    }
+                }
+
+                let stolenLogWin = stolenItemsNames.length > 0 ? `> Захвачено трофеев со склада: ${stolenItemsNames.join(', ')}\n` : '';
+                let stolenLogLose = stolenItemsNames.length > 0 ? `> Потеряно предметов со склада: ${stolenItemsNames.join(', ')}\n` : '';
+
+                let winLog = (winnerCombat ? winnerCombat.logs.join('\n') : '') + `\n>>> ПОБЕДА НАД ${loser}! <<<\n> Захвачено талонов: +${lootTalons}\n${stolenLogWin}> Получено опыта: +60 XP\n`;
+                let loseLog = (loserCombat ? loserCombat.logs.join('\n') : '') + `\n>>> ПОРАЖЕНИЕ В ДУЭЛИ ПРОТИВ ${winner}! <<<\n> Потеряно талонов: -${lootTalons}\n${stolenLogLose}> ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ.\n`;
+
+                if (winSocketId) io.to(winSocketId).emit('combatEnd', { log: winLog, enemy: { name: loser, hp: 0, maxHp: pl.maxHp, isPlayer: true, skin: pl.appearance ? pl.appearance.skin : 'skin_1', equipment: pl.equipment || {} }, win: true });
+                if (loseSocketId) io.to(loseSocketId).emit('combatEnd', { log: loseLog, enemy: { name: winner, hp: pw.hp, maxHp: pw.maxHp, isPlayer: true, skin: pw.appearance ? pw.appearance.skin : 'skin_1', equipment: pw.equipment || {} }, win: false });
 
                 delete activeCombats[winner];
                 delete activeCombats[loser];

@@ -423,6 +423,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     </div>
     <div id="enemy-battle-avatar" class="combat-avatar">
       <img id="enemy-sprite" src="" style="z-index: 5; display: none;" alt="">
+      <img id="enemy-clothes" class="avatar-layer" style="z-index: 6; display: none;" src="" alt="">
+      <img id="enemy-mask" class="avatar-layer" style="z-index: 7; display: none;" src="" alt="">
+      <img id="enemy-weapon" class="avatar-layer" style="z-index: 8; display: none;" src="" alt="">
       <div id="enemy-vfx-container" class="vfx-container"></div>
       <div id="enemy-hp-bar" style="position: absolute; bottom: -25px; width: 100%; text-align: center; color: var(--term-danger); font-weight: bold; display: none;">ВРАГ: <span id="ui-enemy-hp">0</span> HP</div>
     </div>
@@ -846,13 +849,34 @@ socket.on('combatStart', (data) => {
   document.getElementById('explore-controls').style.display = 'none';
   document.getElementById('combat-controls').style.display = 'flex';
   let es = document.getElementById('enemy-sprite');
+  let ec = document.getElementById('enemy-clothes');
+  let em = document.getElementById('enemy-mask');
+  let ew = document.getElementById('enemy-weapon');
   if(es) {
     es.classList.remove('enemy-defeated');
     es.style.display = 'block';
     if (data.enemy.isPlayer) {
       es.src = `assets/character/${data.enemy.skin || 'skin_1'}.png`;
+      let eq = data.enemy.equipment || {};
+      ['clothes', 'mask', 'weapon'].forEach(slot => {
+        let el = document.getElementById(`enemy-${slot}`);
+        if (!el) return;
+        let itId = eq[slot];
+        let itData = GAME_ITEMS[itId];
+        let icId = (itData && itData.iconId) ? itData.iconId : itId;
+        if (itId && icId) {
+          el.src = `assets/${slot}/${icId}.png`;
+          el.style.display = 'block';
+        } else {
+          el.src = '';
+          el.style.display = 'none';
+        }
+      });
     } else {
       es.src = `assets/monsters/${data.enemy.img}`;
+      if (ec) { ec.src = ''; ec.style.display = 'none'; }
+      if (em) { em.src = ''; em.style.display = 'none'; }
+      if (ew) { ew.src = ''; ew.style.display = 'none'; }
     }
   }
   document.getElementById('enemy-hp-bar').style.display = 'block';
@@ -903,16 +927,28 @@ socket.on('combatEnd', (data) => {
   document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
 
   let es = document.getElementById('enemy-sprite');
+  let ec = document.getElementById('enemy-clothes');
+  let em = document.getElementById('enemy-mask');
+  let ew = document.getElementById('enemy-weapon');
   if (es) {
     if (data.win) {
       es.classList.add('enemy-defeated');
+      if (ec) ec.classList.add('enemy-defeated');
+      if (em) em.classList.add('enemy-defeated');
+      if (ew) ew.classList.add('enemy-defeated');
       setTimeout(() => {
         es.style.display = 'none';
         es.classList.remove('enemy-defeated');
+        if (ec) { ec.style.display = 'none'; ec.classList.remove('enemy-defeated'); }
+        if (em) { em.style.display = 'none'; em.classList.remove('enemy-defeated'); }
+        if (ew) { ew.style.display = 'none'; ew.classList.remove('enemy-defeated'); }
       }, 1000);
     } else {
       es.style.display = 'none';
       es.classList.remove('enemy-defeated');
+      if (ec) { ec.style.display = 'none'; ec.classList.remove('enemy-defeated'); }
+      if (em) { em.style.display = 'none'; em.classList.remove('enemy-defeated'); }
+      if (ew) { ew.style.display = 'none'; ew.classList.remove('enemy-defeated'); }
     }
   }
 });
@@ -1260,7 +1296,13 @@ function updateUI(me, sectorPlayers) {
     document.getElementById('explore-controls').style.display = 'flex';
     document.getElementById('enemy-hp-bar').style.display = 'none';
     let es = document.getElementById('enemy-sprite');
+    let ec = document.getElementById('enemy-clothes');
+    let em = document.getElementById('enemy-mask');
+    let ew = document.getElementById('enemy-weapon');
     if (es) { es.style.display = 'none'; es.classList.remove('enemy-defeated'); }
+    if (ec) { ec.style.display = 'none'; ec.classList.remove('enemy-defeated'); }
+    if (em) { em.style.display = 'none'; em.classList.remove('enemy-defeated'); }
+    if (ew) { ew.style.display = 'none'; ew.classList.remove('enemy-defeated'); }
     if ((!invM || invM.style.display !== 'flex') && (!shopM || shopM.style.display !== 'flex') && (!mgM || mgM.style.display !== 'flex') && (!evM || evM.style.display !== 'flex') && (!crM || crM.style.display !== 'flex') && (!inM || inM.style.display !== 'flex') && (!chM || chM.style.display !== 'flex') && !mapS.classList.contains('active-screen')) {
       changeAmbient('hub');
     }
@@ -1278,10 +1320,16 @@ function updateUI(me, sectorPlayers) {
     }
     let cc = document.getElementById('combat-controls');
     let es = document.getElementById('enemy-sprite');
+    let ec = document.getElementById('enemy-clothes');
+    let em = document.getElementById('enemy-mask');
+    let ew = document.getElementById('enemy-weapon');
     if (cc && cc.style.display === 'flex') {
       changeAmbient('combat');
     } else {
       if (es) { es.style.display = 'none'; es.classList.remove('enemy-defeated'); }
+      if (ec) { ec.style.display = 'none'; ec.classList.remove('enemy-defeated'); }
+      if (em) { em.style.display = 'none'; em.classList.remove('enemy-defeated'); }
+      if (ew) { ew.style.display = 'none'; ew.classList.remove('enemy-defeated'); }
       if ((!invM || invM.style.display !== 'flex') && (!mgM || mgM.style.display !== 'flex') && (!evM || evM.style.display !== 'flex')) changeAmbient('explore');
     }
     const radar = document.getElementById('players-in-sector');
