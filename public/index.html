@@ -80,8 +80,10 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .map-node.can-unlock .node-id, .map-node.can-unlock .node-name { color: var(--term-warn); }
 @keyframes pulseCanUnlock { 0% { box-shadow: 0 0 4px var(--term-warn); } 50% { box-shadow: 0 0 15px var(--term-warn); } 100% { box-shadow: 0 0 4px var(--term-warn); } }
 .node-content { position: relative; z-index: 2; pointer-events: none; }
-.node-id { font-size: 20px; font-weight: bold; color: var(--term-green); text-shadow: 2px 2px 0 #000; }
-.node-name { font-size: 12px; color: #ddd; text-shadow: 1px 1px 0 #000; }
+.node-icon { width: 24px; height: 24px; object-fit: contain; margin-bottom: 2px; display: block; margin-left: auto; margin-right: auto; filter: drop-shadow(0 0 3px rgba(0,0,0,0.9)); }
+.loc-header-icon { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; object-fit: contain; filter: drop-shadow(0 0 3px var(--term-green)); }
+.node-id { font-size: 18px; font-weight: bold; color: var(--term-green); text-shadow: 2px 2px 0 #000; }
+.node-name { font-size: 11px; color: #ddd; text-shadow: 1px 1px 0 #000; }
 .floor-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 1px solid var(--term-dim); padding-bottom: 10px; margin-bottom: 10px; }
 .sector-radar { margin-top: 12px; border-top: 1px dashed var(--term-dim); padding-top: 10px; }
 .player-entry { display: flex; justify-content: space-between; align-items: center; padding: 5px 8px; border: 1px dashed #444; margin-bottom: 4px; font-size: 13px; }
@@ -333,7 +335,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="map-screen" class="screen">
   <div class="panel" style="max-width: 95%;">
     <div class="floor-controls">
-      <button class="floor-btn" id="btn-floor-down" disabled>▼ ВНИЗ (ЛИФТ E4)</button>
+      <button class="floor-btn" id="btn-floor-down" disabled>▼ ВНИЗ (РЕЗЕРВНЫЙ ЛИФТ E4)</button>
       <div style="font-size: 20px; letter-spacing: 2px;">ЭТАЖ: <span id="ui-current-floor">0</span></div>
       <button class="floor-btn" id="btn-floor-up" disabled>ВВЕРХ ▲</button>
     </div>
@@ -1165,7 +1167,7 @@ function updateUI(me, sectorPlayers) {
     }
   } else { if(rp) rp.style.display = 'none'; }
 
-  let expT = me.location === 'E4' ? '[ ЗАПУСТИТЬ ЛИФТ ]' : 'ВЫЛАЗКА В ТУМАН';
+  let expT = me.location === 'E4' ? '[ ЗАПУСТИТЬ РЕЗЕРВНЫЙ ЛИФТ ]' : 'ВЫЛАЗКА В ТУМАН';
   let expC = me.location === 'E4' ? 'var(--term-warn)' : 'var(--term-danger)';
   let ec = document.getElementById('explore-controls');
   if (ec) {
@@ -1196,7 +1198,13 @@ function updateUI(me, sectorPlayers) {
     const node = serverMap[me.location];
     let bg = document.getElementById('bg-layer');
     let clt = document.getElementById('current-location-title');
-    if (node) { if(clt) clt.innerText = node.name; if(bg) bg.style.backgroundImage = `url('assets/locations/${node.bg}')`; }
+    if (node) {
+      if (clt) {
+        let iconImg = node.icon ? `<img src="assets/locations/icons/${node.icon}" class="loc-header-icon" onerror="this.style.display='none'"> ` : '';
+        clt.innerHTML = `${iconImg}${node.name}`;
+      }
+      if (bg) bg.style.backgroundImage = `url('assets/locations/${node.bg}')`;
+    }
     let cc = document.getElementById('combat-controls');
     let es = document.getElementById('enemy-sprite');
     if (cc && cc.style.display === 'flex') {
@@ -1241,7 +1249,8 @@ function renderMap() {
         if (node.reqType === 'item') lock = `<div style="color:var(--term-warn); font-size:10px;">[КЛЮЧ]</div>`;
         else if (node.reqType === 'minigame') lock = `<div style="color:var(--term-info); font-size:10px;">[ВЗЛОМ]</div>`;
       }
-      div.innerHTML = `<div class="node-content"><div class="node-id">${dId}</div><div class="node-name">${node.name}</div>${lock}</div>`;
+      let iconImg = (node.icon && (isUnlocked || canUnlock)) ? `<img class="node-icon" src="assets/locations/icons/${node.icon}" onerror="this.style.display='none'">` : '';
+      div.innerHTML = `<div class="node-content">${iconImg}<div class="node-id">${dId}</div><div class="node-name">${node.name}</div>${lock}</div>`;
       div.onclick = () => socket.emit('changeLocation', id);
     }
     c.appendChild(div);

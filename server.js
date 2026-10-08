@@ -424,8 +424,26 @@ function getRandomEventForPlayer(p, currentFloor) {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 
-const SECTOR_NAMES = ["Гермошлюз", "Вентшахта", "Цех", "Техкоридор", "Узел связи", "Насосная", "Склад", "Резервуар", "Медблок", "Карантин", "Бойлерная", "Генераторная", "Столовая", "Морозильники", "Гидропоника", "Очистные"];
-const LOC_TEMPLATES = [{ bg: 'bg_corridor.png' }, { bg: 'bg_hydro.png' }, { bg: 'bg_shaft.png' }, { bg: 'bg_flesh.png' }];
+const LOCATION_TYPES = {
+    elevator: { name: "Резервный лифт", bg: "bg_elevator.png", icon: "icon_elevator.png" },
+    airlock: { name: "Гермошлюз", bg: "bg_airlock.png", icon: "icon_airlock.png" },
+    vent: { name: "Вентшахта", bg: "bg_vent.png", icon: "icon_vent.png" },
+    workshop: { name: "Цех", bg: "bg_workshop.png", icon: "icon_workshop.png" },
+    corridor: { name: "Техкоридор", bg: "bg_corridor.png", icon: "icon_corridor.png" },
+    comm: { name: "Узел связи", bg: "bg_comm.png", icon: "icon_comm.png" },
+    pump: { name: "Насосная", bg: "bg_pump.png", icon: "icon_pump.png" },
+    warehouse: { name: "Склад", bg: "bg_warehouse.png", icon: "icon_warehouse.png" },
+    reservoir: { name: "Резервуар", bg: "bg_reservoir.png", icon: "icon_reservoir.png" },
+    medbay: { name: "Медблок", bg: "bg_medbay.png", icon: "icon_medbay.png" },
+    quarantine: { name: "Карантин", bg: "bg_quarantine.png", icon: "icon_quarantine.png" },
+    boiler: { name: "Бойлерная", bg: "bg_boiler.png", icon: "icon_boiler.png" },
+    generator: { name: "Генераторная", bg: "bg_generator.png", icon: "icon_generator.png" },
+    cafeteria: { name: "Столовая", bg: "bg_cafeteria.png", icon: "icon_cafeteria.png" },
+    freezer: { name: "Морозильники", bg: "bg_freezer.png", icon: "icon_freezer.png" },
+    hydroponics: { name: "Гидропоника", bg: "bg_hydroponics.png", icon: "icon_hydroponics.png" },
+    treatment: { name: "Очистные", bg: "bg_treatment.png", icon: "icon_treatment.png" }
+};
+const RANDOM_LOC_KEYS = Object.keys(LOCATION_TYPES).filter(k => k !== 'elevator' && k !== 'airlock');
 
 function generateFloor(floorIndex) {
     if (db.map[floorIndex]) return;
@@ -443,24 +461,75 @@ function generateFloor(floorIndex) {
     ['quest_boltcutter', 'quest_battery', 'quest_red_card', 'quest_fuse'].forEach(item => { locks.push({ type: 'item', val: item }); });
     let mPool = shuffleArray(MINIGAME_POOL).slice(0, 5);
     mPool.forEach(mg => locks.push({ type: 'minigame', val: mg }));
-    let nameIndex = 0;
+    
+    let pool = shuffleArray([...RANDOM_LOC_KEYS, ...RANDOM_LOC_KEYS]);
+    let locIdx = 0;
+
     for (let y = 0; y < 5; y++) {
         for (let x = 0; x < 5; x++) {
             let sectorId = `${letters[y]}${x}`;
-            let sName = SECTOR_NAMES[nameIndex % SECTOR_NAMES.length];
+            let locType;
+            if (sectorId === 'A0') {
+                locType = 'airlock';
+            } else if (sectorId === 'E4') {
+                locType = 'elevator';
+            } else {
+                locType = pool[locIdx % pool.length];
+                locIdx++;
+            }
+            let info = LOCATION_TYPES[locType];
             let reqType = null; let reqValue = null;
             if (sectorId !== 'A0' && sectorId !== 'E4') {
                 let lockIdx = allSectors.indexOf(sectorId);
                 if (lockIdx < locks.length) { reqType = locks[lockIdx].type; reqValue = locks[lockIdx].val; }
             }
-            db.map[floorIndex][sectorId] = { id: sectorId, name: `${sName} [Эт.${floorIndex}]`, bg: LOC_TEMPLATES[Math.floor(Math.random() * LOC_TEMPLATES.length)].bg, threat: floorIndex === 0 ? 'Низкая' : 'Высокая', reqType: reqType, reqValue: reqValue };
-            nameIndex++;
+            db.map[floorIndex][sectorId] = {
+                id: sectorId,
+                type: locType,
+                name: `${info.name} [Эт.${floorIndex}]`,
+                bg: info.bg,
+                icon: info.icon,
+                threat: floorIndex === 0 ? 'Низкая' : 'Высокая',
+                reqType: reqType,
+                reqValue: reqValue
+            };
         }
     }
     saveDB();
 }
 if (!db.map) db.map = {};
 if (!db.map[0]) generateFloor(0);
+
+// Автоматическая миграция: обновляем сектор E4 в "Резервный лифт" и задаем иконки/задники для существующих локаций
+if (db.map) {
+    for (let f in db.map) {
+        for (let secId in db.map[f]) {
+            let sec = db.map[f][secId];
+            if (secId === 'E4') {
+                sec.name = `Резервный лифт [Эт.${f}]`;
+                sec.type = 'elevator';
+                sec.bg = 'bg_elevator.png';
+                sec.icon = 'icon_elevator.png';
+            } else if (secId === 'A0') {
+                sec.name = `Гермошлюз [Эт.${f}]`;
+                sec.type = 'airlock';
+                sec.bg = 'bg_airlock.png';
+                sec.icon = 'icon_airlock.png';
+            } else {
+                let matchedKey = Object.keys(LOCATION_TYPES).find(k => sec.name.includes(LOCATION_TYPES[k].name));
+                if (matchedKey) {
+                    sec.type = matchedKey;
+                    sec.bg = LOCATION_TYPES[matchedKey].bg;
+                    sec.icon = LOCATION_TYPES[matchedKey].icon;
+                } else {
+                    sec.bg = sec.bg || 'bg_corridor.png';
+                    sec.icon = sec.icon || 'icon_corridor.png';
+                }
+            }
+        }
+    }
+    saveDB();
+}
 
 function getPlayerStats(player) {
     let stats = { hp: player.hp, maxHp: player.maxHp, filter: player.filter, dmg: 1, def: 0 };
