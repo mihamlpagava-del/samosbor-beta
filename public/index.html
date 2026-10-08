@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ТЕРМИНАЛ: САМОСБОР</title>
-<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+<script src="assets/vk-bridge.min.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=PT+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -821,30 +821,46 @@ function getItemStatBadges(item) {
   return badges.length ? `<div style="margin-top:2px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${badges.join('')}</div>` : '';
 }
 
-document.getElementById('login-btn').onclick = () => {
+function submitManualLogin() {
   const u = document.getElementById('username').value.trim();
   const p = document.getElementById('password').value.trim();
-  if (u && p) socket.emit('login', { username: u, password: p });
-};
+  const err = document.getElementById('auth-error');
+  if (u && p) {
+    if (err) err.innerHTML = '<span style="color:var(--term-warn);">Авторизация...</span>';
+    socket.emit('login', { username: u, password: p });
+  } else {
+    if (err) err.innerHTML = '<span style="color:var(--term-danger);">Введите номер и пароль заключенного.</span>';
+  }
+}
+
+const loginBtn = document.getElementById('login-btn');
+if (loginBtn) loginBtn.onclick = submitManualLogin;
+
+const userInput = document.getElementById('username');
+if (userInput) userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitManualLogin(); });
+
+const passInput = document.getElementById('password');
+if (passInput) passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitManualLogin(); });
 
 // ===== ИНТЕГРАЦИЯ VK.COM & VK MINI APPS (VK BRIDGE) =====
 let isVkEnvironment = false;
 let vkUserData = null;
 
-function checkVkEnvironment() {
+try {
   const urlParams = new URLSearchParams(window.location.search);
-  const vkUserId = urlParams.get('vk_user_id');
-  if (vkUserId || (window.name && window.name.indexOf('fXD') !== -1)) {
+  if (urlParams.get('vk_user_id') || urlParams.get('vk_app_id')) {
     isVkEnvironment = true;
   }
+} catch(e) {
+  isVkEnvironment = false;
 }
-checkVkEnvironment();
 
-if (typeof vkBridge !== 'undefined') {
-  vkBridge.send('VKWebAppInit')
-    .then(() => {
-      console.log('[VK Bridge] Успешно инициализирован');
-      if (isVkEnvironment) {
+function initVkBridgeIfAvailable() {
+  if (!isVkEnvironment || typeof vkBridge === 'undefined') return;
+  try {
+    vkBridge.send('VKWebAppInit')
+      .then(() => {
+        console.log('[VK Bridge] Успешно инициализирован');
         document.querySelectorAll('#btn-vk-invite, #btn-vk-wall, #btn-vk-fav').forEach(b => b.style.display = 'block');
         vkBridge.send('VKWebAppGetUserInfo')
           .then(data => {
@@ -856,9 +872,11 @@ if (typeof vkBridge !== 'undefined') {
             const fallbackId = urlParams.get('vk_user_id');
             if (fallbackId) setupVkLoginUI({ id: fallbackId, first_name: 'Заключенный' });
           });
-      }
-    })
-    .catch(err => console.log('[VK Bridge] Ошибка инициализации:', err));
+      })
+      .catch(err => console.log('[VK Bridge] Ошибка инициализации:', err));
+  } catch(err) {
+    console.log('[VK Bridge] Exception:', err);
+  }
 }
 
 function setupVkLoginUI(data) {
@@ -892,8 +910,14 @@ if (vkLoginBtn) {
   };
 }
 
+// Запускаем VK Bridge только внутри VK
+if (isVkEnvironment) {
+  if (document.readyState === 'complete') initVkBridgeIfAvailable();
+  else window.addEventListener('load', initVkBridgeIfAvailable);
+}
+
 function vkShareOnWall() {
-  if (typeof vkBridge === 'undefined') return;
+  if (typeof vkBridge === 'undefined' || !isVkEnvironment) return;
   vkBridge.send('VKWebAppShowWallPostBox', {
     message: 'Я выживаю на нижних этажах Самосбора в игре «Самосбор: Жилячейка 7749». Присоединяйся к рейдам в Туман!',
     attachments: window.location.href
@@ -901,12 +925,12 @@ function vkShareOnWall() {
 }
 
 function vkInviteFriends() {
-  if (typeof vkBridge === 'undefined') return;
+  if (typeof vkBridge === 'undefined' || !isVkEnvironment) return;
   vkBridge.send('VKWebAppShowInviteBox').catch(() => {});
 }
 
 function vkAddToFavorites() {
-  if (typeof vkBridge === 'undefined') return;
+  if (typeof vkBridge === 'undefined' || !isVkEnvironment) return;
   vkBridge.send('VKWebAppAddToFavorites').catch(() => {});
 }
 

@@ -13,10 +13,9 @@ const io = new Server(server, {
     }
 });
 
-// Middleware для работы внутри VK iframe (разрешаем встраивание на платформах VK / Mail.ru)
+// Разрешаем встраивание в iframe (ВКонтакте и веб)
 app.use((req, res, next) => {
     res.removeHeader('X-Frame-Options');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://vk.com https://*.vk.com https://vk.ru https://*.vk.ru https://*.mail.ru;");
     next();
 });
 
