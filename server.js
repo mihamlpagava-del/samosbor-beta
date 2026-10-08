@@ -6,7 +6,19 @@ const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+// Middleware для работы внутри VK iframe (разрешаем встраивание на платформах VK / Mail.ru)
+app.use((req, res, next) => {
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://vk.com https://*.vk.com https://vk.ru https://*.vk.ru https://*.mail.ru;");
+    next();
+});
 
 app.use(express.static('public'));
 
@@ -634,6 +646,55 @@ io.on('connection', (socket) => {
             if (db.players[username].appearance !== null) socket.emit('startGame');
             broadcastGameState();
         } catch (err) { writeLog(`ОШИБКА LOGIN: ${err.message}`); }
+    });
+
+    socket.on('vkLogin', (data) => {
+        if (!data || !data.vkUserId) return;
+        const vkUserId = String(data.vkUserId).replace(/[^0-9]/g, '');
+        if (!vkUserId) return;
+
+        if (!db.vkMap) db.vkMap = {};
+
+        let username = db.vkMap[vkUserId];
+
+        try {
+            if (!username || !db.players[username]) {
+                let cleanFirst = (data.firstName || '').trim().replace(/[^a-zA-Zа-яА-Я0-9_]/g, '');
+                let candidate = cleanFirst ? cleanFirst : `ЗК_${vkUserId.slice(-4)}`;
+                
+                if (db.players[candidate] && db.players[candidate].vkUserId !== vkUserId) {
+                    candidate = `${candidate}_${vkUserId.slice(-4)}`;
+                }
+                username = candidate;
+
+                writeLog(`Регистрация через VK: ${username} (VK ID: ${vkUserId})`);
+                db.players[username] = {
+                    password: 'vk_auth_' + vkUserId,
+                    vkUserId: vkUserId,
+                    vkPhoto: data.photo || null,
+                    talons: 0, hp: 100, maxHp: 100, filter: 100, hunger: 100, tox: 0, level: 1, xp: 0, monstersKilled: 0, roomsCleared: 0, rating: 0, playtime: 0,
+                    appearance: null, location: 'safe_room', floor: 0, activeEvent: null,
+                    unlockedSectors: { 0: ['A0'] }, questItems: [], foundItems: [], quickSlots: [null, null], solvedGames: [], bossDefeated: {}, perks: [], mutations: [], robots: {},
+                    notebook: [
+                        "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, двадцать три заключённых, погрузили в клеть и отправили вниз, на нулевой этаж, в самое пекло Самосбора.",
+                        "[ВВОДНАЯ]: Мы почти достигли дна, когда лопнул трос. Клеть рухнула вниз.",
+                        "[ВВОДНАЯ]: Я очнулся среди обломков. Рядом — растерзанный конвоир.",
+                        "[ВВОДНАЯ]: Остальные выжившие разбежались кто куда. Я сорвал с конвоира противогаз и заперся в жилячейке.",
+                        "[ЦЕЛЬ]: Найти Главный Лифт в секторе E4 и подняться наверх.",
+                        "[СОВЕТ]: Не забывай про фильтр. Туман здесь живой."
+                    ],
+                    equipment: { weapon: 'weapon_wood', clothes: 'clothes_robe', mask: 'mask_cloth', backpack: null }, inventory: ['food_ration']
+                };
+                db.vkMap[vkUserId] = username;
+                saveDB(true);
+            } else {
+                writeLog(`Вход через VK: ${username} (VK ID: ${vkUserId})`);
+            }
+            onlinePlayers[socket.id] = username;
+            socket.emit('loginSuccess', { username, showIntro: db.players[username].appearance === null });
+            if (db.players[username].appearance !== null) socket.emit('startGame');
+            broadcastGameState();
+        } catch (err) { writeLog(`ОШИБКА VK LOGIN: ${err.message}`); }
     });
 
     socket.on('saveCharacter', () => {

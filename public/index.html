@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ТЕРМИНАЛ: САМОСБОР</title>
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=PT+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -360,11 +361,30 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);">📝 Баг-репорт / Предложение [Shift+P]</button>
+  <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()">👥 Позвать друга (VK)</button>
+  <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()">📢 На стену (VK)</button>
+  <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()">⭐ В закладки (VK)</button>
 </div>
 
 <div id="login-screen" class="screen active-screen">
   <div class="panel">
     <h2 style="font-size: 20px; margin-bottom: 20px; letter-spacing: 2px;">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
+    
+    <!-- Панель входа через VK -->
+    <div id="vk-login-box" style="display: none; margin-bottom: 18px; padding: 12px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.1); border-radius: 4px;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+        <img id="vk-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #2787f5; display: none;" src="" alt="">
+        <div style="font-size: 13px; color: #fff;">
+          Заключенный: <span id="vk-user-name" style="color: #61b0ff; font-weight: bold;">VK User</span>
+        </div>
+      </div>
+      <button id="vk-login-btn" style="width: 100%; background: #2787f5; color: #fff; border: 1px solid #5aa5ff; font-size: 13px; padding: 9px; cursor: pointer; font-weight: bold; letter-spacing: 1px; font-family: inherit;">
+        🔵 ВОЙТИ ЧЕРЕЗ VK
+      </button>
+    </div>
+
+    <div id="login-divider" style="display: none; margin-bottom: 15px; color: #777; font-size: 11px;">— ИЛИ ВХОД ПО ПАРОЛЮ —</div>
+
     <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО">
     <input type="password" id="password" placeholder="ПАРОЛЬ">
     <button id="login-btn">ВОЙТИ</button>
@@ -806,6 +826,89 @@ document.getElementById('login-btn').onclick = () => {
   const p = document.getElementById('password').value.trim();
   if (u && p) socket.emit('login', { username: u, password: p });
 };
+
+// ===== ИНТЕГРАЦИЯ VK.COM & VK MINI APPS (VK BRIDGE) =====
+let isVkEnvironment = false;
+let vkUserData = null;
+
+function checkVkEnvironment() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const vkUserId = urlParams.get('vk_user_id');
+  if (vkUserId || (window.name && window.name.indexOf('fXD') !== -1)) {
+    isVkEnvironment = true;
+  }
+}
+checkVkEnvironment();
+
+if (typeof vkBridge !== 'undefined') {
+  vkBridge.send('VKWebAppInit')
+    .then(() => {
+      console.log('[VK Bridge] Успешно инициализирован');
+      if (isVkEnvironment) {
+        document.querySelectorAll('#btn-vk-invite, #btn-vk-wall, #btn-vk-fav').forEach(b => b.style.display = 'block');
+        vkBridge.send('VKWebAppGetUserInfo')
+          .then(data => {
+            vkUserData = data;
+            setupVkLoginUI(data);
+          })
+          .catch(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fallbackId = urlParams.get('vk_user_id');
+            if (fallbackId) setupVkLoginUI({ id: fallbackId, first_name: 'Заключенный' });
+          });
+      }
+    })
+    .catch(err => console.log('[VK Bridge] Ошибка инициализации:', err));
+}
+
+function setupVkLoginUI(data) {
+  const vkBox = document.getElementById('vk-login-box');
+  const vkDiv = document.getElementById('login-divider');
+  const vkName = document.getElementById('vk-user-name');
+  const vkAvatar = document.getElementById('vk-user-avatar');
+  if (vkBox) vkBox.style.display = 'block';
+  if (vkDiv) vkDiv.style.display = 'block';
+  if (vkName) vkName.innerText = (data.first_name || 'VK User') + (data.last_name ? ` ${data.last_name}` : '');
+  if (vkAvatar && data.photo_200) {
+    vkAvatar.src = data.photo_200;
+    vkAvatar.style.display = 'block';
+  }
+}
+
+const vkLoginBtn = document.getElementById('vk-login-btn');
+if (vkLoginBtn) {
+  vkLoginBtn.onclick = () => {
+    if (vkUserData && vkUserData.id) {
+      socket.emit('vkLogin', {
+        vkUserId: vkUserData.id,
+        firstName: vkUserData.first_name || 'Заключенный',
+        photo: vkUserData.photo_200 || null
+      });
+    } else {
+      const urlParams = new URLSearchParams(window.location.search);
+      const fallbackId = urlParams.get('vk_user_id') || 'guest';
+      socket.emit('vkLogin', { vkUserId: fallbackId, firstName: 'Заключенный' });
+    }
+  };
+}
+
+function vkShareOnWall() {
+  if (typeof vkBridge === 'undefined') return;
+  vkBridge.send('VKWebAppShowWallPostBox', {
+    message: 'Я выживаю на нижних этажах Самосбора в игре «Самосбор: Жилячейка 7749». Присоединяйся к рейдам в Туман!',
+    attachments: window.location.href
+  }).catch(() => {});
+}
+
+function vkInviteFriends() {
+  if (typeof vkBridge === 'undefined') return;
+  vkBridge.send('VKWebAppShowInviteBox').catch(() => {});
+}
+
+function vkAddToFavorites() {
+  if (typeof vkBridge === 'undefined') return;
+  vkBridge.send('VKWebAppAddToFavorites').catch(() => {});
+}
 
 function startBootSequence() {
   changeAmbient('hub'); showScreen('intro-screen');
