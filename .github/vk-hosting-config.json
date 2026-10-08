@@ -1,9 +1,9 @@
 {
   "static_path": "public",
-  "app_id": 0,
+  "app_id": 54811715,
   "endpoints": {
     "mobile": "index.html",
-    "m排": "index.html",
+    "m": "index.html",
     "web": "index.html"
   }
 }
