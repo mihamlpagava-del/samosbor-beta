@@ -2,15 +2,19 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
+app.enable('trust proxy');
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    }
+    },
+    transports: ['polling', 'websocket']
 });
 
 // Разрешаем встраивание в iframe (ВКонтакте и веб)
@@ -19,9 +23,9 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-const LOG_FILE = 'server_logs.txt';
+const LOG_FILE = path.join(__dirname, 'server_logs.txt');
 function writeLog(message) {
     const time = new Date().toLocaleString('ru-RU');
     const logMsg = `[${time}] ${message}\n`;
@@ -29,7 +33,7 @@ function writeLog(message) {
     fs.appendFile(LOG_FILE, logMsg, () => {});
 }
 
-const DB_FILE = 'database.json';
+const DB_FILE = path.join(__dirname, 'database.json');
 let db = { players: {}, map: {} };
 let isDbDirty = false;
 let isSavingDb = false;
@@ -1740,8 +1744,10 @@ setInterval(() => {
     if (updated) { saveDB(); broadcastGameState(); }
 }, 1000);
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    writeLog(`Сервер успешно запущен. Порт: ${PORT}`);
-    console.log(`[СИСТЕМА] Сервер активен. Порт: ${PORT}`);
+const PORT = parseInt(process.env.PORT || process.env.ALWAYSDATA_HTTPD_PORT || 3000, 10);
+const HOST = process.env.IP || process.env.HOST || '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+    writeLog(`Сервер успешно запущен. Хост: ${HOST}, Порт: ${PORT}`);
+    console.log(`[СИСТЕМА] Сервер активен: http://${HOST}:${PORT}`);
 });
