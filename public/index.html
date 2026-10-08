@@ -1,1500 +1,1183 @@
 ﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>ТЕРМИНАЛ: САМОСБОР</title>
-    <link href="https://fonts.googleapis.com/css2?family=PT+Mono&display=swap" rel="stylesheet">
-    <style>
-        :root { --term-green: #33ff00; --term-dark: #050505; --paper-color: #d1c2a5; --ink-color: #1c1c1c; }
-        body { margin: 0; overflow: hidden; background-color: var(--term-dark); color: var(--term-green); font-family: 'PT Mono', monospace; font-size: 18px; text-shadow: 0 0 5px var(--term-green); }
-        #bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 1; opacity: 0.85; transition: 0.5s ease; }
-        
-        body.crt-enabled::after { content: ""; display: block; position: absolute; inset: 0; background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.2) 50%); background-size: 100% 4px; z-index: 100; pointer-events: none; animation: scanlines 10s linear infinite; }
-        @keyframes scanlines { 0% { background-position: 0 0; } 100% { background-position: 0 400px; } }
-        body.crt-enabled::before { content: ""; display: block; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.85) 100%); z-index: 101; pointer-events: none; }
-
-        #transition-overlay { position: absolute; inset: 0; z-index: 999; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--term-green); font-size: 24px; font-weight: bold; white-space: pre-wrap; text-align: center; }
-        .door-ascii { white-space: pre; line-height: 1.1; margin-bottom: 20px; text-align: center; }
-
-        .audio-controls { position: absolute; top: 15px; right: 20px; z-index: 200; display: flex; gap: 10px; }
-        .options-menu { position: absolute; top: 50px; right: 20px; background: rgba(0, 15, 0, 0.95); border: 2px solid #33aaff; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 200; }
-        .audio-btn { padding: 5px 10px; font-size: 14px; background: rgba(0, 20, 0, 0.85); color: var(--term-green); border: 1px solid var(--term-green); cursor: pointer; text-shadow: none; font-family: inherit; }
-        .audio-btn.muted { color: #555; border-color: #555; text-decoration: line-through; }
-        .audio-btn.opt-btn { color: #33aaff; border-color: #33aaff; width: 100%; text-align: left; }
-
-        .screen { position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 5, 0, 0.45); }
-        .active-screen { display: flex; }
-        .battle-container { display: flex; justify-content: space-between; align-items: center; width: 95vw; height: 90vh; }
-        
-        .combat-avatar { position: relative; width: 350px; height: 500px; display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; flex-shrink: 0; overflow: hidden; }
-        .combat-avatar.visible { opacity: 1; transform: scale(1); }
-        #enemy-battle-avatar { transform: scale(0.9) translateX(20px); }
-        #enemy-battle-avatar.visible { transform: scale(1) translateX(0); }
-        .combat-avatar img { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: contain; object-position: bottom center; }
-        
-        .vfx-container { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
-        @keyframes slash { 0% { clip-path: polygon(0 0, 0 0, 0 0); background: white; } 50% { clip-path: polygon(0 0, 100% 100%, 80% 100%, 0 20%); background: #ff0000; } 100% { clip-path: polygon(100% 100%, 100% 100%, 100% 100%); background: transparent; } }
-        @keyframes crit_slash { 0% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1); } }
-        @keyframes healGlow { 0% { box-shadow: inset 0 0 50px #33ff33; background: rgba(51,255,0,0.2); } 100% { box-shadow: none; background: transparent; } }
-        @keyframes explosion { 0% { background: #fff; opacity: 1; } 100% { background: #fff; opacity: 0; } }
-        @keyframes dodgeShake { 0% { transform: translateX(0); } 25% { transform: translateX(-25px); } 75% { transform: translateX(25px); } 100% { transform: translateX(0); } }
-        @keyframes playerHitFlash { 0% { box-shadow: inset 0 0 100px #ff0000; background: rgba(255,0,0,0.5); opacity: 1; } 100% { box-shadow: inset 0 0 0px #ff0000; background: rgba(255,0,0,0); opacity: 0; } }
-        
-        .vfx-slash::after { content:""; position:absolute; inset:0; animation: slash 0.25s ease-out; }
-        .vfx-crit::after { content:"XXX"; position:absolute; font-size:100px; color:#ff0000; font-weight:bold; top:30%; left:20%; animation: crit_slash 0.4s ease-out; text-shadow: 0 0 20px #ff0000; }
-        .vfx-heal { position:absolute; inset:0; animation: healGlow 0.6s ease-out; border-radius: 10px; }
-        .vfx-explosion::after { content:""; position:fixed; inset:0; z-index:9999; animation: explosion 0.5s ease-out; }
-        .vfx-player-hit { position:absolute; inset:0; border-radius: 10px; z-index:50; animation: playerHitFlash 0.3s ease-out forwards; }
-        .avatar-shake { animation: dodgeShake 0.3s ease-in-out; }
-
-        @keyframes slimeDrop { 0% { top: -20px; opacity: 1; } 100% { top: 100%; opacity: 0; } }
-        .slime-vfx { position: absolute; color: var(--term-green); font-size: 14px; font-weight: bold; pointer-events: none; z-index: 100; animation: slimeDrop 1s linear forwards; text-shadow: 0 0 5px #000; }
-
-        .panel { padding: 30px; border: 2px solid var(--term-green); background: rgba(0, 15, 0, 0.9); text-align: center; box-shadow: inset 0 0 20px rgba(51, 255, 0, 0.2); backdrop-filter: blur(4px); }
-        input { display: block; margin: 15px auto; padding: 10px; width: 80%; background: rgba(0, 0, 0, 0.6); color: var(--term-green); border: 1px solid var(--term-green); font-family: inherit; font-size: 18px; outline: none; }
-        button { font-family: inherit; font-size: 18px; padding: 12px 20px; margin-top: 15px; cursor: pointer; background: rgba(0, 20, 0, 0.85); color: var(--term-green); border: 2px solid var(--term-green); transition: 0.1s; text-transform: uppercase; }
-        button:hover { background: var(--term-green); color: var(--term-dark); box-shadow: 0 0 12px var(--term-green); }
-        button:disabled { border-color: #555 !important; color: #555 !important; cursor: not-allowed; background: rgba(0,0,0,0.8) !important; box-shadow: none !important; }
-        
-        .stats { margin: 10px auto; padding: 20px; border: 1px solid var(--term-green); background: rgba(0, 15, 0, 0.9); text-align: left; min-width: 440px; backdrop-filter: blur(4px); line-height: 1.6; }
-        .progress-bar { width: 100%; height: 16px; border: 1px solid var(--term-green); margin-top: 6px; position: relative; background: rgba(0,0,0,0.5); }
-        .progress-fill { height: 100%; background: var(--term-green); width: 100%; transition: 0.3s; }
-        
-        .bar-hunger { border-color: #ffaa00; } .fill-hunger { background: #ffaa00; }
-        .bar-tox { border-color: #aa33ff; } .fill-tox { background: #aa33ff; }
-
-        .game-controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
-
-        .map-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; width: 900px; max-width: 95vw; }
-        .map-node { border: 2px solid var(--term-green); height: 110px; cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; box-sizing: border-box; background-size: cover; background-position: center; transition: 0.15s; }
-        .map-node::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.85) 100%); z-index: 1; transition: 0.3s; }
-        .map-node:hover { transform: scale(1.03); border-color: #fff; box-shadow: 0 0 10px rgba(51,255,0,0.6); }
-        
-        .map-node.locked { border-color: #444; filter: grayscale(100%); }
-        .map-node.locked::before { background: rgba(0,0,0,0.85); }
-        .map-node.locked:hover { transform: none; box-shadow: none; border-color: #ffaa00; }
-        .locked .node-id { color: #888; }
-        .locked .node-name { color: #555; }
-
-        .map-node.can-unlock { border-color: #ffaa00; filter: none; animation: pulseCanUnlock 2s infinite; cursor: pointer; }
-        .map-node.can-unlock::before { background: rgba(0,0,0,0.6); }
-        .map-node.can-unlock .node-id { color: #ffaa00; }
-        .map-node.can-unlock .node-name { color: #ffaa00; text-shadow: 0 0 5px #000; }
-        @keyframes pulseCanUnlock { 0% { box-shadow: 0 0 5px #ffaa00; } 50% { box-shadow: 0 0 20px #ffaa00; } 100% { box-shadow: 0 0 5px #ffaa00; } }
-
-        .node-content { position: relative; z-index: 2; pointer-events: none; }
-        .node-id { font-size: 22px; font-weight: bold; color: var(--term-green); text-shadow: 2px 2px 0 #000; transition: 0.3s; }
-        .node-name { font-size: 14px; color: #ffffff; text-shadow: 1px 1px 0 #000; transition: 0.3s; }
-        .floor-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 2px solid var(--term-green); padding-bottom: 12px; margin-bottom: 10px; }
-        
-        .sector-radar { margin-top: 15px; border-top: 1px solid var(--term-green); padding-top: 10px; }
-        .player-entry { display: flex; justify-content: space-between; align-items: center; padding: 6px; border: 1px dashed #555; margin-bottom: 5px; font-size: 16px; }
-        
-        .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; display: none; justify-content: center; align-items: center; }
-        .dossier { background: var(--paper-color); color: var(--ink-color); width: 1100px; max-width: 95%; height: 600px; padding: 25px; box-sizing: border-box; border-radius: 2px 12px 12px 2px; position: relative; display: flex; flex-direction: column; text-shadow: none; font-weight: bold; }
-        .dossier::before { content: ""; position: absolute; left: -18px; top: 0; height: 100%; width: 18px; background: #b8a688; border-radius: 4px 0 0 4px; } 
-        .dossier-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--ink-color); padding-bottom: 10px; margin-bottom: 15px; font-size: 24px; }
-        .close-dossier { background: transparent; border: none; color: #880000; font-size: 22px; padding: 0; margin: 0; cursor: pointer; }
-        .dossier-content { display: flex; gap: 20px; height: calc(100% - 40px); align-items: stretch; }
-        
-        .polaroid-col { display: flex; flex-direction: column; width: 300px; gap: 15px; flex-shrink: 0; height: 100%; }
-        .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; align-items: center; transform: rotate(-1.5deg); flex-shrink: 0; }
-        
-        .avatar-container { position: relative; width: 280px; height: 280px; background: #333; border: 1px solid #111; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-        .avatar-layer { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: contain; object-position: bottom center; }
-        
-        .quest-items-panel { width: 100%; flex: 1; border: 2px solid #880000; padding: 10px; font-size: 14px; background: rgba(136,0,0,0.05); display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; }
-        #quest-items-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
-        #quest-items-container::-webkit-scrollbar { width: 6px; }
-        #quest-items-container::-webkit-scrollbar-thumb { background: #880000; }
-        
-        .quest-item { padding: 5px; border-bottom: 1px dashed #880000; margin-bottom: 5px; color: #550000; }
-        .quest-item-title { font-weight: bold; font-size: 16px; color: #ffaa00; text-shadow: none; }
-
-        .equipment-panel { width: 250px; font-size: 16px; border-right: 2px dashed rgba(0,0,0,0.3); padding-right: 20px; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; overflow-y: auto; }
-        .equip-slot { border: 2px dashed var(--ink-color); padding: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.1s; background: rgba(255,255,255,0.3); text-shadow: none; }
-        .equip-slot-empty { cursor: default; background: transparent; border-color: rgba(0,0,0,0.3); }
-        
-        .quick-slot { border: 2px solid #880000; padding: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.1s; background: rgba(255,0,0,0.1); text-align: center; text-shadow: none; }
-        .quick-slot:hover { background: rgba(255,0,0,0.2); }
-        
-        .perks-panel { width: 100%; border: 2px dashed #880000; padding: 10px; font-size: 14px; display: flex; flex-direction: column; box-sizing: border-box; flex-grow: 0; min-height: 120px; margin-top: 10px; }
-        #perks-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; text-shadow: none; }
-        #perks-container::-webkit-scrollbar { width: 6px; }
-        #perks-container::-webkit-scrollbar-thumb { background: #880000; }
-        .perk-item { padding: 5px; color: #550000; border-bottom: 1px dotted #880000; margin-bottom: 5px; text-shadow: none; }
-
-        .combat-quick-slots { position: absolute; right: -120px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; z-index:100; }
-        .combat-q-slot { width: 100px; height: 100px; border: 2px solid var(--term-green); background: rgba(0,20,0,0.8); color: var(--term-green); display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; font-size: 12px; text-align: center; padding: 5px; box-sizing: border-box; transition: 0.2s; }
-        .combat-q-slot:hover { background: rgba(0,50,0,0.9); box-shadow: 0 0 10px var(--term-green); }
-        .combat-q-empty { border-color: #555; color: #555; cursor: default; }
-
-        .chest-panel { flex-grow: 1; display: flex; flex-direction: column; height: 100%; }
-        .chest-grid { flex-grow: 1; display: grid; grid-template-columns: repeat(2, 1fr); align-content: start; gap: 10px; overflow-y: auto; padding-right: 10px; }
-        .chest-item { border: 2px solid var(--ink-color); background-color: rgba(255,255,255,0.25); position: relative; padding: 10px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 95px; font-size: 14px; border-bottom: 4px solid var(--ink-color); text-shadow: none; overflow: hidden; transition: transform 0.1s, background-color 0.1s; }
-        .chest-item:hover { transform: translateY(-2px); background-color: rgba(255,255,255,0.45); }
-        .chest-item-icon { width: 44px; height: 44px; object-fit: contain; margin-bottom: 4px; filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.25)); }
-        .item-type { font-size: 11px; color: #555; margin-bottom: 2px; font-weight: bold; }
-
-        .notebook-panel { background: #e8decc; color: #330000; font-family: 'Courier New', Courier, monospace; width: 800px; max-width: 95%; height: 600px; padding: 30px; box-sizing: border-box; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); overflow-y: auto; border: 1px solid #ccc; font-weight: bold; font-size: 18px; line-height: 1.5; }
-        .notebook-entry { margin-bottom: 15px; border-bottom: 1px dashed #880000; padding-bottom: 10px; }
-        .notebook-entry:before { content: "► "; color: #880000; }
-
-        .info-panel { background: rgba(0, 15, 0, 0.98); width: 800px; max-width: 95%; height: 85%; padding: 30px; border: 2px solid #33aaff; color: #ccc; text-shadow: none; box-sizing: border-box; overflow-y: auto; text-align: left; }
-        .info-panel::-webkit-scrollbar { width: 8px; }
-        .info-panel::-webkit-scrollbar-thumb { background: #33aaff; }
-        .info-panel h3 { color: #33aaff; margin-top: 25px; border-bottom: 1px dashed #33aaff; padding-bottom: 5px; text-shadow: 0 0 5px #33aaff; text-transform: uppercase; }
-        .info-panel p { margin-bottom: 12px; line-height: 1.6; font-size: 16px; }
-        .info-panel b { color: #fff; }
-        .info-color-tag { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border: 1px solid #fff; }
-
-        .shop-panel { background: rgba(0, 15, 0, 0.95); width: 1000px; max-width: 95%; padding: 30px; border: 2px solid var(--term-green); color: var(--term-green); text-shadow: 0 0 5px var(--term-green); box-sizing: border-box; }
-        .shop-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--term-green); padding-bottom: 10px; margin-bottom: 20px; font-size: 24px; }
-        .shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px dashed var(--term-green); padding: 10px; margin-bottom: 10px; }
-        .shop-item-left { display: flex; align-items: center; gap: 12px; }
-        .shop-item-icon { width: 36px; height: 36px; object-fit: contain; }
-
-        .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; color: #fff; text-shadow: none; font-size: 16px; }
-        .leaderboard-table th { border-bottom: 2px solid #ffaa00; padding: 10px; text-align: left; color: #ffaa00; }
-        .leaderboard-table td { border-bottom: 1px dashed #555; padding: 8px 10px; }
-        .leaderboard-table tr:hover { background: rgba(255,170,0,0.1); }
-        .lb-rank-1 { color: #ffaa00 !important; font-weight: bold; text-shadow: 0 0 5px #ffaa00; }
-        .lb-rank-2 { color: #ccc !important; font-weight: bold; }
-        .lb-rank-3 { color: #c68 !important; font-weight: bold; }
-
-        /* СТИЛИ ДЛЯ БЕСТИАРИЯ */
-        .bestiary-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; height: 100%; padding-right: 10px; }
-        .bestiary-list::-webkit-scrollbar { width: 6px; }
-        .bestiary-list::-webkit-scrollbar-thumb { background: #33aaff; }
-        .bestiary-list li { padding: 10px; border-bottom: 1px dashed #33aaff; cursor: pointer; transition: 0.2s; color: #ccc; }
-        .bestiary-list li:hover { background: rgba(51, 170, 255, 0.2); color: #fff; }
-        .bestiary-list li.active { background: rgba(51, 170, 255, 0.4); color: #fff; font-weight: bold; border-left: 3px solid #33aaff; }
-
-        .intro-container { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 40px; }
-        .intro-text-side { flex-grow: 1; text-align: left; }
-        .intro-ascii-side { color: #ff3333; font-size: 150px; line-height: 1; text-shadow: 0 0 20px #ff3333; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-        .intro-ascii-subtitle { font-family: 'PT Mono', monospace; font-size: 24px; font-weight: bold; margin-top: 15px; text-shadow: 0 0 10px #ff3333; letter-spacing: 2px; }
-
-        #intro-text-container { font-size: 18px; line-height: 1.6; white-space: pre-wrap; min-height: 360px; }
-        .cursor { display: inline-block; width: 12px; height: 18px; background-color: var(--term-green); animation: blink 1s step-end infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        
-        .combat-btn { flex-grow: 1; padding: 15px !important; font-size: 20px !important; font-weight: bold; }
-        #combat-log { height: 120px; overflow-y: auto; scroll-behavior: smooth; }
-        .critical-hp { color: #ff3333 !important; text-shadow: 0 0 5px #ff3333 !important; }
-        .rating-box { margin-top: 10px; border-top: 1px dashed var(--term-green); padding-top: 10px; font-size: 16px; line-height: 1.5; color: #aaffaa; }
-
-        .ascii-art { font-family: 'Courier New', monospace; white-space: pre; line-height: 1.2; text-align: center; margin: 20px 0; color: #ffaa00; font-weight: bold; text-shadow: 0 0 5px #ffaa00; }
-        .flicker { animation: textFlicker 0.15s infinite alternate; }
-        @keyframes textFlicker { 0% { opacity: 1; } 100% { opacity: 0.7; } }
-        
-        .levelup-btn { width: 100%; padding: 15px; margin-bottom: 15px; text-align: left; background: rgba(0,20,0,0.8); border: 2px solid #ffaa00; color: #fff; cursor: pointer; transition: 0.2s; }
-        .levelup-btn:hover { background: rgba(50,50,0,0.9); box-shadow: 0 0 15px #ffaa00; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ТЕРМИНАЛ: САМОСБОР</title>
+<link href="https://fonts.googleapis.com/css2?family=PT+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --term-green: #33ff00;
+  --term-dim: #1a7700;
+  --term-dark: #050505;
+  --term-warn: #ffaa00;
+  --term-danger: #ff3333;
+  --term-info: #33aaff;
+  --paper-color: #d1c2a5;
+  --ink-color: #1c1c1c;
+  --ink-dim: #6b5a3d;
+  --ink-danger: #7a1010;
+  --ink-accent: #8a5a00;
+}
+body { margin: 0; overflow: hidden; background-color: var(--term-dark); color: var(--term-green); font-family: 'PT Mono', monospace; font-size: 17px; text-shadow: 0 0 5px var(--term-dim); }
+#bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 1; opacity: 0.7; transition: 0.5s ease; filter: brightness(0.7) saturate(0.8); }
+body.crt-enabled::after { content: ""; display: block; position: absolute; inset: 0; background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.2) 50%); background-size: 100% 4px; z-index: 100; pointer-events: none; animation: scanlines 10s linear infinite; }
+@keyframes scanlines { 0% { background-position: 0 0; } 100% { background-position: 0 400px; } }
+body.crt-enabled::before { content: ""; display: block; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.85) 100%); z-index: 101; pointer-events: none; }
+#transition-overlay { position: absolute; inset: 0; z-index: 999; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--term-green); font-size: 22px; font-weight: bold; white-space: pre-wrap; text-align: center; }
+.door-ascii { white-space: pre; line-height: 1.1; margin-bottom: 20px; }
+.audio-controls { position: absolute; top: 12px; right: 16px; z-index: 200; display: flex; gap: 8px; }
+.options-menu { position: absolute; top: 46px; right: 16px; background: rgba(0, 15, 0, 0.97); border: 1px solid var(--term-dim); padding: 12px; display: none; flex-direction: column; gap: 6px; z-index: 200; }
+.audio-btn { padding: 5px 12px; font-size: 12px; background: transparent; color: var(--term-green); border: 1px solid var(--term-dim); cursor: pointer; text-shadow: none; font-family: inherit; letter-spacing: 1px; transition: 0.15s; }
+.audio-btn:hover { border-color: var(--term-green); background: rgba(51,255,0,0.08); }
+.audio-btn.muted { color: #444; border-color: #333; text-decoration: line-through; }
+.audio-btn.opt-btn { color: var(--term-green); border-color: var(--term-dim); width: 100%; text-align: left; }
+.screen { position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 5, 0, 0.55); overflow-y: auto; }
+.active-screen { display: flex; }
+.battle-container { display: flex; justify-content: space-between; align-items: center; width: 95vw; height: 90vh; gap: 20px; }
+.terminal-center { display: flex; flex-direction: column; align-items: stretch; width: 540px; gap: 10px; flex-shrink: 0; }
+.combat-avatar { position: relative; width: 350px; height: 500px; display: flex; justify-content: center; align-items: flex-end; flex-shrink: 0; overflow: hidden; }
+.combat-avatar img, .avatar-layer { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); transform-origin: bottom center; width: 100%; height: 100%; object-fit: contain; object-position: bottom center; pointer-events: none; }
+#inv-img-clothes, #battle-clothes { transform: translateX(-50%) scale(1.02); }
+#inv-img-mask, #battle-mask { transform: translateX(-50%) scale(0.55) translateY(-58%); }
+#inv-img-weapon, #battle-weapon { transform: translateX(-50%) scale(0.95); }
+.vfx-container { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+@keyframes slash { 0% { clip-path: polygon(0 0, 0 0, 0 0); background: white; } 50% { clip-path: polygon(0 0, 100% 100%, 80% 100%, 0 20%); background: #ff0000; } 100% { clip-path: polygon(100% 100%, 100% 100%, 100% 100%); background: transparent; } }
+@keyframes crit_slash { 0% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1); } }
+@keyframes healGlow { 0% { box-shadow: inset 0 0 50px #33ff33; background: rgba(51,255,0,0.2); } 100% { box-shadow: none; background: transparent; } }
+@keyframes explosion { 0% { background: #fff; opacity: 1; } 100% { background: #fff; opacity: 0; } }
+@keyframes dodgeShake { 0% { transform: translateX(0); } 25% { transform: translateX(-25px); } 75% { transform: translateX(25px); } 100% { transform: translateX(0); } }
+@keyframes playerHitFlash { 0% { box-shadow: inset 0 0 100px #ff0000; background: rgba(255,0,0,0.5); opacity: 1; } 100% { box-shadow: inset 0 0 0px #ff0000; background: rgba(255,0,0,0); opacity: 0; } }
+.vfx-slash::after { content:""; position:absolute; inset:0; animation: slash 0.25s ease-out; }
+.vfx-crit::after { content:"XXX"; position:absolute; font-size:100px; color:#ff0000; font-weight:bold; top:30%; left:20%; animation: crit_slash 0.4s ease-out; }
+.vfx-heal { position:absolute; inset:0; animation: healGlow 0.6s ease-out; }
+.vfx-explosion::after { content:""; position:fixed; inset:0; z-index:9999; animation: explosion 0.5s ease-out; }
+.vfx-player-hit { position:absolute; inset:0; z-index:50; animation: playerHitFlash 0.3s ease-out forwards; }
+.avatar-shake { animation: dodgeShake 0.3s ease-in-out; }
+@keyframes slimeDrop { 0% { top: -20px; opacity: 1; } 100% { top: 100%; opacity: 0; } }
+.slime-vfx { position: absolute; color: var(--term-green); font-size: 13px; font-weight: bold; pointer-events: none; z-index: 100; animation: slimeDrop 1s linear forwards; }
+.panel { padding: 28px; border: 1px solid var(--term-dim); background: rgba(0, 12, 0, 0.92); text-align: center; }
+input { display: block; margin: 14px auto; padding: 10px; width: 80%; background: rgba(0, 0, 0, 0.7); color: var(--term-green); border: 1px solid var(--term-dim); font-family: inherit; font-size: 16px; outline: none; letter-spacing: 1px; }
+input:focus { border-color: var(--term-green); box-shadow: 0 0 8px rgba(51,255,0,0.3); }
+button { font-family: inherit; font-size: 15px; padding: 10px 18px; margin-top: 12px; cursor: pointer; background: transparent; color: var(--term-green); border: 1px solid var(--term-dim); transition: 0.15s; text-transform: uppercase; letter-spacing: 1px; }
+button:hover { border-color: var(--term-green); background: rgba(51,255,0,0.08); box-shadow: 0 0 10px rgba(51,255,0,0.25); }
+button:disabled { border-color: #333 !important; color: #444 !important; cursor: not-allowed; background: transparent !important; box-shadow: none !important; }
+.stats { margin: 0; padding: 16px 18px; border: 1px solid var(--term-dim); background: rgba(0, 12, 0, 0.92); text-align: left; width: 100%; box-sizing: border-box; line-height: 1.65; font-size: 15px; }
+.progress-bar { width: 100%; height: 14px; border: 1px solid var(--term-dim); margin-top: 6px; background: rgba(0,0,0,0.6); }
+.progress-fill { height: 100%; background: var(--term-green); width: 100%; transition: 0.3s; }
+.bar-hunger { border-color: #8a5a00; } .fill-hunger { background: var(--term-warn); }
+.bar-tox { border-color: #5a1a77; } .fill-tox { background: #aa33ff; }
+.game-controls { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.game-controls > div.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+.game-controls > div.row-2 > button { margin: 0; width: 100%; padding: 9px 6px; font-size: 13px; }
+.game-controls > button { margin: 0; width: 100%; padding: 9px 6px; font-size: 13px; }
+.map-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 15px; width: 900px; max-width: 95vw; }
+.map-node { border: 1px solid var(--term-dim); height: 105px; cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; box-sizing: border-box; background-size: cover; background-position: center; transition: 0.15s; }
+.map-node::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.9) 100%); z-index: 1; }
+.map-node:hover { border-color: var(--term-green); }
+.map-node.locked { border-color: #333; filter: grayscale(100%) brightness(0.5); }
+.map-node.can-unlock { border-color: var(--term-warn); }
+.map-node.can-unlock .node-id, .map-node.can-unlock .node-name { color: var(--term-warn); }
+@keyframes pulseCanUnlock { 0% { box-shadow: 0 0 4px var(--term-warn); } 50% { box-shadow: 0 0 15px var(--term-warn); } 100% { box-shadow: 0 0 4px var(--term-warn); } }
+.node-content { position: relative; z-index: 2; pointer-events: none; }
+.node-id { font-size: 20px; font-weight: bold; color: var(--term-green); text-shadow: 2px 2px 0 #000; }
+.node-name { font-size: 12px; color: #ddd; text-shadow: 1px 1px 0 #000; }
+.floor-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 1px solid var(--term-dim); padding-bottom: 10px; margin-bottom: 10px; }
+.sector-radar { margin-top: 12px; border-top: 1px dashed var(--term-dim); padding-top: 10px; }
+.player-entry { display: flex; justify-content: space-between; align-items: center; padding: 5px 8px; border: 1px dashed #444; margin-bottom: 4px; font-size: 13px; }
+.modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.88); z-index: 50; display: none; justify-content: center; align-items: center; padding: 10px; box-sizing: border-box; overflow-y: auto; }
+.dossier { background: var(--paper-color); color: var(--ink-color); width: 1100px; max-width: 95%; height: 600px; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; font-weight: bold; border-radius: 2px 12px 12px 2px; }
+.dossier-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--ink-color); padding-bottom: 10px; margin-bottom: 15px; font-size: 22px; color: var(--ink-color); letter-spacing: 1px; }
+.close-dossier { background: transparent; border: none; color: var(--ink-danger); font-size: 22px; cursor: pointer; margin: 0; padding: 0; text-shadow: none; }
+.close-dossier:hover { background: transparent; color: #a00; box-shadow: none; }
+.dossier-content { display: flex; gap: 18px; height: calc(100% - 40px); align-items: stretch; }
+.polaroid-col { display: flex; flex-direction: column; width: 300px; flex-shrink: 0; gap: 14px; }
+.polaroid { background: white; padding: 10px 10px 25px 10px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; align-items: center; transform: rotate(-1.5deg); }
+.avatar-container { position: relative; width: 280px; height: 280px; background: #2a2a2a; border: 1px solid #111; overflow: hidden; display: flex; justify-content: center; align-items: flex-end; }
+.quest-items-panel { width: 100%; flex: 1; border: 1px solid var(--ink-danger); padding: 10px; font-size: 13px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: rgba(122,16,16,0.05); }
+#quest-items-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+.quest-item { padding: 4px; border-bottom: 1px dashed rgba(122,16,16,0.4); margin-bottom: 4px; color: var(--ink-dim); }
+.quest-item-title { font-weight: bold; font-size: 14px; color: var(--ink-accent); }
+.equipment-panel { width: 240px; font-size: 14px; border-right: 1px dashed rgba(0,0,0,0.25); padding-right: 18px; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; overflow-y: auto; }
+.equipment-panel h3 { margin-top: 0; font-size: 15px; color: var(--ink-color); letter-spacing: 1px; border-bottom: 1px solid rgba(0,0,0,0.2); padding-bottom: 4px; }
+.equip-slot { border: 1px solid rgba(0,0,0,0.35); padding: 7px 9px; margin-bottom: 7px; cursor: pointer; background: rgba(255,255,255,0.35); transition: 0.1s; }
+.equip-slot:hover { background: rgba(255,255,255,0.6); border-color: var(--ink-color); }
+.equip-slot .item-type { font-size: 10px; color: var(--ink-dim); letter-spacing: 1px; }
+.quick-slot { border: 1px solid #880000; padding: 7px 9px; margin-bottom: 7px; cursor: pointer; background: rgba(122,0,0,0.08); text-align: center; color: var(--ink-color); transition: 0.15s; font-size: 13px; }
+.quick-slot:hover { background: rgba(122,0,0,0.18); }
+.perks-panel { width: 100%; border: 1px solid var(--ink-danger); padding: 8px; font-size: 12px; display: flex; flex-direction: column; box-sizing: border-box; min-height: 100px; margin-top: 10px; background: rgba(122,16,16,0.05); }
+#perks-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; color: var(--ink-dim); }
+.chest-panel { flex-grow: 1; display: flex; flex-direction: column; height: 100%; }
+.chest-panel h3 { margin-top: 0; font-size: 15px; color: var(--ink-color); }
+.chest-grid { flex-grow: 1; display: grid; grid-template-columns: repeat(2, 1fr); align-content: start; gap: 8px; overflow-y: auto; padding-right: 8px; }
+.chest-item { border: 1px solid rgba(0,0,0,0.35); background-color: rgba(255,255,255,0.3); padding: 8px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 115px; font-size: 13px; color: var(--ink-color); transition: 0.1s; }
+.chest-item:hover { background-color: rgba(255,255,255,0.5); border-color: var(--ink-color); }
+.chest-item-icon { width: 38px; height: 38px; object-fit: contain; margin-bottom: 3px; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2)); }
+.item-type { font-size: 10px; color: var(--ink-dim); font-weight: bold; letter-spacing: 1px; }
+.chest-item button { padding: 2px 7px !important; font-size: 10px !important; margin: 2px 1px 0 1px !important; letter-spacing: 0.5px; }
+.chest-item button[data-action="belt"]  { color: var(--ink-accent); border-color: var(--ink-accent); }
+.chest-item button[data-action="use"]   { color: #003a77; border-color: #003a77; }
+.chest-item button[data-action="equip"] { color: #6a3a00; border-color: #6a3a00; }
+.chest-item button[data-action="drop"]  { color: var(--ink-danger); border-color: var(--ink-danger); }
+.chest-item button:hover { background: rgba(0,0,0,0.06); box-shadow: none; }
+.shop-panel { background: rgba(0, 12, 0, 0.96); width: 1000px; max-width: 95%; padding: 24px; border: 1px solid var(--term-dim); box-sizing: border-box; }
+.shop-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--term-dim); padding-bottom: 10px; margin-bottom: 18px; font-size: 20px; color: var(--term-green); letter-spacing: 2px; }
+.shop-header button { border: none; color: var(--term-green); font-size: 22px; padding: 0; margin: 0; background: transparent; }
+.shop-header button:hover { background: transparent; box-shadow: none; color: #fff; }
+.shop-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #1a3a1a; padding: 8px 12px; margin-bottom: 6px; background: rgba(51,255,0,0.03); }
+.shop-item-icon { width: 30px; height: 30px; object-fit: contain; }
+.shop-item-left { display: flex; align-items: center; gap: 10px; }
+.shop-item button { padding: 4px 10px; font-size: 12px; margin: 0; }
+.leaderboard-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; color: #ddd; text-shadow: none; }
+.leaderboard-table th { border-bottom: 1px solid var(--term-dim); padding: 8px; color: var(--term-green); letter-spacing: 1px; text-transform: uppercase; font-size: 12px; }
+.leaderboard-table td { border-bottom: 1px dashed #333; padding: 6px 8px; }
+.leaderboard-table tr:hover { background: rgba(51,255,0,0.05); }
+.lb-rank-1 { color: var(--term-warn) !important; font-weight: bold; }
+.lb-rank-2 { color: #ccc !important; font-weight: bold; }
+.lb-rank-3 { color: #b8860b !important; font-weight: bold; }
+.bestiary-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; height: 100%; padding-right: 10px; }
+.bestiary-list li { padding: 9px 12px; border-bottom: 1px dashed #2a2a4a; cursor: pointer; color: #aaa; transition: 0.15s; font-size: 14px; }
+.bestiary-list li:hover { background: rgba(51,170,255,0.08); color: #ddd; }
+.bestiary-list li.active { background: rgba(51,170,255,0.15); color: #fff; border-left: 2px solid var(--term-info); }
+.notebook-panel { background: #e8decc; color: #330000; font-family: 'Courier New', monospace; width: 800px; max-width: 95%; height: 600px; padding: 25px; box-sizing: border-box; overflow-y: auto; font-weight: bold; font-size: 16px; line-height: 1.6; }
+.notebook-panel h2 { color: #880000; font-size: 20px; }
+.notebook-panel button { color: #880000; border: none; padding: 0; margin: 0; font-size: 22px; }
+.notebook-panel button:hover { background: transparent; box-shadow: none; color: #a00; }
+.notebook-entry { margin-bottom: 14px; border-bottom: 1px dashed rgba(136,0,0,0.4); padding-bottom: 10px; }
+.notebook-entry:before { content: "► "; color: #880000; }
+.info-panel { background: rgba(0, 12, 0, 0.98); width: 850px; max-width: 95%; height: 85%; padding: 25px; border: 1px solid var(--term-info); color: #bbb; text-shadow: none; box-sizing: border-box; overflow-y: auto; text-align: left; }
+.info-panel h2 { color: var(--term-info); font-size: 22px; margin: 0; }
+.info-panel h3 { color: var(--term-info); margin-top: 22px; border-bottom: 1px dashed var(--term-info); padding-bottom: 5px; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; }
+.info-panel p { margin-bottom: 12px; line-height: 1.6; font-size: 14px; }
+.info-panel b { color: #fff; }
+.info-panel button { color: var(--term-info); border: none; padding: 0; margin: 0; font-size: 22px; }
+.info-panel button:hover { background: transparent; box-shadow: none; color: #fff; }
+.intro-container { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 40px; }
+.intro-text-side { flex-grow: 1; text-align: left; }
+.intro-ascii-side { color: var(--term-danger); font-size: 120px; line-height: 1; text-shadow: 0 0 20px var(--term-danger); }
+#intro-text-container { font-size: 17px; line-height: 1.6; white-space: pre-wrap; min-height: 320px; color: var(--term-green); }
+.cursor { display: inline-block; width: 12px; height: 18px; background-color: var(--term-green); animation: blink 1s step-end infinite; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.combat-quick-slots { position: absolute; right: -120px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index:100; }
+.combat-q-slot { width: 95px; height: 95px; border: 1px solid var(--term-dim); background: rgba(0,15,0,0.85); color: var(--term-green); display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; font-size: 11px; text-align: center; padding: 5px; box-sizing: border-box; transition: 0.15s; }
+.combat-q-slot:hover { border-color: var(--term-green); background: rgba(51,255,0,0.08); }
+#combat-log { height: 110px; overflow-y: auto; white-space: pre-wrap; font-size: 13px; color: #8f8; }
+.critical-hp { color: var(--term-danger) !important; }
+.rating-box { margin-top: 10px; border-top: 1px dashed var(--term-dim); padding-top: 8px; font-size: 13px; line-height: 1.5; color: #8c8; }
+.ascii-art { font-family: 'Courier New', monospace; white-space: pre; line-height: 1.2; text-align: center; margin: 15px 0; color: var(--term-warn); font-weight: bold; }
+.flicker { animation: textFlicker 0.15s infinite alternate; }
+@keyframes textFlicker { 0% { opacity: 1; } 100% { opacity: 0.7; } }
+.levelup-btn { width: 100%; padding: 12px; margin-bottom: 8px; text-align: left; background: transparent; border: 1px solid var(--term-warn); color: #fff; cursor: pointer; font-size: 15px; }
+.levelup-btn:hover { background: rgba(255,170,0,0.1); box-shadow: 0 0 10px rgba(255,170,0,0.3); }
+@media (max-width: 900px) {
+  body { font-size: 14px; }
+  .panel { padding: 14px; width: 95% !important; box-sizing: border-box; }
+  .stats { padding: 10px; font-size: 12px; }
+  .shop-panel { padding: 14px; }
+  .shop-header { font-size: 14px; flex-wrap: wrap; }
+  .shop-item { flex-wrap: wrap; gap: 6px; padding: 6px 8px; }
+  .dossier { height: auto; max-height: 95vh; padding: 14px; overflow-y: auto; }
+  .dossier-content { flex-direction: column; height: auto; gap: 10px; }
+  .polaroid-col { width: 100%; }
+  .avatar-container { width: 180px; height: 180px; }
+  .polaroid { transform: none; }
+  .equipment-panel { width: 100%; border-right: none; border-bottom: 1px dashed rgba(0,0,0,0.2); padding-right: 0; padding-bottom: 10px; height: auto; overflow: visible; }
+  .notebook-panel { height: auto; max-height: 90vh; padding: 14px; font-size: 14px; }
+  .info-panel { height: 90%; padding: 14px; }
+  .info-panel h2 { font-size: 16px !important; }
+  .info-panel h3 { font-size: 13px; }
+  .info-panel p { font-size: 12px; }
+  .map-grid { width: 100%; gap: 4px; }
+  .map-node { height: 70px; padding: 4px; }
+  .node-id { font-size: 13px; }
+  .node-name { font-size: 9px; }
+  .floor-controls { font-size: 11px; flex-wrap: wrap; gap: 6px; }
+  .floor-controls button { font-size: 11px; padding: 6px 8px; margin-top: 0; }
+  .audio-controls { top: 6px; right: 6px; gap: 4px; }
+  .audio-btn { font-size: 10px; padding: 3px 6px; }
+  .options-menu { top: 34px; right: 6px; padding: 10px; }
+  .battle-container { flex-direction: column; width: 100vw; height: auto; min-height: 100vh; justify-content: flex-start; padding: 10px 6px; box-sizing: border-box; gap: 6px; }
+  .combat-avatar { width: 130px; height: 180px; margin: 0 auto; }
+  .terminal-center { width: 100%; }
+  .combat-q-slot { width: 60px; height: 60px; font-size: 10px; padding: 3px; }
+  .combat-quick-slots { position: static; flex-direction: row; transform: none; right: auto; top: auto; justify-content: center; margin-top: 6px; gap: 6px; }
+  .intro-ascii-side { font-size: 60px; }
+  #intro-text-container { font-size: 13px; min-height: 220px; }
+}
+</style>
 </head>
 <body class="crt-enabled">
-    <div id="bg-layer" style="background-image: url('assets/locations/bg_safe_room.png');"></div>
+<div id="bg-layer" style="background-image: url('assets/locations/bg_safe_room.png');"></div>
+<div id="transition-overlay"><div id="trans-ascii" class="door-ascii"></div><div id="trans-text" class="flicker">ЗАГРУЗКА...</div></div>
 
-    <div id="transition-overlay">
-        <div id="trans-ascii" class="door-ascii"></div>
-        <div id="trans-text" class="flicker">ЗАГРУЗКА...</div>
+<div id="levelup-modal" class="modal-overlay" style="z-index: 90;">
+  <div class="panel" style="width: 650px; max-width: 90%; border-color: var(--term-warn);">
+    <h2 style="color: var(--term-warn); margin-top: 0;">УРОВЕНЬ ПОВЫШЕН</h2>
+    <div style="margin-bottom: 15px;">ВЫБЕРИТЕ ПЕРК:</div>
+    <div id="levelup-choices"></div>
+  </div>
+</div>
+
+<div id="chat-modal" class="modal-overlay" style="z-index: 75;">
+  <div class="shop-panel" style="width: 700px; display: flex; flex-direction: column; height: 600px;">
+    <div class="shop-header"><span>ОБЩИЙ КАНАЛ [СЕТЬ]</span><button onclick="document.getElementById('chat-modal').style.display='none';">[X]</button></div>
+    <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; text-align: left; padding: 10px; border: 1px solid var(--term-dim); background: rgba(0,20,0,0.5); margin-bottom: 12px; font-size: 14px; color: #ddd;"></div>
+    <div style="display: flex; gap: 8px;">
+      <input type="text" id="chat-input" placeholder="СООБЩЕНИЕ..." style="flex-grow: 1; margin: 0; width: auto; padding: 8px;" maxlength="100">
+      <button id="btn-send-chat" style="margin: 0; width: 120px; padding: 8px;">ОТПРАВИТЬ</button>
     </div>
+  </div>
+</div>
 
-    <!-- ОКНО ПОВЫШЕНИЯ УРОВНЯ -->
-    <div id="levelup-modal" class="modal-overlay" style="z-index: 90;">
-        <div class="panel" style="width: 650px; max-width: 90%; border-color: #ffaa00;">
-            <h2 style="color: #ffaa00; margin-top: 0; text-shadow: 0 0 10px #ffaa00;">УРОВЕНЬ ПОВЫШЕН!</h2>
-            <div style="margin-bottom: 20px; font-size: 18px;">Выберите один из доступных перков (навыков):</div>
-            <div id="levelup-choices" style="display: flex; flex-direction: column; gap: 10px;"></div>
+<div id="leaderboard-modal" class="modal-overlay" style="z-index: 75;">
+  <div class="shop-panel" style="width: 900px; display: flex; flex-direction: column; height: 600px;">
+    <div class="shop-header"><span>ЗАЛ СЛАВЫ ПАРТИИ</span><button onclick="document.getElementById('leaderboard-modal').style.display='none';">[X]</button></div>
+    <div style="overflow-y: auto; flex-grow: 1;">
+      <table class="leaderboard-table"><thead><tr><th>МЕСТО</th><th>ИМЯ</th><th>ТИТУЛ</th><th>УР.</th><th>ЭТАЖ</th><th>ВРЕМЯ</th><th>ОЧКИ</th></tr></thead><tbody id="leaderboard-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div class="audio-controls">
+  <button id="btn-bestiary" class="audio-btn" style="display:none;">📖 БЕСТИАРИЙ</button>
+  <button id="btn-info" class="audio-btn">ℹ️ СПРАВКА</button>
+  <button id="btn-options" class="audio-btn">⚙️ ОПЦИИ</button>
+</div>
+<div id="options-menu" class="options-menu">
+  <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
+  <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
+  <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
+</div>
+
+<div id="login-screen" class="screen active-screen">
+  <div class="panel">
+    <h2 style="font-size: 20px; margin-bottom: 20px; letter-spacing: 2px;">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
+    <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО">
+    <input type="password" id="password" placeholder="ПАРОЛЬ">
+    <button id="login-btn">ВОЙТИ</button>
+    <div id="auth-error" style="color: var(--term-danger); margin-top:12px; font-size: 14px; min-height: 18px;"></div>
+  </div>
+</div>
+
+<div id="intro-screen" class="screen" style="background: var(--term-dark);">
+  <div class="panel" style="width: 1100px; max-width: 95%; border: none; background: transparent;">
+    <div class="intro-container">
+      <div class="intro-text-side"><div id="intro-text-container"></div></div>
+      <div class="intro-ascii-side flicker">☭</div>
+    </div>
+    <div style="font-size: 12px; color: #555; margin-top: 20px; animation: blink 2s step-end infinite; letter-spacing: 2px;">[ЛЮБАЯ КЛАВИША ИЛИ КЛИК]</div>
+  </div>
+</div>
+
+<div id="hub-screen" class="screen">
+  <div class="panel" style="width: 550px; max-width: 95%;">
+    <h2 style="font-size: 20px; margin-top: 0; letter-spacing: 2px;">ЖИЛЯЧЕЙКА</h2>
+    <div class="stats" id="hub-stats-panel" style="position:relative;">
+      <div>УРОВЕНЬ: <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
+      <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score" style="color: var(--term-warn);">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
+      <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
+      <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
+      <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger" style="color: var(--term-warn);">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
+      <div style="display:flex; gap:10px;">
+        <div class="progress-bar bar-hunger"><div class="progress-fill fill-hunger hunger-bar"></div></div>
+        <div class="progress-bar bar-tox"><div class="progress-fill fill-tox tox-bar" style="width:0%;"></div></div>
+      </div>
+      <div class="rating-box">
+        <div style="margin-bottom: 4px;">ВРЕМЯ: <span class="ui-playtime">00:00:00</span></div>
+        <div>УБИТО: <span class="ui-kills" style="color: var(--term-warn);">0</span> | КОМНАТ: <span class="ui-rooms" style="color: var(--term-warn);">0</span></div>
+        <div>РЕЙТИНГ: <span class="ui-rating" style="color: var(--term-warn);">0</span> | <span class="ui-title">ЗАКЛЮЧЕННЫЙ</span> (#<span class="ui-rank">0</span>)</div>
+      </div>
+      <div id="hub-error" style="color: var(--term-danger); margin-top: 5px; font-size: 13px; min-height: 18px;"></div>
+    </div>
+    <div class="game-controls" style="margin-top: 15px;">
+      <div class="row-2"><button id="open-notebook-btn">БЛОКНОТ</button><button id="open-chest-btn">СУНДУК</button></div>
+      <div class="row-2"><button id="open-shop-btn">РАСПРЕДЕЛИТЕЛЬ</button><button id="open-craft-btn">ВЕРСТАК</button></div>
+      <div class="row-2"><button id="open-chat-btn">СЕТЬ</button><button id="open-leaderboard-btn">РЕЙТИНГ</button></div>
+      <button id="open-map-btn">ВЫХОД В БЛОК</button>
+    </div>
+  </div>
+</div>
+
+<div id="map-screen" class="screen">
+  <div class="panel" style="max-width: 95%;">
+    <div class="floor-controls">
+      <button class="floor-btn" id="btn-floor-down" disabled>▼ ВНИЗ (ЛИФТ E4)</button>
+      <div style="font-size: 20px; letter-spacing: 2px;">ЭТАЖ: <span id="ui-current-floor">0</span></div>
+      <button class="floor-btn" id="btn-floor-up" disabled>ВВЕРХ ▲</button>
+    </div>
+    <div class="map-grid" id="map-container"></div>
+    <button id="close-map-btn" style="margin-top: 15px;">НАЗАД НА БАЗУ</button>
+  </div>
+</div>
+
+<div id="game-screen" class="screen">
+  <div class="battle-container">
+    <div id="player-battle-avatar" class="combat-avatar">
+      <img id="battle-base-skin" class="avatar-layer" style="z-index: 1;" src="" alt="">
+      <img id="battle-clothes" class="avatar-layer" style="z-index: 2;" src="" alt="">
+      <img id="battle-mask" class="avatar-layer" style="z-index: 3;" src="" alt="">
+      <img id="battle-weapon" class="avatar-layer" style="z-index: 4;" src="" alt="">
+      <div id="player-vfx-container" class="vfx-container"></div>
+      <div class="combat-quick-slots">
+        <div id="combat-qslot-0" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 0)">[ПУСТО]</div>
+        <div id="combat-qslot-1" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 1)">[ПУСТО]</div>
+      </div>
+    </div>
+    <div class="terminal-center">
+      <div class="stats" id="main-stats-panel" style="position:relative;">
+        <h2 id="current-location-title" style="margin: 0 0 10px 0; font-size: 18px; border-bottom: 1px solid var(--term-dim); padding-bottom: 6px; letter-spacing: 2px;">ЛОКАЦИЯ</h2>
+        <div>УРОВЕНЬ: <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
+        <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score" style="color: var(--term-warn);">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
+        <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
+        <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
+        <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox">0</span>%</div>
+        <div class="sector-radar">
+          <div style="color: var(--term-warn); margin-bottom:5px;">РАДАР:</div>
+          <div id="players-in-sector">ОЖИДАНИЕ...</div>
         </div>
-    </div>
-
-    <!-- ОКНО ЧАТА -->
-    <div id="chat-modal" class="modal-overlay" style="z-index: 75;">
-        <div class="shop-panel" style="width: 700px; display: flex; flex-direction: column; height: 600px; border-color: #55ff55;">
-            <div class="shop-header" style="border-color: #55ff55;">
-                <span style="color: #55ff55; text-shadow: 0 0 5px #55ff55;">ОБЩИЙ КАНАЛ СВЯЗИ [СЕТЬ]</span>
-                <button onclick="document.getElementById('chat-modal').style.display='none';" style="background:transparent; border:none; color:#55ff55; font-size:24px; cursor:pointer; text-shadow: 0 0 5px #55ff55;">[X]</button>
-            </div>
-            <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; text-align: left; padding: 10px; border: 1px solid #55ff55; background: rgba(0,20,0,0.5); margin-bottom: 15px; font-size: 16px; color: #fff;"></div>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="chat-input" placeholder="Введите сообщение..." style="flex-grow: 1; margin: 0; width: auto; border-color: #55ff55; color: #55ff55;" maxlength="100">
-                <button id="btn-send-chat" style="margin: 0; width: 140px; border-color: #55ff55; color: #55ff55;">ОТПРАВИТЬ</button>
-            </div>
+        <div id="combat-log" style="margin-top: 10px; border-top: 1px dashed var(--term-dim); padding-top: 8px;">ОЖИДАНИЕ...</div>
+      </div>
+      <div id="robot-panel" style="text-align:left; background: rgba(0,20,0,0.8); border: 1px dashed var(--term-info); padding: 10px; box-sizing: border-box; display: none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap: 8px; flex-wrap: wrap;">
+          <span id="robot-status" style="color: var(--term-info); font-weight:bold; font-size: 13px;"></span>
+          <button id="btn-robot-action" style="margin:0; padding: 6px 10px; font-size: 12px;"></button>
         </div>
-    </div>
-    
-    <!-- ДОСКА ПОЧЕТА -->
-    <div id="leaderboard-modal" class="modal-overlay" style="z-index: 75;">
-        <div class="shop-panel" style="width: 900px; display: flex; flex-direction: column; height: 600px; border-color: #ffaa00;">
-            <div class="shop-header" style="border-color: #ffaa00;">
-                <span style="color: #ffaa00; text-shadow: 0 0 5px #ffaa00;">ЗАЛ СЛАВЫ ПАРТИИ (ТОП 15)</span>
-                <button onclick="document.getElementById('leaderboard-modal').style.display='none';" style="background:transparent; border:none; color:#ffaa00; font-size:24px; cursor:pointer; text-shadow: 0 0 5px #ffaa00;">[X]</button>
-            </div>
-            <div style="overflow-y: auto; flex-grow: 1;">
-                <table class="leaderboard-table" id="leaderboard-table">
-                    <tr><th>Место</th><th>Имя (№)</th><th>Титул</th><th>Ур.</th><th>Этаж</th><th>Время</th><th>Рейтинг</th></tr>
-                    <tbody id="leaderboard-body"></tbody>
-                </table>
-            </div>
+      </div>
+      <div class="game-controls" id="explore-controls"></div>
+      <div class="game-controls" id="combat-controls" style="display: none;">
+        <div id="aim-bar-container" style="display:none; width: 100%; height: 20px; border: 1px solid var(--term-danger); position: relative; background: #111;">
+          <div style="position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(51, 255, 0, 0.3); border-left: 1px solid var(--term-green); border-right: 1px solid var(--term-green);"></div>
+          <div id="aim-cursor" style="position: absolute; left: 0%; width: 4px; height: 100%; background: #fff;"></div>
         </div>
-    </div>
-
-    <!-- КНОПКИ УПРАВЛЕНИЯ -->
-    <div class="audio-controls">
-        <button id="btn-bestiary" class="audio-btn" style="border-color:#ff33aa; color:#ff33aa; display:none;">📖 БЕСТИАРИЙ</button>
-        <button id="btn-info" class="audio-btn" style="border-color:#33aaff; color:#33aaff;">ℹ️ СПРАВКА</button>
-        <button id="btn-options" class="audio-btn" style="border-color:#ffaa00; color:#ffaa00;">⚙️ ОПЦИИ</button>
-    </div>
-
-    <!-- ВЫПАДАЮЩЕЕ МЕНЮ ОПЦИЙ -->
-    <div id="options-menu" class="options-menu">
-        <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
-        <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
-        <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
-    </div>
-
-    <!-- ОКНО ЛОГИНА -->
-    <div id="login-screen" class="screen active-screen">
-        <div class="panel">
-            <h2 style="font-size: 22px; margin-bottom: 20px;">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
-            <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО">
-            <input type="password" id="password" placeholder="ПАРОЛЬ">
-            <button id="login-btn">ВОЙТИ</button>
-            <div id="auth-error" style="color:#ff3333; margin-top:12px; font-size: 16px;"></div>
+        <div class="row-2">
+          <button id="btn-attack" style="color: var(--term-danger); border-color: var(--term-danger); font-weight: bold;" onclick="toggleAimAttack()">ПРИЦЕЛЬНАЯ АТАКА</button>
+          <button style="color: var(--term-info); border-color: var(--term-info); font-weight: bold;" onclick="socket.emit('combatAction', 'dodge')">УКЛОНИТЬСЯ</button>
         </div>
+      </div>
     </div>
+    <div id="enemy-battle-avatar" class="combat-avatar">
+      <img id="enemy-sprite" src="" style="z-index: 5;" alt="">
+      <div id="enemy-vfx-container" class="vfx-container"></div>
+      <div id="enemy-hp-bar" style="position: absolute; bottom: -25px; width: 100%; text-align: center; color: var(--term-danger); font-weight: bold; display: none;">ВРАГ: <span id="ui-enemy-hp">0</span> HP</div>
+    </div>
+  </div>
+</div>
 
-    <!-- ОКНО ИНТРО -->
-    <div id="intro-screen" class="screen" style="background: var(--term-dark);">
-        <div class="panel" style="width: 1100px; border: none; box-shadow: none; background: transparent;">
-            <div class="intro-container">
-                <div class="intro-text-side">
-                    <div id="intro-text-container"></div>
-                </div>
-                <div class="intro-ascii-side flicker">
-                    <div>☭</div>
-                    <div class="intro-ascii-subtitle">ПАРТИЯ<br>СВЕТЛЫХ</div>
-                </div>
-            </div>
-            <div style="font-size: 14px; color: #666; margin-top: 30px; animation: blink 2s step-end infinite;">[НАЖМИТЕ ПРОБЕЛ ДЛЯ ПРОПУСКА ИЛИ ПРОДОЛЖЕНИЯ]</div>
+<div id="minigame-modal" class="modal-overlay" style="z-index: 85;">
+  <div class="panel" style="width: 700px; max-width: 95%;">
+    <h2 id="mg-title" style="color: var(--term-warn); margin-top: 0; letter-spacing: 2px;">ВЗЛОМ</h2>
+    <div id="mg-text" style="font-size: 14px; color: #ddd; margin-bottom: 15px; white-space: pre-wrap;"></div>
+    <div id="mg-art" class="ascii-art flicker"></div>
+    <div id="mg-ui"></div>
+    <button id="btn-mg-cancel" onclick="cancelMinigame()" style="color: var(--term-danger); border-color: var(--term-danger); width: 100%;">ОТМЕНА</button>
+  </div>
+</div>
+
+<div id="bestiary-modal" class="modal-overlay" style="z-index: 96;">
+  <div class="info-panel" style="width: 1000px; display:flex; padding:0; border-color: #ff33aa; height: 600px;">
+    <div style="width: 32%; border-right: 1px dashed #ff33aa; padding: 15px 0;">
+      <h3 style="color: #ff33aa; text-align:center; margin:0 0 10px 0; border:none; letter-spacing: 2px;">ОБИТАТЕЛИ</h3>
+      <ul class="bestiary-list" id="bestiary-list-ui"></ul>
+    </div>
+    <div style="width: 68%; padding: 20px; position:relative;">
+      <button onclick="document.getElementById('bestiary-modal').style.display='none'" style="position:absolute; right:15px; top:10px; border:none; color:#ff33aa; font-size: 22px; padding:0;">[X]</button>
+      <div id="bestiary-details"><h2 style="color:#555; text-align:center; margin-top:100px;">ВЫБЕРИТЕ ОБЪЕКТ</h2></div>
+    </div>
+  </div>
+</div>
+
+<div id="info-modal" class="modal-overlay" style="z-index: 95;">
+  <div class="info-panel">
+    <div style="display:flex; justify-content:space-between; border-bottom: 1px solid var(--term-info); margin-bottom: 15px; padding-bottom: 10px;">
+      <h2>РУКОВОДСТВО ПО ВЫЖИВАНИЮ</h2>
+      <button onclick="document.getElementById('info-modal').style.display='none'">[X]</button>
+    </div>
+    <h3>= ВВЕДЕНИЕ =</h3>
+    <p>Вы — один из двадцати трёх заключённых, приговорённых Партией Светлых к «искуплению через труд». Вас погрузили в клеть и отправили вниз, на нулевой этаж, в самое сердце Самосбора. Но во время спуска <b>оборвался трос</b> — клеть рухнула на дно шахты.</p>
+    <p>Конвоир погиб. Остальные заключённые разбежались кто куда. Вы очнулись среди обломков и заперлись в первой свободной жилячейке. Цель — <b>добраться до Главного Лифта в секторе E4 и подняться наверх</b>.</p>
+    <h3>= ВЫЖИВАНИЕ =</h3>
+    <p><b>Голод</b> падает со временем. При нуле вы начнёте умирать. <b>Заражение</b> растёт при уроне — при 100% получите Мутацию. Сбивайте Химикатами.</p>
+    <h3>= КАРТА И ТУМАН =</h3>
+    <p>Сектора A0 - E4. Исследование требует <b>ФИЛЬТРА</b>. Закрытые сектора требуют <b>[КЛЮЧ]</b> или <b>[ВЗЛОМ]</b>.</p>
+    <h3>= БОЙ =</h3>
+    <p><b>ПРИЦЕЛЬНАЯ АТАКА:</b> нажмите кнопку, ловите курсор в центре зелёной зоны — крит x2.</p>
+    <h3>= ИНВЕНТАРЬ =</h3>
+    <p>Кликните на предмет — <b>НА ПОЯС</b>, <b>ИСПОЛЬЗ.</b>, <b>НАДЕТЬ</b>, <b>ВЫБРОС</b>. На <b>ВЕРСТАКЕ</b> можно модифицировать оружие стихиями.</p>
+  </div>
+</div>
+
+<div id="notebook-modal" class="modal-overlay" style="z-index: 80;">
+  <div class="notebook-panel">
+    <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #880000; margin-bottom: 15px;">
+      <h2 style="margin:0;">ДНЕВНИК ЗАКЛЮЧЕННОГО</h2>
+      <button onclick="document.getElementById('notebook-modal').style.display='none'">[X]</button>
+    </div>
+    <div id="notebook-content"></div>
+  </div>
+</div>
+
+<div id="event-modal" class="modal-overlay" style="z-index: 60;">
+  <div class="panel" style="width: 650px; max-width: 90%;">
+    <h2 id="event-title" style="color: var(--term-warn); font-size: 20px; margin-top: 0; border-bottom: 1px solid var(--term-warn); padding-bottom: 10px; letter-spacing: 2px;">СОБЫТИЕ</h2>
+    <div id="event-ascii-box" class="ascii-art flicker" style="font-size: 14px; color:#8f8;"></div>
+    <div id="event-text" style="margin-bottom: 15px; font-size: 15px; line-height: 1.6; text-align: left; color: #ddd;"></div>
+    <div id="event-choices" style="display: flex; flex-direction: column; gap: 10px;"></div>
+  </div>
+</div>
+
+<div id="inventory-modal" class="modal-overlay" style="z-index: 70;">
+  <div class="dossier">
+    <div class="dossier-header"><span>ДЕЛО №7749 // ЗАКЛЮЧЕННЫЙ</span><button class="close-dossier" id="close-inventory-btn">[X]</button></div>
+    <div class="dossier-content">
+      <div class="polaroid-col">
+        <div class="polaroid">
+          <div class="avatar-container">
+            <img id="inv-base-skin" class="avatar-layer" style="z-index: 1;" src="" alt="">
+            <img id="inv-img-clothes" class="avatar-layer" style="z-index: 2;" src="" alt="">
+            <img id="inv-img-mask" class="avatar-layer" style="z-index: 3;" src="" alt="">
+            <img id="inv-img-weapon" class="avatar-layer" style="z-index: 4;" src="" alt="">
+          </div>
+          <div style="margin-top: 12px; font-size: 14px;">УРОН: <span id="inv-dmg">0</span> | БРОНЯ: <span id="inv-def">0</span></div>
         </div>
-    </div>
-
-    <!-- ОКНО БАЗЫ (ЖИЛЯЧЕЙКА) -->
-    <div id="hub-screen" class="screen">
-        <div class="panel" style="width: 550px;">
-            <h2 style="font-size: 22px; margin-top: 0;">ЖИЛЯЧЕЙКА</h2>
-            <div class="stats" style="min-width: 100%; box-sizing: border-box; position:relative;" id="hub-stats-panel">
-                <div>УРОВЕНЬ: <span class="ui-level" style="color:#ffaa00;">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
-                <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
-                <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
-                <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
-                <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger" style="color:#ffaa00;">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
-                <div style="display:flex; gap:10px;">
-                    <div class="progress-bar bar-hunger"><div class="progress-fill fill-hunger hunger-bar"></div></div>
-                    <div class="progress-bar bar-tox"><div class="progress-fill fill-tox tox-bar" style="width:0%;"></div></div>
-                </div>
-                
-                <div class="rating-box">
-                    <div style="margin-bottom: 5px;">ВРЕМЯ В ИГРЕ: <span class="ui-playtime" style="color:#fff;">00:00:00</span></div>
-                    <div>УБИТО: <span class="ui-kills" style="color:#ffaa00;">0</span> | КОМНАТ: <span class="ui-rooms" style="color:#ffaa00;">0</span></div>
-                    <div>РЕЙТИНГ БЛОКА: <span class="ui-rating" style="color:#ffaa00;">0</span></div>
-                    <div>СТАТУС: <span class="ui-title" style="color:#fff;">Заключенный</span> (#<span class="ui-rank">0</span>)</div>
-                </div>
-                <div id="hub-error" style="color:#ff3333; margin-top: 5px; font-size: 14px; min-height: 20px;"></div>
-            </div>
-            <div class="game-controls">
-                <button id="open-notebook-btn" style="color: #fff; border-color: #fff;">БЛОКНОТ</button>
-                <button id="open-chest-btn">СУНДУК</button>
-                <button id="open-shop-btn" style="color: #ffaa00; border-color: #ffaa00;">РАСПРЕДЕЛИТЕЛЬ</button>
-                <button id="open-craft-btn" style="color: #33aaff; border-color: #33aaff;">ВЕРСТАК</button>
-                <button id="open-chat-btn" style="color: #55ff55; border-color: #55ff55;">СЕТЬ</button>
-                <button id="open-leaderboard-btn" style="color: #ffaa00; border-color: #ffaa00;">РЕЙТИНГ</button>
-                <button id="open-map-btn" style="color: var(--term-green); border-color: var(--term-green); width: 100%;">ВЫХОД В БЛОК</button>
-            </div>
+        <div class="quest-items-panel">
+          <div style="font-weight:bold; margin-bottom: 5px; color: var(--ink-danger); font-size: 12px; letter-spacing: 1px;">СЮЖЕТНЫЕ ПРЕДМЕТЫ:</div>
+          <div id="quest-items-container">Пусто</div>
         </div>
-    </div>
-
-    <!-- ОКНО КАРТЫ -->
-    <div id="map-screen" class="screen">
-        <div class="panel" style="max-width: 95%;">
-            <div class="floor-controls">
-                <button class="floor-btn" id="btn-floor-down" disabled>▼ ВНИЗ (К ЛИФТУ E4)</button>
-                <div style="font-size: 22px;">ЭТАЖ: <span id="ui-current-floor">0</span></div>
-                <button class="floor-btn" id="btn-floor-up" disabled>ВВЕРХ ▲</button>
-            </div>
-            <div class="map-grid" id="map-container"></div>
-            <button id="close-map-btn" style="margin-top: 15px;">НАЗАД НА БАЗУ</button>
+      </div>
+      <div class="equipment-panel">
+        <h3>НАДЕТО:</h3>
+        <div id="equip-slot-mask" class="equip-slot" onclick="socket.emit('unequipItem', 'mask')"><div class="item-type">ДЫХАНИЕ</div><div id="inv-mask-name">Пусто</div></div>
+        <div id="equip-slot-clothes" class="equip-slot" onclick="socket.emit('unequipItem', 'clothes')"><div class="item-type">ЗАЩИТА</div><div id="inv-clothes-name">Пусто</div></div>
+        <div id="equip-slot-backpack" class="equip-slot" onclick="socket.emit('unequipItem', 'backpack')"><div class="item-type">СПИНА</div><div id="inv-backpack-name">Пусто</div></div>
+        <div id="equip-slot-weapon" class="equip-slot" onclick="socket.emit('unequipItem', 'weapon')"><div class="item-type">ОРУЖИЕ</div><div id="inv-weapon-name">Пусто</div></div>
+        <h3 style="color: var(--ink-danger); margin-top: 10px;">ПОЯС:</h3>
+        <div id="inv-qslot-0" class="quick-slot">[ПУСТО]</div>
+        <div id="inv-qslot-1" class="quick-slot">[ПУСТО]</div>
+        <div class="perks-panel">
+          <div style="font-weight:bold; color: var(--ink-danger); font-size: 12px; letter-spacing: 1px;">ПЕРКИ И МУТАЦИИ:</div>
+          <div id="perks-container" style="margin-top: 5px;">Пусто</div>
         </div>
+      </div>
+      <div class="chest-panel">
+        <h3>СУНДУК [<span id="inv-capacity">0/12</span>]:</h3>
+        <div class="chest-grid" id="chest-container"></div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- ОКНО ИГРЫ (БОЙ И ИССЛЕДОВАНИЕ) -->
-    <div id="game-screen" class="screen">
-        <div class="battle-container">
-            <div id="player-battle-avatar" class="combat-avatar visible">
-                <img id="battle-base-skin" src="" style="z-index: 1;" alt="[СКИН]">
-                <img id="battle-clothes" src="" style="z-index: 2;" alt="">
-                <img id="battle-mask" src="" style="z-index: 3;" alt="">
-                <img id="battle-weapon" src="" style="z-index: 4;" alt="">
-                <div id="player-vfx-container" class="vfx-container"></div>
-                <div class="combat-quick-slots">
-                    <div id="combat-qslot-0" class="combat-q-slot combat-q-empty" onclick="socket.emit('useQuickSlot', 0)">[ПУСТО]</div>
-                    <div id="combat-qslot-1" class="combat-q-slot combat-q-empty" onclick="socket.emit('useQuickSlot', 1)">[ПУСТО]</div>
-                </div>
-            </div>
-
-            <div class="terminal-center">
-                <div class="stats" id="main-stats-panel" style="width: 550px; box-sizing: border-box; position:relative;">
-                    <h2 id="current-location-title" style="margin: 0 0 10px 0; font-size: 22px; border-bottom: 1px solid var(--term-green); padding-bottom: 6px;">ЛОКАЦИЯ</h2>
-                    <div>УРОВЕНЬ: <span class="ui-level" style="color:#ffaa00;">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
-                    <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
-                    <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
-                    <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
-                    <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger" style="color:#ffaa00;">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
-                    
-                    <div class="sector-radar" id="radar-container">
-                        <div style="color:#ffaa00; margin-bottom:5px;">РАДАР:</div>
-                        <div id="players-in-sector">Ожидание...</div>
-                    </div>
-
-                    <div id="combat-log" style="color: #aaffaa; font-size: 16px; margin-top: 10px; border-top: 1px dashed var(--term-green); padding-top: 8px; white-space: pre-wrap;">Ожидание...</div>
-                </div>
-                
-                <div id="robot-panel" style="width: 550px; text-align:left; background: rgba(0,20,0,0.8); border: 1px dashed #33aaff; padding: 10px; box-sizing: border-box; margin-top: 10px; display: none;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span id="robot-status" style="color: #33aaff; font-weight:bold;"></span>
-                        <button id="btn-robot-action" class="combat-btn" style="padding: 5px 15px !important; font-size: 14px !important; margin-top: 0;"></button>
-                    </div>
-                </div>
-                
-                <div class="game-controls" id="explore-controls"></div>
-                
-                <div class="game-controls" id="combat-controls" style="display: none; width: 550px; flex-direction: column;">
-                    
-                    <div id="aim-bar-container" style="display:none; width: 100%; height: 20px; border: 1px solid #ff3333; position: relative; margin-bottom: 10px; background: #111;">
-                        <div style="position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(51, 255, 0, 0.3); border-left: 1px solid var(--term-green); border-right: 1px solid var(--term-green);"></div>
-                        <div id="aim-cursor" style="position: absolute; left: 0%; width: 4px; height: 100%; background: #fff; box-shadow: 0 0 5px #fff;"></div>
-                    </div>
-
-                    <div style="display: flex; gap: 15px; width: 100%;">
-                        <button id="btn-attack" class="combat-btn" onclick="toggleAimAttack()" style="color: #ff3333; border-color: #ff3333;">ПРИЦЕЛЬНАЯ АТАКА</button>
-                        <button class="combat-btn" onclick="socket.emit('combatAction', 'dodge')" style="color: #33aaff; border-color: #33aaff;">УКЛОНИТЬСЯ</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="enemy-battle-avatar" class="combat-avatar">
-                <img id="enemy-sprite" src="" style="z-index: 5;" alt="[ВРАГ]">
-                <div id="enemy-vfx-container" class="vfx-container"></div>
-                <div id="enemy-hp-bar" style="position: absolute; bottom: -30px; width: 100%; text-align: center; color: #ff3333; font-weight: bold; display: none;">ВРАГ: <span id="ui-enemy-hp">0</span> HP</div>
-            </div>
-        </div>
+<div id="craft-modal" class="modal-overlay" style="z-index: 70;">
+  <div class="shop-panel" style="width: 800px; max-height: 90vh; overflow-y: auto;">
+    <div class="shop-header"><span>ВЕРСТАК И МОДДИНГ</span><button onclick="document.getElementById('craft-modal').style.display='none';">[X]</button></div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 240px;">
+        <h3 style="color: var(--term-info); border-bottom: 1px dashed var(--term-info); padding-bottom: 5px;">= СБОРКА =</h3>
+        <div class="shop-item"><div>Вентиль<br><small style="color:#666;">[Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'weapon_pipe')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <div class="shop-item"><div>Аптечка<br><small style="color:#666;">[Химикаты + Слизь]</small></div><button onclick="socket.emit('craftItem', 'food_medkit')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <div class="shop-item"><div>Шокер<br><small style="color:#666;">[Электроника + Металл]</small></div><button onclick="socket.emit('craftItem', 'special_shocker')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <div class="shop-item"><div>Сборщик<br><small style="color:#666;">[Электроника + Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'tool_robot')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+      </div>
+      <div style="flex: 1; min-width: 240px;">
+        <h3 style="color: var(--term-warn); border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">= МОДДИНГ =</h3>
+        <select id="mod-weapon-select" style="width: 100%; margin-bottom: 10px; background: #000; color: #fff; padding: 6px; border: 1px solid var(--term-dim); font-family: inherit;"><option value="">-- ОРУЖИЕ --</option></select>
+        <select id="mod-mat-select" style="width: 100%; margin-bottom: 15px; background: #000; color: #fff; padding: 6px; border: 1px solid var(--term-dim); font-family: inherit;"><option value="">-- МАТЕРИАЛ --</option></select>
+        <button onclick="sendModRequest()" style="width: 100%; margin:0;">МОДИФИЦИРОВАТЬ</button>
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- ОКНО ВЗЛОМА -->
-    <div id="minigame-modal" class="modal-overlay" style="z-index: 85;">
-        <div class="panel" style="width: 700px;">
-            <h2 id="mg-title" style="color: #ffaa00; margin-top: 0;">ВЗЛОМ</h2>
-            <div id="mg-text" style="font-size: 16px; color: #fff; margin-bottom: 15px; white-space: pre-wrap;"></div>
-            <div id="mg-art" class="ascii-art flicker"></div>
-            <div id="mg-ui" style="margin-top: 20px;"></div>
-            <button id="btn-mg-cancel" onclick="cancelMinigame()" style="color: #ff3333; border-color: #ff3333; margin-top: 20px; width: 100%;">[ ВЕРНУТЬСЯ В ЖИЛЯЧЕЙКУ ]</button>
-        </div>
+<div id="shop-modal" class="modal-overlay" style="z-index: 70;">
+  <div class="shop-panel">
+    <div class="shop-header"><span>РАСПРЕДЕЛИТЕЛЬ</span><button id="close-shop-btn">[X]</button></div>
+    <div style="text-align: left; margin-bottom: 15px;">ДОСТУПНО: <span class="ui-score" style="color: var(--term-warn); font-size: 20px;">0</span> ТАЛОНОВ</div>
+    <div style="display: flex; gap: 20px; text-align: left; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 280px;">
+        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">= АССОРТИМЕНТ = <span style="font-size:12px; color:#666;">(<span id="shop-timer">10:00</span>)</span></h3>
+        <div id="shop-items-container"></div>
+      </div>
+      <div style="flex: 1; min-width: 280px; border-left: 1px dashed var(--term-dim); padding-left: 15px;">
+        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">= СДАТЬ ХАБАР =</h3>
+        <div id="shop-sell-container" style="max-height: 400px; overflow-y: auto;"></div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- БЕСТИАРИЙ -->
-    <div id="bestiary-modal" class="modal-overlay" style="z-index: 96;">
-        <div class="info-panel" style="width: 1000px; display:flex; padding:0; border-color:#ff33aa;">
-            <div style="width: 30%; border-right: 2px dashed #ff33aa; padding: 20px 0;">
-                <h3 style="color:#ff33aa; text-align:center; margin-top:0; border:none; text-shadow:0 0 5px #ff33aa;">ОБИТАТЕЛИ</h3>
-                <ul class="bestiary-list" id="bestiary-list-ui"></ul>
-            </div>
-            <div style="width: 70%; padding: 30px; position:relative;">
-                <button onclick="document.getElementById('bestiary-modal').style.display='none'" style="position:absolute; right:20px; top:10px; background:transparent; border:none; color:#ff33aa; font-size:24px; cursor:pointer;">[X]</button>
-                <div id="bestiary-details">
-                    <h2 style="color:#555; text-align:center; margin-top:100px;">ВЫБЕРИТЕ ОБЪЕКТ ДЛЯ ПРОСМОТРА ДОСЬЕ</h2>
-                </div>
-            </div>
-        </div>
-    </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+if (typeof io === 'undefined') {
+  document.getElementById('auth-error').innerHTML = "<b>ОШИБКА:</b> Нет связи с сервером!";
+  throw new Error("Socket.io не загружен.");
+}
 
-    <!-- ОКНО СПРАВКИ -->
-    <div id="info-modal" class="modal-overlay" style="z-index: 95;">
-        <div class="info-panel">
-            <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #33aaff; margin-bottom: 20px; padding-bottom: 10px;">
-                <h2 style="margin:0; font-size: 26px; color: #33aaff; text-shadow: 0 0 10px #33aaff;">РУКОВОДСТВО ПО ВЫЖИВАНИЮ</h2>
-                <button onclick="document.getElementById('info-modal').style.display='none'" style="background:transparent; border:none; color:#33aaff; font-size:24px; cursor:pointer;">[X]</button>
-            </div>
-            
-            <h3>= ВВЕДЕНИЕ =</h3>
-            <p>Вы — заключенный в бесконечной Гигахрущевке. Ваша конечная цель — достичь дна комплекса. Для этого вам предстоит спускаться вниз по этажам через <b>Главный Лифт (сектор E4)</b>. Однако лифт сломан, и на каждом этаже вам придется собирать запчасти для его починки.</p>
+const DEFAULT_NOTEBOOK = [
+  "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, 23 заключённых, погрузили в клеть и отправили вниз, на нулевой этаж.",
+  "[ВВОДНАЯ]: Мы почти достигли дна, когда лопнул трос. Клеть рухнула.",
+  "[ВВОДНАЯ]: Я очнулся среди обломков. Рядом — растерзанный конвоир.",
+  "[ВВОДНАЯ]: Сорвал с него противогаз и заперся в первой жилячейке.",
+  "[ЦЕЛЬ]: Найти Главный Лифт (E4) и подняться наверх.",
+  "[СОВЕТ]: Не забывай про фильтр. Туман здесь живой."
+];
 
-            <h3>= ВЫЖИВАНИЕ (ГОЛОД И ЗАРАЖЕНИЕ) =</h3>
-            <p>Ваша жизнь зависит от двух шкал: Голода и Токсичности. <b>Голод</b> падает со временем и при переходах. Если он упадет до нуля, вы начнете умирать. Спасайтесь пайками и слизью.</p>
-            <p><b>Заражение</b> растет при получении урона от монстров. При достижении 100% вы получите случайную Мутацию (бафф или дебафф на всю игру). Сбивайте Заражение Химикатами (клик по химикатам в сундуке).</p>
+let musicEnabled = true, sfxEnabled = true, crtEnabled = true;
+const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/sounds/ambient_combat.mp3') };
+Object.values(AMBIENTS).forEach(a => { a.loop = true; a.volume = 0; });
+let currentAmbient = null; const AMBIENT_MAX_VOL = 0.35;
+const SOUNDS = { click: new Audio('assets/sounds/click.mp3'), hit_player: new Audio('assets/sounds/hit_player.mp3'), hit_enemy: new Audio('assets/sounds/hit_enemy.mp3'), hit_crit: new Audio('assets/sounds/hit_crit.mp3'), dodge: new Audio('assets/sounds/dodge.mp3'), roar: new Audio('assets/sounds/roar.mp3'), heal: new Audio('assets/sounds/heal.mp3'), special: new Audio('assets/sounds/special.mp3'), victory: new Audio('assets/sounds/victory.mp3'), defeat: new Audio('assets/sounds/defeat.mp3'), low_hp: new Audio('assets/sounds/low_hp.mp3'), equip: new Audio('assets/sounds/equip.mp3'), buy: new Audio('assets/sounds/buy.mp3'), farm: new Audio('assets/sounds/farm.mp3') };
+Object.values(SOUNDS).forEach(s => s.volume = 0.5);
+let lowHpWarningPlayed = false;
+function playSound(name) { if (SOUNDS[name] && sfxEnabled) { try { let s = SOUNDS[name].cloneNode(); s.volume = SOUNDS[name].volume; s.play().catch(()=>{}); } catch(e){} } }
 
-            <h3>= КАРТА И ТУМАН =</h3>
-            <p>Карта состоит из секторов (A0 - E4). Исследование карты требует ресурса <b>ФИЛЬТРА</b>. Заходить можно только в ячейки, которые вы уже открыли.</p>
-            <p>Если локация закрыта, на ней будет написано требование для входа: либо <b>[НУЖЕН КЛЮЧ]</b> (ищите в тумане), либо <b>[ВЗЛОМ СЕТИ]</b>.</p>
+function changeAmbient(t) {
+  if (currentAmbient === t) return;
+  const o = currentAmbient; const n = AMBIENTS[t]; currentAmbient = t;
+  if (o && AMBIENTS[o]) { let a = AMBIENTS[o]; let iv = setInterval(() => { if (a.volume > 0.05) a.volume -= 0.05; else { a.volume = 0; a.pause(); clearInterval(iv); } }, 150); }
+  if (n && musicEnabled) { n.volume = 0; n.play().catch(()=>{}); let iv = setInterval(() => { if (n.volume < AMBIENT_MAX_VOL - 0.05) n.volume += 0.05; else { n.volume = AMBIENT_MAX_VOL; clearInterval(iv); } }, 150); }
+}
+function restoreAmbient() {
+  let cc = document.getElementById('combat-controls');
+  let gs = document.getElementById('game-screen');
+  let ms = document.getElementById('map-screen');
+  if (cc && cc.style.display === 'flex') changeAmbient('combat');
+  else if (gs && gs.classList.contains('active-screen')) changeAmbient('explore');
+  else if (ms && ms.classList.contains('active-screen')) changeAmbient('map');
+  else changeAmbient('hub');
+}
 
-            <h3>= БОЕВАЯ СИСТЕМА И РЕЙДЫ =</h3>
-            <p><b>ПРИЦЕЛЬНАЯ АТАКА:</b> Кликните на кнопку атаки, чтобы активировать сканер прицеливания. Нажмите <b>«УДАР!»</b> ровно в центре зеленой зоны для Критического Урона (x2).</p>
-            <p><b>ГЛОБАЛЬНЫЙ БОСС:</b> Битвы в секторе E4 (Лифт) являются массовыми. Все сталкеры сервера, находящиеся в E4, будут бить одного босса с общим запасом здоровья.</p>
+document.addEventListener('click', (e) => {
+  if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+    if(!e.target.classList.contains('opt-btn') && e.target.id !== 'btn-options') playSound('click');
+  }
+});
 
-            <h3>= ИНВЕНТАРЬ И МОДДИНГ =</h3>
-            <p>Вместимость Сундука ограничена <b>12 слотами</b>. Выбрасывайте мусор (Клик -> Выбросить) или скрафтите Рюкзак и наденьте его в слот "СПИНА".</p>
-            <p>На <b>ВЕРСТАКЕ</b> можно комбинировать Оружие и Хлам. Скрестите оружие с Химикатами, Электроникой или Металлом, чтобы добавить стихийный урон (Огонь 🔥, Шок ⚡, Кровотечение 🩸).</p>
-        </div>
-    </div>
+document.getElementById('btn-options').onclick = () => {
+  const m = document.getElementById('options-menu');
+  m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+};
+document.getElementById('btn-toggle-music').onclick = () => { musicEnabled = !musicEnabled; document.getElementById('btn-toggle-music').innerText = musicEnabled ? "🎵 Музыка (ВКЛ)" : "🎵 Музыка (ВЫКЛ)"; if (musicEnabled && currentAmbient && AMBIENTS[currentAmbient]) AMBIENTS[currentAmbient].play().catch(()=>{}); else Object.values(AMBIENTS).forEach(a => a.pause()); };
+document.getElementById('btn-toggle-sfx').onclick = () => { sfxEnabled = !sfxEnabled; document.getElementById('btn-toggle-sfx').innerText = sfxEnabled ? "🔊 Звуки (ВКЛ)" : "🔊 Звуки (ВЫКЛ)"; };
+document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEnabled; document.getElementById('btn-toggle-crt').innerText = crtEnabled ? "📺 CRT-эффект (ВКЛ)" : "📺 CRT-эффект (ВЫКЛ)"; document.body.classList.toggle('crt-enabled', crtEnabled); };
+document.getElementById('btn-info').onclick = () => { document.getElementById('info-modal').style.display = 'flex'; };
 
-    <!-- ОКНО БЛОКНОТА -->
-    <div id="notebook-modal" class="modal-overlay" style="z-index: 80;">
-        <div class="notebook-panel">
-            <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #880000; margin-bottom: 20px;">
-                <h2 style="margin:0; color:#880000;">ДНЕВНИК ЗАКЛЮЧЕННОГО</h2>
-                <button onclick="document.getElementById('notebook-modal').style.display='none'" style="background:transparent; border:none; color:#880000; font-size:24px; cursor:pointer;">[X]</button>
-            </div>
-            <div id="notebook-content"></div>
-        </div>
-    </div>
+const socket = io();
+let myUsername = "", serverMap = {}, myUnlockedSectors = [], myQuestItems = [], myQuickSlots = [null, null];
+let GAME_PERKS = [], GAME_ITEMS = {}, MUTATIONS = [], currentShopItems = [], shopUpdateTimestamp = 0;
+let pendingEquipIndex = null, isAiming = false, aimInterval = null, aimPos = 0, aimDir = 1;
+let isTyping = false, typingTimer, fullLoreText = "", charIndex = 0;
+let bestiaryRendered = false;
 
-    <!-- ОКНО СОБЫТИЙ -->
-    <div id="event-modal" class="modal-overlay" style="z-index: 60;">
-        <div class="panel" style="width: 650px; max-width: 90%;">
-            <h2 id="event-title" style="color: #ffaa00; font-size: 24px; margin-top: 0; border-bottom: 1px solid #ffaa00; padding-bottom: 10px;">СОБЫТИЕ</h2>
-            <div id="event-ascii-box" class="ascii-art flicker" style="font-size: 14px; margin-bottom: 15px; color:#aaffaa;"></div>
-            <div id="event-text" style="margin-bottom: 20px; font-size: 18px; line-height: 1.6; text-align: left; color: #eee;">Текст события...</div>
-            <div id="event-choices" style="display: flex; flex-direction: column; gap: 15px;"></div>
-        </div>
-    </div>
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen')); document.getElementById(id).classList.add('active-screen'); }
+function formatTime(sec) { let h = Math.floor(sec/3600).toString().padStart(2,'0'); let m = Math.floor((sec%3600)/60).toString().padStart(2,'0'); let s = (sec%60).toString().padStart(2,'0'); return `${h}:${m}:${s}`; }
 
-    <!-- ОКНО ИНВЕНТАРЯ И АВАТАРА -->
-    <div id="inventory-modal" class="modal-overlay" style="z-index: 70;">
-        <div class="dossier">
-            <div class="dossier-header"><span>ДЕЛО №7749 // ЗАКЛЮЧЕННЫЙ</span><button class="close-dossier" id="close-inventory-btn">[X]</button></div>
-            <div class="dossier-content">
-                <div class="polaroid-col">
-                    <div class="polaroid">
-                        <div class="avatar-container">
-                            <img id="inv-base-skin" class="avatar-layer" src="" alt="[СКИН]">
-                            <img class="avatar-layer" id="inv-img-clothes" src="" alt="">
-                            <img class="avatar-layer" id="inv-img-mask" src="" alt="">
-                            <img class="avatar-layer" id="inv-img-weapon" src="" alt="">
-                        </div>
-                        <div style="margin-top: 15px; font-size: 16px;">УРОН: <span id="inv-dmg">0</span> | БРОНЯ: <span id="inv-def">0</span></div>
-                    </div>
-                    
-                    <div class="quest-items-panel">
-                        <div style="font-weight:bold; margin-bottom: 5px; color:#880000;">СЮЖЕТНЫЕ ПРЕДМЕТЫ:</div>
-                        <div id="quest-items-container">Пусто</div>
-                    </div>
-                </div>
-                
-                <div class="equipment-panel">
-                    <h3 style="margin-top:0;">НАДЕТО:</h3>
-                    <div id="equip-slot-mask" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'mask')"><div class="item-type">ОРГАНЫ ДЫХАНИЯ</div><div id="inv-mask-name">Пусто</div></div>
-                    <div id="equip-slot-clothes" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'clothes')"><div class="item-type">НАТЕЛЬНАЯ ЗАЩИТА</div><div id="inv-clothes-name">Пусто</div></div>
-                    <div id="equip-slot-backpack" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'backpack')"><div class="item-type">СПИНА (РЮКЗАК)</div><div id="inv-backpack-name">Пусто</div></div>
-                    <div id="equip-slot-weapon" class="equip-slot equip-slot-empty" onclick="socket.emit('unequipItem', 'weapon')"><div class="item-type">ОРУЖИЕ</div><div id="inv-weapon-name">Пусто</div></div>
-                    
-                    <h3 style="margin-top:10px; color:#ff3333; font-size:14px;">ПОЯС (БЫСТРЫЕ СЛОТЫ В БОЮ):</h3>
-                    <div id="inv-qslot-0" class="quick-slot equip-slot-empty" onclick="socket.emit('unequipQuickSlot', 0)" style="padding: 5px; margin-bottom: 5px;">[ПУСТО]</div>
-                    <div id="inv-qslot-1" class="quick-slot equip-slot-empty" onclick="socket.emit('unequipQuickSlot', 1)" style="padding: 5px;">[ПУСТО]</div>
+document.getElementById('login-btn').onclick = () => {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value.trim();
+  if (u && p) socket.emit('login', { username: u, password: p });
+};
 
-                    <div class="perks-panel">
-                        <div style="font-weight:bold; color:#880000;">ПЕРКИ И МУТАЦИИ:</div>
-                        <div id="perks-container" style="font-size: 14px; color: #550000; margin-top: 5px;">Пусто</div>
-                    </div>
-                </div>
-                <div class="chest-panel">
-                    <h3 style="margin-top:0;">СУНДУК (ИНВЕНТАРЬ) [<span id="inv-capacity">0/12</span>]:</h3>
-                    <div class="chest-grid" id="chest-container"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+function startBootSequence() {
+  changeAmbient('hub'); showScreen('intro-screen');
+  let itc = document.getElementById('intro-text-container');
+  if(itc) itc.innerHTML = "";
+  isTyping = true; charIndex = 0;
+  fullLoreText = `GIGAHOUSE-OS v.19.84 загрузка...\nАВТОРИЗАЦИЯ: #${myUsername.toUpperCase()}\n\n[СИСТЕМНОЕ ОПОВЕЩЕНИЕ]: СИРЕНА САМОСБОРА В АКТИВНОЙ ФАЗЕ.\n\nПАМЯТЬ ПОВРЕЖДЕНА.\n\nПриговор приведён в исполнение. Нас, 23 заключённых,\nпогрузили в клеть и отправили вниз, на нулевой этаж.\n\nМы почти достигли дна, когда лопнул трос.\nКлеть полетела вниз. Удар. Темнота.\n\nЯ очнулся среди обломков. Рядом — растерзанный конвоир.\nОстальные разбежались кто куда.\n\nЯ сорвал с конвоира противогаз и заперся\nв первой свободной жилячейке.\n\nЦЕЛЬ: Добраться до Главного Лифта (E4).\nПодняться наверх. Выжить.`;
+  function typeChar() {
+    if (!isTyping) return;
+    let el = document.getElementById('intro-text-container');
+    if (charIndex < fullLoreText.length && el) {
+      el.innerHTML = fullLoreText.substring(0, charIndex + 1) + '<span class="cursor"></span>';
+      charIndex++;
+      typingTimer = setTimeout(typeChar, 25);
+    } else finishTyping();
+  }
+  typeChar();
+}
+function finishTyping() { isTyping = false; clearTimeout(typingTimer); let el = document.getElementById('intro-text-container'); if(el) el.innerHTML = fullLoreText + '<span class="cursor"></span>'; }
+function trySkipIntro() {
+  let is = document.getElementById('intro-screen');
+  if (!is || !is.classList.contains('active-screen')) return false;
+  if (isTyping) finishTyping();
+  else socket.emit('saveCharacter', { created: true });
+  return true;
+}
+document.addEventListener('keydown', (e) => { if (trySkipIntro()) e.preventDefault(); });
+document.addEventListener('click', (e) => {
+  let is = document.getElementById('intro-screen');
+  if (is && is.classList.contains('active-screen') && e.target.closest('#intro-screen')) trySkipIntro();
+});
 
-    <!-- ОКНО КРАФТА -->
-    <div id="craft-modal" class="modal-overlay" style="z-index: 70;">
-        <div class="shop-panel" style="width: 800px; max-height: 90vh; overflow-y: auto;">
-            <div class="shop-header"><span>ВЕРСТАК И МОДДИНГ</span><button onclick="document.getElementById('craft-modal').style.display='none';" style="background:transparent; border:none; color:var(--term-green); font-size:24px; cursor:pointer; text-shadow: 0 0 5px var(--term-green);">[X]</button></div>
-            
-            <div style="display: flex; gap: 20px;">
-                <div style="flex: 1;">
-                    <h3 style="color: #33aaff; border-bottom: 1px dashed #33aaff; padding-bottom: 5px;">= СБОРКА ПРЕДМЕТОВ =</h3>
-                    <div class="shop-item"><div>Тяжелый вентиль <span style="color:#888; font-size:12px;"><br>[Металл + Изолента]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'weapon_pipe')" style="border-color:#33aaff; color:#33aaff;">СОБРАТЬ</button></div>
-                    <div class="shop-item"><div>Военная аптечка <span style="color:#888; font-size:12px;"><br>[Химикаты + Брикет слизи]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'food_medkit')" style="border-color:#33aaff; color:#33aaff;">СОБРАТЬ</button></div>
-                    <div class="shop-item"><div>Электрошокер <span style="color:#888; font-size:12px;"><br>[Электроника + Металл]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'special_shocker')" style="border-color:#33aaff; color:#33aaff;">СОБРАТЬ</button></div>
-                    <div class="shop-item"><div>Автосборщик <span style="color:#888; font-size:12px;"><br>[Электроника + Металл + Изолента]</span></div><button class="shop-buy-btn" onclick="socket.emit('craftItem', 'tool_robot')" style="border-color:#ffaa00; color:#ffaa00;">СОБРАТЬ</button></div>
-                </div>
-                
-                <div style="flex: 1;">
-                    <h3 style="color: #ffaa00; border-bottom: 1px dashed #ffaa00; padding-bottom: 5px;">= МОДИФИКАЦИЯ ОРУЖИЯ =</h3>
-                    <div style="font-size: 14px; margin-bottom: 15px; color: #ccc;">Выберите Оружие и Стихийный материал (Химикаты 🔥, Электроника ⚡, Металл 🩸).</div>
-                    <select id="mod-weapon-select" style="width: 100%; margin-bottom: 10px; background: #000; color: #fff; padding: 5px; border: 1px solid #ffaa00;"><option value="">-- Выберите оружие --</option></select>
-                    <select id="mod-mat-select" style="width: 100%; margin-bottom: 15px; background: #000; color: #fff; padding: 5px; border: 1px solid #ffaa00;"><option value="">-- Выберите материал --</option></select>
-                    <button onclick="sendModRequest()" style="width: 100%; border-color: #ffaa00; color: #ffaa00; margin-top: 0;">МОДИФИЦИРОВАТЬ</button>
-                </div>
-            </div>
-        </div>
-    </div>
+socket.on('loginSuccess', (data) => { myUsername = data.username; if (data.showIntro) startBootSequence(); else { showScreen('hub-screen'); changeAmbient('hub'); } });
+socket.on('startGame', () => { document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); });
 
-    <!-- ОКНО РАСПРЕДЕЛИТЕЛЯ -->
-    <div id="shop-modal" class="modal-overlay" style="z-index: 70;">
-        <div class="shop-panel">
-            <div class="shop-header"><span>ПИЩЕБЛОК И СКЛАД ОРУЖИЯ</span><button class="close-dossier" id="close-shop-btn" style="color: var(--term-green);">[X] ЗАКРЫТЬ</button></div>
-            <div style="text-align: left; margin-bottom: 20px;">ДОСТУПНО ТАЛОНОВ: <span class="ui-score" style="color: #ffaa00; font-size: 24px;">0</span></div>
-            <div style="display: flex; gap: 20px; text-align: left;">
-                <div style="flex: 1;"><h3 style="color: #ffaa00; margin-top:0;">= АССОРТИМЕНТ = <span style="font-size:14px; color:#888;">(ОБНОВЛЕНИЕ ЧЕРЕЗ <span id="shop-timer">10:00</span>)</span></h3><div id="shop-items-container"></div></div>
-                <div style="flex: 1; border-left: 2px dashed var(--term-green); padding-left: 20px;"><h3 style="color: #ffaa00; margin-top:0;">= СДАТЬ ХАБАР =</h3><div id="shop-sell-container" style="max-height: 400px; overflow-y: auto; padding-right:10px;"></div></div>
-            </div>
-        </div>
-    </div>
+socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML = ''; h.forEach(m => b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`); b.scrollTop = b.scrollHeight; });
+socket.on('chatMessage', (m) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`; b.scrollTop = b.scrollHeight; });
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        if (typeof io === 'undefined') {
-            document.getElementById('auth-error').innerHTML = "<b>КРИТИЧЕСКАЯ ОШИБКА:</b> Нет связи с сервером!<br>Вы открыли файл напрямую. Откройте вкладку <b>http://localhost:3000</b>";
-            throw new Error("Socket.io не загружен. Зайдите через http://localhost:3000");
+socket.on('gameState', (data) => {
+  serverMap = data.map || {};
+  myUnlockedSectors = data.me.unlockedSectors || [];
+  myQuickSlots = data.me.quickSlots || [null, null];
+  myQuestItems = data.me.questItems || [];
+  if(data.GAME_PERKS) GAME_PERKS = data.GAME_PERKS;
+  if(data.GAME_ITEMS) GAME_ITEMS = data.GAME_ITEMS;
+  if(data.MUTATIONS) MUTATIONS = data.MUTATIONS;
+  if(data.shopItems) currentShopItems = data.shopItems;
+  if(data.nextShopUpdate) shopUpdateTimestamp = data.nextShopUpdate;
+
+  if (data.BESTIARY && !bestiaryRendered) {
+    let lu = document.getElementById('bestiary-list-ui');
+    let du = document.getElementById('bestiary-details');
+    let bb = document.getElementById('btn-bestiary');
+    if (bb) { bb.style.display = 'block'; bb.onclick = () => { document.getElementById('bestiary-modal').style.display = 'flex'; }; }
+    if (lu && du) {
+      data.BESTIARY.forEach(mob => {
+        let li = document.createElement('li');
+        li.innerText = mob.name;
+        li.onclick = () => {
+          document.querySelectorAll('.bestiary-list li').forEach(el => el.classList.remove('active'));
+          li.classList.add('active');
+          du.innerHTML = `<div style="display:flex; gap:15px; flex-wrap:wrap;"><div style="width:180px; height:180px; border:1px dashed var(--term-warn); display:flex; justify-content:center; align-items:center; background:#111;"><img src="assets/monsters/${mob.img}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex-grow:1; min-width:200px;"><h2 style="margin-top:0; color:var(--term-warn);">${mob.name}</h2><div style="color:#666; font-size:13px; margin-bottom:12px;">МИНИМАЛЬНЫЙ ЭТАЖ: ${mob.minFloor}</div><div style="font-size:14px; color:#ccc; line-height:1.6;">${mob.lore}</div></div></div>`;
+        };
+        lu.appendChild(li);
+      });
+    }
+    bestiaryRendered = true;
+  }
+
+  if(data.leaderboard) {
+    let lb = document.getElementById('leaderboard-body');
+    if(lb) {
+      lb.innerHTML = '';
+      data.leaderboard.forEach(x => {
+        let rc = x.rank===1?'lb-rank-1':x.rank===2?'lb-rank-2':x.rank===3?'lb-rank-3':'';
+        let n = x.name === myUsername ? `<span style="color:var(--term-green);">${x.name} (ВЫ)</span>` : x.name;
+        lb.innerHTML += `<tr class="${rc}"><td>#${x.rank}</td><td>${n}</td><td>${x.title}</td><td>${x.level}</td><td>${x.floor}</td><td>${formatTime(x.playtime)}</td><td style="color:var(--term-warn);">${x.rating}</td></tr>`;
+      });
+    }
+  }
+
+  renderShop(); renderMap(); updateUI(data.me, data.sectorPlayers);
+  if (data.me) {
+    let nb = (data.me.notebook && data.me.notebook.length >= 3) ? data.me.notebook : DEFAULT_NOTEBOOK;
+    const nbc = document.getElementById('notebook-content');
+    if(nbc) { nbc.innerHTML = ''; nb.slice().reverse().forEach(e => nbc.innerHTML += `<div class="notebook-entry">${e}</div>`); }
+  }
+});
+
+socket.on('showLevelUp', (choices) => {
+  const m = document.getElementById('levelup-modal'), c = document.getElementById('levelup-choices');
+  if(!m || !c) return;
+  c.innerHTML = '';
+  choices.forEach(x => {
+    let btn = document.createElement('button');
+    btn.className = 'levelup-btn';
+    btn.innerHTML = `<span style="color:var(--term-warn); font-size:16px; letter-spacing:1px;">${x.name}</span><br><span style="font-size:12px; color:#aaa;">${x.desc}</span>`;
+    btn.onclick = () => { socket.emit('selectPerk', x.id); m.style.display = 'none'; playSound('victory'); };
+    c.appendChild(btn);
+  });
+  m.style.display = 'flex'; playSound('victory');
+});
+
+socket.on('transition', (data) => {
+  const o = document.getElementById('transition-overlay');
+  const ab = document.getElementById('trans-ascii');
+  const tt = document.getElementById('trans-text');
+  if(!o) return;
+  tt.innerText = data.text || '...';
+  o.style.display = 'flex'; playSound('equip');
+  const ASCII = [ "  ______  \n |      | \n |  ><  | \n |______| ", "  ______  \n |  ||  | \n |  ||  | \n |__||__| ", "  ______  \n | |  | | \n | |  | | \n |_|  |_| ", "  ______  \n |      | \n |      | \n |      | " ];
+  let f = 0; let ai = setInterval(() => { if(ab) ab.innerText = ASCII[f]; f++; if(f >= ASCII.length) clearInterval(ai); }, 200);
+  setTimeout(() => { o.style.display = 'none'; }, 1500);
+});
+
+socket.on('vfxFarm', (amt) => { const c = document.getElementById('hub-stats-panel'); if(!c) return; const s = document.createElement('div'); s.className = 'slime-vfx'; s.innerText = `+${amt||1} СЛИЗЬ`; s.style.left = (Math.random()*80+10)+'%'; c.appendChild(s); setTimeout(()=>s.remove(),1000); });
+socket.on('vfxHeal', () => applyVFX('player-vfx-container', 'vfx-heal'));
+
+socket.on('combatStart', (data) => {
+  changeAmbient('combat');
+  let cl = document.getElementById('combat-log');
+  if(cl) cl.innerHTML = `> ВСТРЕЧА: ${data.enemy.name}!\n`;
+  playSound('roar');
+  document.getElementById('explore-controls').style.display = 'none';
+  document.getElementById('combat-controls').style.display = 'flex';
+  let es = document.getElementById('enemy-sprite'); if(es) { es.style.display = 'block'; es.src = `assets/monsters/${data.enemy.img}`; }
+  document.getElementById('enemy-hp-bar').style.display = 'block';
+  document.getElementById('ui-enemy-hp').innerText = data.enemy.hp;
+  isAiming = false; clearInterval(aimInterval);
+  document.getElementById('aim-bar-container').style.display = 'none';
+  document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+});
+
+let mgData = null, mgStep = 0, mgInput = [], currentGameLoc = null;
+
+socket.on('startCombatMinigame', (data) => {
+  if(data.type === 'voltage') {
+    mgStep = 0; mgInput = [0]; mgData = data;
+    document.getElementById('mg-title').innerText = "ПЕРЕГРУЗКА РЕАКТОРА";
+    document.getElementById('mg-text').innerText = "КАЛИБРОВКА ЯДРА.";
+    document.getElementById('btn-mg-cancel').style.display = 'none';
+    updateVoltageUI();
+    document.getElementById('minigame-modal').style.display = 'flex';
+  }
+});
+
+socket.on('combatTick', (data) => {
+  let cl = document.getElementById('combat-log');
+  if (data.logs && data.logs.length > 0 && cl) { cl.innerHTML += data.logs.join('\n') + '\n'; cl.scrollTop = cl.scrollHeight; }
+  if (data.enemyHp !== undefined) { let e = document.getElementById('ui-enemy-hp'); if(e) e.innerText = data.enemyHp; }
+  if (data.sounds) data.sounds.forEach(s => playSound(s));
+  if (data.vfx) data.vfx.forEach(v => {
+    if (v === 'enemy_hit') applyVFX('enemy-vfx-container', 'vfx-slash');
+    if (v === 'enemy_crit') { applyVFX('enemy-vfx-container', 'vfx-slash'); applyVFX('enemy-vfx-container', 'vfx-crit'); }
+    if (v === 'player_hit') { applyVFX('player-vfx-container', 'vfx-player-hit'); let p = document.getElementById('player-battle-avatar'); if(p) { p.classList.add('avatar-shake'); setTimeout(()=>p.classList.remove('avatar-shake'),300); } }
+    if (v === 'player_dodge') { let p = document.getElementById('player-battle-avatar'); if(p) { p.classList.add('avatar-shake'); setTimeout(()=>p.classList.remove('avatar-shake'),300); } }
+    if (v === 'heal') applyVFX('player-vfx-container', 'vfx-heal');
+    if (v === 'explosion') applyVFX('enemy-vfx-container', 'vfx-explosion');
+  });
+});
+
+socket.on('combatEnd', (data) => {
+  restoreAmbient();
+  let cl = document.getElementById('combat-log');
+  if(cl) { cl.innerHTML += (data.log || '') + '\n'; cl.scrollTop = cl.scrollHeight; }
+  playSound(data.win ? 'victory' : 'defeat');
+  document.getElementById('combat-controls').style.display = 'none';
+  document.getElementById('explore-controls').style.display = 'flex';
+  document.getElementById('enemy-hp-bar').style.display = 'none';
+  isAiming = false; clearInterval(aimInterval);
+  document.getElementById('aim-bar-container').style.display = 'none';
+  document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+});
+
+socket.on('triggerEvent', (ev) => {
+  document.getElementById('event-title').innerText = ev.title;
+  document.getElementById('event-text').innerText = ev.text;
+  const c = document.getElementById('event-choices');
+  c.innerHTML = '';
+  ev.choices.forEach(x => {
+    let b = document.createElement('button'); b.innerText = x.text; b.style.width = '100%';
+    if (x.text.includes('[РИСК]')) { b.style.borderColor = 'var(--term-warn)'; b.style.color = 'var(--term-warn)'; }
+    b.onclick = () => { socket.emit('resolveEvent', x.id); document.getElementById('event-modal').style.display = 'none'; };
+    c.appendChild(b);
+  });
+  document.getElementById('event-modal').style.display = 'flex';
+});
+
+socket.on('startMinigame', (data) => {
+  currentGameLoc = data.locId; mgData = data.gameData;
+  const modal = document.getElementById('minigame-modal');
+  const art = document.getElementById('mg-art');
+  const ui = document.getElementById('mg-ui');
+  document.getElementById('btn-mg-cancel').style.display = 'block';
+  document.getElementById('mg-title').innerText = mgData.title;
+  document.getElementById('mg-text').innerText = mgData.text;
+  modal.style.display = 'flex';
+  if (mgData.type === 'password') {
+    art.innerText = `\n  +---------------+\n  | КОД ДОСТУПА   |\n  +---------------+`;
+    ui.innerHTML = `<input type="text" id="mg-pass-input" placeholder="____" maxlength="4" style="text-align:center; letter-spacing:10px; font-size:22px;"><button onclick="checkPass()" style="width:100%;">ВВОД</button>`;
+  } else if (mgData.type === 'voltage') {
+    mgStep = 0; mgInput = [0]; updateVoltageUI();
+  } else {
+    art.innerText = `\n  +---------------+\n  | ВЗЛОМ...      |\n  +---------------+`;
+    ui.innerHTML = `<button onclick="socket.emit('minigameWon', '${data.locId}'); document.getElementById('minigame-modal').style.display='none';">ВЗЛОМАТЬ</button>`;
+  }
+});
+
+function checkPass() { let p = document.getElementById('mg-pass-input'); if (p && p.value === mgData.answer) { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } else { playSound('defeat'); if (p) p.value = ''; } }
+function updateVoltageUI() { const art = document.getElementById('mg-art'), ui = document.getElementById('mg-ui'); if(!art || !ui) return; let w = mgInput[0].toString().padStart(3, '0'); art.innerText = `\n      ___\n     | + |\n     |---|\n     |${w}W|\n     |___|`; ui.innerHTML = `<div style="margin-bottom:10px;">Цель: ${mgData.target}W | Кликов: ${4 - mgStep}</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button onclick="addVolt(30)">+30</button><button onclick="addVolt(20)">+20</button><button onclick="addVolt(10)">+10</button><button onclick="addVolt(-10)">-10</button></div>`; }
+function addVolt(v) { mgInput[0] += v; mgStep++; if (mgStep >= 4) { if (mgInput[0] === mgData.target) { document.getElementById('minigame-modal').style.display = 'none'; let cc = document.getElementById('combat-controls'); if(cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true); else socket.emit('minigameWon', currentGameLoc); } else { playSound('defeat'); let cc = document.getElementById('combat-controls'); if(cc && cc.style.display === 'flex' && !currentGameLoc) { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('combatMinigameResult', false); } else { document.getElementById('mg-ui').innerHTML = `<div style="color:var(--term-danger); font-size:20px; margin-bottom:10px;">ПРОМАХ</div><button onclick="mgStep=0; mgInput=[0]; updateVoltageUI();" style="width:100%;">ПОВТОРИТЬ</button>`; } } } else updateVoltageUI(); }
+function cancelMinigame() { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('minigameCancel'); }
+
+socket.on('terminalError', (msg) => {
+  const el = document.getElementById('auth-error');
+  const h = document.getElementById('hub-error');
+  const ls = document.getElementById('login-screen');
+  const hs = document.getElementById('hub-screen');
+  let cl = document.getElementById('combat-log');
+  if (el && ls.classList.contains('active-screen')) el.innerText = msg;
+  else if (h && hs.classList.contains('active-screen')) { h.innerText = msg; setTimeout(() => h.innerText = "", 4000); }
+  else if (cl) { cl.innerHTML += `> ${msg}\n`; cl.scrollTop = cl.scrollHeight; }
+});
+socket.on('playSound', (name) => playSound(name));
+
+function prepareQuickEquip(invIndex) {
+  pendingEquipIndex = invIndex;
+  let q0 = document.getElementById('inv-qslot-0');
+  let q1 = document.getElementById('inv-qslot-1');
+  if(q0) { q0.style.borderColor = 'var(--term-danger)'; q0.style.background = 'rgba(255,50,50,0.15)'; q0.innerHTML = '<b style="color:var(--term-danger);">[СЮДА 1]</b>'; }
+  if(q1) { q1.style.borderColor = 'var(--term-danger)'; q1.style.background = 'rgba(255,50,50,0.15)'; q1.innerHTML = '<b style="color:var(--term-danger);">[СЮДА 2]</b>'; }
+  playSound('click');
+}
+function resetQuickSlotStyle() {
+  let q0 = document.getElementById('inv-qslot-0');
+  let q1 = document.getElementById('inv-qslot-1');
+  if(q0) { q0.style.borderColor = '#880000'; q0.style.background = 'rgba(122,0,0,0.08)'; }
+  if(q1) { q1.style.borderColor = '#880000'; q1.style.background = 'rgba(122,0,0,0.08)'; }
+}
+function clickQuickSlot(slotIdx) {
+  if (pendingEquipIndex !== null) {
+    socket.emit('setQuickSlot', { invIndex: pendingEquipIndex, slotIndex: slotIdx });
+    pendingEquipIndex = null;
+    resetQuickSlotStyle();
+    playSound('equip');
+  } else socket.emit('unequipQuickSlot', slotIdx);
+}
+function bindQuickSlotClicks() {
+  [0, 1].forEach(slotIdx => {
+    let el = document.getElementById(`inv-qslot-${slotIdx}`);
+    if (!el) return;
+    if (el._qsHandler) el.removeEventListener('click', el._qsHandler);
+    let h = (e) => { e.stopPropagation(); clickQuickSlot(slotIdx); };
+    el._qsHandler = h;
+    el.addEventListener('click', h);
+  });
+}
+function bindChestButtons() {
+  const chest = document.getElementById('chest-container');
+  if (!chest) return;
+  if (chest._chestHandler) chest.removeEventListener('click', chest._chestHandler);
+  let h = (e) => {
+    let btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    e.stopPropagation();
+    let action = btn.dataset.action;
+    let idx = parseInt(btn.dataset.index);
+    if (action === 'belt') prepareQuickEquip(idx);
+    else if (action === 'use') socket.emit('useItem', idx);
+    else if (action === 'equip') socket.emit('equipItem', idx);
+    else if (action === 'drop') socket.emit('dropItem', idx);
+  };
+  chest._chestHandler = h;
+  chest.addEventListener('click', h);
+}
+
+function updateUI(me, sectorPlayers) {
+  if (!me || !me.stats) return;
+  let pt = document.querySelector('.ui-playtime'); if(pt && me.playtime !== undefined) pt.innerText = formatTime(me.playtime);
+  if (me.appearance && me.appearance.skin) {
+    let s = `assets/character/${me.appearance.skin}.png`;
+    let is = document.getElementById('inv-base-skin'); if(is) is.src = s;
+    let bs = document.getElementById('battle-base-skin'); if(bs) bs.src = s;
+  }
+  let fl = document.getElementById('ui-current-floor'); if(fl) fl.innerText = me.floor;
+  document.querySelectorAll('.ui-level').forEach(el => el.innerText = me.level);
+  document.querySelectorAll('.ui-xp').forEach(el => el.innerText = me.xp);
+  document.querySelectorAll('.ui-max-xp').forEach(el => el.innerText = me.level * 100);
+  document.querySelectorAll('.ui-maxhp').forEach(el => el.innerText = me.stats.maxHp);
+  document.querySelectorAll('.ui-score').forEach(el => el.innerText = me.talons);
+  document.querySelectorAll('.ui-kills').forEach(el => el.innerText = me.monstersKilled || 0);
+  document.querySelectorAll('.ui-rooms').forEach(el => el.innerText = me.roomsCleared || 0);
+  document.querySelectorAll('.ui-rating').forEach(el => el.innerText = me.rating || 0);
+  document.querySelectorAll('.ui-title').forEach(el => el.innerText = me.title);
+  document.querySelectorAll('.ui-rank').forEach(el => el.innerText = me.rankPos);
+  let hp = (me.stats.hp / me.stats.maxHp) * 100;
+  document.querySelectorAll('.ui-hp').forEach(el => { el.innerText = me.stats.hp; el.classList.toggle('critical-hp', hp < 50); });
+  if (hp < 50 && me.stats.hp > 0) { if (!lowHpWarningPlayed) { playSound('low_hp'); lowHpWarningPlayed = true; } } else lowHpWarningPlayed = false;
+  document.querySelectorAll('.ui-filter').forEach(el => el.innerText = me.stats.filter);
+  document.querySelectorAll('.filter-bar').forEach(el => { el.style.width = me.stats.filter + '%'; el.style.background = (me.stats.filter <= 20) ? 'var(--term-danger)' : 'var(--term-green)'; });
+  document.querySelectorAll('.ui-hunger').forEach(el => el.innerText = me.hunger);
+  document.querySelectorAll('.hunger-bar').forEach(el => el.style.width = me.hunger + '%');
+  document.querySelectorAll('.ui-tox').forEach(el => el.innerText = me.tox);
+  document.querySelectorAll('.tox-bar').forEach(el => el.style.width = me.tox + '%');
+
+  if (me.equipment) {
+    ['clothes', 'mask', 'weapon'].forEach(slot => {
+      const itemId = me.equipment[slot];
+      const itemData = GAME_ITEMS[itemId];
+      const iconId = (itemData && itemData.iconId) ? itemData.iconId : itemId;
+      let iI = document.getElementById(`inv-img-${slot}`);
+      let bI = document.getElementById(`battle-${slot}`);
+      const nD = document.getElementById(`inv-${slot}-name`);
+      if (itemId && itemData) {
+        let url = `assets/${slot}/${iconId}.png`;
+        if(iI) { iI.src = url; iI.style.display = 'block'; }
+        if(bI) { bI.src = url; bI.style.display = 'block'; }
+        if(nD) nD.innerHTML = `<span style="font-weight:bold;">${itemData.name}</span>`;
+      } else {
+        if(iI) { iI.src = ''; iI.style.display = 'none'; }
+        if(bI) { bI.src = ''; bI.style.display = 'none'; }
+        if(nD) nD.innerText = "Пусто";
+      }
+    });
+    let bp = GAME_ITEMS[me.equipment.backpack];
+    let bpN = document.getElementById('inv-backpack-name');
+    if (bp && bpN) bpN.innerHTML = `<span style="font-weight:bold;">${bp.name}</span>`;
+    else if (bpN) bpN.innerText = "Пусто";
+    let id = document.getElementById('inv-dmg'); if(id) id.innerText = me.stats.dmg;
+    let idef = document.getElementById('inv-def'); if(idef) idef.innerText = me.stats.def;
+  }
+
+  for (let i = 0; i < 2; i++) {
+    let itemId = me.quickSlots[i];
+    let iS = document.getElementById(`inv-qslot-${i}`);
+    let cS = document.getElementById(`combat-qslot-${i}`);
+    if (itemId && GAME_ITEMS[itemId]) {
+      if(iS) { iS.innerHTML = `<div style="font-weight:bold; color:var(--ink-accent);">${GAME_ITEMS[itemId].name}</div><div style="font-size:10px; color:var(--ink-dim);">(КЛИК - СНЯТЬ)</div>`; }
+      if(cS) { cS.innerHTML = `${GAME_ITEMS[itemId].name}<br><span style="color:#fff;">(ПРИМЕНИТЬ)</span>`; }
+    } else if (pendingEquipIndex === null) {
+      if(iS) { iS.innerHTML = "[ПУСТО]"; iS.style.borderColor = '#880000'; iS.style.background = 'rgba(122,0,0,0.08)'; }
+      if(cS) { cS.innerHTML = "[ПУСТО]"; }
+    }
+  }
+
+  if (me.questItems) {
+    const qc = document.getElementById('quest-items-container');
+    if(qc) {
+      if (me.questItems.length === 0) qc.innerHTML = '<span style="color:var(--ink-dim);">Пусто...</span>';
+      else { qc.innerHTML = ''; me.questItems.forEach(iId => { let q = GAME_ITEMS[iId]; if(q) qc.innerHTML += `<div class="quest-item"><div class="quest-item-title">${q.name}</div></div>`; }); }
+    }
+  }
+
+  if (me.perks || me.mutations) {
+    const pc = document.getElementById('perks-container');
+    if(pc) {
+      pc.innerHTML = '';
+      let any = false;
+      if(me.perks) me.perks.forEach(pId => { let p = GAME_PERKS.find(x => x.id === pId); if(p) { pc.innerHTML += `<div style="padding:3px; border-bottom:1px dotted rgba(122,16,16,0.3);"><b>${p.name}</b><br><span style="font-size:11px;">${p.desc}</span></div>`; any = true; } });
+      if(me.mutations) me.mutations.forEach(mId => { let m = MUTATIONS.find(x => x.id === mId); if(m) { pc.innerHTML += `<div style="padding:3px; color:#7a1010;"><b>[МУТ] ${m.name}</b><br><span style="font-size:11px;">${m.desc}</span></div>`; any = true; } });
+      if(!any) pc.innerHTML = 'Пусто';
+    }
+  }
+
+  const sellC = document.getElementById('shop-sell-container');
+  const chestC = document.getElementById('chest-container');
+  const capEl = document.getElementById('inv-capacity');
+  if(capEl) capEl.innerText = `${me.inventory.length}/${me.maxInv}`;
+  if (sellC) sellC.innerHTML = '';
+  if (chestC) chestC.innerHTML = '';
+
+  let wSel = document.getElementById('mod-weapon-select');
+  let mSel = document.getElementById('mod-mat-select');
+  if(wSel) wSel.innerHTML = '<option value="">-- ОРУЖИЕ --</option>';
+  if(mSel) mSel.innerHTML = '<option value="">-- МАТЕРИАЛ --</option>';
+
+  if (me.inventory) {
+    me.inventory.forEach((itemId, index) => {
+      const item = GAME_ITEMS[itemId];
+      if (!item) return;
+      if (item.type === 'weapon' && wSel && !item.isFire && !item.isElectro && !item.isBleed)
+        wSel.innerHTML += `<option value="${index}">${item.name}</option>`;
+      if (item.type === 'material' && mSel && (itemId === 'mat_chem' || itemId === 'mat_electro' || itemId === 'mat_scrap'))
+        mSel.innerHTML += `<option value="${index}">${item.name}</option>`;
+
+      const iconName = item.iconId || itemId;
+      const iconPath = `assets/icons/${iconName}.png`;
+
+      if (chestC) {
+        let div = document.createElement('div');
+        div.className = 'chest-item';
+        let typeLabel = 'ПРЕДМЕТ';
+        if (item.type === 'consumable') typeLabel = 'МЕДИЦИНА';
+        else if (item.type === 'special') typeLabel = 'СПЕЦСРЕДСТВО';
+        else if (item.type === 'material') typeLabel = 'МАТЕРИАЛ';
+        else if (item.type === 'tool') typeLabel = 'ИНСТРУМЕНТ';
+        else if (item.type === 'backpack') typeLabel = 'РЮКЗАК';
+        else if (item.type === 'weapon') typeLabel = 'ОРУЖИЕ';
+        else if (item.type === 'clothes') typeLabel = 'ЗАЩИТА';
+        else if (item.type === 'mask') typeLabel = 'МАСКА';
+
+        let btns = '';
+        if (item.type === 'consumable' || item.type === 'special' || item.isCure)
+          btns += `<button data-action="belt" data-index="${index}">НА ПОЯС</button>`;
+        if (item.type === 'consumable' || item.isCure)
+          btns += `<button data-action="use" data-index="${index}">ИСПОЛЬЗ.</button>`;
+        if (item.type === 'weapon' || item.type === 'clothes' || item.type === 'mask' || item.type === 'backpack')
+          btns += `<button data-action="equip" data-index="${index}">НАДЕТЬ</button>`;
+        btns += `<button data-action="drop" data-index="${index}">ВЫБРОС</button>`;
+
+        div.innerHTML = `<img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div class="item-type">[${typeLabel}]</div><div style="font-weight:bold; font-size: 12px;">${item.name}</div><div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${btns}</div>`;
+        chestC.appendChild(div);
+      }
+
+      if (sellC && item.type !== 'material' && item.type !== 'tool') {
+        let price = Math.min(35, Math.max(3, Math.floor((item.cost || 5) * 0.4)));
+        sellC.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div style="font-size: 13px;">${item.name}</div></div><div><span style="color:var(--term-warn); font-size: 13px;">+${price} т.</span> <button onclick="socket.emit('sellItem', ${index})" style="border-color:var(--term-danger); color:var(--term-danger); margin-left:6px; padding:3px 8px; font-size:11px;">СДАТЬ</button></div></div>`;
+      }
+    });
+  }
+  bindQuickSlotClicks();
+  bindChestButtons();
+
+  let rp = document.getElementById('robot-panel');
+  let rs = document.getElementById('robot-status');
+  let rb = document.getElementById('btn-robot-action');
+  if (me.location !== 'safe_room') {
+    if(rp) rp.style.display = 'block';
+    if (me.currentRobot !== null) {
+      if(rs) rs.innerHTML = `🤖 Сборщик: <span style="color:var(--term-warn);">${me.currentRobot}/250</span>`;
+      if(rb) { rb.innerText = 'СОБРАТЬ'; rb.onclick = () => socket.emit('collectRobot'); rb.style.borderColor = 'var(--term-info)'; rb.style.color = 'var(--term-info)'; }
+    } else {
+      if(rs) rs.innerHTML = `🤖 Сборщик не установлен`;
+      if(rb) { rb.innerText = 'УСТАНОВИТЬ'; rb.onclick = () => socket.emit('installRobot'); rb.style.borderColor = 'var(--term-warn)'; rb.style.color = 'var(--term-warn)'; }
+    }
+  } else { if(rp) rp.style.display = 'none'; }
+
+  let expT = me.location === 'E4' ? '[ ЗАПУСТИТЬ ЛИФТ ]' : 'ВЫЛАЗКА В ТУМАН';
+  let expC = me.location === 'E4' ? 'var(--term-warn)' : 'var(--term-danger)';
+  let ec = document.getElementById('explore-controls');
+  if (ec) {
+    ec.innerHTML = `<div class="row-2"><button onclick="socket.emit('work');" style="color: var(--term-info); border-color: var(--term-info);">ФАРМ СЛИЗИ</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">БЛОКНОТ</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='> Входим в туман...\\n'; socket.emit('explore');" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #666; border-color: #444;">ВЕРНУТЬСЯ</button>`;
+  }
+
+  let ls = document.getElementById('login-screen');
+  let ins = document.getElementById('intro-screen');
+  if (ls.classList.contains('active-screen')) return;
+  if (ins.classList.contains('active-screen')) return;
+
+  const invM = document.getElementById('inventory-modal'), shopM = document.getElementById('shop-modal'), mgM = document.getElementById('minigame-modal'), evM = document.getElementById('event-modal'), crM = document.getElementById('craft-modal'), inM = document.getElementById('info-modal'), chM = document.getElementById('chat-modal');
+  let mapS = document.getElementById('map-screen');
+
+  if (me.location === 'safe_room') {
+    if (!mapS.classList.contains('active-screen')) showScreen('hub-screen');
+    let bg = document.getElementById('bg-layer'); if(bg) bg.style.backgroundImage = `url('assets/locations/bg_safe_room.png')`;
+    document.getElementById('combat-controls').style.display = 'none';
+    document.getElementById('explore-controls').style.display = 'flex';
+    document.getElementById('enemy-hp-bar').style.display = 'none';
+    if ((!invM || invM.style.display !== 'flex') && (!shopM || shopM.style.display !== 'flex') && (!mgM || mgM.style.display !== 'flex') && (!evM || evM.style.display !== 'flex') && (!crM || crM.style.display !== 'flex') && (!inM || inM.style.display !== 'flex') && (!chM || chM.style.display !== 'flex') && !mapS.classList.contains('active-screen')) {
+      changeAmbient('hub');
+    }
+  } else {
+    showScreen('game-screen');
+    const node = serverMap[me.location];
+    let bg = document.getElementById('bg-layer');
+    let clt = document.getElementById('current-location-title');
+    if (node) { if(clt) clt.innerText = node.name; if(bg) bg.style.backgroundImage = `url('assets/locations/${node.bg}')`; }
+    let cc = document.getElementById('combat-controls');
+    if (cc && cc.style.display === 'flex') changeAmbient('combat');
+    else if ((!invM || invM.style.display !== 'flex') && (!mgM || mgM.style.display !== 'flex') && (!evM || evM.style.display !== 'flex')) changeAmbient('explore');
+    const radar = document.getElementById('players-in-sector');
+    if (radar && sectorPlayers) {
+      radar.innerHTML = '';
+      sectorPlayers.forEach(p => {
+        if (p.username !== myUsername) {
+          let d = document.createElement('div'); d.className = 'player-entry';
+          d.innerHTML = `<span>[${p.username}] HP:${p.hp}</span><div><button onclick="socket.emit('pvpAttack', '${p.id}')" style="margin:0 4px 0 0; padding:3px 8px; font-size:11px; border-color:var(--term-danger); color:var(--term-danger);">АТАКА</button><button onclick="socket.emit('coopHeal', '${p.id}')" style="margin:0; padding:3px 8px; font-size:11px; border-color:var(--term-green); color:var(--term-green);">ПОМОЧЬ</button></div>`;
+          radar.appendChild(d);
         }
-
-        let musicEnabled = true; let sfxEnabled = true; let crtEnabled = true;
-        const btnMusic = document.getElementById('btn-toggle-music'); 
-        const btnSfx = document.getElementById('btn-toggle-sfx');
-        const btnCrt = document.getElementById('btn-toggle-crt');
-        const btnOptions = document.getElementById('btn-options');
-        const optionsMenu = document.getElementById('options-menu');
-
-        function formatTime(sec) {
-            let h = Math.floor(sec / 3600).toString().padStart(2, '0');
-            let m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
-            let s = (sec % 60).toString().padStart(2, '0');
-            return `${h}:${m}:${s}`;
-        }
-
-        if(btnOptions) {
-            btnOptions.onclick = () => {
-                if (optionsMenu.style.display === 'flex') { optionsMenu.style.display = 'none'; } 
-                else { optionsMenu.style.display = 'flex'; }
-                playSound('click');
-            };
-        }
-
-        if(btnMusic) {
-            btnMusic.onclick = () => {
-                musicEnabled = !musicEnabled;
-                if(musicEnabled) { btnMusic.innerText = "🎵 Музыка (ВКЛ)"; btnMusic.classList.remove('muted'); if (currentAmbient && AMBIENTS[currentAmbient]) AMBIENTS[currentAmbient].play().catch(e=>console.log(e)); } 
-                else { btnMusic.innerText = "🎵 Музыка (ВЫКЛ)"; btnMusic.classList.add('muted'); Object.values(AMBIENTS).forEach(a => a.pause()); }
-                playSound('click');
-            };
-        }
-        
-        if(btnSfx) {
-            btnSfx.onclick = () => {
-                sfxEnabled = !sfxEnabled;
-                if(sfxEnabled) { btnSfx.innerText = "🔊 Звуки (ВКЛ)"; btnSfx.classList.remove('muted'); } 
-                else { btnSfx.innerText = "🔊 Звуки (ВЫКЛ)"; btnSfx.classList.add('muted'); }
-                playSound('click');
-            };
-        }
-        
-        if(btnCrt) {
-            btnCrt.onclick = () => {
-                crtEnabled = !crtEnabled;
-                if(crtEnabled) {
-                    btnCrt.innerText = "📺 CRT-эффект (ВКЛ)"; btnCrt.classList.remove('muted');
-                    document.body.classList.add('crt-enabled');
-                } else {
-                    btnCrt.innerText = "📺 CRT-эффект (ВЫКЛ)"; btnCrt.classList.add('muted');
-                    document.body.classList.remove('crt-enabled');
-                }
-                playSound('click');
-            };
-        }
-
-        const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/sounds/ambient_combat.mp3') };
-        Object.values(AMBIENTS).forEach(a => { a.loop = true; a.volume = 0; });
-        let currentAmbient = null; const AMBIENT_MAX_VOL = 0.35; 
-        
-        function changeAmbient(trackName) {
-            if (currentAmbient === trackName) return;
-            const oldTrackName = currentAmbient; const newTrack = AMBIENTS[trackName]; currentAmbient = trackName;
-            if (oldTrackName && AMBIENTS[oldTrackName]) { let oldAudio = AMBIENTS[oldTrackName]; let fadeOut = setInterval(() => { if (oldAudio.volume > 0.05) oldAudio.volume -= 0.05; else { oldAudio.volume = 0; oldAudio.pause(); clearInterval(fadeOut); } }, 150); }
-            if (newTrack && musicEnabled) { newTrack.volume = 0; newTrack.play().catch(e => console.log(e)); let fadeIn = setInterval(() => { if (newTrack.volume < AMBIENT_MAX_VOL - 0.05) newTrack.volume += 0.05; else { newTrack.volume = AMBIENT_MAX_VOL; clearInterval(fadeIn); } }, 150); }
-        }
-        function restoreAmbient() {
-            let combatControls = document.getElementById('combat-controls');
-            let gameScreen = document.getElementById('game-screen');
-            let mapScreen = document.getElementById('map-screen');
-            
-            if (combatControls && combatControls.style.display === 'flex') changeAmbient('combat');
-            else if (gameScreen && gameScreen.classList.contains('active-screen')) changeAmbient('explore');
-            else if (mapScreen && mapScreen.classList.contains('active-screen')) changeAmbient('map');
-            else changeAmbient('hub');
-        }
-
-        const SOUNDS = { click: new Audio('assets/sounds/click.mp3'), hit_player: new Audio('assets/sounds/hit_player.mp3'), hit_enemy: new Audio('assets/sounds/hit_enemy.mp3'), hit_crit: new Audio('assets/sounds/hit_crit.mp3'), dodge: new Audio('assets/sounds/dodge.mp3'), roar: new Audio('assets/sounds/roar.mp3'), heal: new Audio('assets/sounds/heal.mp3'), special: new Audio('assets/sounds/special.mp3'), victory: new Audio('assets/sounds/victory.mp3'), defeat: new Audio('assets/sounds/defeat.mp3'), low_hp: new Audio('assets/sounds/low_hp.mp3'), equip: new Audio('assets/sounds/equip.mp3'), buy: new Audio('assets/sounds/buy.mp3'), farm: new Audio('assets/sounds/farm.mp3') };
-        Object.values(SOUNDS).forEach(s => s.volume = 0.5);
-        let lowHpWarningPlayed = false;
-        function playSound(name) { if (SOUNDS[name] && sfxEnabled) { let s = SOUNDS[name].cloneNode(); s.volume = SOUNDS[name].volume; s.play().catch(e=>console.log(e)); } }
-        
-        document.addEventListener('click', (e) => { 
-            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
-                if(!e.target.classList.contains('opt-btn') && e.target.id !== 'btn-options') {
-                    playSound('click'); 
-                }
-            }
-        });
-
-        let btnOpenChat = document.getElementById('open-chat-btn');
-        if(btnOpenChat) {
-            btnOpenChat.onclick = () => {
-                document.getElementById('chat-modal').style.display = 'flex';
-                let msgBox = document.getElementById('chat-messages');
-                if(msgBox) msgBox.scrollTop = msgBox.scrollHeight;
-                playSound('click');
-            };
-        }
-        
-        let btnOpenLeaderboard = document.getElementById('open-leaderboard-btn');
-        if(btnOpenLeaderboard) {
-            btnOpenLeaderboard.onclick = () => {
-                document.getElementById('leaderboard-modal').style.display = 'flex';
-                playSound('click');
-            };
-        }
-
-        const chatInput = document.getElementById('chat-input');
-        const btnSendChat = document.getElementById('btn-send-chat');
-
-        function sendChat() {
-            if(!chatInput || !btnSendChat) return;
-            let msg = chatInput.value.trim();
-            if(msg) {
-                socket.emit('sendChatMessage', msg);
-                chatInput.value = '';
-                btnSendChat.disabled = true;
-                btnSendChat.innerText = 'ОЖИДАНИЕ...';
-                setTimeout(() => {
-                    btnSendChat.disabled = false;
-                    btnSendChat.innerText = 'ОТПРАВИТЬ';
-                }, 2000); 
-            }
-        }
-        if(btnSendChat) btnSendChat.onclick = sendChat;
-        if(chatInput) {
-            chatInput.addEventListener('keypress', (e) => {
-                if(e.key === 'Enter' && !btnSendChat.disabled) sendChat();
-            });
-        }
-
-        let btnInfo = document.getElementById('btn-info');
-        if(btnInfo) btnInfo.onclick = () => { document.getElementById('info-modal').style.display = 'flex'; playSound('click'); };
-
-        const socket = io();
-        let myUsername = ""; let serverMap = {}; let myUnlockedSectors = []; let myQuestItems = []; let myQuickSlots = [null, null];
-        let GAME_PERKS = []; let GAME_ITEMS = {}; let MUTATIONS = [];
-        let currentShopItems = []; let shopUpdateTimestamp = 0;
-        let isTyping = false, typingTimer, fullLoreText = "", charIndex = 0;
-        let bestiaryRendered = false;
-
-        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen')); document.getElementById(id).classList.add('active-screen'); }
-
-        let loginBtn = document.getElementById('login-btn');
-        if(loginBtn) {
-            loginBtn.onclick = () => { const u = document.getElementById('username').value; const p = document.getElementById('password').value; if (u && p) { socket.emit('login', { username: u, password: p }); } };
-        }
-
-        function startBootSequence() {
-            changeAmbient('hub'); showScreen('intro-screen'); 
-            let itc = document.getElementById('intro-text-container');
-            if(itc) itc.innerHTML = ""; 
-            isTyping = true; charIndex = 0;
-            
-            fullLoreText = `GIGAHOUSE-OS v.19.84 загрузка...\nАВТОРИЗАЦИЯ: ЗАКЛЮЧЕННЫЙ #${myUsername.toUpperCase()}\n\n[СИСТЕМНОЕ ОПОВЕЩЕНИЕ]: СИРЕНА САМОСБОРА В АКТИВНОЙ ФАЗЕ.\n\nПАМЯТЬ ПОВРЕЖДЕНА. ВОССТАНОВЛЕНИЕ ПОСЛЕДНИХ ДАННЫХ:\nНас, приговоренных, загнали в клеть и отправили на нулевой этаж для зачистки.\nВнезапный скрежет. Обрыв троса. Свободное падение.\n\nЯ очнулся в темноте, окруженный воем сирен. Рядом лежал растерзанный конвоир.\nЯ сорвал с него противогаз и заперся в первой попавшейся жилячейке.\n\nПартия Светлых обещала искупление через труд. \nНо здесь нет ничего, кроме Бетона и Слизи.\n\nЦЕЛЬ: Вспомнить свое прошлое. Найти Главный Лифт (E4). Выжить.`;
-            
-            function typeChar() { 
-                if (!isTyping) return; 
-                let el = document.getElementById('intro-text-container');
-                if (charIndex < fullLoreText.length && el) { 
-                    el.innerHTML = fullLoreText.substring(0, charIndex + 1) + '<span class="cursor"></span>'; 
-                    charIndex++; 
-                    if (charIndex % 2 === 0) playSound('click'); 
-                    typingTimer = setTimeout(typeChar, 30); 
-                } else { finishTyping(); } 
-            } 
-            typeChar();
-        }
-        function finishTyping() { 
-            isTyping = false; clearTimeout(typingTimer); 
-            let el = document.getElementById('intro-text-container');
-            if(el) el.innerHTML = fullLoreText + '<span class="cursor"></span>'; 
-        }
-        document.addEventListener('keydown', (e) => { 
-            let introScreen = document.getElementById('intro-screen');
-            if (e.code === 'Space' && introScreen && introScreen.classList.contains('active-screen')) { 
-                if (isTyping) finishTyping(); 
-                else socket.emit('saveCharacter', { created: true }); 
-            } 
-        });
-
-        socket.on('loginSuccess', (data) => { myUsername = data.username; if (data.showIntro) startBootSequence(); else { showScreen('hub-screen'); changeAmbient('hub'); } });
-        
-        socket.on('startGame', () => { 
-            let loginScreen = document.getElementById('login-screen');
-            let introScreen = document.getElementById('intro-screen');
-            if(loginScreen) loginScreen.classList.remove('active-screen'); 
-            if(introScreen) introScreen.classList.remove('active-screen'); 
-        }); 
-        
-        socket.on('chatHistory', (history) => {
-            const box = document.getElementById('chat-messages');
-            if(!box) return;
-            box.innerHTML = '';
-            history.forEach(m => { box.innerHTML += `<div><span style="color:#888;">[${m.time}]</span> <span style="color:#ffaa00;">${m.user}:</span> ${m.text}</div>`; });
-            box.scrollTop = box.scrollHeight;
-        });
-
-        socket.on('chatMessage', (m) => {
-            const box = document.getElementById('chat-messages');
-            if(!box) return;
-            box.innerHTML += `<div><span style="color:#888;">[${m.time}]</span> <span style="color:#ffaa00;">${m.user}:</span> ${m.text}</div>`;
-            box.scrollTop = box.scrollHeight;
-        });
-
-        socket.on('gameState', (data) => {
-            serverMap = data.map; myUnlockedSectors = data.me.unlockedSectors || []; myQuickSlots = data.me.quickSlots || [null, null]; myQuestItems = data.me.questItems || [];
-            if(data.GAME_PERKS) GAME_PERKS = data.GAME_PERKS;
-            if(data.GAME_ITEMS) GAME_ITEMS = data.GAME_ITEMS;
-            if(data.MUTATIONS) MUTATIONS = data.MUTATIONS;
-            if(data.shopItems) currentShopItems = data.shopItems;
-            if(data.nextShopUpdate) shopUpdateTimestamp = data.nextShopUpdate;
-            
-            // Рендер Бестиария
-            if (data.BESTIARY && !bestiaryRendered) {
-                let listUi = document.getElementById('bestiary-list-ui');
-                let detailsUi = document.getElementById('bestiary-details');
-                let btnBes = document.getElementById('btn-bestiary');
-                if (btnBes) {
-                    btnBes.style.display = 'block';
-                    btnBes.onclick = () => { document.getElementById('bestiary-modal').style.display = 'flex'; playSound('click'); };
-                }
-                if (listUi && detailsUi) {
-                    data.BESTIARY.forEach(mob => {
-                        let li = document.createElement('li');
-                        li.innerText = mob.name;
-                        li.onclick = () => {
-                            document.querySelectorAll('.bestiary-list li').forEach(el => el.classList.remove('active'));
-                            li.classList.add('active');
-                            playSound('click');
-                            detailsUi.innerHTML = `
-                                <div style="display:flex; gap:20px; align-items:flex-start;">
-                                    <div style="width:200px; height:200px; border:2px dashed #ffaa00; display:flex; justify-content:center; align-items:center; background:#111;">
-                                        <img src="assets/monsters/${mob.img}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="[НЕТ ИЗОБРАЖЕНИЯ]">
-                                    </div>
-                                    <div style="flex-grow:1;">
-                                        <h2 style="margin-top:0; color:#ffaa00;">${mob.name}</h2>
-                                        <div style="color:#888; font-size:14px; margin-bottom:15px;">МИНИМАЛЬНЫЙ УРОВЕНЬ ЗАГРОЗЫ: ЭТАЖ ${mob.minFloor}</div>
-                                        <div style="font-size:16px; color:#fff; line-height:1.6;">${mob.lore}</div>
-                                    </div>
-                                </div>
-                            `;
-                        };
-                        listUi.appendChild(li);
-                    });
-                }
-                bestiaryRendered = true;
-            }
-
-            if(data.leaderboard) {
-                let lbBody = document.getElementById('leaderboard-body');
-                if(lbBody) {
-                    lbBody.innerHTML = '';
-                    data.leaderboard.forEach(lb => {
-                        let rowClass = '';
-                        if(lb.rank === 1) rowClass = 'lb-rank-1';
-                        else if(lb.rank === 2) rowClass = 'lb-rank-2';
-                        else if(lb.rank === 3) rowClass = 'lb-rank-3';
-                        
-                        let nameHtml = lb.name;
-                        if(lb.name === myUsername) nameHtml = `<span style="color:#33ff33;">${lb.name} (ВЫ)</span>`;
-                        
-                        lbBody.innerHTML += `
-                            <tr class="${rowClass}">
-                                <td>#${lb.rank}</td>
-                                <td>${nameHtml}</td>
-                                <td>${lb.title}</td>
-                                <td>${lb.level}</td>
-                                <td>${lb.floor}</td>
-                                <td>${formatTime(lb.playtime)}</td>
-                                <td style="color:#ffaa00; font-weight:bold;">${lb.rating}</td>
-                            </tr>
-                        `;
-                    });
-                }
-            }
-            
-            renderShop(); 
-            renderMap(); updateUI(data.me, data.sectorPlayers);
-            if (data.me.notebook) {
-                const nbContainer = document.getElementById('notebook-content'); if(nbContainer) { nbContainer.innerHTML = ''; data.me.notebook.slice().reverse().forEach(entry => { nbContainer.innerHTML += `<div class="notebook-entry">${entry}</div>`; }); }
-            }
-        });
-
-        socket.on('showLevelUp', (choices) => {
-            const modal = document.getElementById('levelup-modal'); const container = document.getElementById('levelup-choices'); 
-            if(!modal || !container) return;
-            container.innerHTML = '';
-            choices.forEach(c => {
-                let btn = document.createElement('button'); btn.className = 'levelup-btn';
-                btn.innerHTML = `<span style="color:#ffaa00; font-size:22px;">${c.name}</span><br><span style="font-size:16px; color:#ccc;">${c.desc}</span>`;
-                btn.onclick = () => { socket.emit('selectPerk', c.id); modal.style.display = 'none'; playSound('victory'); };
-                container.appendChild(btn);
-            });
-            modal.style.display = 'flex'; playSound('victory');
-        });
-
-        function renderShop() {
-            const container = document.getElementById('shop-items-container'); 
-            if(!container) return;
-            container.innerHTML = ``;
-            currentShopItems.forEach(id => { 
-                let item = GAME_ITEMS[id]; 
-                if (item) {
-                    let typeLabel = "Экипировка";
-                    if(item.reqLevel) typeLabel += ` | Ур.${item.reqLevel}`;
-                    if(item.type === 'consumable') typeLabel = "Медицина/Расходник";
-                    if(item.type === 'special') typeLabel = "Спецсредство";
-                    if(item.type === 'material') typeLabel = "Материал";
-                    if(item.type === 'tool') typeLabel = "Инструмент";
-                    if(item.type === 'backpack') typeLabel = "Спина (Рюкзак)";
-                    
-                    let iconName = item.iconId || id;
-                    let iconPath = `assets/icons/${iconName}.png`;
-
-                    container.innerHTML += `
-                    <div class="shop-item">
-                        <div class="shop-item-left">
-                            <img class="shop-item-icon" src="${iconPath}" alt="[IMG]">
-                            <div>
-                                <span style="color:${item.color || '#fff'}">${item.name}</span> 
-                                <span style="color:#888; font-size:14px;">[${typeLabel}]</span>
-                            </div>
-                        </div>
-                        <div>
-                            <span style="color:#ffaa00">${item.cost} т.</span> 
-                            <button class="shop-buy-btn" onclick="socket.emit('buyItem', '${id}')">КУПИТЬ</button>
-                        </div>
-                    </div>`; 
-                }
-            });
-        }
-
-        setInterval(() => {
-            if (shopUpdateTimestamp) {
-                let diff = Math.max(0, Math.floor((shopUpdateTimestamp - Date.now()) / 1000));
-                let m = Math.floor(diff / 60).toString().padStart(2, '0');
-                let s = (diff % 60).toString().padStart(2, '0');
-                let el = document.getElementById('shop-timer');
-                if (el) el.innerText = `${m}:${s}`;
-            }
-        }, 1000);
-
-        const ASCII_DOORS = [ "  ______  \n |      | \n |  ><  | \n |______| ", "  ______  \n |  ||  | \n |  ||  | \n |__||__| ", "  ______  \n | |  | | \n | |  | | \n |_|  |_| ", "  ______  \n |      | \n |      | \n |      | " ];
-        
-        socket.on('transition', (data) => {
-            const overlay = document.getElementById('transition-overlay'); const asciiBox = document.getElementById('trans-ascii'); const transText = document.getElementById('trans-text');
-            if(!overlay || !asciiBox || !transText) return;
-            transText.innerText = data.text;
-            overlay.style.display = 'flex'; playSound('equip'); 
-            let frame = 0; let animInterval = setInterval(() => { asciiBox.innerText = ASCII_DOORS[frame]; frame++; if(frame >= ASCII_DOORS.length) clearInterval(animInterval); }, 250);
-            setTimeout(() => { overlay.style.display = 'none'; }, 1800); 
-        });
-
-        function applyVFX(targetId, vfxClass) {
-            const container = document.getElementById(targetId); 
-            if(!container) return;
-            const vfxElement = document.createElement('div');
-            vfxElement.className = vfxClass; container.appendChild(vfxElement);
-            setTimeout(() => { vfxElement.remove(); }, 600); 
-        }
-
-        socket.on('vfxFarm', (amt) => {
-            const container = document.getElementById('hub-stats-panel');
-            if(!container) return;
-            const slime = document.createElement('div'); slime.className = 'slime-vfx'; slime.innerText = `+${amt || 1} СЛИЗЬ`; slime.style.left = (Math.random() * 80 + 10) + '%';
-            container.appendChild(slime); setTimeout(() => slime.remove(), 1000);
-        });
-        
-        socket.on('vfxHeal', () => { applyVFX('player-vfx-container', 'vfx-heal'); });
-
-        socket.on('combatStart', (data) => {
-            changeAmbient('combat'); 
-            let combatLogBox = document.getElementById('combat-log');
-            if(combatLogBox) combatLogBox.innerHTML = `> ВСТРЕЧА С ВРАГОМ: ${data.enemy.name}!\n`; 
-            playSound('roar'); 
-            
-            let ec = document.getElementById('explore-controls'); if(ec) ec.style.display = 'none';
-            let cc = document.getElementById('combat-controls'); if(cc) cc.style.display = 'flex';
-            
-            let es = document.getElementById('enemy-sprite'); if(es) { es.style.display = 'block'; es.src = `assets/monsters/${data.enemy.img}`; }
-            let ehb = document.getElementById('enemy-hp-bar'); if(ehb) ehb.style.display = 'block';
-            let uehp = document.getElementById('ui-enemy-hp'); if(uehp) uehp.innerText = data.enemy.hp;
-            
-            let eba = document.getElementById('enemy-battle-avatar'); if(eba) eba.classList.add('visible');
-            
-            isAiming = false; clearInterval(aimInterval);
-            let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'none';
-            let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
-        });
-
-        socket.on('startCombatMinigame', (data) => {
-            if(data.type === 'voltage') {
-                mgStep = 0; mgInput = [0]; mgData = data;
-                let mt = document.getElementById('mg-title'); if(mt) mt.innerText = "ПЕРЕГРУЗКА РЕАКТОРА!";
-                let mtext = document.getElementById('mg-text'); if(mtext) mtext.innerText = "Внимание! Ядро нестабильно. Требуется калибровка.";
-                let bmc = document.getElementById('btn-mg-cancel'); if(bmc) bmc.style.display = 'none'; 
-                updateVoltageUI();
-                let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'flex';
-            }
-        });
-
-        socket.on('combatTick', (data) => {
-            let combatLogBox = document.getElementById('combat-log');
-            if (data.logs && data.logs.length > 0 && combatLogBox) { combatLogBox.innerHTML += data.logs.join('\n') + '\n'; combatLogBox.scrollTop = combatLogBox.scrollHeight; }
-            if (data.enemyHp !== undefined) { let uehp = document.getElementById('ui-enemy-hp'); if(uehp) uehp.innerText = data.enemyHp; }
-            if (data.sounds && data.sounds.length > 0) data.sounds.forEach(snd => playSound(snd));
-            
-            if (data.vfx && data.vfx.length > 0) {
-                data.vfx.forEach(v => {
-                    if (v === 'enemy_hit') applyVFX('enemy-vfx-container', 'vfx-slash');
-                    if (v === 'enemy_crit') { applyVFX('enemy-vfx-container', 'vfx-slash'); applyVFX('enemy-vfx-container', 'vfx-crit'); }
-                    if (v === 'player_hit') { 
-                        applyVFX('player-vfx-container', 'vfx-player-hit'); 
-                        let pba = document.getElementById('player-battle-avatar');
-                        if(pba) { pba.classList.add('avatar-shake'); setTimeout(() => pba.classList.remove('avatar-shake'), 300); }
-                    }
-                    if (v === 'player_dodge') {
-                        let pba = document.getElementById('player-battle-avatar');
-                        if(pba) { pba.classList.add('avatar-shake'); setTimeout(() => pba.classList.remove('avatar-shake'), 300); }
-                    }
-                    if (v === 'heal') applyVFX('player-vfx-container', 'vfx-heal');
-                    if (v === 'explosion') applyVFX('enemy-vfx-container', 'vfx-explosion');
-                });
-            }
-        });
-
-        socket.on('combatEnd', (data) => {
-            restoreAmbient(); 
-            let combatLogBox = document.getElementById('combat-log');
-            if(combatLogBox) { combatLogBox.innerHTML += data.log + '\n'; combatLogBox.scrollTop = combatLogBox.scrollHeight; }
-            if (data.win) playSound('victory'); else playSound('defeat');
-            
-            let cc = document.getElementById('combat-controls'); if(cc) cc.style.display = 'none';
-            let ec = document.getElementById('explore-controls'); if(ec) ec.style.display = 'flex';
-            let ehb = document.getElementById('enemy-hp-bar'); if(ehb) ehb.style.display = 'none';
-            
-            setTimeout(() => { let eba = document.getElementById('enemy-battle-avatar'); if(eba) eba.classList.remove('visible'); }, 3000);
-            
-            isAiming = false; clearInterval(aimInterval);
-            let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'none';
-            let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
-        });
-
-        let aimInterval = null; let aimPos = 0; let aimDir = 1; let isAiming = false;
-
-        function toggleAimAttack() {
-            if (!isAiming) {
-                isAiming = true;
-                let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'block';
-                let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'УДАР!';
-                aimPos = 0; aimDir = 1; 
-                aimInterval = setInterval(() => {
-                    aimPos += aimDir * 5; 
-                    if (aimPos >= 100) { aimPos = 100; aimDir = -1; }
-                    if (aimPos <= 0) { aimPos = 0; aimDir = 1; }
-                    let ac = document.getElementById('aim-cursor'); if(ac) ac.style.left = aimPos + '%';
-                }, 30);
-            } else {
-                clearInterval(aimInterval); isAiming = false;
-                let abc = document.getElementById('aim-bar-container'); if(abc) abc.style.display = 'none';
-                let ba = document.getElementById('btn-attack'); if(ba) ba.innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
-                
-                if (aimPos >= 40 && aimPos <= 60) { socket.emit('combatAction', 'aimed_success'); } 
-                else { socket.emit('combatAction', 'aimed_fail'); }
-            }
-        }
-
-        let currentGameLoc = null; let mgData = null; let mgStep = 0; let mgInput = [];
-        
-        function cancelMinigame() { playSound('click'); let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameCancel'); }
-
-        socket.on('startMinigame', (data) => {
-            currentGameLoc = data.locId; mgData = data.gameData;
-            const modal = document.getElementById('minigame-modal'); const art = document.getElementById('mg-art'); const ui = document.getElementById('mg-ui'); const text = document.getElementById('mg-text');
-            if(!modal || !art || !ui || !text) return;
-            
-            let bmc = document.getElementById('btn-mg-cancel'); if(bmc) bmc.style.display = 'block'; 
-            let mt = document.getElementById('mg-title'); if(mt) mt.innerText = mgData.title; 
-            text.innerText = mgData.text;
-            playSound('click'); modal.style.display = 'flex';
-            
-            if (mgData.type === 'sequence') {
-                mgStep = 0; mgInput = [];
-                art.innerText = `\n      +-------------------+\n      |   ПОСЛЕДОВАТЕЛЬ   |\n      +-------------------+`;
-                ui.innerHTML = `<div id="mg-seq-display" style="font-size:24px; color:#fff; margin-bottom:15px; min-height:30px;">_ _ _ _</div><div style="display:flex; gap:10px; justify-content:center;" id="mg-seq-btns"></div>`;
-                const btnContainer = document.getElementById('mg-seq-btns');
-                if(btnContainer) { mgData.options.forEach(opt => { btnContainer.innerHTML += `<button onclick="seqClick('${opt}')">${opt}</button>`; }); }
-            } 
-            else if(mgData.type === 'password') {
-                art.innerText = `\n      +-------------------+\n      |  [ КОД ДОСТУПА ]  |\n      |   [1]  [2]  [3]   |\n      |   [4]  [5]  [6]   |\n      |   [7]  [8]  [9]   |\n      |   [*]  [0]  [#]   |\n      +-------------------+`;
-                ui.innerHTML = `<input type="text" id="mg-pass-input" placeholder="____" maxlength="4" style="text-align:center; letter-spacing:10px; font-size:24px; font-weight:bold;">
-                                <button onclick="checkPass()" style="width:100%;">ВВОД</button>`;
-            } 
-            else if (mgData.type === 'voltage') { mgStep = 0; mgInput = [0]; updateVoltageUI(); } 
-            else if (mgData.type === 'boltcutter') { mgStep = 0; updateMashUI(); }
-        });
-
-        function seqClick(val) {
-            mgInput.push(val); playSound('click'); 
-            let msd = document.getElementById('mg-seq-display'); if(msd) msd.innerText = mgInput.join(" - ");
-            if (mgInput.length === mgData.answer.length) {
-                if (JSON.stringify(mgInput) === JSON.stringify(mgData.answer)) { let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } 
-                else { playSound('defeat'); let ma = document.getElementById('mg-art'); if(ma) { ma.style.color = '#ff3333'; setTimeout(() => { ma.style.color = '#ffaa00'; mgInput = []; if(msd) msd.innerText = "_ _ _ _"; }, 500); } }
-            }
-        }
-
-        function checkPass() {
-            let mpi = document.getElementById('mg-pass-input');
-            if(mpi && mpi.value === mgData.answer) { let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } 
-            else { playSound('defeat'); if(mpi) mpi.value = ''; let ma = document.getElementById('mg-art'); if(ma) { ma.style.color = '#ff3333'; setTimeout(() => document.getElementById('mg-art').style.color = '#ffaa00', 500); } }
-        }
-
-        function updateVoltageUI() {
-            const art = document.getElementById('mg-art'); const ui = document.getElementById('mg-ui'); 
-            if(!art || !ui) return;
-            let displayW = mgInput[0].toString().padStart(3, '0');
-            art.innerText = `\n             ___\n            | + |\n            |---|\n            |${displayW}W|\n            |___|`;
-            ui.innerHTML = `<div style="margin-bottom:10px; font-size:20px;">Цель: ${mgData.target}W | Кликов осталось: ${4 - mgStep}</div>
-                <div style="display:flex; gap:10px; justify-content:center;">
-                    <button onclick="addVolt(30)">+30</button><button onclick="addVolt(20)">+20</button><button onclick="addVolt(10)">+10</button><button onclick="addVolt(-10)">-10</button>
-                </div>`;
-        }
-
-        function addVolt(val) {
-            mgInput[0] += val; mgStep++; playSound('click');
-            if(mgStep >= 4) {
-                if(mgInput[0] === mgData.target) { 
-                    let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; 
-                    let cc = document.getElementById('combat-controls');
-                    if(cc && cc.style.display === 'flex' && !currentGameLoc) {
-                        socket.emit('combatMinigameResult', true);
-                    } else { socket.emit('minigameWon', currentGameLoc); }
-                } 
-                else { 
-                    playSound('defeat');
-                    let cc = document.getElementById('combat-controls');
-                    if(cc && cc.style.display === 'flex' && !currentGameLoc) {
-                        let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none';
-                        socket.emit('combatMinigameResult', false);
-                    } else {
-                        let ui = document.getElementById('mg-ui');
-                        if(ui) ui.innerHTML = `<div style="color:#ff3333; font-size:24px; font-weight:bold; margin-bottom:15px;">ПРОМАХ!</div><button onclick="mgStep=0; mgInput=[0]; updateVoltageUI();" style="width:100%;">ПОВТОРИТЬ</button>`;
-                    }
-                }
-            } else updateVoltageUI();
-        }
-
-        function updateMashUI() {
-            const art = document.getElementById('mg-art'); const ui = document.getElementById('mg-ui'); 
-            if(!art || !ui) return;
-            let maxHits = 15; let bars = "█".repeat(mgStep) + "-".repeat(maxHits - mgStep);
-            art.innerText = `\n  _   _   _   _ \n / \\ / \\ / \\ / \\\n(   )   )   )   )\n \\_/ \\_/ \\_/ \\_/\n\nПРОГРЕСС: [${bars}]`;
-            ui.innerHTML = `<button onclick="doMash()" style="width:100%; padding:20px; font-size:24px;">НАЖМИТЕ, ЧТОБЫ РЕЗАТЬ!</button>`;
-        }
-        function doMash() {
-            mgStep++; playSound('hit_player'); applyVFX('mg-art', 'vfx-dodge');
-            if(mgStep >= 15) { let mm = document.getElementById('minigame-modal'); if(mm) mm.style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } 
-            else updateMashUI();
-        }
-
-        let asciiEventInterval = null; const ASCII_SEARCH = ["[*] Поиск...", "[+] Поиск...", "[x] Поиск...", "[-] Поиск..."];
-        socket.on('combatEventResult', (log) => { 
-            let clb = document.getElementById('combat-log');
-            if(clb) clb.innerHTML = log; 
-            clearInterval(asciiEventInterval); 
-        });
-        
-        socket.on('triggerEvent', (ev) => {
-            let et = document.getElementById('event-title'); if(et) et.innerText = ev.title; 
-            let etxt = document.getElementById('event-text'); if(etxt) etxt.innerText = ev.text;
-            
-            const asciiBox = document.getElementById('event-ascii-box'); 
-            let frame = 0; 
-            if(asciiBox) asciiEventInterval = setInterval(() => { asciiBox.innerText = ASCII_SEARCH[frame % ASCII_SEARCH.length]; frame++; }, 300);
-            
-            const choicesContainer = document.getElementById('event-choices'); 
-            if(choicesContainer) {
-                choicesContainer.innerHTML = '';
-                ev.choices.forEach(choice => {
-                    let btn = document.createElement('button'); btn.innerText = choice.text; btn.style.width = '100%';
-                    if (choice.text.includes('[РИСК]')) { btn.style.borderColor = '#ffaa00'; btn.style.color = '#ffaa00'; }
-                    btn.onclick = () => { socket.emit('resolveEvent', choice.id); let em = document.getElementById('event-modal'); if(em) em.style.display = 'none'; clearInterval(asciiEventInterval); };
-                    choicesContainer.appendChild(btn);
-                });
-            }
-            let em = document.getElementById('event-modal'); if(em) em.style.display = 'flex';
-        });
-
-        socket.on('terminalError', (msg) => {
-            const el = document.getElementById('auth-error'); const hubEl = document.getElementById('hub-error');
-            const loginScreen = document.getElementById('login-screen');
-            const hubScreen = document.getElementById('hub-screen');
-            let clb = document.getElementById('combat-log');
-
-            if (el && loginScreen && loginScreen.classList.contains('active-screen')) el.innerText = msg;
-            else if (hubEl && hubScreen && hubScreen.classList.contains('active-screen')) { hubEl.innerText = msg; setTimeout(() => { hubEl.innerText = ""; }, 4000); }
-            else if (clb) { clb.innerHTML += `> ${msg}\n`; clb.scrollTop = clb.scrollHeight; }
-        });
-
-        function renderMap() {
-            const container = document.getElementById('map-container'); 
-            if(!container) return;
-            container.innerHTML = '';
-            const letters = ['A', 'B', 'C', 'D', 'E'];
-            for (let y = 0; y < 5; y++) {
-                for (let x = 0; x < 5; x++) {
-                    let id = `${letters[y]}${x}`; let node = serverMap[id]; let div = document.createElement('div');
-                    if (node) {
-                        let isUnlocked = myUnlockedSectors.includes(id);
-                        let isCanUnlock = false;
-                        
-                        if (!isUnlocked) {
-                            if (node.reqType === 'item' && myQuestItems.includes(node.reqValue)) isCanUnlock = true;
-                            else if (node.reqType === 'minigame' || !node.reqType) isCanUnlock = true;
-                        }
-                        
-                        if (isUnlocked) div.className = 'map-node';
-                        else if (isCanUnlock) div.className = 'map-node can-unlock';
-                        else div.className = 'map-node locked';
-                        
-                        div.style.backgroundImage = `url('assets/locations/${node.bg}')`;
-                        let displayId = isUnlocked || isCanUnlock ? id : '[ЗАКРЫТО]';
-                        
-                        let lockInfo = '';
-                        if (!isUnlocked && isCanUnlock) {
-                           if (node.reqType === 'item') lockInfo = `<div style="color:#ffaa00; font-size:10px; margin-top:5px; text-shadow: 0 0 2px #000;">[ НУЖЕН КЛЮЧ ]</div>`;
-                           else if (node.reqType === 'minigame') lockInfo = `<div style="color:#33aaff; font-size:10px; margin-top:5px; text-shadow: 0 0 2px #000;">[ ВЗЛОМ СЕТИ ]</div>`;
-                        } else if (!isUnlocked && !isCanUnlock) {
-                           if (node.reqType === 'item') lockInfo = `<div style="color:#888; font-size:10px; margin-top:5px;">[ ЗАМОК ]</div>`;
-                           else if (node.reqType === 'minigame') lockInfo = `<div style="color:#888; font-size:10px; margin-top:5px;">[ ТЕРМИНАЛ ]</div>`;
-                        }
-
-                        div.innerHTML = `<div class="node-content"><div class="node-id">${displayId}</div><div class="node-name">${node.name}</div>${lockInfo}</div><div class="node-content"><div class="node-threat">${node.threat}</div></div>`;
-                        div.onclick = () => { socket.emit('changeLocation', id); };
-                    }
-                    container.appendChild(div);
-                }
-            }
-        }
-
-        let pendingEquipIndex = null;
-        function prepareQuickEquip(invIndex) {
-            pendingEquipIndex = invIndex;
-            let q0 = document.getElementById('inv-qslot-0');
-            let q1 = document.getElementById('inv-qslot-1');
-            if(q0) { q0.style.borderColor = '#ff3333'; q0.innerText = "[КЛИКНИ СЮДА]"; }
-            if(q1) { q1.style.borderColor = '#ff3333'; q1.innerText = "[КЛИКНИ СЮДА]"; }
-        }
-
-        function sendModRequest() {
-            let wIdx = document.getElementById('mod-weapon-select').value;
-            let mIdx = document.getElementById('mod-mat-select').value;
-            if (wIdx === "" || mIdx === "") { socket.emit('terminalError', 'ВЫБЕРИТЕ ОРУЖИЕ И МАТЕРИАЛ ДЛЯ МОДДИНГА.'); return; }
-            socket.emit('modWeapon', { wIdx: parseInt(wIdx), mIdx: parseInt(mIdx) });
-        }
-
-        function updateUI(me, sectorPlayers) {
-            if (!me) return;
-            
-            let playtimeEl = document.querySelector('.ui-playtime');
-            if (playtimeEl && me.playtime !== undefined) playtimeEl.innerText = formatTime(me.playtime);
-
-            if (me.appearance && me.appearance.skin) {
-                let skinPath = `assets/character/${me.appearance.skin}.png`;
-                let invSkin = document.getElementById('inv-base-skin');
-                let battleSkin = document.getElementById('battle-base-skin');
-                if (invSkin) { invSkin.src = skinPath; invSkin.style.display = 'block'; }
-                if (battleSkin) { battleSkin.src = skinPath; battleSkin.style.display = 'block'; }
-            }
-            
-            let floorEl = document.getElementById('ui-current-floor');
-            if(floorEl) floorEl.innerText = me.floor;
-            
-            document.querySelectorAll('.ui-level').forEach(el => el.innerText = me.level); document.querySelectorAll('.ui-xp').forEach(el => el.innerText = me.xp); document.querySelectorAll('.ui-max-xp').forEach(el => el.innerText = me.level * 100); document.querySelectorAll('.ui-maxhp').forEach(el => el.innerText = me.stats.maxHp); document.querySelectorAll('.ui-score').forEach(el => el.innerText = me.talons);
-            document.querySelectorAll('.ui-kills').forEach(el => el.innerText = me.monstersKilled || 0); document.querySelectorAll('.ui-rooms').forEach(el => el.innerText = me.roomsCleared || 0); document.querySelectorAll('.ui-rating').forEach(el => el.innerText = me.rating || 0); document.querySelectorAll('.ui-title').forEach(el => el.innerText = me.title); document.querySelectorAll('.ui-rank').forEach(el => el.innerText = me.rankPos);
-            
-            let hpPercentage = (me.stats.hp / me.stats.maxHp) * 100;
-            document.querySelectorAll('.ui-hp').forEach(el => { el.innerText = me.stats.hp; if (hpPercentage < 50) el.classList.add('critical-hp'); else el.classList.remove('critical-hp'); });
-            if (hpPercentage < 50 && me.stats.hp > 0) { if (!lowHpWarningPlayed) { playSound('low_hp'); lowHpWarningPlayed = true; } } else { lowHpWarningPlayed = false; }
-            document.querySelectorAll('.ui-filter').forEach(el => el.innerText = me.stats.filter); document.querySelectorAll('.filter-bar').forEach(el => { el.style.width = me.stats.filter + '%'; el.style.background = (me.stats.filter <= 20) ? '#ff3333' : 'var(--term-green)'; });
-
-            document.querySelectorAll('.ui-hunger').forEach(el => el.innerText = me.hunger);
-            document.querySelectorAll('.hunger-bar').forEach(el => el.style.width = me.hunger + '%');
-            document.querySelectorAll('.ui-tox').forEach(el => el.innerText = me.tox);
-            document.querySelectorAll('.tox-bar').forEach(el => el.style.width = me.tox + '%');
-
-            if (me.equipment) {
-                ['clothes', 'mask', 'weapon'].forEach(slot => {
-                    const itemId = me.equipment[slot]; 
-                    const itemData = GAME_ITEMS[itemId];
-                    const iconId = itemData && itemData.iconId ? itemData.iconId : itemId;
-                    
-                    let invImg = document.getElementById(`inv-img-${slot}`);
-                    let battleImg = document.getElementById(`battle-${slot}`);
-                    const slotDiv = document.getElementById(`equip-slot-${slot}`); const nameDiv = document.getElementById(`inv-${slot}-name`);
-                    
-                    if (itemId && itemData) { 
-                        let imgUrl = `assets/${slot}/${iconId}.png`;
-                        if(invImg) { invImg.src = imgUrl; invImg.style.display = 'block'; }
-                        if(battleImg) { battleImg.src = imgUrl; battleImg.style.display = 'block'; }
-                        if (nameDiv && slotDiv) { 
-                            nameDiv.innerHTML = `<span style="color:${itemData.paperColor || 'var(--ink-color)'}; font-weight:bold;">${itemData.name}</span><div style="font-size:12px; color:#555;">Ур. ${itemData.reqLevel || 1}</div>`; 
-                            slotDiv.classList.remove('equip-slot-empty'); 
-                        } 
-                    } else {
-                        if(invImg) { invImg.src = ''; invImg.style.display = 'none'; }
-                        if(battleImg) { battleImg.src = ''; battleImg.style.display = 'none'; }
-                        if(nameDiv && slotDiv) { nameDiv.innerText = "Пусто"; nameDiv.style.color = '#555'; slotDiv.classList.add('equip-slot-empty'); }
-                    }
-                });
-                
-                let bpItem = GAME_ITEMS[me.equipment.backpack];
-                let bpSlot = document.getElementById('equip-slot-backpack');
-                let bpName = document.getElementById('inv-backpack-name');
-                if (bpItem && bpSlot && bpName) {
-                    bpName.innerHTML = `<span style="color:${bpItem.paperColor || 'var(--ink-color)'}; font-weight:bold;">${bpItem.name}</span><div style="font-size:12px; color:#555;">Слотов: +${bpItem.bonusCap}</div>`;
-                    bpSlot.classList.remove('equip-slot-empty');
-                } else if (bpSlot && bpName) { bpName.innerText = "Пусто"; bpName.style.color = '#555'; bpSlot.classList.add('equip-slot-empty'); }
-
-                let invDmg = document.getElementById('inv-dmg'); if(invDmg) invDmg.innerText = me.stats.dmg; 
-                let invDef = document.getElementById('inv-def'); if(invDef) invDef.innerText = me.stats.def;
-            }
-
-            for (let i=0; i<2; i++) {
-                let itemId = me.quickSlots[i]; let invSlot = document.getElementById(`inv-qslot-${i}`); let combatSlot = document.getElementById(`combat-qslot-${i}`);
-                if (itemId && GAME_ITEMS[itemId]) {
-                    if(invSlot) { invSlot.innerHTML = `<div style="color:${GAME_ITEMS[itemId].paperColor || 'var(--ink-color)'}; font-weight:bold;">${GAME_ITEMS[itemId].name}</div><div style="font-size:11px;">(Клик - Снять)</div>`; invSlot.classList.remove('equip-slot-empty'); }
-                    if(combatSlot) { combatSlot.innerHTML = `<span style="color:${GAME_ITEMS[itemId].color || '#fff'};">${GAME_ITEMS[itemId].name}</span><br><span style="color:#fff;">(ПРИМЕНИТЬ)</span>`; combatSlot.classList.remove('combat-q-empty'); }
-                } else {
-                    if (pendingEquipIndex === null) {
-                        if(invSlot) { invSlot.innerHTML = "[ПУСТО]"; invSlot.classList.add('equip-slot-empty'); }
-                        if(combatSlot) { combatSlot.innerHTML = "[ПУСТО]"; combatSlot.classList.add('combat-q-empty'); }
-                    }
-                }
-            }
-
-            if (me.questItems) {
-                const questContainer = document.getElementById('quest-items-container');
-                if(questContainer) {
-                    if (me.questItems.length === 0) questContainer.innerHTML = '<span style="color:#555;">Пусто... (Ищите предметы в Тумане)</span>';
-                    else { questContainer.innerHTML = ''; me.questItems.forEach(itemId => { let qItem = GAME_ITEMS[itemId]; if(qItem) questContainer.innerHTML += `<div class="quest-item"><div class="quest-item-title" style="color:${qItem.paperColor || '#884400'};">${qItem.name}</div></div>`; }); }
-                }
-            }
-
-            if (me.perks || me.mutations) {
-                const perksContainer = document.getElementById('perks-container');
-                if(perksContainer) {
-                    perksContainer.innerHTML = ''; 
-                    let hasAny = false;
-                    if(me.perks) me.perks.forEach(pId => { let perk = GAME_PERKS.find(pk => pk.id === pId); if(perk) { perksContainer.innerHTML += `<div class="perk-item"><b>${perk.name}</b><br><span style="font-size:12px;">${perk.desc}</span></div>`; hasAny = true; } });
-                    if(me.mutations) me.mutations.forEach(mId => { let mut = MUTATIONS.find(mu => mu.id === mId); if(mut) { perksContainer.innerHTML += `<div class="perk-item" style="color:#aa0000; border-color:#aa0000;"><b>[МУТАЦИЯ] ${mut.name}</b><br><span style="font-size:12px;">${mut.desc}</span></div>`; hasAny = true; } });
-                    if(!hasAny) perksContainer.innerHTML = 'Пусто';
-                }
-            }
-
-            const sellContainer = document.getElementById('shop-sell-container');
-            const chestContainer = document.getElementById('chest-container'); 
-            
-            let capEl = document.getElementById('inv-capacity');
-            if(capEl) capEl.innerText = `${me.inventory.length}/${me.maxInv}`;
-
-            if (sellContainer) sellContainer.innerHTML = '';
-            if (chestContainer) chestContainer.innerHTML = '';
-
-            let wSelect = document.getElementById('mod-weapon-select');
-            let mSelect = document.getElementById('mod-mat-select');
-            if(wSelect) wSelect.innerHTML = '<option value="">-- Выберите оружие --</option>';
-            if(mSelect) mSelect.innerHTML = '<option value="">-- Выберите материал --</option>';
-
-            if (me.inventory) {
-                if (me.inventory.length === 0) {
-                    if(chestContainer) chestContainer.innerHTML = `<div style="color: #555; grid-column: span 2; text-align: center; margin-top: 20px;">Сундук пуст...</div>`;
-                    if(sellContainer) sellContainer.innerHTML = `<div style="color: #555;">Нет предметов для продажи...</div>`;
-                } else {
-                    me.inventory.forEach((itemId, index) => {
-                        const itemData = GAME_ITEMS[itemId];
-                        if (itemData) {
-                            
-                            if (itemData.type === 'weapon' && wSelect && !itemData.isFire && !itemData.isElectro && !itemData.isBleed) {
-                                wSelect.innerHTML += `<option value="${index}">${itemData.name}</option>`;
-                            }
-                            if (itemData.type === 'material' && mSelect && (itemId === 'mat_chem' || itemId === 'mat_electro' || itemId === 'mat_scrap')) {
-                                mSelect.innerHTML += `<option value="${index}">${itemData.name}</option>`;
-                            }
-
-                            let iconName = itemData.iconId || itemId;
-                            let iconPath = `assets/icons/${iconName}.png`;
-
-                            if(chestContainer) {
-                                let div = document.createElement('div'); div.className = 'chest-item';
-                                let actionType = ''; let typeLabel = '';
-                                if (itemData.type === 'consumable') { actionType = 'НАДЕТЬ НА ПОЯС'; typeLabel = 'МЕДИЦИНА'; }
-                                else if (itemData.type === 'special') { actionType = 'НАДЕТЬ НА ПОЯС'; typeLabel = 'СПЕЦСРЕДСТВО'; }
-                                else if (itemData.type === 'material') { actionType = itemData.isCure ? 'ВЫЛЕЧИТЬ ЗАРАЖЕНИЕ' : 'КРАФТ'; typeLabel = 'МАТЕРИАЛ'; }
-                                else if (itemData.type === 'tool') { actionType = 'ИНСТРУМЕНТ'; typeLabel = 'ПАССИВНО'; }
-                                else if (itemData.type === 'backpack') { actionType = 'НАДЕТЬ'; typeLabel = `РЮКЗАК УР.${itemData.reqLevel || 1}`; }
-                                else { actionType = 'НАДЕТЬ'; typeLabel = `ЭКИП. УР.${itemData.reqLevel || 1}`; }
-                                
-                                div.innerHTML = `
-                                    <img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'">
-                                    <div class="item-type">[${typeLabel}]</div>
-                                    <div style="color:${itemData.paperColor || '#000'}; font-weight:bold;">${itemData.name}</div>
-                                    <div style="font-size: 11px; color:#005500; margin-top:3px;">КЛИК - ${actionType}</div>
-                                    <button style="margin-top:5px; padding:2px 5px; font-size:10px; background:#aa0000; color:#fff; border:1px solid #ff0000; z-index: 10; position: relative;" onclick="event.stopPropagation(); socket.emit('dropItem', ${index})">ВЫБРОСИТЬ</button>
-                                `;
-                                div.onclick = () => { 
-                                    if (itemData.type === 'consumable' || itemData.type === 'special' || itemData.isCure) prepareQuickEquip(index);
-                                    else if (itemData.type !== 'material' && itemData.type !== 'tool') socket.emit('equipItem', index); 
-                                };
-                                chestContainer.appendChild(div);
-                            }
-                            if(sellContainer && itemData.type !== 'material' && itemData.type !== 'tool') {
-                                let sellPrice = Math.min(35, Math.max(3, Math.floor(itemData.cost * 0.4)));
-                                sellContainer.innerHTML += `
-                                <div class="shop-item">
-                                    <div class="shop-item-left">
-                                        <img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'">
-                                        <div style="color:${itemData.color || 'var(--term-green)'}">${itemData.name}</div>
-                                    </div>
-                                    <div><span style="color:#ffaa00">+${sellPrice} т.</span> <button class="shop-buy-btn" onclick="socket.emit('sellItem', ${index})" style="border-color:#ff3333; color:#ff3333;">СДАТЬ</button></div>
-                                </div>`;
-                            }
-                        }
-                    });
-                }
-            }
-
-            let robotPanel = document.getElementById('robot-panel');
-            let robotStatus = document.getElementById('robot-status');
-            let robotBtn = document.getElementById('btn-robot-action');
-
-            if (me.location !== 'safe_room') {
-                if(robotPanel) robotPanel.style.display = 'block';
-                if (me.currentRobot !== null) {
-                    if(robotStatus) robotStatus.innerHTML = `🤖 АВТОСБОРЩИК: <span style="color:#ffaa00">${me.currentRobot} / 250 т.</span>`;
-                    if(robotBtn) {
-                        robotBtn.innerText = 'СОБРАТЬ';
-                        robotBtn.onclick = () => { socket.emit('collectRobot'); playSound('click'); };
-                        robotBtn.style.borderColor = '#33aaff'; robotBtn.style.color = '#33aaff';
-                    }
-                } else {
-                    if(robotStatus) robotStatus.innerHTML = `🤖 АВТОСБОРЩИК НЕ УСТАНОВЛЕН`;
-                    if(robotBtn) {
-                        robotBtn.innerText = 'УСТАНОВИТЬ (ИЗ СУНДУКА)';
-                        robotBtn.onclick = () => { socket.emit('installRobot'); playSound('click'); };
-                        robotBtn.style.borderColor = '#ffaa00'; robotBtn.style.color = '#ffaa00';
-                    }
-                }
-            } else { if(robotPanel) robotPanel.style.display = 'none'; }
-
-            let exploreText = me.location === 'E4' ? '[ ЗАПУСТИТЬ ЛИФТ ]' : 'ВЫЛАЗКА В ТУМАН';
-            let exploreColor = me.location === 'E4' ? '#ffaa00' : '#ff3333';
-            
-            let exploreControls = document.getElementById('explore-controls');
-            if(exploreControls) {
-                exploreControls.innerHTML = `
-                    <div style="display:flex; gap:15px; width: 100%;">
-                        <button id="click-btn" onclick="socket.emit('work'); playSound('click');" style="width:100%;">ФАРМ СЛИЗИ</button>
-                        <button id="game-notebook-btn" onclick="document.getElementById('notebook-modal').style.display='flex'; playSound('click');" style="color: #fff; border-color: #fff; width:100%;">БЛОКНОТ</button>
-                    </div>
-                    <button id="explore-btn" onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='> Входим в туман...\\n'; socket.emit('explore'); playSound('click');" style="color: ${exploreColor}; border-color: ${exploreColor}; width:100%; font-weight:bold;">${exploreText}</button>
-                    <button id="return-hub-btn" onclick="socket.emit('changeLocation', 'safe_room'); playSound('click');" style="color: #aaa; border-color: #aaa; width:100%;">ВЕРНУТЬСЯ</button>
-                `;
-            }
-
-            let loginScreen = document.getElementById('login-screen');
-            let introScreen = document.getElementById('intro-screen');
-            
-            if (loginScreen && loginScreen.classList.contains('active-screen')) return; 
-            if (introScreen && introScreen.classList.contains('active-screen')) return; 
-
-            const invModal = document.getElementById('inventory-modal'); const shopModal = document.getElementById('shop-modal'); const minigameModal = document.getElementById('minigame-modal'); const eventModal = document.getElementById('event-modal'); const craftModal = document.getElementById('craft-modal'); const infoModal = document.getElementById('info-modal'); const chatModal = document.getElementById('chat-modal');
-            let mapScreen = document.getElementById('map-screen');
-
-            if (me.location === 'safe_room') {
-                if (mapScreen && !mapScreen.classList.contains('active-screen')) showScreen('hub-screen');
-                let bgLayer = document.getElementById('bg-layer'); if(bgLayer) bgLayer.style.backgroundImage = `url('assets/locations/bg_safe_room.png')`;
-                let ea = document.getElementById('enemy-battle-avatar'); if(ea) ea.classList.remove('visible'); 
-                let cc = document.getElementById('combat-controls'); if(cc) cc.style.display = 'none'; 
-                let ec = document.getElementById('explore-controls'); if(ec) ec.style.display = 'flex'; 
-                let ehb = document.getElementById('enemy-hp-bar'); if(ehb) ehb.style.display = 'none';
-                
-                if ((!invModal || invModal.style.display !== 'flex') && (!shopModal || shopModal.style.display !== 'flex') && (!minigameModal || minigameModal.style.display !== 'flex') && (!eventModal || eventModal.style.display !== 'flex') && (!craftModal || craftModal.style.display !== 'flex') && (!infoModal || infoModal.style.display !== 'flex') && (!chatModal || chatModal.style.display !== 'flex') && (mapScreen && !mapScreen.classList.contains('active-screen'))) { 
-                    changeAmbient('hub'); 
-                }
-            } else {
-                showScreen('game-screen'); const node = serverMap[me.location];
-                let bgLayer = document.getElementById('bg-layer');
-                let clTitle = document.getElementById('current-location-title');
-                
-                if (node) { if(clTitle) clTitle.innerText = node.name; if(bgLayer) bgLayer.style.backgroundImage = `url('assets/locations/${node.bg}')`; }
-                let cc = document.getElementById('combat-controls');
-                if (cc && cc.style.display === 'flex') changeAmbient('combat');
-                else if ((!invModal || invModal.style.display !== 'flex') && (!minigameModal || minigameModal.style.display !== 'flex') && (!eventModal || eventModal.style.display !== 'flex')) changeAmbient('explore');
-
-                const radar = document.getElementById('players-in-sector'); 
-                if(radar) {
-                    radar.innerHTML = '';
-                    sectorPlayers.forEach(p => {
-                        if (p.username !== myUsername) {
-                            let div = document.createElement('div'); div.className = 'player-entry';
-                            div.innerHTML = `<span>[${p.username}] HP:${p.hp}</span> <div>
-                                <button class="pvp-btn" onclick="socket.emit('pvpAttack', '${p.id}')" style="margin-right:5px; border-color:#ff3333; color:#ff3333;">АТАКА</button>
-                                <button class="pvp-btn" onclick="socket.emit('coopHeal', '${p.id}')" style="border-color:#33ff33; color:#33ff33;">ПОМОЧЬ</button>
-                            </div>`;
-                            radar.appendChild(div);
-                        }
-                    });
-                    if(radar.innerHTML === '') radar.innerHTML = '<span style="color:#555">Пусто. Вы здесь одни.</span>';
-                }
-            }
-        }
-        
-        let btnOpenMap = document.getElementById('open-map-btn');
-        if(btnOpenMap) btnOpenMap.onclick = () => { showScreen('map-screen'); changeAmbient('map'); playSound('click'); };
-        
-        let btnCloseMap = document.getElementById('close-map-btn');
-        if(btnCloseMap) btnCloseMap.onclick = () => { showScreen('hub-screen'); changeAmbient('hub'); playSound('click'); };
-        
-        let btnOpenNotebook = document.getElementById('open-notebook-btn');
-        if(btnOpenNotebook) btnOpenNotebook.onclick = () => { document.getElementById('notebook-modal').style.display = 'flex'; playSound('click'); };
-        
-        const invModal = document.getElementById('inventory-modal');
-        function toggleInv() { if(invModal) { invModal.style.display = (invModal.style.display === 'flex') ? 'none' : 'flex'; if (invModal.style.display === 'flex') changeAmbient('chest'); else restoreAmbient(); pendingEquipIndex = null; updateUI({inventory:[]}); playSound('click'); } }
-        let btnOpenChest = document.getElementById('open-chest-btn'); if(btnOpenChest) btnOpenChest.onclick = toggleInv; 
-        let btnCloseInv = document.getElementById('close-inventory-btn'); if(btnCloseInv) btnCloseInv.onclick = toggleInv;
-        
-        const shopModal = document.getElementById('shop-modal');
-        function toggleShop() { if(shopModal) { shopModal.style.display = (shopModal.style.display === 'flex') ? 'none' : 'flex'; if (shopModal.style.display === 'flex') changeAmbient('shop'); else restoreAmbient(); playSound('click'); } }
-        let btnOpenShop = document.getElementById('open-shop-btn'); if(btnOpenShop) btnOpenShop.onclick = toggleShop; 
-        let btnCloseShop = document.getElementById('close-shop-btn'); if(btnCloseShop) btnCloseShop.onclick = toggleShop;
-
-        let btnOpenCraft = document.getElementById('open-craft-btn');
-        if(btnOpenCraft) btnOpenCraft.onclick = () => { document.getElementById('craft-modal').style.display = 'flex'; changeAmbient('chest'); playSound('click'); };
-
-        document.addEventListener('keydown', (e) => { if (e.code === 'Tab') { e.preventDefault(); toggleInv(); } });
-    </script>
+      });
+      if (radar.innerHTML === '') radar.innerHTML = '<span style="color:#555">Пусто. Вы здесь одни.</span>';
+    }
+  }
+}
+
+function renderMap() {
+  const c = document.getElementById('map-container'); if(!c) return;
+  c.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D', 'E'];
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) {
+    let id = `${letters[y]}${x}`; let node = serverMap[id]; let div = document.createElement('div');
+    if (node) {
+      let isUnlocked = myUnlockedSectors.includes(id);
+      let canUnlock = false;
+      if (!isUnlocked) {
+        if (node.reqType === 'item' && myQuestItems.includes(node.reqValue)) canUnlock = true;
+        else if (node.reqType === 'minigame' || !node.reqType) canUnlock = true;
+      }
+      div.className = isUnlocked ? 'map-node' : canUnlock ? 'map-node can-unlock' : 'map-node locked';
+      div.style.backgroundImage = `url('assets/locations/${node.bg}')`;
+      let dId = isUnlocked || canUnlock ? id : '[ЗАКРЫТО]';
+      let lock = '';
+      if (!isUnlocked && canUnlock) {
+        if (node.reqType === 'item') lock = `<div style="color:var(--term-warn); font-size:10px;">[КЛЮЧ]</div>`;
+        else if (node.reqType === 'minigame') lock = `<div style="color:var(--term-info); font-size:10px;">[ВЗЛОМ]</div>`;
+      }
+      div.innerHTML = `<div class="node-content"><div class="node-id">${dId}</div><div class="node-name">${node.name}</div>${lock}</div>`;
+      div.onclick = () => socket.emit('changeLocation', id);
+    }
+    c.appendChild(div);
+  }
+}
+
+function renderShop() {
+  const c = document.getElementById('shop-items-container'); if(!c) return;
+  c.innerHTML = '';
+  currentShopItems.forEach(id => {
+    let item = GAME_ITEMS[id]; if(!item) return;
+    let typeLabel = 'Экип.';
+    if(item.reqLevel) typeLabel += ` Ур.${item.reqLevel}`;
+    if(item.type === 'consumable') typeLabel = 'Медицина';
+    if(item.type === 'special') typeLabel = 'Спецсредство';
+    if(item.type === 'material') typeLabel = 'Материал';
+    if(item.type === 'tool') typeLabel = 'Инструмент';
+    if(item.type === 'backpack') typeLabel = 'Рюкзак';
+    const iconName = item.iconId || id;
+    c.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${iconName}.png" onerror="this.style.display='none'"><div><span style="color:${item.color || '#fff'}">${item.name}</span><span style="color:#666; font-size:12px;"> [${typeLabel}]</span></div></div><div><span style="color:var(--term-warn); font-size:13px;">${item.cost} т.</span><button onclick="socket.emit('buyItem', '${id}')" style="margin-left:6px; padding:3px 10px; font-size:11px;">КУПИТЬ</button></div></div>`;
+  });
+}
+setInterval(() => {
+  if (shopUpdateTimestamp) {
+    let diff = Math.max(0, Math.floor((shopUpdateTimestamp - Date.now()) / 1000));
+    let m = Math.floor(diff / 60).toString().padStart(2, '0');
+    let s = (diff % 60).toString().padStart(2, '0');
+    let el = document.getElementById('shop-timer');
+    if (el) el.innerText = `${m}:${s}`;
+  }
+}, 1000);
+
+function toggleAimAttack() {
+  if (!isAiming) {
+    isAiming = true;
+    document.getElementById('aim-bar-container').style.display = 'block';
+    document.getElementById('btn-attack').innerText = 'УДАР!';
+    aimPos = 0; aimDir = 1;
+    aimInterval = setInterval(() => {
+      aimPos += aimDir * 5;
+      if (aimPos >= 100) { aimPos = 100; aimDir = -1; }
+      if (aimPos <= 0) { aimPos = 0; aimDir = 1; }
+      let ac = document.getElementById('aim-cursor'); if(ac) ac.style.left = aimPos + '%';
+    }, 30);
+  } else {
+    clearInterval(aimInterval); isAiming = false;
+    document.getElementById('aim-bar-container').style.display = 'none';
+    document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+    if (aimPos >= 40 && aimPos <= 60) socket.emit('combatAction', 'aimed_success');
+    else socket.emit('combatAction', 'aimed_fail');
+  }
+}
+
+function applyVFX(targetId, vfxClass) {
+  const c = document.getElementById(targetId); if(!c) return;
+  const el = document.createElement('div'); el.className = vfxClass; c.appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
+function sendModRequest() {
+  let w = document.getElementById('mod-weapon-select').value;
+  let m = document.getElementById('mod-mat-select').value;
+  if (w === "" || m === "") { socket.emit('terminalError', 'ВЫБЕРИТЕ ОРУЖИЕ И МАТЕРИАЛ'); return; }
+  socket.emit('modWeapon', { wIdx: parseInt(w), mIdx: parseInt(m) });
+}
+
+document.getElementById('open-notebook-btn').onclick = () => document.getElementById('notebook-modal').style.display = 'flex';
+document.getElementById('open-chest-btn').onclick = () => toggleInv();
+document.getElementById('close-inventory-btn').onclick = () => toggleInv();
+document.getElementById('open-shop-btn').onclick = () => { document.getElementById('shop-modal').style.display = 'flex'; changeAmbient('shop'); };
+document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-modal').style.display = 'none'; restoreAmbient(); };
+document.getElementById('open-craft-btn').onclick = () => { document.getElementById('craft-modal').style.display = 'flex'; changeAmbient('chest'); };
+document.getElementById('open-chat-btn').onclick = () => { document.getElementById('chat-modal').style.display = 'flex'; let m = document.getElementById('chat-messages'); if(m) m.scrollTop = m.scrollHeight; };
+document.getElementById('open-leaderboard-btn').onclick = () => document.getElementById('leaderboard-modal').style.display = 'flex';
+document.getElementById('open-map-btn').onclick = () => { showScreen('map-screen'); changeAmbient('map'); };
+document.getElementById('close-map-btn').onclick = () => { showScreen('hub-screen'); changeAmbient('hub'); };
+
+function toggleInv() {
+  const m = document.getElementById('inventory-modal');
+  let isOpening = (m.style.display !== 'flex');
+  m.style.display = isOpening ? 'flex' : 'none';
+  if (isOpening) { changeAmbient('chest'); bindQuickSlotClicks(); bindChestButtons(); }
+  else { restoreAmbient(); pendingEquipIndex = null; resetQuickSlotStyle(); }
+  playSound('click');
+}
+
+document.getElementById('btn-send-chat').onclick = () => {
+  let ci = document.getElementById('chat-input');
+  let msg = ci.value.trim();
+  if (msg) { socket.emit('sendChatMessage', msg); ci.value = ''; }
+};
+document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('btn-send-chat').click(); });
+
+document.addEventListener('keydown', (e) => { if (e.code === 'Tab') { e.preventDefault(); toggleInv(); } });
+bindQuickSlotClicks();
+bindChestButtons();
+</script>
 </body>
 </html>
