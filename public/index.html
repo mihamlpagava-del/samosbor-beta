@@ -105,21 +105,30 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 #quest-items-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
 .quest-item { padding: 4px; border-bottom: 1px dashed rgba(122,16,16,0.4); margin-bottom: 4px; color: var(--ink-dim); }
 .quest-item-title { font-weight: bold; font-size: 14px; color: var(--ink-accent); }
-.equipment-panel { width: 240px; font-size: 14px; border-right: 1px dashed rgba(0,0,0,0.25); padding-right: 18px; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; overflow-y: auto; }
+.equipment-panel { width: 255px; font-size: 14px; border-right: 1px dashed rgba(0,0,0,0.25); padding-right: 16px; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; overflow-y: auto; }
 .equipment-panel h3 { margin-top: 0; font-size: 15px; color: var(--ink-color); letter-spacing: 1px; border-bottom: 1px solid rgba(0,0,0,0.2); padding-bottom: 4px; }
-.equip-slot { border: 1px solid rgba(0,0,0,0.35); padding: 7px 9px; margin-bottom: 7px; cursor: pointer; background: rgba(255,255,255,0.35); transition: 0.1s; }
-.equip-slot:hover { background: rgba(255,255,255,0.6); border-color: var(--ink-color); }
-.equip-slot .item-type { font-size: 10px; color: var(--ink-dim); letter-spacing: 1px; }
+.equip-slot { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0,0,0,0.35); padding: 6px 8px; margin-bottom: 7px; cursor: pointer; background: rgba(255,255,255,0.45); transition: 0.15s; min-height: 52px; box-sizing: border-box; }
+.equip-slot:hover { background: rgba(255,255,255,0.75); border-color: var(--ink-color); box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+.equip-slot-icon-box { width: 44px; height: 44px; background: rgba(0,0,0,0.06); border: 1px dashed rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 4px; overflow: hidden; }
+.equip-slot-icon { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3)); }
+.equip-slot-ph { font-size: 20px; opacity: 0.35; filter: grayscale(1); }
+.equip-slot-info { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.equip-slot .item-type { font-size: 10px; color: var(--ink-dim); letter-spacing: 1px; font-weight: bold; }
 .quick-slot { border: 1px solid #880000; padding: 7px 9px; margin-bottom: 7px; cursor: pointer; background: rgba(122,0,0,0.08); text-align: center; color: var(--ink-color); transition: 0.15s; font-size: 13px; }
 .quick-slot:hover { background: rgba(122,0,0,0.18); }
-.perks-panel { width: 100%; border: 1px solid var(--ink-danger); padding: 8px; font-size: 12px; display: flex; flex-direction: column; box-sizing: border-box; min-height: 100px; margin-top: 10px; background: rgba(122,16,16,0.05); }
-#perks-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; color: var(--ink-dim); }
+.perks-panel { width: 100%; border: 1px solid var(--ink-danger); padding: 8px; display: flex; flex-direction: column; box-sizing: border-box; min-height: 110px; margin-top: 10px; background: rgba(122,16,16,0.05); }
+#perks-container { overflow-y: auto; flex-grow: 1; padding-right: 4px; display: flex; flex-direction: column; gap: 5px; }
+.perk-card { background: rgba(255,255,255,0.5); border: 1px solid rgba(122,16,16,0.3); border-left: 3px solid #8b0000; padding: 5px 7px; border-radius: 2px; }
+.perk-card-title { font-family: 'Share Tech Mono', 'Consolas', 'Courier New', monospace; font-size: 12px; font-weight: 800; color: #7a1010; letter-spacing: 0.5px; }
+.perk-card-desc { font-family: 'Share Tech Mono', 'Consolas', 'Courier New', monospace; font-size: 11px; color: #222; line-height: 1.3; margin-top: 2px; }
+.perk-card.mutation { background: rgba(140,20,160,0.08); border-color: rgba(140,20,160,0.4); border-left: 3px solid #791e8f; }
+.perk-card.mutation .perk-card-title { color: #551275; }
 .chest-panel { flex-grow: 1; display: flex; flex-direction: column; height: 100%; }
 .chest-panel h3 { margin-top: 0; font-size: 15px; color: var(--ink-color); }
 .chest-grid { flex-grow: 1; display: grid; grid-template-columns: repeat(2, 1fr); align-content: start; gap: 8px; overflow-y: auto; padding-right: 8px; }
-.chest-item { border: 1px solid rgba(0,0,0,0.35); background-color: rgba(255,255,255,0.3); padding: 8px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 115px; font-size: 13px; color: var(--ink-color); transition: 0.1s; }
+.chest-item { border: 1px solid rgba(0,0,0,0.35); background-color: rgba(255,255,255,0.3); padding: 8px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; font-size: 13px; color: var(--ink-color); transition: 0.1s; }
 .chest-item:hover { background-color: rgba(255,255,255,0.5); border-color: var(--ink-color); }
-.chest-item-icon { width: 38px; height: 38px; object-fit: contain; margin-bottom: 3px; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2)); }
+.chest-item-icon { width: 48px; height: 48px; object-fit: contain; margin-bottom: 4px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.25)); }
 .item-type { font-size: 10px; color: var(--ink-dim); font-weight: bold; letter-spacing: 1px; }
 .chest-item button { padding: 2px 7px !important; font-size: 10px !important; margin: 2px 1px 0 1px !important; letter-spacing: 0.5px; }
 .chest-item button[data-action="belt"]  { color: var(--ink-accent); border-color: var(--ink-accent); }
@@ -238,17 +247,40 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   #intro-text-container { font-size: 13px; min-height: 220px; }
 }
 
-.item-stat-badge { display: inline-block; font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 2px; margin-top: 2px; line-height: 1.2; }
-.item-stat-badge.stat-heal { background: rgba(0, 180, 50, 0.2); color: #33ff66; border: 1px solid rgba(51, 255, 102, 0.4); }
-.item-stat-badge.stat-dmg { background: rgba(220, 40, 40, 0.2); color: #ff5555; border: 1px solid rgba(255, 85, 85, 0.4); }
-.item-stat-badge.stat-def { background: rgba(50, 150, 255, 0.2); color: #66b3ff; border: 1px solid rgba(102, 179, 255, 0.4); }
-.item-stat-badge.stat-filter { background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.4); }
-.item-stat-badge.stat-cap { background: rgba(180, 140, 255, 0.2); color: #d0b0ff; border: 1px solid rgba(180, 140, 255, 0.4); }
+.item-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'Share Tech Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-top: 2px;
+  line-height: 1.2;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.item-stat-badge.stat-heal { background: rgba(0, 100, 30, 0.88); color: #55ff77; border: 1px solid #33cc55; text-shadow: 0 0 2px #000; }
+.item-stat-badge.stat-dmg { background: rgba(130, 15, 15, 0.88); color: #ff7777; border: 1px solid #ff4444; text-shadow: 0 0 2px #000; }
+.item-stat-badge.stat-def { background: rgba(15, 60, 130, 0.88); color: #88ccff; border: 1px solid #4499ff; text-shadow: 0 0 2px #000; }
+.item-stat-badge.stat-filter { background: rgba(140, 80, 0, 0.88); color: #ffcc55; border: 1px solid #ffaa00; text-shadow: 0 0 2px #000; }
+.item-stat-badge.stat-cap { background: rgba(90, 40, 140, 0.88); color: #ddb8ff; border: 1px solid #bb77ff; text-shadow: 0 0 2px #000; }
 
+.feedback-tab-btn { flex: 1; padding: 8px 12px; font-family: inherit; font-size: 13px; font-weight: bold; cursor: pointer; background: transparent; border: 1px solid var(--term-dim); border-bottom: none; color: #888; transition: 0.15s; }
+.feedback-tab-btn.active { color: var(--term-warn); border-color: var(--term-warn); background: rgba(255, 170, 0, 0.12); }
 .feedback-type-btn { flex: 1; padding: 8px; font-size: 12px; cursor: pointer; background: transparent; border: 1px solid var(--term-dim); color: #aaa; font-family: inherit; transition: 0.15s; }
 .feedback-type-btn.active { border-color: var(--term-warn); color: var(--term-warn); background: rgba(255, 170, 0, 0.12); font-weight: bold; }
 .feedback-textarea { width: 100%; height: 110px; box-sizing: border-box; background: rgba(0, 0, 0, 0.7); color: #eee; border: 1px solid var(--term-dim); padding: 10px; font-family: inherit; font-size: 13px; resize: none; outline: none; margin-bottom: 12px; }
 .feedback-textarea:focus { border-color: var(--term-warn); }
+.feedback-card { background: rgba(0, 0, 0, 0.65); border: 1px solid #333; border-left: 3px solid var(--term-dim); padding: 10px 12px; margin-bottom: 8px; text-align: left; font-size: 13px; border-radius: 2px; }
+.feedback-card.bug { border-left-color: #ff4444; }
+.feedback-card.suggestion { border-left-color: var(--term-warn); }
+.feedback-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; flex-wrap: wrap; gap: 4px; }
+.feedback-card-badge { font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 2px; }
+.feedback-card-badge.bug { background: rgba(255, 68, 68, 0.2); color: #ff6666; border: 1px solid #ff4444; }
+.feedback-card-badge.suggestion { background: rgba(255, 170, 0, 0.2); color: var(--term-warn); border: 1px solid var(--term-warn); }
+.feedback-card-text { color: #eee; line-height: 1.45; word-break: break-word; white-space: pre-wrap; font-family: inherit; }
 </style>
 </head>
 <body class="crt-enabled">
@@ -284,26 +316,41 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div id="feedback-modal" class="modal-overlay" style="z-index: 85;">
-  <div class="shop-panel" style="width: 550px; max-width: 95%;">
-    <div class="shop-header"><span>ОБРАЩЕНИЕ В ДИСПЕТЧЕРСКУЮ</span><button onclick="document.getElementById('feedback-modal').style.display='none';">[X]</button></div>
-    <div style="text-align: left; margin-bottom: 15px; font-size: 13px; color: #aaa;">
-      Нашли ошибку или хотите предложить улучшение для игры? Отправьте сообщение напрямую на сервер:
+  <div class="shop-panel" style="width: 650px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="shop-header"><span>ДИСПЕТЧЕРСКАЯ // БАГИ И ИДЕИ</span><button onclick="document.getElementById('feedback-modal').style.display='none';">[X]</button></div>
+    <div style="display: flex; gap: 6px; border-bottom: 1px solid var(--term-dim); margin-bottom: 14px;">
+      <button id="fb-tab-write" class="feedback-tab-btn active" type="button">✍️ НАПИСАТЬ</button>
+      <button id="fb-tab-list" class="feedback-tab-btn" type="button">📋 ЖУРНАЛ ОБРАЩЕНИЙ [Shift+P]</button>
     </div>
-    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-      <button id="fb-type-bug" class="feedback-type-btn active" type="button">🐛 БАГ-РЕПОРТ</button>
-      <button id="fb-type-sugg" class="feedback-type-btn" type="button">💡 ПРЕДЛОЖЕНИЕ</button>
+    <div id="fb-view-write" style="display: block;">
+      <div style="text-align: left; margin-bottom: 15px; font-size: 13px; color: #aaa;">
+        Нашли ошибку или хотите предложить улучшение для игры? Отправьте сообщение напрямую на сервер:
+      </div>
+      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <button id="fb-type-bug" class="feedback-type-btn active" type="button">🐛 БАГ-РЕПОРТ</button>
+        <button id="fb-type-sugg" class="feedback-type-btn" type="button">💡 ПРЕДЛОЖЕНИЕ</button>
+      </div>
+      <textarea id="feedback-input" class="feedback-textarea" placeholder="Опишите найденный баг или вашу идею (до 500 символов)..." maxlength="500"></textarea>
+      <div id="feedback-status" style="font-size: 13px; min-height: 18px; margin-bottom: 10px; text-align: left;"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button onclick="document.getElementById('feedback-modal').style.display='none';" style="margin: 0; padding: 6px 14px; font-size: 12px; border-color: #555; color: #888;">ОТМЕНА</button>
+        <button id="btn-submit-feedback" style="margin: 0; padding: 6px 18px; font-size: 12px; border-color: var(--term-warn); color: var(--term-warn);">ОТПРАВИТЬ</button>
+      </div>
     </div>
-    <textarea id="feedback-input" class="feedback-textarea" placeholder="Опишите найденный баг или вашу идею (до 500 символов)..." maxlength="500"></textarea>
-    <div id="feedback-status" style="font-size: 13px; min-height: 18px; margin-bottom: 10px; text-align: left;"></div>
-    <div style="display: flex; justify-content: flex-end; gap: 10px;">
-      <button onclick="document.getElementById('feedback-modal').style.display='none';" style="margin: 0; padding: 6px 14px; font-size: 12px; border-color: #555; color: #888;">ОТМЕНА</button>
-      <button id="btn-submit-feedback" style="margin: 0; padding: 6px 18px; font-size: 12px; border-color: var(--term-warn); color: var(--term-warn);">ОТПРАВИТЬ</button>
+    <div id="fb-view-list" style="display: none; flex-direction: column; flex-grow: 1; overflow: hidden; min-height: 300px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="font-size: 13px; color: #aaa; text-align: left;">Все зарегистрированные баги и предложения:</div>
+        <button id="fb-btn-refresh" type="button" style="margin:0; padding:4px 10px; font-size:11px;">🔄 ОБНОВИТЬ</button>
+      </div>
+      <div id="fb-list-container" style="overflow-y: auto; flex-grow: 1; max-height: 50vh; padding-right: 6px;">
+        <div style="color: #666; font-size: 13px; padding: 20px 0;">Загрузка обращений...</div>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="audio-controls">
-  <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);">⚠️ БАГИ / ИДЕИ</button>
+  <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);">⚠️ БАГИ / ИДЕИ [Shift+P]</button>
   <button id="btn-bestiary" class="audio-btn" style="display:none;">📖 БЕСТИАРИЙ</button>
   <button id="btn-info" class="audio-btn">ℹ️ СПРАВКА</button>
   <button id="btn-options" class="audio-btn">⚙️ ОПЦИИ</button>
@@ -312,7 +359,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
-  <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);">📝 Баг-репорт / Предложение</button>
+  <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);">📝 Баг-репорт / Предложение [Shift+P]</button>
 </div>
 
 <div id="login-screen" class="screen active-screen">
@@ -567,10 +614,46 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
       <div class="equipment-panel">
         <h3>НАДЕТО:</h3>
-        <div id="equip-slot-mask" class="equip-slot" onclick="socket.emit('unequipItem', 'mask')"><div class="item-type">ДЫХАНИЕ</div><div id="inv-mask-name">Пусто</div></div>
-        <div id="equip-slot-clothes" class="equip-slot" onclick="socket.emit('unequipItem', 'clothes')"><div class="item-type">ЗАЩИТА</div><div id="inv-clothes-name">Пусто</div></div>
-        <div id="equip-slot-backpack" class="equip-slot" onclick="socket.emit('unequipItem', 'backpack')"><div class="item-type">СПИНА</div><div id="inv-backpack-name">Пусто</div></div>
-        <div id="equip-slot-weapon" class="equip-slot" onclick="socket.emit('unequipItem', 'weapon')"><div class="item-type">ОРУЖИЕ</div><div id="inv-weapon-name">Пусто</div></div>
+        <div id="equip-slot-mask" class="equip-slot" onclick="socket.emit('unequipItem', 'mask')" title="Клик, чтобы снять">
+          <div class="equip-slot-icon-box">
+            <img id="inv-equip-icon-mask" class="equip-slot-icon" style="display:none;" alt="">
+            <div id="inv-equip-ph-mask" class="equip-slot-ph">🤿</div>
+          </div>
+          <div class="equip-slot-info">
+            <div class="item-type">ДЫХАНИЕ</div>
+            <div id="inv-mask-name">Пусто</div>
+          </div>
+        </div>
+        <div id="equip-slot-clothes" class="equip-slot" onclick="socket.emit('unequipItem', 'clothes')" title="Клик, чтобы снять">
+          <div class="equip-slot-icon-box">
+            <img id="inv-equip-icon-clothes" class="equip-slot-icon" style="display:none;" alt="">
+            <div id="inv-equip-ph-clothes" class="equip-slot-ph">🦺</div>
+          </div>
+          <div class="equip-slot-info">
+            <div class="item-type">ЗАЩИТА</div>
+            <div id="inv-clothes-name">Пусто</div>
+          </div>
+        </div>
+        <div id="equip-slot-backpack" class="equip-slot" onclick="socket.emit('unequipItem', 'backpack')" title="Клик, чтобы снять">
+          <div class="equip-slot-icon-box">
+            <img id="inv-equip-icon-backpack" class="equip-slot-icon" style="display:none;" alt="">
+            <div id="inv-equip-ph-backpack" class="equip-slot-ph">🎒</div>
+          </div>
+          <div class="equip-slot-info">
+            <div class="item-type">СПИНА</div>
+            <div id="inv-backpack-name">Пусто</div>
+          </div>
+        </div>
+        <div id="equip-slot-weapon" class="equip-slot" onclick="socket.emit('unequipItem', 'weapon')" title="Клик, чтобы снять">
+          <div class="equip-slot-icon-box">
+            <img id="inv-equip-icon-weapon" class="equip-slot-icon" style="display:none;" alt="">
+            <div id="inv-equip-ph-weapon" class="equip-slot-ph">🗡️</div>
+          </div>
+          <div class="equip-slot-info">
+            <div class="item-type">ОРУЖИЕ</div>
+            <div id="inv-weapon-name">Пусто</div>
+          </div>
+        </div>
         <h3 style="color: var(--ink-danger); margin-top: 10px;">ПОЯС:</h3>
         <div id="inv-qslot-0" class="quick-slot">[ПУСТО]</div>
         <div id="inv-qslot-1" class="quick-slot">[ПУСТО]</div>
@@ -696,21 +779,21 @@ function getItemStatBadges(item) {
   let badges = [];
   if (item.type === 'weapon' && item.dmg) {
     let suffix = item.isFire ? ' 🔥' : item.isElectro ? ' ⚡' : item.isBleed ? ' 🩸' : '';
-    badges.push(`<span class="item-stat-badge stat-dmg">⚔️ ${item.dmg} УР${suffix}</span>`);
+    badges.push(`<span class="item-stat-badge stat-dmg">⚔️ ${item.dmg} УРОН${suffix}</span>`);
   }
   if ((item.type === 'clothes' || item.type === 'mask') && item.def) {
-    badges.push(`<span class="item-stat-badge stat-def">🛡️ +${item.def} БР</span>`);
+    badges.push(`<span class="item-stat-badge stat-def">🛡️ +${item.def} БРОНЯ</span>`);
   }
   if (item.type === 'backpack' && item.bonusCap) {
-    badges.push(`<span class="item-stat-badge stat-cap">🎒 +${item.bonusCap} СЛ</span>`);
+    badges.push(`<span class="item-stat-badge stat-cap">🎒 +${item.bonusCap} МЕСТ</span>`);
   }
   if (item.type === 'consumable') {
     if (item.restoreHp) badges.push(`<span class="item-stat-badge stat-heal">❤️ +${item.restoreHp} HP</span>`);
-    if (item.restoreFilter) badges.push(`<span class="item-stat-badge stat-filter">💨 +${item.restoreFilter}% Ф</span>`);
+    if (item.restoreFilter) badges.push(`<span class="item-stat-badge stat-filter">💨 +${item.restoreFilter}% ФИЛЬТР</span>`);
     if (item.restoreHunger) badges.push(`<span class="item-stat-badge stat-cap">🍖 +${item.restoreHunger}% СЫТ</span>`);
   }
   if (item.type === 'special' && item.combatDmg) {
-    badges.push(`<span class="item-stat-badge stat-dmg">💥 ${item.combatDmg} УР</span>`);
+    badges.push(`<span class="item-stat-badge stat-dmg">💥 ${item.combatDmg} УРОН</span>`);
   }
   if (item.type === 'tool' && item.desc) {
     badges.push(`<span class="item-stat-badge stat-cap">⚙️ ${item.desc}</span>`);
@@ -1138,30 +1221,47 @@ function updateUI(me, sectorPlayers) {
       let iI = document.getElementById(`inv-img-${slot}`);
       let bI = document.getElementById(`battle-${slot}`);
       const nD = document.getElementById(`inv-${slot}-name`);
+      const slotIcon = document.getElementById(`inv-equip-icon-${slot}`);
+      const slotPh = document.getElementById(`inv-equip-ph-${slot}`);
       if (itemId && itemData) {
         let url = `assets/${slot}/${iconId}.png`;
+        let iconUrl = `assets/icons/${iconId}.png`;
         if(iI) { iI.src = url; iI.style.display = 'block'; }
         if(bI) { bI.src = url; bI.style.display = 'block'; }
+        if(slotIcon) { slotIcon.src = iconUrl; slotIcon.style.display = 'block'; }
+        if(slotPh) { slotPh.style.display = 'none'; }
         let statBadge = '';
         if (slot === 'weapon' && itemData.dmg) {
           let sfx = itemData.isFire ? ' 🔥' : itemData.isElectro ? ' ⚡' : itemData.isBleed ? ' 🩸' : '';
-          statBadge = ` <span class="item-stat-badge stat-dmg">⚔️ ${itemData.dmg}${sfx}</span>`;
+          statBadge = ` <span class="item-stat-badge stat-dmg">⚔️ ${itemData.dmg} УРОН${sfx}</span>`;
         } else if ((slot === 'clothes' || slot === 'mask') && itemData.def) {
-          statBadge = ` <span class="item-stat-badge stat-def">🛡️ ${itemData.def}</span>`;
+          statBadge = ` <span class="item-stat-badge stat-def">🛡️ +${itemData.def} БРОНЯ</span>`;
         }
-        if(nD) nD.innerHTML = `<span style="font-weight:bold;">${itemData.name}</span>${statBadge}`;
+        if(nD) nD.innerHTML = `<span style="font-weight:bold; font-size:12px;">${itemData.name}</span>${statBadge}`;
       } else {
         if(iI) { iI.src = ''; iI.style.display = 'none'; }
         if(bI) { bI.src = ''; bI.style.display = 'none'; }
-        if(nD) nD.innerText = "Пусто";
+        if(slotIcon) { slotIcon.src = ''; slotIcon.style.display = 'none'; }
+        if(slotPh) { slotPh.style.display = 'block'; }
+        if(nD) nD.innerHTML = '<span style="color:var(--ink-dim); font-size:12px;">[Пусто]</span>';
       }
     });
-    let bp = GAME_ITEMS[me.equipment.backpack];
+    let bpId = me.equipment.backpack;
+    let bp = GAME_ITEMS[bpId];
     let bpN = document.getElementById('inv-backpack-name');
+    let bpIcon = document.getElementById('inv-equip-icon-backpack');
+    let bpPh = document.getElementById('inv-equip-ph-backpack');
     if (bp && bpN) {
-      let capBadge = bp.bonusCap ? ` <span class="item-stat-badge stat-cap">+${bp.bonusCap}</span>` : '';
-      bpN.innerHTML = `<span style="font-weight:bold;">${bp.name}</span>${capBadge}`;
-    } else if (bpN) bpN.innerText = "Пусто";
+      let iconId = bp.iconId || bpId;
+      if(bpIcon) { bpIcon.src = `assets/icons/${iconId}.png`; bpIcon.style.display = 'block'; }
+      if(bpPh) { bpPh.style.display = 'none'; }
+      let capBadge = bp.bonusCap ? ` <span class="item-stat-badge stat-cap">🎒 +${bp.bonusCap} МЕСТ</span>` : '';
+      bpN.innerHTML = `<span style="font-weight:bold; font-size:12px;">${bp.name}</span>${capBadge}`;
+    } else if (bpN) {
+      if(bpIcon) { bpIcon.src = ''; bpIcon.style.display = 'none'; }
+      if(bpPh) { bpPh.style.display = 'block'; }
+      bpN.innerHTML = '<span style="color:var(--ink-dim); font-size:12px;">[Пусто]</span>';
+    }
     let id = document.getElementById('inv-dmg'); if(id) id.innerText = me.stats.dmg;
     let idef = document.getElementById('inv-def'); if(idef) idef.innerText = me.stats.def;
   }
@@ -1194,9 +1294,21 @@ function updateUI(me, sectorPlayers) {
     if(pc) {
       pc.innerHTML = '';
       let any = false;
-      if(me.perks) me.perks.forEach(pId => { let p = GAME_PERKS.find(x => x.id === pId); if(p) { pc.innerHTML += `<div style="padding:3px; border-bottom:1px dotted rgba(122,16,16,0.3);"><b>${p.name}</b><br><span style="font-size:11px;">${p.desc}</span></div>`; any = true; } });
-      if(me.mutations) me.mutations.forEach(mId => { let m = MUTATIONS.find(x => x.id === mId); if(m) { pc.innerHTML += `<div style="padding:3px; color:#7a1010;"><b>[МУТ] ${m.name}</b><br><span style="font-size:11px;">${m.desc}</span></div>`; any = true; } });
-      if(!any) pc.innerHTML = 'Пусто';
+      if(me.perks) me.perks.forEach(pId => {
+        let p = GAME_PERKS.find(x => x.id === pId);
+        if(p) {
+          pc.innerHTML += `<div class="perk-card"><div class="perk-card-title">⭐ ${p.name}</div><div class="perk-card-desc">${p.desc}</div></div>`;
+          any = true;
+        }
+      });
+      if(me.mutations) me.mutations.forEach(mId => {
+        let m = MUTATIONS.find(x => x.id === mId);
+        if(m) {
+          pc.innerHTML += `<div class="perk-card mutation"><div class="perk-card-title">☣️ [МУТАЦИЯ] ${m.name}</div><div class="perk-card-desc">${m.desc}</div></div>`;
+          any = true;
+        }
+      });
+      if(!any) pc.innerHTML = '<span style="color:var(--ink-dim); font-size:12px;">Пусто...</span>';
     }
   }
 
@@ -1547,28 +1659,64 @@ document.getElementById('btn-send-chat').onclick = () => {
 };
 document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('btn-send-chat').click(); });
 
-document.addEventListener('keydown', (e) => { if (e.code === 'Tab') { e.preventDefault(); toggleInv(); } });
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Tab') {
+    e.preventDefault();
+    toggleInv();
+  }
+  if (e.shiftKey && (e.code === 'KeyP' || e.key.toLowerCase() === 'p' || e.key.toLowerCase() === 'з')) {
+    e.preventDefault();
+    openFeedbackModal(null, 'list');
+  }
+});
 bindQuickSlotClicks();
 bindChestButtons();
 
-// ===== ОБРАЩЕНИЯ: БАГ-РЕПОРТЫ И ПРЕДЛОЖЕНИЯ =====
+// ===== ОБРАЩЕНИЯ: БАГ-РЕПОРТЫ И ПРЕДЛОЖЕНИЯ (Shift + P) =====
 let currentFeedbackType = 'bug';
+let currentFeedbackTab = 'write';
 const fbModal = document.getElementById('feedback-modal');
 const btnOpenFb = document.getElementById('btn-feedback');
 const btnOptFb = document.getElementById('btn-opt-feedback');
+const fbTabWrite = document.getElementById('fb-tab-write');
+const fbTabList = document.getElementById('fb-tab-list');
+const fbViewWrite = document.getElementById('fb-view-write');
+const fbViewList = document.getElementById('fb-view-list');
+const fbBtnRefresh = document.getElementById('fb-btn-refresh');
+const fbListContainer = document.getElementById('fb-list-container');
 const fbTypeBug = document.getElementById('fb-type-bug');
 const fbTypeSugg = document.getElementById('fb-type-sugg');
 const fbInput = document.getElementById('feedback-input');
 const fbStatus = document.getElementById('feedback-status');
 const btnSubmitFb = document.getElementById('btn-submit-feedback');
 
-function openFeedbackModal(type) {
+function switchFeedbackTab(tab) {
+  currentFeedbackTab = tab;
+  if (fbTabWrite && fbTabList && fbViewWrite && fbViewList) {
+    if (tab === 'list') {
+      fbTabWrite.classList.remove('active');
+      fbTabList.classList.add('active');
+      fbViewWrite.style.display = 'none';
+      fbViewList.style.display = 'flex';
+      socket.emit('getFeedbackList');
+    } else {
+      fbTabList.classList.remove('active');
+      fbTabWrite.classList.add('active');
+      fbViewList.style.display = 'none';
+      fbViewWrite.style.display = 'block';
+      if (fbInput) fbInput.focus();
+    }
+  }
+}
+
+function openFeedbackModal(type, tab) {
   if (type) setFeedbackType(type);
   if (fbStatus) fbStatus.innerHTML = '';
   if (fbModal) fbModal.style.display = 'flex';
   const optM = document.getElementById('options-menu');
   if (optM) optM.style.display = 'none';
-  if (fbInput) fbInput.focus();
+  if (tab) switchFeedbackTab(tab);
+  else switchFeedbackTab(currentFeedbackTab);
 }
 
 function setFeedbackType(type) {
@@ -1579,8 +1727,12 @@ function setFeedbackType(type) {
   }
 }
 
-if (btnOpenFb) btnOpenFb.onclick = () => openFeedbackModal();
-if (btnOptFb) btnOptFb.onclick = () => openFeedbackModal();
+if (fbTabWrite) fbTabWrite.onclick = () => switchFeedbackTab('write');
+if (fbTabList) fbTabList.onclick = () => switchFeedbackTab('list');
+if (fbBtnRefresh) fbBtnRefresh.onclick = () => socket.emit('getFeedbackList');
+
+if (btnOpenFb) btnOpenFb.onclick = () => openFeedbackModal(null, 'write');
+if (btnOptFb) btnOptFb.onclick = () => openFeedbackModal(null, 'write');
 if (fbTypeBug) fbTypeBug.onclick = () => setFeedbackType('bug');
 if (fbTypeSugg) fbTypeSugg.onclick = () => setFeedbackType('suggestion');
 
@@ -1603,9 +1755,39 @@ socket.on('feedbackSentSuccess', (data) => {
   if (fbStatus) fbStatus.innerHTML = `<span style="color:var(--term-green); font-weight:bold;">${data.message || 'Отправлено!'}</span>`;
   playSound('victory');
   setTimeout(() => {
-    if (fbModal) fbModal.style.display = 'none';
+    switchFeedbackTab('list');
     if (fbStatus) fbStatus.innerHTML = '';
-  }, 2000);
+  }, 1200);
+});
+
+socket.on('feedbackList', (list) => {
+  if (!fbListContainer) return;
+  if (!Array.isArray(list) || list.length === 0) {
+    fbListContainer.innerHTML = '<div style="color:#888; text-align:center; padding:30px 10px; font-size:13px;">Журнал обращений пуст.<br>Вы можете отправить первое сообщение во вкладке «НАПИСАТЬ»!</div>';
+    return;
+  }
+  let html = '';
+  const reversed = list.slice().reverse();
+  reversed.forEach(item => {
+    const isBug = (item.type === 'БАГ-РЕПОРТ' || item.type === 'bug');
+    const badgeCls = isBug ? 'bug' : 'suggestion';
+    const badgeText = isBug ? '🐛 БАГ-РЕПОРТ' : '💡 ПРЕДЛОЖЕНИЕ';
+    const time = item.timeStr || (item.createdAt ? new Date(item.createdAt).toLocaleTimeString() : '');
+    const user = item.user || 'Аноним';
+    const loc = item.location ? `(Эт.${item.floor || 0}, ${item.location})` : '';
+    const safeText = document.createElement('div');
+    safeText.innerText = item.text || '';
+    html += `
+      <div class="feedback-card ${badgeCls}">
+        <div class="feedback-card-header">
+          <span class="feedback-card-badge ${badgeCls}">${badgeText}</span>
+          <span style="color:var(--term-dim); font-size:11px;">#${user} ${loc} &bull; ${time}</span>
+        </div>
+        <div class="feedback-card-text">${safeText.innerHTML}</div>
+      </div>
+    `;
+  });
+  fbListContainer.innerHTML = html;
 });
 </script>
 </body>

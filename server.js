@@ -689,6 +689,11 @@ io.on('connection', (socket) => {
 
         writeLog(`[${type}] от #${u} (Эт.${report.floor}, Сектор ${report.location}): "${text}"`);
         socket.emit('feedbackSentSuccess', { message: 'Обращение успешно доставлено в диспетчерскую блока!' });
+        io.emit('feedbackList', db.feedback || []);
+    });
+
+    socket.on('getFeedbackList', () => {
+        socket.emit('feedbackList', db.feedback || []);
     });
 
     socket.on('selectPerk', (perkId) => { let p = db.players[onlinePlayers[socket.id]]; if(p && !p.perks.includes(perkId)) { p.perks.push(perkId); if(perkId === 'perk_health') { p.maxHp += 25; p.hp += 25; } saveDB(); broadcastGameState(); } });
