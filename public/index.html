@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -38,9 +38,9 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
 .terminal-center { display: flex; flex-direction: column; align-items: stretch; width: 540px; gap: 10px; flex-shrink: 0; }
 .combat-avatar { position: relative; width: 350px; height: 500px; display: flex; justify-content: center; align-items: flex-end; flex-shrink: 0; overflow: hidden; }
 .combat-avatar img, .avatar-layer { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); transform-origin: bottom center; width: 100%; height: 100%; object-fit: contain; object-position: bottom center; pointer-events: none; }
-#inv-img-clothes, #battle-clothes { transform: translateX(-50%) scale(1.02); }
-#inv-img-mask, #battle-mask { transform: translateX(-50%) scale(0.55) translateY(-58%); }
-#inv-img-weapon, #battle-weapon { transform: translateX(-50%) scale(0.95); }
+#inv-img-clothes, #battle-clothes { transform: translateX(-50%); }
+#inv-img-mask, #battle-mask { transform: translateX(-50%); }
+#inv-img-weapon, #battle-weapon { transform: translateX(-50%); }
 .vfx-container { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
 @keyframes slash { 0% { clip-path: polygon(0 0, 0 0, 0 0); background: white; } 50% { clip-path: polygon(0 0, 100% 100%, 80% 100%, 0 20%); background: #ff0000; } 100% { clip-path: polygon(100% 100%, 100% 100%, 100% 100%); background: transparent; } }
 @keyframes crit_slash { 0% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1); } }
@@ -94,6 +94,11 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .polaroid-col { display: flex; flex-direction: column; width: 300px; flex-shrink: 0; gap: 14px; }
 .polaroid { background: white; padding: 10px 10px 25px 10px; box-shadow: 2px 4px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; align-items: center; transform: rotate(-1.5deg); }
 .avatar-container { position: relative; width: 280px; height: 280px; background: #2a2a2a; border: 1px solid #111; overflow: hidden; display: flex; justify-content: center; align-items: flex-end; }
+.avatar-hp-gauge { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 24px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.avatar-hp-label { font-size: 11px; font-weight: 900; color: #ff3333; text-shadow: 0 0 4px #000, 1px 1px 2px #000; letter-spacing: 1px; line-height: 1; }
+.avatar-hp-track { flex: 1; width: 10px; background: rgba(0, 0, 0, 0.75); border: 1px solid rgba(255, 50, 50, 0.8); box-shadow: 0 0 5px rgba(0,0,0,0.9); border-radius: 5px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+.avatar-hp-fill { width: 100%; height: 100%; background: linear-gradient(to top, #990000, #ff2222, #ff6666); border-radius: 4px; transition: height 0.3s ease, background 0.3s ease; box-shadow: 0 0 6px rgba(255, 50, 50, 0.7); }
+.avatar-hp-val { font-size: 10px; font-weight: bold; color: #fff; text-shadow: 0 0 3px #000, 1px 1px 2px #000; line-height: 1; }
 .quest-items-panel { width: 100%; flex: 1; border: 1px solid var(--ink-danger); padding: 10px; font-size: 13px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: rgba(122,16,16,0.05); }
 #quest-items-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
 .quest-item { padding: 4px; border-bottom: 1px dashed rgba(122,16,16,0.4); margin-bottom: 4px; color: var(--ink-dim); }
@@ -392,17 +397,59 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <h2>РУКОВОДСТВО ПО ВЫЖИВАНИЮ</h2>
       <button onclick="document.getElementById('info-modal').style.display='none'">[X]</button>
     </div>
-    <h3>= ВВЕДЕНИЕ =</h3>
-    <p>Вы — один из двадцати трёх заключённых, приговорённых Партией Светлых к «искуплению через труд». Вас погрузили в клеть и отправили вниз, на нулевой этаж, в самое сердце Самосбора. Но во время спуска <b>оборвался трос</b> — клеть рухнула на дно шахты.</p>
-    <p>Конвоир погиб. Остальные заключённые разбежались кто куда. Вы очнулись среди обломков и заперлись в первой свободной жилячейке. Цель — <b>добраться до Главного Лифта в секторе E4 и подняться наверх</b>.</p>
-    <h3>= ВЫЖИВАНИЕ =</h3>
-    <p><b>Голод</b> падает со временем. При нуле вы начнёте умирать. <b>Заражение</b> растёт при уроне — при 100% получите Мутацию. Сбивайте Химикатами.</p>
-    <h3>= КАРТА И ТУМАН =</h3>
-    <p>Сектора A0 - E4. Исследование требует <b>ФИЛЬТРА</b>. Закрытые сектора требуют <b>[КЛЮЧ]</b> или <b>[ВЗЛОМ]</b>.</p>
-    <h3>= БОЙ =</h3>
-    <p><b>ПРИЦЕЛЬНАЯ АТАКА:</b> нажмите кнопку, ловите курсор в центре зелёной зоны — крит x2.</p>
-    <h3>= ИНВЕНТАРЬ =</h3>
-    <p>Кликните на предмет — <b>НА ПОЯС</b>, <b>ИСПОЛЬЗ.</b>, <b>НАДЕТЬ</b>, <b>ВЫБРОС</b>. На <b>ВЕРСТАКЕ</b> можно модифицировать оружие стихиями.</p>
+    
+    <h3>= 1. ВВЕДЕНИЕ И ЦЕЛЬ =</h3>
+    <p>Вы — один из двадцати трёх заключённых, приговорённых Партией Светлых к «искуплению через труд». Во время спуска вглубь шахты оборвался трос — клеть рухнула на самое дно. Вы выжили и укрылись в первой попавшейся жилячейке.</p>
+    <p>Ваша глобальная цель — <b>исследовать этажи Гигахрущевки</b>, преодолевать Самосбор, чинить лифты в секторе <b>E4</b>, уничтожать Аномалий и рейд-боссов и дойти до финала (30-й этаж — Чернобог).</p>
+
+    <h3>= 2. ЖИЗНЕННЫЕ ПОКАЗАТЕЛИ =</h3>
+    <p>• <b>Здоровье (HP):</b> При падении до 0 наступает критическое состояние — эвакуация в Жилячейку с потерей половины талонов.<br>
+    • <b>Фильтр противогаза:</b> Расходуется при каждой вылазке в Туман (исследование). Чем выше уровень фильтра, тем выше ваша скорость атаки в бою. При фильтре ниже 10 вылазки невозможны.<br>
+    • <b>Сытость (Голод):</b> Постепенно падает со временем и при переходах. При значении 0 вы начинаете терять здоровье каждую минуту.<br>
+    • <b>Заражение (Токсичность):</b> Накапливается при получении ударов от тварей Тумана. При достижении 100% сбрасывается и вызывает случайную постоянную <b>Мутацию</b>. Снижайте заражение с помощью <b>Химикатов</b>.</p>
+
+    <h3>= 3. ЖИЛЯЧЕЙКА (БЕЗОПАСНАЯ ЗОНА) =</h3>
+    <p>Жилячейка — ваше единственное убежище от ужасов Самосбора. Находясь здесь:<br>
+    • Автоматически и бесплатно <b>восстанавливаются фильтр</b> и <b>здоровье</b> (при условии, что вы не голодаете).<br>
+    • Можно спокойно перебрать сундук, настроить пояс и заняться крафтом на верстаке.</p>
+
+    <h3>= 4. ДОБЫЧА СЛИЗИ И АВТОМАТИЗАЦИЯ =</h3>
+    <p>• <b>Ручной сбор:</b> Клик по кнопке добычи дает <b>Брикеты слизи</b> (утоляют голод и используются в крафте).<br>
+    • <b>Инструменты:</b> Наличие в сундуке Скребка (+1), Пневмонасоса (+3) или Экстрактора (+7) в разы увеличивает выработку слизи за раз.<br>
+    • <b>Автосборщик (Робот):</b> Скрафтите или купите робота и установите его в любом секторе. Он будет пассивно копить талоны (до 250 шт.). Не забывайте регулярно собирать накопленное!</p>
+
+    <h3>= 5. КАРТА, СЕКТОРА И ВЗЛОМ =</h3>
+    <p>Каждый этаж представляет собой сеть секторов от <b>A0</b> до <b>E4</b>.<br>
+    • Переход в неисследованный сектор может потребовать <b>квестовый предмет</b> (Болторез, Топливный элемент, Красная ключ-карта, Предохранитель).<br>
+    • Либо может потребоваться <b>взлом гермодвери</b> (решение шифра стертой клавиатуры, кодовой записки коменданта или калибровка напряжения подстанции).</p>
+
+    <h3>= 6. БОЕВАЯ СИСТЕМА И ТАКТИКА =</h3>
+    <p>• <b>Обычная атака:</b> Базовый урон оружием с перезарядкой, зависящей от чистоты фильтра.<br>
+    • <b>Прицельная атака (Крит):</b> Проверка реакции. Поймайте бегунок в зеленой зоне — нанесете двойной урон (или x2.3 с перком Мясник). При промахе враг нанесет ответный удар!<br>
+    • <b>Уклонение:</b> 75% шанс избежать атаки противника. В случае успеха ваш следующий удар гарантированно станет критическим.<br>
+    • <b>Пояс быстрого доступа:</b> Перетаскивайте еду, аптечки или спецсредства (метательные ножи, шокеры, гранаты) на пояс в инвентаре. Их можно мгновенно активировать прямо во время боя!</p>
+
+    <h3>= 7. ИНВЕНТАРЬ, КРАФТ И СТИХИИ =</h3>
+    <p>• <b>Лимит сундука:</b> Базовый объем — 12 слотов. Надевайте рюкзаки (Вещмешок, Рюкзак сталкера, Тактический короб), чтобы увеличить вместимость.<br>
+    • <b>Действия с предметами:</b> Клик по предмету открывает меню: «На пояс», «Использовать», «Надеть», «Сдать торговцу» или «Выбросить».<br>
+    • <b>Крафт:</b> Из найденных материалов можно собирать оружие, аптечки, шокеры и автосборщиков.<br>
+    • <b>Модификация оружия:</b> На верстаке можно напитать чистое оружие стихией:<br>
+    &nbsp;&nbsp;🔥 <b>Огонь (+15% урона):</b> Модификация Химикатами.<br>
+    &nbsp;&nbsp;⚡ <b>Электро (+10% урона):</b> Модификация Электроникой.<br>
+    &nbsp;&nbsp;🩸 <b>Кровотечение (+5% урона):</b> Модификация Куском металла.</p>
+
+    <h3>= 8. ПРОКАЧКА, ПЕРКИ И МУТАЦИИ =</h3>
+    <p>• За победы над врагами вы получаете опыт (XP). С каждым новым уровнем вы выбираете 1 из 3 случайных <b>Перков</b> (увеличение максимального HP, снижение расхода фильтра, вампиризм, увеличение шанса добычи лута и др.).<br>
+    • <b>Мутации</b> возникают при критическом заражении (100% токсичности). Они дают как сильные преимущества, так и суровые штрафы (например, снижение урона от врагов ценой двойного расхода фильтра).</p>
+
+    <h3>= 9. ГЛАВНЫЙ ЛИФТ И РЕЙД-БОССЫ =</h3>
+    <p>• В секторе <b>E4</b> расположен поврежденный лифт этажа.<br>
+    • Для его починки найдите 3 компонента: <b>Ремкомплект лифта</b>, <b>Блок кнопок</b> и <b>Провод генератора</b>.<br>
+    • При запуске лифта пробуждается могучий <b>Рейд-Босс этажа</b>. Одолейте его вместе с другими выжившими в секторе, чтобы открыть проход на следующий этаж!</p>
+
+    <h3>= 10. ТОРГОВЛЯ И ДРУГИЕ ВЫЖИВШИЕ =</h3>
+    <p>• <b>Магазин:</b> Обновляет ассортимент случайных товаров каждые 10 минут. Ненужную экипировку можно сдавать торговцу за талоны.<br>
+    • <b>Игроки рядом:</b> В том же секторе можно оказывать первую помощь товарищам (+15 HP) или атаковать чужаков в борьбе за выживание.</p>
   </div>
 </div>
 
@@ -432,12 +479,19 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div class="polaroid-col">
         <div class="polaroid">
           <div class="avatar-container">
+            <div class="avatar-hp-gauge" title="Уровень здоровья">
+              <span class="avatar-hp-label">HP</span>
+              <div class="avatar-hp-track">
+                <div id="inv-hp-bar" class="avatar-hp-fill"></div>
+              </div>
+              <span class="avatar-hp-val"><span class="ui-hp">100</span></span>
+            </div>
             <img id="inv-base-skin" class="avatar-layer" style="z-index: 1;" src="" alt="">
             <img id="inv-img-clothes" class="avatar-layer" style="z-index: 2;" src="" alt="">
             <img id="inv-img-mask" class="avatar-layer" style="z-index: 3;" src="" alt="">
             <img id="inv-img-weapon" class="avatar-layer" style="z-index: 4;" src="" alt="">
           </div>
-          <div style="margin-top: 12px; font-size: 14px;">УРОН: <span id="inv-dmg">0</span> | БРОНЯ: <span id="inv-def">0</span></div>
+          <div style="margin-top: 12px; font-size: 13px; font-weight: bold; color: var(--ink-color);">HP: <span class="ui-hp" style="color: var(--ink-danger);">100</span>/<span class="ui-maxhp">100</span> | УРОН: <span id="inv-dmg">0</span> | БРОНЯ: <span id="inv-def">0</span></div>
         </div>
         <div class="quest-items-panel">
           <div style="font-weight:bold; margin-bottom: 5px; color: var(--ink-danger); font-size: 12px; letter-spacing: 1px;">СЮЖЕТНЫЕ ПРЕДМЕТЫ:</div>
@@ -872,6 +926,18 @@ function updateUI(me, sectorPlayers) {
   document.querySelectorAll('.ui-rank').forEach(el => el.innerText = me.rankPos);
   let hp = (me.stats.hp / me.stats.maxHp) * 100;
   document.querySelectorAll('.ui-hp').forEach(el => { el.innerText = me.stats.hp; el.classList.toggle('critical-hp', hp < 50); });
+  let invHpBar = document.getElementById('inv-hp-bar');
+  if (invHpBar) {
+    let pct = Math.max(0, Math.min(100, hp));
+    invHpBar.style.height = pct + '%';
+    if (pct <= 25) {
+      invHpBar.style.background = 'linear-gradient(to top, #660000, #aa0000)';
+    } else if (pct <= 50) {
+      invHpBar.style.background = 'linear-gradient(to top, #990000, #ff4400)';
+    } else {
+      invHpBar.style.background = 'linear-gradient(to top, #990000, #ff2222, #ff6666)';
+    }
+  }
   if (hp < 50 && me.stats.hp > 0) { if (!lowHpWarningPlayed) { playSound('low_hp'); lowHpWarningPlayed = true; } } else lowHpWarningPlayed = false;
   document.querySelectorAll('.ui-filter').forEach(el => el.innerText = me.stats.filter);
   document.querySelectorAll('.filter-bar').forEach(el => { el.style.width = me.stats.filter + '%'; el.style.background = (me.stats.filter <= 20) ? 'var(--term-danger)' : 'var(--term-green)'; });

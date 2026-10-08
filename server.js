@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,24 +15,100 @@ function writeLog(message) {
     const time = new Date().toLocaleString('ru-RU');
     const logMsg = `[${time}] ${message}\n`;
     console.log(`[LOG] ${message}`);
-    try { fs.appendFileSync(LOG_FILE, logMsg); } catch (err) {}
+    fs.appendFile(LOG_FILE, logMsg, () => {});
 }
-
-process.on('uncaughtException', (err) => { writeLog(`КРИТИЧЕСКАЯ ОШИБКА: ${err.message}\n${err.stack}`); });
-process.on('unhandledRejection', (reason) => { writeLog(`НЕОБРАБОТАННОЕ ОТКЛОНЕНИЕ: ${reason}`); });
 
 const DB_FILE = 'database.json';
 let db = { players: {}, map: {} };
+let isDbDirty = false;
+let isSavingDb = false;
+
+function flushDBSync() {
+    if (!isDbDirty) return;
+    try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+        isDbDirty = false;
+    } catch (err) {
+        writeLog(`Ошибка синхронной записи БД: ${err.message}`);
+    }
+}
+
+function flushDBAsync() {
+    if (!isDbDirty || isSavingDb) return;
+    isSavingDb = true;
+    try {
+        const data = JSON.stringify(db, null, 2);
+        fs.writeFile(DB_FILE, data, 'utf8', (err) => {
+            isSavingDb = false;
+            if (err) {
+                writeLog(`Ошибка асинхронной записи БД: ${err.message}`);
+            } else {
+                isDbDirty = false;
+            }
+        });
+    } catch (err) {
+        isSavingDb = false;
+        writeLog(`Ошибка сериализации БД: ${err.message}`);
+    }
+}
+
+function saveDB(immediate = false) {
+    isDbDirty = true;
+    if (immediate) {
+        flushDBSync();
+    }
+}
+
+// Периодическое сохранение БД каждые 2 секунды
+setInterval(flushDBAsync, 2000);
+
+process.on('SIGINT', () => { flushDBSync(); process.exit(0); });
+process.on('SIGTERM', () => { flushDBSync(); process.exit(0); });
+process.on('exit', () => { flushDBSync(); });
+process.on('uncaughtException', (err) => { writeLog(`КРИТИЧЕСКАЯ ОШИБКА: ${err.message}\n${err.stack}`); flushDBSync(); });
+process.on('unhandledRejection', (reason) => { writeLog(`НЕОБРАБОТАННОЕ ОТКЛОНЕНИЕ: ${reason}`); });
 
 if (fs.existsSync(DB_FILE)) {
     try {
         let loadedData = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         if (loadedData.players && loadedData.map) db = loadedData;
-        else { db.players = loadedData; db.map = {}; saveDB(); }
+        else { db.players = loadedData.players || loadedData || {}; db.map = loadedData.map || {}; saveDB(true); }
     } catch (err) { writeLog(`Ошибка чтения БД: ${err.message}`); }
-} else { saveDB(); }
+} else { saveDB(true); }
 
-function saveDB() { try { fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2)); } catch (err) {} }
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+    return `scrypt:${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedPassword) {
+    if (!storedPassword) return false;
+    if (typeof storedPassword === 'string' && storedPassword.startsWith('scrypt:')) {
+        const parts = storedPassword.split(':');
+        if (parts.length === 3) {
+            const salt = parts[1];
+            const hash = parts[2];
+            try {
+                const verifyHash = crypto.scryptSync(password, salt, 64).toString('hex');
+                return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(verifyHash, 'hex'));
+            } catch (e) {
+                return false;
+            }
+        }
+    }
+    // Обратная совместимость для существующих паролей в открытом виде
+    return storedPassword === password;
+}
+
+function shuffleArray(arr) {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
 
 let onlinePlayers = {};
 let activeCombats = {};
@@ -207,8 +284,7 @@ const BASE_MONSTERS = [
 
 function generateShop() {
     let pool = ['food_ration', 'food_pure', 'food_medkit', 'mat_chem', 'mat_electro', 'mat_scrap', 'mat_tape', 'special_knife', 'special_shocker', 'backpack_small', 'backpack_med', ...Object.keys(BASE_EQUIP).filter(k=>BASE_EQUIP[k].type!=='backpack')];
-    pool.sort(() => 0.5 - Math.random());
-    currentShopItems = pool.slice(0, 6).map(id => rollItemWithRarity(id));
+    currentShopItems = shuffleArray(pool).slice(0, 6).map(id => rollItemWithRarity(id));
     nextShopUpdate = Date.now() + 10 * 60 * 1000;
     broadcastGameState();
 }
@@ -249,10 +325,10 @@ function generateFloor(floorIndex) {
             if(id !== 'A0' && id !== 'E4') allSectors.push(id);
         }
     }
-    allSectors.sort(() => 0.5 - Math.random());
+    allSectors = shuffleArray(allSectors);
     let locks = [];
     ['quest_boltcutter', 'quest_battery', 'quest_red_card', 'quest_fuse'].forEach(item => { locks.push({ type: 'item', val: item }); });
-    let mPool = [...MINIGAME_POOL].sort(() => 0.5 - Math.random()).slice(0, 5);
+    let mPool = shuffleArray(MINIGAME_POOL).slice(0, 5);
     mPool.forEach(mg => locks.push({ type: 'minigame', val: mg }));
     let nameIndex = 0;
     for (let y = 0; y < 5; y++) {
@@ -270,7 +346,8 @@ function generateFloor(floorIndex) {
     }
     saveDB();
 }
-db.map = {}; generateFloor(0);
+if (!db.map) db.map = {};
+if (!db.map[0]) generateFloor(0);
 
 function getPlayerStats(player) {
     let stats = { hp: player.hp, maxHp: player.maxHp, filter: player.filter, dmg: 1, def: 0 };
@@ -285,6 +362,9 @@ function getPlayerStats(player) {
 }
 
 function broadcastGameState() {
+    let activeSocketIds = Object.keys(onlinePlayers);
+    if (activeSocketIds.length === 0) return;
+
     let allPlayers = Object.values(db.players);
     allPlayers.forEach(p => { p.rating = (p.xp || 0) + ((p.monstersKilled||0) * 10) + ((p.roomsCleared||0) * 5) + ((p.floor||0) * 100) + Math.floor((p.playtime||0) / 60); });
     allPlayers.sort((a, b) => b.rating - a.rating);
@@ -326,17 +406,29 @@ function broadcastGameState() {
 io.on('connection', (socket) => {
     socket.emit('chatHistory', chatHistory);
 
+    let lastChatTime = 0;
+    let lastWorkTime = 0;
+    let lastPvpTime = 0;
+    let lastCoopTime = 0;
+
     socket.on('login', (data) => {
         const { username, password } = data;
         writeLog(`Вход: ${username}`);
         try {
-            if (db.players[username] && db.players[username].password !== password) {
-                socket.emit('terminalError', 'ОШИБКА ДОСТУПА: НЕВЕРНЫЙ ПАРОЛЬ');
-                return;
+            if (db.players[username]) {
+                if (!verifyPassword(password, db.players[username].password)) {
+                    socket.emit('terminalError', 'ОШИБКА ДОСТУПА: НЕВЕРНЫЙ ПАРОЛЬ');
+                    return;
+                }
+                // Автоматическая миграция открытого пароля в scrypt-хеш
+                if (typeof db.players[username].password === 'string' && !db.players[username].password.startsWith('scrypt:')) {
+                    db.players[username].password = hashPassword(password);
+                    saveDB();
+                }
             } else if (!db.players[username]) {
                 writeLog(`Регистрация: ${username}`);
                 db.players[username] = {
-                    password: password, talons: 0, hp: 100, maxHp: 100, filter: 100, hunger: 100, tox: 0, level: 1, xp: 0, monstersKilled: 0, roomsCleared: 0, rating: 0, playtime: 0,
+                    password: hashPassword(password), talons: 0, hp: 100, maxHp: 100, filter: 100, hunger: 100, tox: 0, level: 1, xp: 0, monstersKilled: 0, roomsCleared: 0, rating: 0, playtime: 0,
                     appearance: null, location: 'safe_room', floor: 0, activeEvent: null,
                     unlockedSectors: { 0: ['A0'] }, questItems: [], foundItems: [], quickSlots: [null, null], solvedGames: [], bossDefeated: {}, perks: [], mutations: [], robots: {},
                     notebook: [
@@ -349,7 +441,7 @@ io.on('connection', (socket) => {
                     ],
                     equipment: { weapon: 'weapon_wood', clothes: 'clothes_robe', mask: 'mask_cloth', backpack: null }, inventory: ['food_ration']
                 };
-                saveDB();
+                saveDB(true);
             }
             onlinePlayers[socket.id] = username;
             socket.emit('loginSuccess', { username, showIntro: db.players[username].appearance === null });
@@ -366,8 +458,6 @@ io.on('connection', (socket) => {
             saveDB(); socket.emit('startGame'); broadcastGameState();
         }
     });
-
-    let lastChatTime = 0;
     socket.on('sendChatMessage', (msg) => {
         let u = onlinePlayers[socket.id]; if (!u) return;
         let now = Date.now();
@@ -591,6 +681,9 @@ io.on('connection', (socket) => {
     socket.on('work', () => {
         let username = onlinePlayers[socket.id]; let p = db.players[username]; if (!p) return;
         if (activeCombats[username]) { socket.emit('terminalError', 'В БОЮ НЕЛЬЗЯ ФАРМИТЬ.'); return; }
+        let now = Date.now();
+        if (now - lastWorkTime < 250) return;
+        lastWorkTime = now;
         let farmAmount = 1;
         if (p.inventory) {
             if (p.inventory.includes('tool_scraper')) farmAmount = 2;
@@ -633,6 +726,9 @@ io.on('connection', (socket) => {
     socket.on('pvpAttack', (targetId) => {
         let attacker = onlinePlayers[socket.id]; let defender = onlinePlayers[targetId];
         if (!attacker || !defender) return;
+        let now = Date.now();
+        if (now - lastPvpTime < 1000) { socket.emit('terminalError', 'ПЕРЕЗАРЯДКА АТАКИ (1 сек).'); return; }
+        lastPvpTime = now;
         let pa = db.players[attacker]; let pd = db.players[defender];
         if (!pa || !pd) return;
         if (pa.location !== pd.location) return;
@@ -647,6 +743,9 @@ io.on('connection', (socket) => {
     socket.on('coopHeal', (targetId) => {
         let healer = onlinePlayers[socket.id]; let target = onlinePlayers[targetId];
         if (!healer || !target) return;
+        let now = Date.now();
+        if (now - lastCoopTime < 1000) { socket.emit('terminalError', 'ПЕРЕЗАРЯДКА ЛЕЧЕНИЯ (1 сек).'); return; }
+        lastCoopTime = now;
         let pt = db.players[target]; if (!pt) return;
         pt.hp = Math.min(pt.maxHp, pt.hp + 15);
         let targetSocket = Object.keys(onlinePlayers).find(k => onlinePlayers[k] === target);
@@ -662,7 +761,9 @@ io.on('connection', (socket) => {
         if (p.filter < 10) { socket.emit('terminalError', 'НЕДОСТАТОЧНО ФИЛЬТРА.'); return; }
         if (p.location === 'E4') {
             if (p.bossDefeated && p.bossDefeated[currentFloor]) { socket.emit('terminalError', 'ЛИФТ УЖЕ ЗАПУЩЕН.'); return; }
-            let hasRepair = p.foundItems.includes('quest_lift_repair'); let hasButtons = p.foundItems.includes('quest_lift_buttons'); let hasWire = p.foundItems.includes('quest_lift_wire');
+            let hasRepair = (p.foundItems && p.foundItems.includes('quest_lift_repair')) || (p.questItems && p.questItems.includes('quest_lift_repair'));
+            let hasButtons = (p.foundItems && p.foundItems.includes('quest_lift_buttons')) || (p.questItems && p.questItems.includes('quest_lift_buttons'));
+            let hasWire = (p.foundItems && p.foundItems.includes('quest_lift_wire')) || (p.questItems && p.questItems.includes('quest_lift_wire'));
             if (!hasRepair || !hasButtons || !hasWire) { socket.emit('terminalError', 'ЛИФТ РАЗБИТ. Нужны: Ремкомплект, Блок кнопок, Провод.'); socket.emit('playSound', 'click'); return; }
             let bossKey = `boss_${currentFloor}`;
             if (!globalBosses[bossKey]) {
@@ -860,7 +961,7 @@ setInterval(() => {
                 if (p.xp >= nextLevelXp) {
                     p.level += 1; p.xp -= nextLevelXp; p.maxHp += 10; p.hp = p.maxHp; log += `>>> УРОВЕНЬ ${p.level}! <<<\n`;
                     let availablePerks = GAME_PERKS.filter(pk => !p.perks.includes(pk.id));
-                    if(availablePerks.length > 0) { let shuffled = availablePerks.sort(() => 0.5 - Math.random()); io.to(socketId).emit('showLevelUp', shuffled.slice(0, 3)); }
+                    if(availablePerks.length > 0) { let shuffled = shuffleArray(availablePerks); io.to(socketId).emit('showLevelUp', shuffled.slice(0, 3)); }
                 }
                 if (combat.enemy.loot) {
                     combat.enemy.loot.forEach(drop => {
