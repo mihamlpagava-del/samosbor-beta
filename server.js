@@ -73,8 +73,12 @@ if (fs.existsSync(DB_FILE)) {
         let loadedData = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         if (loadedData.players && loadedData.map) db = loadedData;
         else { db.players = loadedData.players || loadedData || {}; db.map = loadedData.map || {}; saveDB(true); }
+        if (!Array.isArray(db.feedback)) db.feedback = [];
     } catch (err) { writeLog(`Ошибка чтения БД: ${err.message}`); }
-} else { saveDB(true); }
+} else { 
+    if (!Array.isArray(db.feedback)) db.feedback = [];
+    saveDB(true); 
+}
 
 function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('hex');
@@ -640,6 +644,8 @@ io.on('connection', (socket) => {
             saveDB(); socket.emit('startGame'); broadcastGameState();
         }
     });
+    let lastFeedbackTime = 0;
+
     socket.on('sendChatMessage', (msg) => {
         let u = onlinePlayers[socket.id]; if (!u) return;
         let now = Date.now();
@@ -648,6 +654,41 @@ io.on('connection', (socket) => {
         let entry = { user: u, text: cleanMsg, time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' }) };
         chatHistory.push(entry); if (chatHistory.length > MAX_CHAT_MESSAGES) chatHistory.shift();
         io.emit('chatMessage', entry);
+    });
+
+    socket.on('submitFeedback', (data) => {
+        let u = onlinePlayers[socket.id] || 'Аноним';
+        let now = Date.now();
+        if (now - lastFeedbackTime < 5000) {
+            socket.emit('terminalError', 'ОТЧЕТ: Подождите 5 секунд перед повторной отправкой.');
+            return;
+        }
+        if (!data || typeof data !== 'object') return;
+        let type = data.type === 'suggestion' ? 'ПРЕДЛОЖЕНИЕ' : 'БАГ-РЕПОРТ';
+        let text = (typeof data.text === 'string' ? data.text.trim() : '').substring(0, 500);
+        if (!text) {
+            socket.emit('terminalError', 'ОТЧЕТ: Текст обращения не может быть пустым.');
+            return;
+        }
+        lastFeedbackTime = now;
+        let p = db.players[u];
+        let report = {
+            id: 'rep_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            user: u,
+            type: type,
+            text: text,
+            floor: p ? (p.floor || 0) : 0,
+            location: p ? (p.location || 'unknown') : 'unknown',
+            createdAt: new Date().toISOString(),
+            timeStr: new Date().toLocaleString('ru-RU')
+        };
+        if (!Array.isArray(db.feedback)) db.feedback = [];
+        db.feedback.push(report);
+        if (db.feedback.length > 200) db.feedback.shift();
+        saveDB();
+
+        writeLog(`[${type}] от #${u} (Эт.${report.floor}, Сектор ${report.location}): "${text}"`);
+        socket.emit('feedbackSentSuccess', { message: 'Обращение успешно доставлено в диспетчерскую блока!' });
     });
 
     socket.on('selectPerk', (perkId) => { let p = db.players[onlinePlayers[socket.id]]; if(p && !p.perks.includes(perkId)) { p.perks.push(perkId); if(perkId === 'perk_health') { p.maxHp += 25; p.hp += 25; } saveDB(); broadcastGameState(); } });

@@ -234,10 +234,21 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   .combat-avatar { width: 130px; height: 180px; margin: 0 auto; }
   .terminal-center { width: 100%; }
   .combat-q-slot { width: 60px; height: 60px; font-size: 10px; padding: 3px; }
-  .combat-quick-slots { position: static; flex-direction: row; transform: none; right: auto; top: auto; justify-content: center; margin-top: 6px; gap: 6px; }
   .intro-ascii-side { font-size: 60px; }
   #intro-text-container { font-size: 13px; min-height: 220px; }
 }
+
+.item-stat-badge { display: inline-block; font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 2px; margin-top: 2px; line-height: 1.2; }
+.item-stat-badge.stat-heal { background: rgba(0, 180, 50, 0.2); color: #33ff66; border: 1px solid rgba(51, 255, 102, 0.4); }
+.item-stat-badge.stat-dmg { background: rgba(220, 40, 40, 0.2); color: #ff5555; border: 1px solid rgba(255, 85, 85, 0.4); }
+.item-stat-badge.stat-def { background: rgba(50, 150, 255, 0.2); color: #66b3ff; border: 1px solid rgba(102, 179, 255, 0.4); }
+.item-stat-badge.stat-filter { background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.4); }
+.item-stat-badge.stat-cap { background: rgba(180, 140, 255, 0.2); color: #d0b0ff; border: 1px solid rgba(180, 140, 255, 0.4); }
+
+.feedback-type-btn { flex: 1; padding: 8px; font-size: 12px; cursor: pointer; background: transparent; border: 1px solid var(--term-dim); color: #aaa; font-family: inherit; transition: 0.15s; }
+.feedback-type-btn.active { border-color: var(--term-warn); color: var(--term-warn); background: rgba(255, 170, 0, 0.12); font-weight: bold; }
+.feedback-textarea { width: 100%; height: 110px; box-sizing: border-box; background: rgba(0, 0, 0, 0.7); color: #eee; border: 1px solid var(--term-dim); padding: 10px; font-family: inherit; font-size: 13px; resize: none; outline: none; margin-bottom: 12px; }
+.feedback-textarea:focus { border-color: var(--term-warn); }
 </style>
 </head>
 <body class="crt-enabled">
@@ -272,7 +283,27 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
+<div id="feedback-modal" class="modal-overlay" style="z-index: 85;">
+  <div class="shop-panel" style="width: 550px; max-width: 95%;">
+    <div class="shop-header"><span>ОБРАЩЕНИЕ В ДИСПЕТЧЕРСКУЮ</span><button onclick="document.getElementById('feedback-modal').style.display='none';">[X]</button></div>
+    <div style="text-align: left; margin-bottom: 15px; font-size: 13px; color: #aaa;">
+      Нашли ошибку или хотите предложить улучшение для игры? Отправьте сообщение напрямую на сервер:
+    </div>
+    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+      <button id="fb-type-bug" class="feedback-type-btn active" type="button">🐛 БАГ-РЕПОРТ</button>
+      <button id="fb-type-sugg" class="feedback-type-btn" type="button">💡 ПРЕДЛОЖЕНИЕ</button>
+    </div>
+    <textarea id="feedback-input" class="feedback-textarea" placeholder="Опишите найденный баг или вашу идею (до 500 символов)..." maxlength="500"></textarea>
+    <div id="feedback-status" style="font-size: 13px; min-height: 18px; margin-bottom: 10px; text-align: left;"></div>
+    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+      <button onclick="document.getElementById('feedback-modal').style.display='none';" style="margin: 0; padding: 6px 14px; font-size: 12px; border-color: #555; color: #888;">ОТМЕНА</button>
+      <button id="btn-submit-feedback" style="margin: 0; padding: 6px 18px; font-size: 12px; border-color: var(--term-warn); color: var(--term-warn);">ОТПРАВИТЬ</button>
+    </div>
+  </div>
+</div>
+
 <div class="audio-controls">
+  <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);">⚠️ БАГИ / ИДЕИ</button>
   <button id="btn-bestiary" class="audio-btn" style="display:none;">📖 БЕСТИАРИЙ</button>
   <button id="btn-info" class="audio-btn">ℹ️ СПРАВКА</button>
   <button id="btn-options" class="audio-btn">⚙️ ОПЦИИ</button>
@@ -281,6 +312,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
+  <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);">📝 Баг-репорт / Предложение</button>
 </div>
 
 <div id="login-screen" class="screen active-screen">
@@ -558,10 +590,10 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
       <div style="flex: 1; min-width: 240px;">
         <h3 style="color: var(--term-info); border-bottom: 1px dashed var(--term-info); padding-bottom: 5px;">= СБОРКА =</h3>
-        <div class="shop-item"><div>Вентиль<br><small style="color:#666;">[Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'weapon_pipe')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
-        <div class="shop-item"><div>Аптечка<br><small style="color:#666;">[Химикаты + Слизь]</small></div><button onclick="socket.emit('craftItem', 'food_medkit')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
-        <div class="shop-item"><div>Шокер<br><small style="color:#666;">[Электроника + Металл]</small></div><button onclick="socket.emit('craftItem', 'special_shocker')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
-        <div class="shop-item"><div>Сборщик<br><small style="color:#666;">[Электроника + Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'tool_robot')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <div class="shop-item"><div>Вентиль <span class="item-stat-badge stat-dmg">⚔️ 8 УРОН</span><br><small style="color:#666;">[Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'weapon_pipe')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <div class="shop-item"><div>Аптечка <span class="item-stat-badge stat-heal">❤️ +60 HP</span><br><small style="color:#666;">[Химикаты + Слизь]</small></div><button onclick="socket.emit('craftItem', 'food_medkit')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <div class="shop-item"><div>Шокер <span class="item-stat-badge stat-dmg">⚡ 45 УРОН</span><br><small style="color:#666;">[Электроника + Металл]</small></div><button onclick="socket.emit('craftItem', 'special_shocker')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <div class="shop-item"><div>Сборщик <span class="item-stat-badge stat-cap">🤖 АВТО</span><br><small style="color:#666;">[Электроника + Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'tool_robot')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
       </div>
       <div style="flex: 1; min-width: 240px;">
         <h3 style="color: var(--term-warn); border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">= МОДДИНГ =</h3>
@@ -655,6 +687,33 @@ let bestiaryRendered = false;
 
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen')); document.getElementById(id).classList.add('active-screen'); }
 function formatTime(sec) { let h = Math.floor(sec/3600).toString().padStart(2,'0'); let m = Math.floor((sec%3600)/60).toString().padStart(2,'0'); let s = (sec%60).toString().padStart(2,'0'); return `${h}:${m}:${s}`; }
+
+function getItemStatBadges(item) {
+  if (!item) return '';
+  let badges = [];
+  if (item.type === 'weapon' && item.dmg) {
+    let suffix = item.isFire ? ' 🔥' : item.isElectro ? ' ⚡' : item.isBleed ? ' 🩸' : '';
+    badges.push(`<span class="item-stat-badge stat-dmg">⚔️ ${item.dmg} УР${suffix}</span>`);
+  }
+  if ((item.type === 'clothes' || item.type === 'mask') && item.def) {
+    badges.push(`<span class="item-stat-badge stat-def">🛡️ +${item.def} БР</span>`);
+  }
+  if (item.type === 'backpack' && item.bonusCap) {
+    badges.push(`<span class="item-stat-badge stat-cap">🎒 +${item.bonusCap} СЛ</span>`);
+  }
+  if (item.type === 'consumable') {
+    if (item.restoreHp) badges.push(`<span class="item-stat-badge stat-heal">❤️ +${item.restoreHp} HP</span>`);
+    if (item.restoreFilter) badges.push(`<span class="item-stat-badge stat-filter">💨 +${item.restoreFilter}% Ф</span>`);
+    if (item.restoreHunger) badges.push(`<span class="item-stat-badge stat-cap">🍖 +${item.restoreHunger}% СЫТ</span>`);
+  }
+  if (item.type === 'special' && item.combatDmg) {
+    badges.push(`<span class="item-stat-badge stat-dmg">💥 ${item.combatDmg} УР</span>`);
+  }
+  if (item.type === 'tool' && item.desc) {
+    badges.push(`<span class="item-stat-badge stat-cap">⚙️ ${item.desc}</span>`);
+  }
+  return badges.length ? `<div style="margin-top:2px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${badges.join('')}</div>` : '';
+}
 
 document.getElementById('login-btn').onclick = () => {
   const u = document.getElementById('username').value.trim();
@@ -1047,7 +1106,14 @@ function updateUI(me, sectorPlayers) {
         let url = `assets/${slot}/${iconId}.png`;
         if(iI) { iI.src = url; iI.style.display = 'block'; }
         if(bI) { bI.src = url; bI.style.display = 'block'; }
-        if(nD) nD.innerHTML = `<span style="font-weight:bold;">${itemData.name}</span>`;
+        let statBadge = '';
+        if (slot === 'weapon' && itemData.dmg) {
+          let sfx = itemData.isFire ? ' 🔥' : itemData.isElectro ? ' ⚡' : itemData.isBleed ? ' 🩸' : '';
+          statBadge = ` <span class="item-stat-badge stat-dmg">⚔️ ${itemData.dmg}${sfx}</span>`;
+        } else if ((slot === 'clothes' || slot === 'mask') && itemData.def) {
+          statBadge = ` <span class="item-stat-badge stat-def">🛡️ ${itemData.def}</span>`;
+        }
+        if(nD) nD.innerHTML = `<span style="font-weight:bold;">${itemData.name}</span>${statBadge}`;
       } else {
         if(iI) { iI.src = ''; iI.style.display = 'none'; }
         if(bI) { bI.src = ''; bI.style.display = 'none'; }
@@ -1056,8 +1122,10 @@ function updateUI(me, sectorPlayers) {
     });
     let bp = GAME_ITEMS[me.equipment.backpack];
     let bpN = document.getElementById('inv-backpack-name');
-    if (bp && bpN) bpN.innerHTML = `<span style="font-weight:bold;">${bp.name}</span>`;
-    else if (bpN) bpN.innerText = "Пусто";
+    if (bp && bpN) {
+      let capBadge = bp.bonusCap ? ` <span class="item-stat-badge stat-cap">+${bp.bonusCap}</span>` : '';
+      bpN.innerHTML = `<span style="font-weight:bold;">${bp.name}</span>${capBadge}`;
+    } else if (bpN) bpN.innerText = "Пусто";
     let id = document.getElementById('inv-dmg'); if(id) id.innerText = me.stats.dmg;
     let idef = document.getElementById('inv-def'); if(idef) idef.innerText = me.stats.def;
   }
@@ -1067,8 +1135,10 @@ function updateUI(me, sectorPlayers) {
     let iS = document.getElementById(`inv-qslot-${i}`);
     let cS = document.getElementById(`combat-qslot-${i}`);
     if (itemId && GAME_ITEMS[itemId]) {
-      if(iS) { iS.innerHTML = `<div style="font-weight:bold; color:var(--ink-accent);">${GAME_ITEMS[itemId].name}</div><div style="font-size:10px; color:var(--ink-dim);">(КЛИК - СНЯТЬ)</div>`; }
-      if(cS) { cS.innerHTML = `${GAME_ITEMS[itemId].name}<br><span style="color:#fff;">(ПРИМЕНИТЬ)</span>`; }
+      let qItem = GAME_ITEMS[itemId];
+      let qBadge = getItemStatBadges(qItem);
+      if(iS) { iS.innerHTML = `<div style="font-weight:bold; color:var(--ink-accent);">${qItem.name}</div>${qBadge}<div style="font-size:10px; color:var(--ink-dim); margin-top:2px;">(КЛИК - СНЯТЬ)</div>`; }
+      if(cS) { cS.innerHTML = `${qItem.name}${qBadge}<div style="color:#fff; font-size:10px; margin-top:2px;">(ПРИМЕНИТЬ)</div>`; }
     } else if (pendingEquipIndex === null) {
       if(iS) { iS.innerHTML = "[ПУСТО]"; iS.style.borderColor = '#880000'; iS.style.background = 'rgba(122,0,0,0.08)'; }
       if(cS) { cS.innerHTML = "[ПУСТО]"; }
@@ -1140,13 +1210,14 @@ function updateUI(me, sectorPlayers) {
           btns += `<button data-action="equip" data-index="${index}">НАДЕТЬ</button>`;
         btns += `<button data-action="drop" data-index="${index}">ВЫБРОС</button>`;
 
-        div.innerHTML = `<img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div class="item-type">[${typeLabel}]</div><div style="font-weight:bold; font-size: 12px;">${item.name}</div><div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${btns}</div>`;
+        let statBadges = getItemStatBadges(item);
+        div.innerHTML = `<img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div class="item-type">[${typeLabel}]</div><div style="font-weight:bold; font-size: 12px;">${item.name}</div>${statBadges}<div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${btns}</div>`;
         chestC.appendChild(div);
       }
 
       if (sellC && item.type !== 'material' && item.type !== 'tool') {
         let price = Math.min(35, Math.max(3, Math.floor((item.cost || 5) * 0.4)));
-        sellC.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div style="font-size: 13px;">${item.name}</div></div><div><span style="color:var(--term-warn); font-size: 13px;">+${price} т.</span> <button onclick="socket.emit('sellItem', ${index})" style="border-color:var(--term-danger); color:var(--term-danger); margin-left:6px; padding:3px 8px; font-size:11px;">СДАТЬ</button></div></div>`;
+        sellC.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div><div style="font-size: 13px;">${item.name}</div>${statBadges}</div></div><div><span style="color:var(--term-warn); font-size: 13px;">+${price} т.</span> <button onclick="socket.emit('sellItem', ${index})" style="border-color:var(--term-danger); color:var(--term-danger); margin-left:6px; padding:3px 8px; font-size:11px;">СДАТЬ</button></div></div>`;
       }
     });
   }
@@ -1270,7 +1341,8 @@ function renderShop() {
     if(item.type === 'tool') typeLabel = 'Инструмент';
     if(item.type === 'backpack') typeLabel = 'Рюкзак';
     const iconName = item.iconId || id;
-    c.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${iconName}.png" onerror="this.style.display='none'"><div><span style="color:${item.color || '#fff'}">${item.name}</span><span style="color:#666; font-size:12px;"> [${typeLabel}]</span></div></div><div><span style="color:var(--term-warn); font-size:13px;">${item.cost} т.</span><button onclick="socket.emit('buyItem', '${id}')" style="margin-left:6px; padding:3px 10px; font-size:11px;">КУПИТЬ</button></div></div>`;
+    let shopBadges = getItemStatBadges(item);
+    c.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${iconName}.png" onerror="this.style.display='none'"><div><div><span style="color:${item.color || '#fff'}">${item.name}</span><span style="color:#666; font-size:12px;"> [${typeLabel}]</span></div>${shopBadges}</div></div><div><span style="color:var(--term-warn); font-size:13px;">${item.cost} т.</span><button onclick="socket.emit('buyItem', '${id}')" style="margin-left:6px; padding:3px 10px; font-size:11px;">КУПИТЬ</button></div></div>`;
   });
 }
 setInterval(() => {
@@ -1430,6 +1502,63 @@ document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e
 document.addEventListener('keydown', (e) => { if (e.code === 'Tab') { e.preventDefault(); toggleInv(); } });
 bindQuickSlotClicks();
 bindChestButtons();
+
+// ===== ОБРАЩЕНИЯ: БАГ-РЕПОРТЫ И ПРЕДЛОЖЕНИЯ =====
+let currentFeedbackType = 'bug';
+const fbModal = document.getElementById('feedback-modal');
+const btnOpenFb = document.getElementById('btn-feedback');
+const btnOptFb = document.getElementById('btn-opt-feedback');
+const fbTypeBug = document.getElementById('fb-type-bug');
+const fbTypeSugg = document.getElementById('fb-type-sugg');
+const fbInput = document.getElementById('feedback-input');
+const fbStatus = document.getElementById('feedback-status');
+const btnSubmitFb = document.getElementById('btn-submit-feedback');
+
+function openFeedbackModal(type) {
+  if (type) setFeedbackType(type);
+  if (fbStatus) fbStatus.innerHTML = '';
+  if (fbModal) fbModal.style.display = 'flex';
+  const optM = document.getElementById('options-menu');
+  if (optM) optM.style.display = 'none';
+  if (fbInput) fbInput.focus();
+}
+
+function setFeedbackType(type) {
+  currentFeedbackType = type;
+  if (fbTypeBug && fbTypeSugg) {
+    fbTypeBug.classList.toggle('active', type === 'bug');
+    fbTypeSugg.classList.toggle('active', type === 'suggestion');
+  }
+}
+
+if (btnOpenFb) btnOpenFb.onclick = () => openFeedbackModal();
+if (btnOptFb) btnOptFb.onclick = () => openFeedbackModal();
+if (fbTypeBug) fbTypeBug.onclick = () => setFeedbackType('bug');
+if (fbTypeSugg) fbTypeSugg.onclick = () => setFeedbackType('suggestion');
+
+if (btnSubmitFb) {
+  btnSubmitFb.onclick = () => {
+    let text = fbInput ? fbInput.value.trim() : '';
+    if (!text) {
+      if (fbStatus) fbStatus.innerHTML = '<span style="color:var(--term-danger);">Введите описание ошибки или предложения.</span>';
+      return;
+    }
+    if (fbStatus) fbStatus.innerHTML = '<span style="color:var(--term-info);">Отправка обращения в диспетчерскую...</span>';
+    btnSubmitFb.disabled = true;
+    socket.emit('submitFeedback', { type: currentFeedbackType, text: text });
+  };
+}
+
+socket.on('feedbackSentSuccess', (data) => {
+  if (btnSubmitFb) btnSubmitFb.disabled = false;
+  if (fbInput) fbInput.value = '';
+  if (fbStatus) fbStatus.innerHTML = `<span style="color:var(--term-green); font-weight:bold;">${data.message || 'Отправлено!'}</span>`;
+  playSound('victory');
+  setTimeout(() => {
+    if (fbModal) fbModal.style.display = 'none';
+    if (fbStatus) fbStatus.innerHTML = '';
+  }, 2000);
+});
 </script>
 </body>
 </html>
