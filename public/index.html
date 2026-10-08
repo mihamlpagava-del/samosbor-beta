@@ -74,11 +74,14 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .game-controls > button { margin: 0; width: 100%; padding: 9px 6px; font-size: 13px; }
 .map-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 15px; width: 900px; max-width: 95vw; }
 .map-node { border: 1px solid var(--term-dim); height: 105px; cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; box-sizing: border-box; background-size: cover; background-position: center; transition: 0.15s; }
-.map-node::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.9) 100%); z-index: 1; }
-.map-node:hover { border-color: var(--term-green); }
+.map-node::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.9) 100%); z-index: 1; pointer-events: none; }
+.map-node:hover { border-color: var(--term-green); box-shadow: 0 0 10px rgba(51,255,0,0.3); }
 .map-node.locked { border-color: #333; filter: grayscale(100%) brightness(0.5); }
 .map-node.can-unlock { border-color: var(--term-warn); }
 .map-node.can-unlock .node-id, .map-node.can-unlock .node-name { color: var(--term-warn); }
+.map-node.current-location { border-color: #00ff66 !important; box-shadow: 0 0 14px rgba(0, 255, 102, 0.45); }
+.map-node.current-location .node-id { color: #00ff66 !important; }
+.node-badge-here { font-size: 9px; color: #00ff66; font-weight: bold; letter-spacing: 1px; margin-top: 1px; }
 @keyframes pulseCanUnlock { 0% { box-shadow: 0 0 4px var(--term-warn); } 50% { box-shadow: 0 0 15px var(--term-warn); } 100% { box-shadow: 0 0 4px var(--term-warn); } }
 .node-content { position: relative; z-index: 2; pointer-events: none; }
 .node-icon { width: 24px; height: 24px; object-fit: contain; margin-bottom: 2px; display: block; margin-left: auto; margin-right: auto; filter: drop-shadow(0 0 3px rgba(0,0,0,0.9)); }
@@ -438,6 +441,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div style="font-size: 20px; letter-spacing: 2px;">ЭТАЖ: <span id="ui-current-floor">0</span></div>
       <button class="floor-btn" id="btn-floor-up" disabled>ВВЕРХ ▲</button>
     </div>
+    <div id="map-error" style="color:var(--term-danger); font-size:13px; font-weight:bold; margin: 4px 0 8px 0; display:none; padding: 6px; border: 1px dashed var(--term-danger); background: rgba(255,50,50,0.1);"></div>
     <div class="map-grid" id="map-container"></div>
     <button id="close-map-btn" style="margin-top: 15px;">НАЗАД НА БАЗУ</button>
   </div>
@@ -785,7 +789,7 @@ document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEna
 document.getElementById('btn-info').onclick = () => { document.getElementById('info-modal').style.display = 'flex'; };
 
 const socket = io();
-let myUsername = "", serverMap = {}, myUnlockedSectors = [], myQuestItems = [], myQuickSlots = [null, null];
+let myUsername = "", clientMe = null, serverMap = {}, myUnlockedSectors = [], myQuestItems = [], myQuickSlots = [null, null];
 let GAME_PERKS = [], GAME_ITEMS = {}, MUTATIONS = [], currentShopItems = [], shopUpdateTimestamp = 0;
 let pendingEquipIndex = null, isAiming = false, aimInterval = null, aimPos = 0, aimDir = 1;
 let isTyping = false, typingTimer, fullLoreText = "", charIndex = 0;
@@ -972,8 +976,9 @@ socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messag
 socket.on('chatMessage', (m) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`; b.scrollTop = b.scrollHeight; });
 
 socket.on('gameState', (data) => {
+  clientMe = data.me;
   serverMap = data.map || {};
-  myUnlockedSectors = data.me.unlockedSectors || [];
+  myUnlockedSectors = (data.me && data.me.unlockedSectors) || [];
   myQuickSlots = data.me.quickSlots || [null, null];
   myQuestItems = data.me.questItems || [];
   if(data.GAME_PERKS) GAME_PERKS = data.GAME_PERKS;
@@ -1043,9 +1048,14 @@ socket.on('transition', (data) => {
   if(!o) return;
   tt.innerText = data.text || '...';
   o.style.display = 'flex'; playSound('equip');
+  if (data.to && data.to !== 'safe_room' && data.to !== 'map') {
+    showScreen('game-screen');
+  } else if (data.to === 'safe_room') {
+    showScreen('hub-screen');
+  }
   const ASCII = [ "  ______  \n |      | \n |  ><  | \n |______| ", "  ______  \n |  ||  | \n |  ||  | \n |__||__| ", "  ______  \n | |  | | \n | |  | | \n |_|  |_| ", "  ______  \n |      | \n |      | \n |      | " ];
   let f = 0; let ai = setInterval(() => { if(ab) ab.innerText = ASCII[f]; f++; if(f >= ASCII.length) clearInterval(ai); }, 200);
-  setTimeout(() => { o.style.display = 'none'; }, 1500);
+  setTimeout(() => { o.style.display = 'none'; updateActiveBackground(); }, 1500);
 });
 
 socket.on('vfxFarm', (amt) => { const c = document.getElementById('hub-stats-panel'); if(!c) return; const s = document.createElement('div'); s.className = 'slime-vfx'; s.innerText = `+${amt||1} СЛИЗЬ`; s.style.left = (Math.random()*80+10)+'%'; c.appendChild(s); setTimeout(()=>s.remove(),1000); });
@@ -1239,11 +1249,14 @@ function cancelMinigame() { document.getElementById('minigame-modal').style.disp
 socket.on('terminalError', (msg) => {
   const el = document.getElementById('auth-error');
   const h = document.getElementById('hub-error');
+  const me = document.getElementById('map-error');
   const ls = document.getElementById('login-screen');
   const hs = document.getElementById('hub-screen');
+  const ms = document.getElementById('map-screen');
   let cl = document.getElementById('combat-log');
-  if (el && ls.classList.contains('active-screen')) el.innerText = msg;
-  else if (h && hs.classList.contains('active-screen')) { h.innerText = msg; setTimeout(() => h.innerText = "", 4000); }
+  if (el && ls && ls.classList.contains('active-screen')) el.innerText = msg;
+  else if (me && ms && ms.classList.contains('active-screen')) { me.innerText = `[ОТКАЗ] ${msg}`; me.style.display = 'block'; setTimeout(() => { if(me) me.style.display = 'none'; }, 4000); }
+  else if (h && hs && hs.classList.contains('active-screen')) { h.innerText = msg; setTimeout(() => h.innerText = "", 4000); }
   else if (cl) { cl.innerHTML += `> ${msg}\n`; cl.scrollTop = cl.scrollHeight; }
 });
 socket.on('playSound', (name) => playSound(name));
@@ -1517,7 +1530,12 @@ function updateUI(me, sectorPlayers) {
   let expC = me.location === 'E4' ? 'var(--term-warn)' : 'var(--term-danger)';
   let ec = document.getElementById('explore-controls');
   if (ec) {
-    ec.innerHTML = `<div class="row-2"><button onclick="socket.emit('work');" style="color: var(--term-info); border-color: var(--term-info);">ФАРМ СЛИЗИ</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">БЛОКНОТ</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='> Входим в туман...\\n'; socket.emit('explore');" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #666; border-color: #444;">ВЕРНУТЬСЯ</button>`;
+    ec.innerHTML = `<div class="row-2"><button onclick="socket.emit('work');" style="color: var(--term-info); border-color: var(--term-info);">ФАРМ СЛИЗИ</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">БЛОКНОТ</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='> Входим в туман...\\n'; socket.emit('explore');" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">КАРТА СЕКТОРОВ</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">НА БАЗУ</button></div>`;
+  }
+  const bfd = document.getElementById('btn-floor-down');
+  if (bfd) {
+    bfd.disabled = (me.location !== 'E4');
+    bfd.onclick = () => socket.emit('changeFloor', 'down');
   }
 
   let ls = document.getElementById('login-screen');
@@ -1590,26 +1608,34 @@ function renderMap() {
   const c = document.getElementById('map-container'); if(!c) return;
   c.innerHTML = '';
   const letters = ['A', 'B', 'C', 'D', 'E'];
+  const curPlayerLoc = (clientMe && clientMe.location) || '';
   for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) {
     let id = `${letters[y]}${x}`; let node = serverMap[id]; let div = document.createElement('div');
     if (node) {
       let isUnlocked = myUnlockedSectors.includes(id);
+      let isCurrent = (curPlayerLoc === id);
       let canUnlock = false;
       if (!isUnlocked) {
         if (node.reqType === 'item' && myQuestItems.includes(node.reqValue)) canUnlock = true;
         else if (node.reqType === 'minigame' || !node.reqType) canUnlock = true;
       }
       div.className = isUnlocked ? 'map-node' : canUnlock ? 'map-node can-unlock' : 'map-node locked';
+      if (isCurrent) div.className += ' current-location';
       div.style.backgroundImage = `url('assets/locations/${node.bg}')`;
       let dId = isUnlocked || canUnlock ? id : '[ЗАКРЫТО]';
       let lock = '';
-      if (!isUnlocked && canUnlock) {
+      if (isCurrent) {
+        lock = `<div class="node-badge-here">[ВЫ ЗДЕСЬ]</div>`;
+      } else if (!isUnlocked && canUnlock) {
         if (node.reqType === 'item') lock = `<div style="color:var(--term-warn); font-size:10px;">[КЛЮЧ]</div>`;
         else if (node.reqType === 'minigame') lock = `<div style="color:var(--term-info); font-size:10px;">[ВЗЛОМ]</div>`;
       }
       let iconImg = (node.icon && (isUnlocked || canUnlock)) ? `<img class="node-icon" src="assets/locations/icons/${node.icon}" onerror="this.style.display='none'">` : '';
       div.innerHTML = `<div class="node-content">${iconImg}<div class="node-id">${dId}</div><div class="node-name">${node.name}</div>${lock}</div>`;
-      div.onclick = () => socket.emit('changeLocation', id);
+      div.onclick = () => {
+        playSound('click');
+        socket.emit('changeLocation', id);
+      };
     }
     c.appendChild(div);
   }
@@ -1696,8 +1722,9 @@ function updateActiveBackground() {
   } else if (mapS && mapS.classList.contains('active-screen')) {
     bg.style.backgroundImage = `url('assets/locations/bg_map.png')`;
   } else {
-    if (clientMe && clientMe.location && clientMe.location !== 'safe_room') {
-      const node = serverMap[clientMe.location];
+    const curLoc = (clientMe && clientMe.location) ? clientMe.location : 'safe_room';
+    if (curLoc !== 'safe_room') {
+      const node = serverMap[curLoc];
       if (node && node.bg) bg.style.backgroundImage = `url('assets/locations/${node.bg}')`;
     } else {
       bg.style.backgroundImage = `url('assets/locations/bg_safe_room.png')`;
@@ -1765,6 +1792,7 @@ document.getElementById('open-map-btn').onclick = () => {
   changeAmbient('map'); 
 };
 document.getElementById('close-map-btn').onclick = () => { 
+  socket.emit('changeLocation', 'safe_room');
   showScreen('hub-screen'); 
   updateActiveBackground();
   changeAmbient('hub'); 

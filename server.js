@@ -759,14 +759,46 @@ io.on('connection', (socket) => {
     socket.on('selectPerk', (perkId) => { let p = db.players[onlinePlayers[socket.id]]; if(p && !p.perks.includes(perkId)) { p.perks.push(perkId); if(perkId === 'perk_health') { p.maxHp += 25; p.hp += 25; } saveDB(); broadcastGameState(); } });
 
     socket.on('changeLocation', (locId) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p) return;
-        if (activeCombats[onlinePlayers[socket.id]]) return;
+        let username = onlinePlayers[socket.id];
+        let p = db.players[username]; if (!p) return;
+        if (activeCombats[username]) {
+            let c = activeCombats[username];
+            if ((c.enemy && c.enemy.hp <= 0) || p.hp <= 0) {
+                delete activeCombats[username];
+            } else {
+                socket.emit('terminalError', 'НЕЛЬЗЯ ПЕРЕМЕЩАТЬСЯ ВО ВРЕМЯ БОЯ!');
+                return;
+            }
+        }
         let currentFloor = p.floor || 0;
-        if (!p.unlockedSectors[currentFloor]) p.unlockedSectors[currentFloor] = ['A0'];
+        if (!p.unlockedSectors || typeof p.unlockedSectors !== 'object') p.unlockedSectors = { 0: ['A0'] };
+        if (Array.isArray(p.unlockedSectors)) p.unlockedSectors = { 0: p.unlockedSectors };
+        if (!Array.isArray(p.unlockedSectors[currentFloor])) p.unlockedSectors[currentFloor] = ['A0'];
+
         p.hunger = Math.max(0, p.hunger - 1);
-        if (p.hunger === 0) p.hp -= 2;
-        if (locId === 'safe_room') { p.location = locId; saveDB(); socket.emit('transition', {to: locId, text: "ВХОД В ЖИЛЯЧЕЙКУ..."}); broadcastGameState(); return; }
-        if (p.unlockedSectors[currentFloor].includes(locId)) { p.location = locId; saveDB(); socket.emit('transition', {to: locId, text: `ВХОД В СЕКТОР ${locId}...`}); broadcastGameState(); return; }
+        if (p.hunger === 0) p.hp = Math.max(1, p.hp - 2);
+
+        if (locId === 'safe_room') {
+            p.location = locId;
+            saveDB();
+            socket.emit('transition', {to: locId, text: "ВХОД В ЖИЛЯЧЕЙКУ..."});
+            broadcastGameState();
+            return;
+        }
+
+        if (!db.map || !db.map[currentFloor] || !db.map[currentFloor][locId]) {
+            socket.emit('terminalError', 'СЕКТОР НЕДОСТУПЕН');
+            return;
+        }
+
+        if (p.unlockedSectors[currentFloor].includes(locId)) {
+            p.location = locId;
+            saveDB();
+            socket.emit('transition', {to: locId, text: `ВХОД В СЕКТОР ${locId}...`});
+            broadcastGameState();
+            return;
+        }
+
         let sectorData = db.map[currentFloor][locId];
         if (sectorData.reqType === 'item') {
             let reqItem = sectorData.reqValue;
@@ -776,22 +808,53 @@ io.on('connection', (socket) => {
                     let idx = p.questItems.indexOf(reqItem);
                     if (idx !== -1) p.questItems.splice(idx, 1);
                 }
-                p.unlockedSectors[currentFloor].push(locId); p.location = locId; p.roomsCleared = (p.roomsCleared || 0) + 1;
+                if (!p.unlockedSectors[currentFloor].includes(locId)) {
+                    p.unlockedSectors[currentFloor].push(locId);
+                }
+                p.location = locId;
+                p.roomsCleared = (p.roomsCleared || 0) + 1;
                 p.notebook.push(`[ЭТАЖ ${currentFloor}]: Открыл сектор ${locId} с помощью ${GAME_ITEMS[reqItem] ? GAME_ITEMS[reqItem].name : reqItem}.`);
                 socket.emit('playSound', 'victory');
-                saveDB(); socket.emit('transition', {to: locId, text: `ЗАМОК ОТКРЫТ...`}); broadcastGameState();
-            } else { socket.emit('terminalError', `НУЖЕН: ${GAME_ITEMS[reqItem] ? GAME_ITEMS[reqItem].name : reqItem}`); socket.emit('playSound', 'click'); }
+                saveDB();
+                socket.emit('transition', {to: locId, text: `ЗАМОК ОТКРЫТ...`});
+                broadcastGameState();
+            } else {
+                socket.emit('terminalError', `НУЖЕН ПРЕДМЕТ: ${GAME_ITEMS[reqItem] ? GAME_ITEMS[reqItem].name : reqItem}`);
+                socket.emit('playSound', 'click');
+            }
         }
-        else if (sectorData.reqType === 'minigame') { socket.emit('startMinigame', { locId: locId, gameData: sectorData.reqValue }); }
-        else { p.unlockedSectors[currentFloor].push(locId); p.location = locId; saveDB(); socket.emit('transition', {to: locId, text: `ВХОД В СЕКТОР ${locId}...`}); broadcastGameState(); }
+        else if (sectorData.reqType === 'minigame') {
+            socket.emit('startMinigame', { locId: locId, gameData: sectorData.reqValue });
+        }
+        else {
+            if (!p.unlockedSectors[currentFloor].includes(locId)) {
+                p.unlockedSectors[currentFloor].push(locId);
+            }
+            p.location = locId;
+            saveDB();
+            socket.emit('transition', {to: locId, text: `ВХОД В СЕКТОР ${locId}...`});
+            broadcastGameState();
+        }
     });
 
     socket.on('minigameWon', (locId) => {
-        let p = db.players[onlinePlayers[socket.id]]; let currentFloor = p.floor || 0;
-        if (!p || p.unlockedSectors[currentFloor].includes(locId)) return;
-        p.unlockedSectors[currentFloor].push(locId); p.location = locId; p.roomsCleared = (p.roomsCleared || 0) + 1;
+        let username = onlinePlayers[socket.id];
+        let p = db.players[username]; let currentFloor = p.floor || 0;
+        if (!p) return;
+        if (!p.unlockedSectors || typeof p.unlockedSectors !== 'object') p.unlockedSectors = { 0: ['A0'] };
+        if (Array.isArray(p.unlockedSectors)) p.unlockedSectors = { 0: p.unlockedSectors };
+        if (!Array.isArray(p.unlockedSectors[currentFloor])) p.unlockedSectors[currentFloor] = ['A0'];
+
+        if (!p.unlockedSectors[currentFloor].includes(locId)) {
+            p.unlockedSectors[currentFloor].push(locId);
+        }
+        p.location = locId;
+        p.roomsCleared = (p.roomsCleared || 0) + 1;
         p.notebook.push(`[ЭТАЖ ${currentFloor}]: Взломал гермодверь в ${locId}.`);
-        socket.emit('playSound', 'victory'); saveDB(); socket.emit('transition', {to: locId, text: `ВЗЛОМ УСПЕШЕН...`}); broadcastGameState();
+        socket.emit('playSound', 'victory');
+        saveDB();
+        socket.emit('transition', {to: locId, text: `ВЗЛОМ УСПЕШЕН...`});
+        broadcastGameState();
     });
 
     socket.on('minigameCancel', () => { let p = db.players[onlinePlayers[socket.id]]; if (p) { p.location = 'safe_room'; saveDB(); socket.emit('transition', {to: 'safe_room', text: "ОТСТУПЛЕНИЕ..."}); broadcastGameState(); } });
