@@ -470,9 +470,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox">0</span>%</div>
         <div class="sector-radar">
           <div style="color: var(--term-warn); margin-bottom:5px;">РАДАР:</div>
-          <div id="players-in-sector">ОЖИДАНИЕ...</div>
+          <div id="players-in-sector"><span style="color:#666;">Сканирование...</span></div>
         </div>
-        <div id="combat-log" style="margin-top: 10px; border-top: 1px dashed var(--term-dim); padding-top: 8px;">ОЖИДАНИЕ...</div>
+        <div id="combat-log" style="margin-top: 10px; border-top: 1px dashed var(--term-dim); padding-top: 8px;"><span style="color:#666;">В секторе пока тихо...</span></div>
       </div>
       <div id="robot-panel" style="text-align:left; background: rgba(0,20,0,0.8); border: 1px dashed var(--term-info); padding: 10px; box-sizing: border-box; display: none;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap: 8px; flex-wrap: wrap;">
@@ -1314,6 +1314,7 @@ function bindChestButtons() {
 
 function updateUI(me, sectorPlayers) {
   if (!me || !me.stats) return;
+  try {
   let pt = document.querySelector('.ui-playtime'); if(pt && me.playtime !== undefined) pt.innerText = formatTime(me.playtime);
   if (me.appearance && me.appearance.skin) {
     let s = `assets/character/${me.appearance.skin}.png`;
@@ -1406,8 +1407,9 @@ function updateUI(me, sectorPlayers) {
     let idef = document.getElementById('inv-def'); if(idef) idef.innerText = me.stats.def;
   }
 
+  let qSlots = (me && me.quickSlots) ? me.quickSlots : [null, null];
   for (let i = 0; i < 2; i++) {
-    let itemId = me.quickSlots[i];
+    let itemId = qSlots[i];
     let iS = document.getElementById(`inv-qslot-${i}`);
     let cS = document.getElementById(`combat-qslot-${i}`);
     if (itemId && GAME_ITEMS[itemId]) {
@@ -1475,6 +1477,7 @@ function updateUI(me, sectorPlayers) {
 
       const iconName = item.iconId || itemId;
       const iconPath = `assets/icons/${iconName}.png`;
+      let statBadges = getItemStatBadges(item);
 
       if (chestC) {
         let div = document.createElement('div');
@@ -1498,7 +1501,6 @@ function updateUI(me, sectorPlayers) {
           btns += `<button data-action="equip" data-index="${index}">НАДЕТЬ</button>`;
         btns += `<button data-action="drop" data-index="${index}">ВЫБРОС</button>`;
 
-        let statBadges = getItemStatBadges(item);
         div.innerHTML = `<img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div class="item-type">[${typeLabel}]</div><div style="font-weight:bold; font-size: 12px;">${item.name}</div>${statBadges}<div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${btns}</div>`;
         chestC.appendChild(div);
       }
@@ -1601,6 +1603,9 @@ function updateUI(me, sectorPlayers) {
       });
       if (radar.innerHTML === '') radar.innerHTML = '<span style="color:#555">Пусто. Вы здесь одни.</span>';
     }
+  }
+  } catch(err) {
+    console.error("updateUI error:", err);
   }
 }
 
