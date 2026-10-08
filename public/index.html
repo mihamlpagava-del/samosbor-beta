@@ -174,6 +174,33 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 @keyframes textFlicker { 0% { opacity: 1; } 100% { opacity: 0.7; } }
 .levelup-btn { width: 100%; padding: 12px; margin-bottom: 8px; text-align: left; background: transparent; border: 1px solid var(--term-warn); color: #fff; cursor: pointer; font-size: 15px; }
 .levelup-btn:hover { background: rgba(255,170,0,0.1); box-shadow: 0 0 10px rgba(255,170,0,0.3); }
+
+@keyframes enemyDissolve {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8)) brightness(1.2);
+  }
+  25% {
+    opacity: 0.9;
+    transform: scale(1.08) translateY(-6px);
+    filter: drop-shadow(0 0 30px rgba(255, 50, 50, 1)) brightness(2) contrast(1.5);
+  }
+  60% {
+    opacity: 0.45;
+    transform: scale(0.92) translateY(8px) skewX(6deg);
+    filter: blur(4px) drop-shadow(0 0 20px rgba(0, 0, 0, 0.9)) grayscale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6) translateY(25px);
+    filter: blur(10px) brightness(0);
+  }
+}
+.enemy-defeated {
+  animation: enemyDissolve 1s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+  pointer-events: none;
+}
 @media (max-width: 900px) {
   body { font-size: 14px; }
   .panel { padding: 14px; width: 95% !important; box-sizing: border-box; }
@@ -361,7 +388,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
     </div>
     <div id="enemy-battle-avatar" class="combat-avatar">
-      <img id="enemy-sprite" src="" style="z-index: 5;" alt="">
+      <img id="enemy-sprite" src="" style="z-index: 5; display: none;" alt="">
       <div id="enemy-vfx-container" class="vfx-container"></div>
       <div id="enemy-hp-bar" style="position: absolute; bottom: -25px; width: 100%; text-align: center; color: var(--term-danger); font-weight: bold; display: none;">ВРАГ: <span id="ui-enemy-hp">0</span> HP</div>
     </div>
@@ -447,9 +474,12 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     • Для его починки найдите 3 компонента: <b>Ремкомплект лифта</b>, <b>Блок кнопок</b> и <b>Провод генератора</b>.<br>
     • При запуске лифта пробуждается могучий <b>Рейд-Босс этажа</b>. Одолейте его вместе с другими выжившими в секторе, чтобы открыть проход на следующий этаж!</p>
 
-    <h3>= 10. ТОРГОВЛЯ И ДРУГИЕ ВЫЖИВШИЕ =</h3>
-    <p>• <b>Магазин:</b> Обновляет ассортимент случайных товаров каждые 10 минут. Ненужную экипировку можно сдавать торговцу за талоны.<br>
-    • <b>Игроки рядом:</b> В том же секторе можно оказывать первую помощь товарищам (+15 HP) или атаковать чужаков в борьбе за выживание.</p>
+    <h3>= 10. ВЗАИМОДЕЙСТВИЕ, PVP И СЛУЧАЙНЫЕ NPC =</h3>
+    <p>• <b>Радар сектора:</b> Обнаруживает других заключенных в одной локации с вами:<br>
+    &nbsp;&nbsp;⚔️ <b>АТАКА (PvP):</b> Начать полноценную дуэль на экране боя в Тумане. Победитель забирает часть талонов побежденного и получает опыт, а проигравший эвакуируется в Жилячейку.<br>
+    &nbsp;&nbsp;🤝 <b>РЕЙД (Кооператив):</b> Отправить приглашение в совместную вылазку против усиленной элитной твари Тумана с ценным лутом. Оба игрока сражаются одновременно и наносят общий урон!<br>
+    &nbsp;&nbsp;🩹 <b>ПОМОЧЬ:</b> Оказать товарищу полевую первую помощь (+15 HP).<br>
+    • <b>Случайные события и NPC:</b> Во время вылазок в Туман (28% шанс) вы можете наткнуться на Барыгу с редким оружием, Сталкера Глеба с байками о Самосборе, раненого Ликвидатора или сумасшедшего Ученого с экспериментальной сывороткой, а также найти квестовые тайники с деталями лифта и ключами!</p>
   </div>
 </div>
 
@@ -754,7 +784,16 @@ socket.on('combatStart', (data) => {
   playSound('roar');
   document.getElementById('explore-controls').style.display = 'none';
   document.getElementById('combat-controls').style.display = 'flex';
-  let es = document.getElementById('enemy-sprite'); if(es) { es.style.display = 'block'; es.src = `assets/monsters/${data.enemy.img}`; }
+  let es = document.getElementById('enemy-sprite');
+  if(es) {
+    es.classList.remove('enemy-defeated');
+    es.style.display = 'block';
+    if (data.enemy.isPlayer) {
+      es.src = `assets/character/${data.enemy.skin || 'skin_1'}.png`;
+    } else {
+      es.src = `assets/monsters/${data.enemy.img}`;
+    }
+  }
   document.getElementById('enemy-hp-bar').style.display = 'block';
   document.getElementById('ui-enemy-hp').innerText = data.enemy.hp;
   isAiming = false; clearInterval(aimInterval);
@@ -801,6 +840,54 @@ socket.on('combatEnd', (data) => {
   isAiming = false; clearInterval(aimInterval);
   document.getElementById('aim-bar-container').style.display = 'none';
   document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+
+  let es = document.getElementById('enemy-sprite');
+  if (es) {
+    if (data.win) {
+      es.classList.add('enemy-defeated');
+      setTimeout(() => {
+        es.style.display = 'none';
+        es.classList.remove('enemy-defeated');
+      }, 1000);
+    } else {
+      es.style.display = 'none';
+      es.classList.remove('enemy-defeated');
+    }
+  }
+});
+
+socket.on('coopRaidInvitePrompt', (data) => {
+  playSound('roar');
+  document.getElementById('event-title').innerText = "ПРИГЛАШЕНИЕ В РЕЙД";
+  document.getElementById('event-text').innerText = `Заключенный [${data.fromUser}] зовет вас в СОВМЕСТНЫЙ РЕЙД в Туман!\nВы пойдете в вылазку плечом к плечу и сможете атаковать сильную тварь вдвоем.`;
+  const c = document.getElementById('event-choices');
+  c.innerHTML = '';
+  let btnAccept = document.createElement('button');
+  btnAccept.innerText = "ПРИНЯТЬ ВЫЗОВ (В БОЙ)";
+  btnAccept.style.width = '100%';
+  btnAccept.style.borderColor = 'var(--term-warn)';
+  btnAccept.style.color = 'var(--term-warn)';
+  btnAccept.onclick = () => {
+    socket.emit('acceptCoopRaid', data.fromId);
+    document.getElementById('event-modal').style.display = 'none';
+  };
+  let btnDecline = document.createElement('button');
+  btnDecline.innerText = "ОТКАЗАТЬСЯ";
+  btnDecline.style.width = '100%';
+  btnDecline.onclick = () => {
+    document.getElementById('event-modal').style.display = 'none';
+  };
+  c.appendChild(btnAccept);
+  c.appendChild(btnDecline);
+  document.getElementById('event-modal').style.display = 'flex';
+});
+
+socket.on('combatEventResult', (log) => {
+  let cl = document.getElementById('combat-log');
+  if (cl) {
+    cl.innerHTML += log + '\n';
+    cl.scrollTop = cl.scrollHeight;
+  }
 });
 
 socket.on('triggerEvent', (ev) => {
@@ -1099,6 +1186,8 @@ function updateUI(me, sectorPlayers) {
     document.getElementById('combat-controls').style.display = 'none';
     document.getElementById('explore-controls').style.display = 'flex';
     document.getElementById('enemy-hp-bar').style.display = 'none';
+    let es = document.getElementById('enemy-sprite');
+    if (es) { es.style.display = 'none'; es.classList.remove('enemy-defeated'); }
     if ((!invM || invM.style.display !== 'flex') && (!shopM || shopM.style.display !== 'flex') && (!mgM || mgM.style.display !== 'flex') && (!evM || evM.style.display !== 'flex') && (!crM || crM.style.display !== 'flex') && (!inM || inM.style.display !== 'flex') && (!chM || chM.style.display !== 'flex') && !mapS.classList.contains('active-screen')) {
       changeAmbient('hub');
     }
@@ -1109,15 +1198,20 @@ function updateUI(me, sectorPlayers) {
     let clt = document.getElementById('current-location-title');
     if (node) { if(clt) clt.innerText = node.name; if(bg) bg.style.backgroundImage = `url('assets/locations/${node.bg}')`; }
     let cc = document.getElementById('combat-controls');
-    if (cc && cc.style.display === 'flex') changeAmbient('combat');
-    else if ((!invM || invM.style.display !== 'flex') && (!mgM || mgM.style.display !== 'flex') && (!evM || evM.style.display !== 'flex')) changeAmbient('explore');
+    let es = document.getElementById('enemy-sprite');
+    if (cc && cc.style.display === 'flex') {
+      changeAmbient('combat');
+    } else {
+      if (es) { es.style.display = 'none'; es.classList.remove('enemy-defeated'); }
+      if ((!invM || invM.style.display !== 'flex') && (!mgM || mgM.style.display !== 'flex') && (!evM || evM.style.display !== 'flex')) changeAmbient('explore');
+    }
     const radar = document.getElementById('players-in-sector');
     if (radar && sectorPlayers) {
       radar.innerHTML = '';
       sectorPlayers.forEach(p => {
         if (p.username !== myUsername) {
           let d = document.createElement('div'); d.className = 'player-entry';
-          d.innerHTML = `<span>[${p.username}] HP:${p.hp}</span><div><button onclick="socket.emit('pvpAttack', '${p.id}')" style="margin:0 4px 0 0; padding:3px 8px; font-size:11px; border-color:var(--term-danger); color:var(--term-danger);">АТАКА</button><button onclick="socket.emit('coopHeal', '${p.id}')" style="margin:0; padding:3px 8px; font-size:11px; border-color:var(--term-green); color:var(--term-green);">ПОМОЧЬ</button></div>`;
+          d.innerHTML = `<span>[${p.username}] HP:${p.hp}</span><div style="display:flex; gap:3px;"><button onclick="socket.emit('pvpBattleStart', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-danger); color:var(--term-danger);" title="Напасть в тумане">АТАКА</button><button onclick="socket.emit('coopRaidInvite', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-warn); color:var(--term-warn);" title="Пригласить в совместный рейд">РЕЙД</button><button onclick="socket.emit('coopHeal', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-green); color:var(--term-green);" title="Оказать медпомощь (+15 HP)">ПОМОЧЬ</button></div>`;
           radar.appendChild(d);
         }
       });

@@ -304,12 +304,125 @@ function getBossForFloor(f) {
 }
 
 const RANDOM_EVENTS = [
-    { id: 'meat_smell', title: 'ЗАПАХ СЫРОГО МЯСА', text: 'Резкий запах озона бьет в нос.', choices: [{ id: 'run', text: '[РИСК] Бежать', chance: 0.6, winHp: 0, failHp: -20 }, { id: 'hide', text: 'Спрятаться', chance: 0.8, winHp: 0, failHp: -10 }] },
-    { id: 'npc_trader', title: 'ВСТРЕЧА: БАРЫГА ИЗ ТУМАНА', text: 'Незнакомец предлагает редкую вещь за 150 талонов.', choices: [
-        { id: 'buy', text: 'Купить (150 т.)', chance: 1, reqCost: 150, winLoot: 'weapon_pistol_rare', winLog: '> Вы купили Редкий Пистолет.' },
-        { id: 'leave', text: 'Отказаться', chance: 1, winLog: '> Вы прошли мимо.' }
-    ]}
+    {
+        id: 'meat_smell',
+        title: 'ЗАПАХ СЫРОГО МЯСА',
+        text: 'Резкий запах озона бьет в нос. Из темноты коридора доносится влажное хлюпанье. Самосбор где-то рядом...',
+        choices: [
+            { id: 'run', text: '[РИСК] Бежать обратно к шлюзу', chance: 0.7, winHp: 0, winLog: '> Вы успели захлопнуть за собой гермодверь.', failHp: -25, failLog: '> Тварь из тумана зацепила вас когтями! (-25 HP)' },
+            { id: 'hide', text: 'Затаиться в вентиляционной нише', chance: 0.85, winHp: 0, winLog: '> Существо проползло мимо, не заметив вас.', failHp: -15, failLog: '> Ядовитые испарения обожгли дыхательные пути. (-15 HP)' }
+        ]
+    },
+    {
+        id: 'npc_trader',
+        title: 'ВСТРЕЧА: БАРЫГА ИЗ ТУМАНА',
+        text: 'Незнакомец в потертом плаще сталкера светит фонариком: «Есть редкий хабар, заключенный. Показывай талоны, пока конвоиры не засекли».',
+        choices: [
+            { id: 'buy_weapon', text: 'Купить Редкий пистолет (150 т.)', reqCost: 150, winLoot: 'weapon_pistol_rare', winLog: '> Вы купили Редкий Пистолет Макарова.' },
+            { id: 'buy_medkit', text: 'Купить Военную аптечку (50 т.)', reqCost: 50, winLoot: 'food_medkit', winLog: '> Вы купили Военную аптечку.' },
+            { id: 'leave', text: 'Пройти мимо', winLog: '> Вы разошлись в тумане.' }
+        ]
+    },
+    {
+        id: 'npc_stalker',
+        title: 'ВСТРЕЧА: СТАЛКЕР ГЛЕБ',
+        text: 'У самодельной печурки греется сталкер. «Садись к огню. В этом блоке Туман злой... Могу рассказать байку о том, что творится ниже, а могу обменяться хабаром».',
+        choices: [
+            { id: 'listen_story', text: 'Послушать историю о Самосборе', winXp: 35, winNotebook: '[СТАЛКЕР ГЛЕБ]: «Самосбор — это не болезнь, а дыхание гигахрущевки. Не пытайся с ним спорить, учись вовремя задраивать люки».', winLog: '> Вы выслушали сталкера и узнали о повадках Тумана (+35 XP).' },
+            { id: 'share_food', text: 'Угостить Слизью (нужен 1 брикет)', reqItem: 'food_ration', winQuestItem: 'quest_fuse', winLog: '> Сталкер поблагодарил: «Держи Предохранитель, мне без надобности, а тебе дверь в щитовую откроет! (+Предохранитель)».', failLog: '> У вас нет брикета слизи.' },
+            { id: 'leave', text: 'Пожелать удачи и уйти', winLog: '> Вы продолжили путь.' }
+        ]
+    },
+    {
+        id: 'npc_liquidator',
+        title: 'ВСТРЕЧА: РАНЕНЫЙ ЛИКВИДАТОР',
+        text: 'Боец в тяжелой броне сидит у стены. Стекло шлема треснуло, дыхание с хрипом: «Брат... Наш отряд накрыло в цеху. Фильтр пробит. Помоги сбить токсин, отдам снаряжение!»',
+        choices: [
+            { id: 'cure_liquidator', text: 'Помочь Химикатами (нужны Химикаты)', reqItem: 'mat_chem', winQuestItem: 'quest_red_card', winXp: 50, winLog: '> Ликвидатор принял состав: «Спасибо, выкарабкаюсь... Держи Красную ключ-карту от поста ВОХР! (+Красная ключ-карта, +50 XP)».', failLog: '> У вас нет Химикатов.' },
+            { id: 'loot_liquidator', text: '[РИСК] Обыскать карманы бойца', chance: 0.65, winLoot: 'clothes_guard_rare', winTalons: 40, winLog: '> Вы забрали форму ВОХР и 40 талонов.', failHp: -30, failLog: '> Ликвидатор отбился прикладом и сорвал маску! (-30 HP)' },
+            { id: 'leave', text: 'Оставить его', winLog: '> Вы тихо удалились.' }
+        ]
+    },
+    {
+        id: 'npc_scientist',
+        title: 'ВСТРЕЧА: ОБЕЗУМЕВШИЙ УЧЕНЫЙ',
+        text: 'Человек в рваном халате НИИ чертит формулы мелом: «Они не понимают! Самосбор можно подчинить! Хочешь испытать экспериментальную сыворотку Партии?»',
+        choices: [
+            { id: 'take_stim', text: '[РИСК] Принять сыворотку', chance: 0.5, winHp: 50, winXp: 60, winLog: '> Прилив сил! Здоровье восстановилось, разум обострился! (+50 HP, +60 XP)', failHp: -25, failLog: '> Препарат вызвал токсический шок! (-25 HP)' },
+            { id: 'buy_notes', text: 'Выкупить детали генератора (60 т.)', reqCost: 60, winQuestItem: 'quest_battery', winLog: '> Ученый отдал вам Топливный элемент от лабораторного генератора! (+Топливный элемент)' },
+            { id: 'leave', text: 'Пройти мимо сумасшедшего', winLog: '> Вы прошли мимо.' }
+        ]
+    },
+    {
+        id: 'cache_toolbox',
+        title: 'НАХОДКА: РАЗБИТЫЙ ЯЩИК СЛЕСАРЯ',
+        text: 'В технической нише валяется перевернутый ящик аварийной сантехнической бригады.',
+        choices: [
+            { id: 'take_tools', text: 'Обыскать ящик', winQuestItem: 'quest_boltcutter', winTalons: 20, winLog: '> Вы нашли Ржавый болторез и 20 талонов! (+Болторез)' }
+        ]
+    },
+    {
+        id: 'cache_corpse',
+        title: 'НАХОДКА: ОСТАНКИ КОНВОИРА',
+        text: 'У развороченного электрощитка лежат останки конвоира в разорванной шинели.',
+        choices: [
+            { id: 'search_corpse', text: 'Осмотреть тело', winQuestItem: 'quest_battery', winLoot: 'special_knife', winLog: '> Найден Топливный элемент и Метательный нож!' }
+        ]
+    },
+    {
+        id: 'find_lift_repair',
+        title: 'НАХОДКА: ЗАПЧАСТИ ЛИФТА',
+        text: 'Среди груды механизмов виднеется опечатанный ящик со знаком службы главного лифта.',
+        choices: [
+            { id: 'take_repair', text: 'Забрать Ремкомплект лифта', winQuestItem: 'quest_lift_repair', winLog: '> Найден Ремкомплект лифта!' }
+        ]
+    },
+    {
+        id: 'find_lift_buttons',
+        title: 'НАХОДКА: ПАНЕЛЬ УПРАВЛЕНИЯ',
+        text: 'На стене сорванная панель диспетчера со связкой проводов и кнопок.',
+        choices: [
+            { id: 'take_buttons', text: 'Снять Блок кнопок', winQuestItem: 'quest_lift_buttons', winLog: '> Найден Блок кнопок лифта!' }
+        ]
+    },
+    {
+        id: 'cache_fusebox',
+        title: 'НАХОДКА: РАСПРЕДЕЛИТЕЛЬНЫЙ ЩИТ',
+        text: 'На обугленной стене висит полуоткрытый щиток автоматики. Внутри тускло блестит керамический корпус.',
+        choices: [
+            { id: 'take_fuse', text: 'Извлечь Предохранитель', winQuestItem: 'quest_fuse', winLog: '> Вы аккуратно вытащили рабочий Предохранитель! (+Предохранитель)' }
+        ]
+    },
+    {
+        id: 'find_lift_wire',
+        title: 'НАХОДКА: СИЛОВОЙ КАБЕЛЬ',
+        text: 'Из резервного генератора торчит неповрежденный медный силовой кабель.',
+        choices: [
+            { id: 'take_wire', text: 'Срезать Провод генератора', winQuestItem: 'quest_lift_wire', winLog: '> Найден Провод генератора!' }
+        ]
+    }
 ];
+
+function getRandomEventForPlayer(p, currentFloor) {
+    let pool = [];
+    let hasFound = (id) => (p.foundItems && p.foundItems.includes(id)) || (p.questItems && p.questItems.includes(id));
+
+    if (!hasFound('quest_lift_repair')) pool.push(RANDOM_EVENTS.find(e => e.id === 'find_lift_repair'));
+    if (!hasFound('quest_lift_buttons')) pool.push(RANDOM_EVENTS.find(e => e.id === 'find_lift_buttons'));
+    if (!hasFound('quest_lift_wire')) pool.push(RANDOM_EVENTS.find(e => e.id === 'find_lift_wire'));
+    if (!hasFound('quest_boltcutter')) pool.push(RANDOM_EVENTS.find(e => e.id === 'cache_toolbox'));
+    if (!hasFound('quest_fuse')) pool.push(RANDOM_EVENTS.find(e => e.id === 'cache_fusebox'));
+    if (!hasFound('quest_battery') || !hasFound('quest_red_card')) pool.push(RANDOM_EVENTS.find(e => e.id === 'cache_corpse'));
+
+    pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_trader'));
+    pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_stalker'));
+    pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_liquidator'));
+    pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_scientist'));
+    pool.push(RANDOM_EVENTS.find(e => e.id === 'meat_smell'));
+
+    pool = pool.filter(Boolean);
+    return pool[Math.floor(Math.random() * pool.length)];
+}
 
 const SECTOR_NAMES = ["Гермошлюз", "Вентшахта", "Цех", "Техкоридор", "Узел связи", "Насосная", "Склад", "Резервуар", "Медблок", "Карантин", "Бойлерная", "Генераторная", "Столовая", "Морозильники", "Гидропоника", "Очистные"];
 const LOC_TEMPLATES = [{ bg: 'bg_corridor.png' }, { bg: 'bg_hydro.png' }, { bg: 'bg_shaft.png' }, { bg: 'bg_flesh.png' }];
@@ -482,12 +595,17 @@ io.on('connection', (socket) => {
         let sectorData = db.map[currentFloor][locId];
         if (sectorData.reqType === 'item') {
             let reqItem = sectorData.reqValue;
-            if (p.questItems.includes(reqItem)) {
-                p.questItems.splice(p.questItems.indexOf(reqItem), 1);
+            let hasItem = (p.questItems && p.questItems.includes(reqItem)) || (p.foundItems && p.foundItems.includes(reqItem));
+            if (hasItem) {
+                if (reqItem === 'quest_fuse' || reqItem === 'quest_battery') {
+                    let idx = p.questItems.indexOf(reqItem);
+                    if (idx !== -1) p.questItems.splice(idx, 1);
+                }
                 p.unlockedSectors[currentFloor].push(locId); p.location = locId; p.roomsCleared = (p.roomsCleared || 0) + 1;
-                p.notebook.push(`[ЭТАЖ ${currentFloor}]: Применил ${GAME_ITEMS[reqItem].name} на сектор ${locId}.`);
+                p.notebook.push(`[ЭТАЖ ${currentFloor}]: Открыл сектор ${locId} с помощью ${GAME_ITEMS[reqItem] ? GAME_ITEMS[reqItem].name : reqItem}.`);
+                socket.emit('playSound', 'victory');
                 saveDB(); socket.emit('transition', {to: locId, text: `ЗАМОК ОТКРЫТ...`}); broadcastGameState();
-            } else { socket.emit('terminalError', `НУЖЕН: ${GAME_ITEMS[reqItem].name}`); socket.emit('playSound', 'click'); }
+            } else { socket.emit('terminalError', `НУЖЕН: ${GAME_ITEMS[reqItem] ? GAME_ITEMS[reqItem].name : reqItem}`); socket.emit('playSound', 'click'); }
         }
         else if (sectorData.reqType === 'minigame') { socket.emit('startMinigame', { locId: locId, gameData: sectorData.reqValue }); }
         else { p.unlockedSectors[currentFloor].push(locId); p.location = locId; saveDB(); socket.emit('transition', {to: locId, text: `ВХОД В СЕКТОР ${locId}...`}); broadcastGameState(); }
@@ -602,8 +720,24 @@ io.on('connection', (socket) => {
             saveDB(); broadcastGameState();
         } else if (itemData.type === 'special' && combat) {
             let dmg = itemData.combatDmg || 30;
-            if (combat.isGlobal) { let gb = globalBosses[`boss_${combat.floor}`]; if (gb) gb.hp -= dmg; }
-            else { combat.enemy.hp -= dmg; }
+            if (combat.isGlobal) {
+                let bossKey = (typeof combat.floor === 'string' && combat.floor.startsWith('coop_')) ? combat.floor : `boss_${combat.floor}`;
+                let gb = globalBosses[bossKey];
+                if (gb) gb.hp -= dmg;
+            } else if (combat.isPvP) {
+                let opponent = combat.opponent;
+                let po = db.players[opponent];
+                let oppCombat = activeCombats[opponent];
+                if (po) po.hp -= dmg;
+                if (oppCombat) {
+                    let u = onlinePlayers[socket.id];
+                    oppCombat.logs.push(`> [ДУЭЛЬ] ${u} применил спецсредство ${itemData.name}: -${dmg} HP!`);
+                    oppCombat.sounds.push('hit_enemy');
+                    oppCombat.vfx.push('player_hit');
+                }
+            } else if (combat.enemy) {
+                combat.enemy.hp -= dmg;
+            }
             combat.logs.push(`> БРОШЕНО: ${itemData.name}! Урон: ${dmg}.`);
             combat.sounds.push('special'); combat.vfx.push('enemy_crit');
             p.quickSlots[idx] = null;
@@ -722,24 +856,153 @@ io.on('connection', (socket) => {
         saveDB(); broadcastGameState();
     });
 
-    // ===== PVP / COOP (было пропущено) =====
-    socket.on('pvpAttack', (targetId) => {
-        let attacker = onlinePlayers[socket.id]; let defender = onlinePlayers[targetId];
-        if (!attacker || !defender) return;
-        let now = Date.now();
-        if (now - lastPvpTime < 1000) { socket.emit('terminalError', 'ПЕРЕЗАРЯДКА АТАКИ (1 сек).'); return; }
-        lastPvpTime = now;
-        let pa = db.players[attacker]; let pd = db.players[defender];
+    // ===== PVP / COOP СИСТЕМА =====
+    socket.on('pvpBattleStart', (targetId) => {
+        let attacker = onlinePlayers[socket.id];
+        let defender = onlinePlayers[targetId];
+        if (!attacker || !defender || attacker === defender) return;
+        let pa = db.players[attacker];
+        let pd = db.players[defender];
         if (!pa || !pd) return;
-        if (pa.location !== pd.location) return;
-        let dmg = getPlayerStats(pa).dmg;
-        pd.hp -= dmg;
-        socket.emit('terminalError', `АТАКА: ${dmg} урона ${defender}.`);
-        let defenderSocket = Object.keys(onlinePlayers).find(k => onlinePlayers[k] === defender);
-        if (defenderSocket) io.to(defenderSocket).emit('terminalError', `ВЫ АТАКОВАНЫ игроком ${attacker}: -${dmg} HP.`);
-        if (pd.hp <= 0) { pd.hp = 0; pd.talons = Math.floor(pd.talons / 2); pd.location = 'safe_room'; }
-        saveDB(); broadcastGameState();
+        if (pa.location !== pd.location || (pa.floor || 0) !== (pd.floor || 0)) return;
+        if (pa.location === 'safe_room') { socket.emit('terminalError', 'В ЖИЛЯЧЕЙКЕ НЕЛЬЗЯ НАПАДАТЬ.'); return; }
+        if (activeCombats[attacker] || activeCombats[defender]) { socket.emit('terminalError', 'ОДИН ИЗ ИГРОКОВ УЖЕ В БОЮ.'); return; }
+        if (pa.hp <= 0 || pd.hp <= 0) { socket.emit('terminalError', 'ИГРОК БЕЗ СОЗНАНИЯ.'); return; }
+
+        let now = Date.now();
+        if (now - lastPvpTime < 2000) { socket.emit('terminalError', 'ОЖИДАНИЕ ДУЭЛИ (2 сек).'); return; }
+        lastPvpTime = now;
+
+        let pvpCombatAttacker = {
+            isPvP: true,
+            opponent: defender,
+            oppSocket: targetId,
+            pTimer: 2.0 / getSpeedMult(pa.filter),
+            pDodging: false,
+            pCritNext: false,
+            logs: [`> ВЫ НАПАЛИ НА ЗАКЛЮЧЕННОГО ${defender}!`],
+            sounds: ['roar'],
+            vfx: []
+        };
+        let pvpCombatDefender = {
+            isPvP: true,
+            opponent: attacker,
+            oppSocket: socket.id,
+            pTimer: 2.0 / getSpeedMult(pd.filter),
+            pDodging: false,
+            pCritNext: false,
+            logs: [`> ТРЕВОГА! НА ВАС НАПАЛ ${attacker}!`],
+            sounds: ['roar'],
+            vfx: []
+        };
+
+        activeCombats[attacker] = pvpCombatAttacker;
+        activeCombats[defender] = pvpCombatDefender;
+
+        socket.emit('transition', { to: 'combat', text: `ДУЭЛЬ: ВЫ АТАКОВАЛИ ${defender}!` });
+        io.to(targetId).emit('transition', { to: 'combat', text: `НАПАДЕНИЕ: ВАС АТАКОВАЛ ${attacker}!` });
+
+        setTimeout(() => {
+            socket.emit('combatStart', {
+                enemy: {
+                    name: `[ЗАКЛЮЧЕННЫЙ] ${defender}`,
+                    hp: pd.hp,
+                    maxHp: pd.maxHp,
+                    dmg: getPlayerStats(pd).dmg,
+                    isPlayer: true,
+                    skin: pd.appearance ? pd.appearance.skin : 'skin_1'
+                }
+            });
+            io.to(targetId).emit('combatStart', {
+                enemy: {
+                    name: `[ЗАКЛЮЧЕННЫЙ] ${attacker}`,
+                    hp: pa.hp,
+                    maxHp: pa.maxHp,
+                    dmg: getPlayerStats(pa).dmg,
+                    isPlayer: true,
+                    skin: pa.appearance ? pa.appearance.skin : 'skin_1'
+                }
+            });
+            broadcastGameState();
+        }, 1200);
     });
+
+    socket.on('coopRaidInvite', (targetId) => {
+        let inviter = onlinePlayers[socket.id];
+        let target = onlinePlayers[targetId];
+        if (!inviter || !target || inviter === target) return;
+        let pi = db.players[inviter];
+        let pt = db.players[target];
+        if (!pi || !pt || pi.location !== pt.location) return;
+        if (activeCombats[inviter] || activeCombats[target]) { socket.emit('terminalError', 'КТО-ТО УЖЕ В БОЮ.'); return; }
+        if (pi.filter < 10 || pt.filter < 10) { socket.emit('terminalError', 'НЕДОСТАТОЧНО ФИЛЬТРА ДЛЯ ВЫЛАЗКИ.'); return; }
+
+        socket.emit('terminalError', `ПРИГЛАШЕНИЕ В РЕЙД ОТПРАВЛЕНО ${target}...`);
+        io.to(targetId).emit('coopRaidInvitePrompt', { fromId: socket.id, fromUser: inviter });
+    });
+
+    socket.on('acceptCoopRaid', (inviterSocketId) => {
+        let accepter = onlinePlayers[socket.id];
+        let inviter = onlinePlayers[inviterSocketId];
+        if (!accepter || !inviter) return;
+        let pa = db.players[accepter];
+        let pi = db.players[inviter];
+        if (!pa || !pi || pa.location !== pi.location) return;
+        if (activeCombats[accepter] || activeCombats[inviter]) return;
+        if (pa.filter < 10 || pi.filter < 10) return;
+
+        let currentFloor = pa.floor || 0;
+        pa.filter -= 10;
+        pi.filter -= 10;
+
+        let possibleMonsters = BASE_MONSTERS.filter(m => currentFloor >= m.minFloor && currentFloor <= m.minFloor + 10);
+        if (possibleMonsters.length === 0) possibleMonsters = [BASE_MONSTERS[BASE_MONSTERS.length - 1]];
+        let baseMob = Object.assign({}, possibleMonsters[Math.floor(Math.random() * possibleMonsters.length)]);
+        let multiplier = (1 + (currentFloor * 0.4)) * 1.8;
+        let monster = {
+            name: `[ЭЛИТА] ${baseMob.name} [Lvl ${currentFloor + 1}]`,
+            hp: Math.floor(baseMob.hp * multiplier),
+            maxHp: Math.floor(baseMob.hp * multiplier),
+            dmg: Math.floor(baseMob.dmg * (1 + currentFloor * 0.3)),
+            reward: Math.floor(baseMob.reward * multiplier * 1.5),
+            xp: Math.floor(baseMob.xp * multiplier * 1.5),
+            img: baseMob.img,
+            isCoopRaid: true,
+            loot: [ {id: rollItemWithRarity('food_medkit'), chance: 0.6}, {id: rollItemWithRarity('mat_chem'), chance: 0.5}, {id: rollItemWithRarity('mat_electro'), chance: 0.4} ]
+        };
+
+        let raidKey = `coop_${Date.now()}`;
+        globalBosses[raidKey] = {
+            name: monster.name,
+            hp: monster.hp,
+            maxHp: monster.maxHp,
+            dmg: monster.dmg,
+            reward: monster.reward,
+            xp: monster.xp,
+            img: monster.img,
+            isCoopRaid: true,
+            loot: monster.loot,
+            participants: new Set([inviter, accepter]),
+            eTimer: 2.0,
+            pTimers: {
+                [inviter]: 2.0 / getSpeedMult(pi.filter),
+                [accepter]: 2.0 / getSpeedMult(pa.filter)
+            }
+        };
+
+        activeCombats[inviter] = { isGlobal: true, floor: raidKey, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
+        activeCombats[accepter] = { isGlobal: true, floor: raidKey, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
+
+        socket.emit('transition', { to: 'combat', text: `СОВМЕСТНЫЙ РЕЙД С ${inviter}!` });
+        io.to(inviterSocketId).emit('transition', { to: 'combat', text: `СОВМЕСТНЫЙ РЕЙД С ${accepter}!` });
+
+        setTimeout(() => {
+            socket.emit('combatStart', { enemy: globalBosses[raidKey] });
+            io.to(inviterSocketId).emit('combatStart', { enemy: globalBosses[raidKey] });
+            broadcastGameState();
+        }, 1200);
+    });
+
     socket.on('coopHeal', (targetId) => {
         let healer = onlinePlayers[socket.id]; let target = onlinePlayers[targetId];
         if (!healer || !target) return;
@@ -777,6 +1040,22 @@ io.on('connection', (socket) => {
             setTimeout(() => { socket.emit('combatStart', { enemy: globalBosses[bossKey] }); broadcastGameState(); }, 2000);
             return;
         }
+
+        // Шанс встретить случайное событие, NPC или тайник с квестовым предметом (28%)
+        if (Math.random() < 0.28) {
+            let ev = getRandomEventForPlayer(p, currentFloor);
+            if (ev) {
+                p.activeEvent = ev.id;
+                let fCost = p.perks.includes('perk_lungs') ? 7 : 10;
+                let pRate = p.mutations && p.mutations.includes('mut_thick_skin') ? 2.0 : 1.0;
+                p.filter -= Math.floor(fCost * pRate);
+                saveDB();
+                socket.emit('triggerEvent', ev);
+                broadcastGameState();
+                return;
+            }
+        }
+
         let fCost = p.perks.includes('perk_lungs') ? 7 : 10;
         let pRate = p.mutations && p.mutations.includes('mut_thick_skin') ? 2.0 : 1.0;
         p.filter -= Math.floor(fCost * pRate);
@@ -799,11 +1078,38 @@ io.on('connection', (socket) => {
         if (!combat || !p || combat.paused) return;
         let stats = getPlayerStats(p);
         if (combat.isGlobal) {
-            let bossKey = `boss_${combat.floor}`; let gb = globalBosses[bossKey]; if (!gb) return;
+            let bossKey = (typeof combat.floor === 'string' && combat.floor.startsWith('coop_')) ? combat.floor : `boss_${combat.floor}`;
+            let gb = globalBosses[bossKey]; if (!gb) return;
             if (actionType === 'dodge') { combat.pDodging = true; combat.logs.push(`> УКЛОНЕНИЕ...`); combat.sounds.push('dodge'); }
             else if (actionType === 'attack') { gb.pTimers[username] = 2.0 / getSpeedMult(p.filter); executePlayerAttackGlobal(username, combat, gb, stats, p); }
             else if (actionType === 'aimed_success') { gb.pTimers[username] = 2.0 / getSpeedMult(p.filter); let cb = p.perks.includes('perk_butcher') ? 2.3 : 2.0; let dmg = Math.floor(stats.dmg * cb); combat.logs.push(`> КРИТ! ${dmg} урона.`); combat.sounds.push('hit_crit'); combat.vfx.push('enemy_crit'); gb.hp -= dmg; }
             else if (actionType === 'aimed_fail') { gb.pTimers[username] = 2.0 / getSpeedMult(p.filter); let eDmg = Math.max(1, gb.dmg - Math.floor(stats.def / 5)); combat.logs.push(`> ПРОМАХ! -${eDmg} HP.`); combat.sounds.push('hit_enemy'); combat.vfx.push('player_hit'); p.hp -= eDmg; applyToxicity(p, combat); }
+        } else if (combat.isPvP) {
+            let opponent = combat.opponent;
+            let po = db.players[opponent];
+            let oppCombat = activeCombats[opponent];
+            if (!po || !oppCombat) return;
+            if (actionType === 'dodge') { combat.pDodging = true; combat.logs.push(`> УКЛОНЕНИЕ...`); combat.sounds.push('dodge'); }
+            else if (actionType === 'attack') { combat.pTimer = 2.0 / getSpeedMult(p.filter); executePvPAttack(username, opponent, combat, oppCombat, stats, p, po); }
+            else if (actionType === 'aimed_success') {
+                combat.pTimer = 2.0 / getSpeedMult(p.filter);
+                let cb = p.perks.includes('perk_butcher') ? 2.3 : 2.0;
+                let dmg = Math.floor(stats.dmg * cb);
+                combat.logs.push(`> КРИТ ПО ${opponent}! ${dmg} урона.`);
+                combat.sounds.push('hit_crit'); combat.vfx.push('enemy_crit');
+                oppCombat.logs.push(`> [ДУЭЛЬ] ${username} нанес вам КРИТ: -${dmg} HP!`);
+                oppCombat.sounds.push('hit_enemy'); oppCombat.vfx.push('player_hit');
+                po.hp -= dmg; applyToxicity(po, oppCombat);
+            } else if (actionType === 'aimed_fail') {
+                combat.pTimer = 2.0 / getSpeedMult(p.filter);
+                let oppStats = getPlayerStats(po);
+                let eDmg = Math.max(1, oppStats.dmg - Math.floor(stats.def / 5));
+                combat.logs.push(`> ПРОМАХ! Контрудар ${opponent}: -${eDmg} HP.`);
+                combat.sounds.push('hit_enemy'); combat.vfx.push('player_hit');
+                oppCombat.logs.push(`> [ДУЭЛЬ] Вы контратаковали промахнувшегося ${username}: ${eDmg} урона.`);
+                oppCombat.sounds.push('hit_player');
+                p.hp -= eDmg; applyToxicity(p, combat);
+            }
         } else {
             if (actionType === 'dodge') { combat.pDodging = true; combat.logs.push(`> УКЛОНЕНИЕ...`); combat.sounds.push('dodge'); }
             else if (actionType === 'attack') { combat.pTimer = 2.0 / getSpeedMult(p.filter); executePlayerAttack(username, combat, stats, p); }
@@ -821,30 +1127,75 @@ io.on('connection', (socket) => {
     });
 
     socket.on('resolveEvent', (choiceId) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p || !p.activeEvent) return;
-        let allEvents = [...RANDOM_EVENTS,
-            { id: 'find_lift_repair', choices: [{id:'take', winQuestItem:'quest_lift_repair', winLog: '> Найден Ремкомплект!'}] },
-            { id: 'find_lift_buttons', choices: [{id:'take', winQuestItem:'quest_lift_buttons', winLog: '> Найден Блок кнопок!'}] },
-            { id: 'find_lift_wire', choices: [{id:'take', winQuestItem:'quest_lift_wire', winLog: '> Найден Провод!'}] }
-        ];
-        let ev = allEvents.find(e => e.id === p.activeEvent); p.activeEvent = null; let log = "";
+        let username = onlinePlayers[socket.id];
+        let p = db.players[username];
+        if (!p || !p.activeEvent) return;
+        let ev = RANDOM_EVENTS.find(e => e.id === p.activeEvent);
+        p.activeEvent = null;
+        let log = "";
         if (ev) {
             let choice = ev.choices.find(c => c.id === choiceId);
             if (choice) {
-                if (choice.reqCost && p.talons < choice.reqCost) { socket.emit('terminalError', `НЕ ХВАТАЕТ ТАЛОНОВ.`); return; }
+                if (choice.reqCost && p.talons < choice.reqCost) {
+                    socket.emit('terminalError', `НЕ ХВАТАЕТ ТАЛОНОВ (${choice.reqCost} т.).`);
+                    return;
+                }
+                if (choice.reqItem) {
+                    let hasItem = (p.inventory && p.inventory.includes(choice.reqItem)) || (p.questItems && p.questItems.includes(choice.reqItem));
+                    if (!hasItem) {
+                        let itemName = GAME_ITEMS[choice.reqItem] ? GAME_ITEMS[choice.reqItem].name : choice.reqItem;
+                        socket.emit('terminalError', `ТРЕБУЕТСЯ: ${itemName}`);
+                        return;
+                    }
+                    if (p.inventory && p.inventory.includes(choice.reqItem)) {
+                        let idx = p.inventory.indexOf(choice.reqItem);
+                        p.inventory.splice(idx, 1);
+                    }
+                }
                 if (choice.reqCost) p.talons -= choice.reqCost;
+
                 if (Math.random() <= (choice.chance !== undefined ? choice.chance : 1)) {
                     log = choice.winLog || "> Успех.";
-                    if (choice.winLoot) { let gl = rollItemWithRarity(choice.winLoot); p.inventory.push(gl); log += ` (+${GAME_ITEMS[gl].name})`; }
-                    if (choice.winQuestItem) { p.questItems.push(choice.winQuestItem); if (!p.foundItems) p.foundItems = []; p.foundItems.push(choice.winQuestItem); socket.emit('playSound', 'victory'); }
-                    if (choice.winTalons) p.talons += choice.winTalons;
+                    if (choice.winLoot) {
+                        let gl = rollItemWithRarity(choice.winLoot);
+                        if (p.inventory.length < getMaxInv(p)) {
+                            p.inventory.push(gl);
+                            log += ` (+${GAME_ITEMS[gl] ? GAME_ITEMS[gl].name : gl})`;
+                        } else {
+                            log += `\n> Добыча брошена: сундук переполнен!`;
+                        }
+                    }
+                    if (choice.winQuestItem) {
+                        if (!p.questItems.includes(choice.winQuestItem)) p.questItems.push(choice.winQuestItem);
+                        if (!p.foundItems) p.foundItems = [];
+                        if (!p.foundItems.includes(choice.winQuestItem)) p.foundItems.push(choice.winQuestItem);
+                        let qName = GAME_ITEMS[choice.winQuestItem] ? GAME_ITEMS[choice.winQuestItem].name : choice.winQuestItem;
+                        log += ` (+${qName})`;
+                        socket.emit('playSound', 'victory');
+                    }
+                    if (choice.winTalons) { p.talons += choice.winTalons; log += ` (+${choice.winTalons} т.)`; }
                     if (choice.winHp) p.hp = Math.min(p.maxHp, p.hp + choice.winHp);
                     if (choice.winXp) { p.xp += choice.winXp; log += ` (+${choice.winXp} XP)`; }
-                } else { log = choice.failLog || "> Провал."; if (choice.failHp) p.hp += choice.failHp; }
+                    if (choice.winNotebook) {
+                        if (!p.notebook) p.notebook = [];
+                        p.notebook.push(choice.winNotebook);
+                        log += `\n> Новая запись в блокноте!`;
+                    }
+                } else {
+                    log = choice.failLog || "> Провал.";
+                    if (choice.failHp) p.hp += choice.failHp;
+                }
             }
         }
-        if (p.hp <= 0) { p.hp = 0; p.talons = Math.floor(p.talons / 2); p.location = 'safe_room'; log += "\n> ЭВАКУАЦИЯ."; }
-        saveDB(); socket.emit('combatEventResult', log); broadcastGameState();
+        if (p.hp <= 0) {
+            p.hp = 0;
+            p.talons = Math.floor(p.talons / 2);
+            p.location = 'safe_room';
+            log += "\n> КРИТИЧЕСКИЙ УРОН: ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ.";
+        }
+        saveDB();
+        socket.emit('combatEventResult', log);
+        broadcastGameState();
     });
 
     socket.on('disconnect', () => {
@@ -869,6 +1220,46 @@ function applyToxicity(p, combat) {
             if (combat) combat.logs.push(`\n>>> МУТАЦИЯ: [${m.name}] <<<\n`);
         }
     }
+}
+
+function executePvPAttack(username, opponent, combat, oppCombat, stats, p, po) {
+    let dmg = stats.dmg;
+    if (combat.pCritNext) {
+        let cb = 1 + (Math.floor(Math.random() * 16) + 10) / 100;
+        if (p.perks.includes('perk_butcher')) cb += 0.3;
+        dmg = Math.floor(dmg * cb);
+        combat.pCritNext = false;
+        combat.logs.push(`> КРИТ ПО ${opponent}! ${dmg} урона.`);
+        combat.sounds.push('hit_crit');
+        combat.vfx.push('enemy_crit');
+    } else {
+        combat.logs.push(`> Атака по ${opponent}: ${dmg} урона.`);
+        combat.sounds.push('hit_player');
+        combat.vfx.push('enemy_hit');
+    }
+
+    let oppStats = getPlayerStats(po);
+    if (oppCombat.pDodging) {
+        if (Math.random() < 0.65) {
+            combat.logs.push(`> ПРОМАХ! ${opponent} уклонился!`);
+            combat.sounds.push('dodge');
+            oppCombat.logs.push(`> [ДУЭЛЬ] Вы уклонились от атаки ${username}!`);
+            oppCombat.sounds.push('dodge');
+            oppCombat.vfx.push('player_dodge');
+            oppCombat.pCritNext = true;
+            oppCombat.pDodging = false;
+            return;
+        } else {
+            oppCombat.pDodging = false;
+        }
+    }
+
+    let finalDmg = Math.max(1, dmg - Math.floor(oppStats.def / 5));
+    po.hp -= finalDmg;
+    oppCombat.logs.push(`> [ДУЭЛЬ] ${username} нанес вам урон: -${finalDmg} HP.`);
+    oppCombat.sounds.push('hit_enemy');
+    oppCombat.vfx.push('player_hit');
+    applyToxicity(po, oppCombat);
 }
 
 function executePlayerAttack(username, combat, stats, p) {
@@ -909,10 +1300,22 @@ setInterval(() => {
                 if (combat && p && socketId) {
                     let log = combat.logs.join('\n') + '\n';
                     p.talons += gb.reward; p.xp += gb.xp; p.monstersKilled = (p.monstersKilled || 0) + 1;
-                    log += `> БОСС ПОВЕРЖЕН! +${gb.reward} талонов, +${gb.xp} XP.\n`;
-                    if (!p.bossDefeated) p.bossDefeated = {}; p.bossDefeated[p.floor || 0] = true;
+                    log += `> БОСС ${gb.name} ПОВЕРЖЕН! +${gb.reward} талонов, +${gb.xp} XP.\n`;
+                    if (gb.isElevatorBoss) {
+                        if (!p.bossDefeated) p.bossDefeated = {}; p.bossDefeated[p.floor || 0] = true;
+                        log += `\n>>> ПУТЬ ВНИЗ ОТКРЫТ! <<<\n`;
+                    }
                     if (gb.lore) { p.notebook.push(gb.lore); log += `>>> ЗАПИСЬ В БЛОКНОТ! <<<\n`; }
-                    log += `\n>>> ПУТЬ ВНИЗ ОТКРЫТ! <<<\n`;
+                    if (gb.loot) {
+                        gb.loot.forEach(drop => {
+                            if (Math.random() < drop.chance) {
+                                if (p.inventory.length < getMaxInv(p)) {
+                                    p.inventory.push(drop.id);
+                                    log += `> НАЙДЕНО В РЕЙДЕ: ${GAME_ITEMS[drop.id] ? GAME_ITEMS[drop.id].name : drop.id}.\n`;
+                                }
+                            }
+                        });
+                    }
                     io.to(socketId).emit('combatEnd', { log: log, enemy: gb, win: true }); delete activeCombats[u];
                 }
             });
@@ -938,6 +1341,70 @@ setInterval(() => {
         let combat = activeCombats[username]; if (combat.isGlobal) continue;
         let p = db.players[username]; let socketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === username);
         if (!p || !socketId || combat.paused) continue;
+
+        if (combat.isPvP) {
+            let opponent = combat.opponent;
+            let po = db.players[opponent];
+            let oppCombat = activeCombats[opponent];
+            let oppSocketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === opponent);
+
+            if (!po || !oppCombat || !oppSocketId) {
+                let log = combat.logs.join('\n') + `\n> ПРОТИВНИК ${opponent} ПОКИНУЛ БОЙ.`;
+                io.to(socketId).emit('combatEnd', { log: log, enemy: { name: opponent, hp: 0, maxHp: 100, isPlayer: true }, win: true });
+                delete activeCombats[username];
+                saveDB(); broadcastGameState();
+                continue;
+            }
+
+            combat.pTimer -= 0.25;
+            if (combat.pTimer <= 0 && !combat.paused) {
+                combat.pTimer = 2.0 / getSpeedMult(p.filter);
+                executePvPAttack(username, opponent, combat, oppCombat, getPlayerStats(p), p, po);
+            }
+
+            if (p.hp <= 0 || po.hp <= 0) {
+                let winner = p.hp > 0 ? username : opponent;
+                let loser = p.hp > 0 ? opponent : username;
+                let pw = db.players[winner];
+                let pl = db.players[loser];
+                let winnerCombat = activeCombats[winner];
+                let loserCombat = activeCombats[loser];
+                let winSocketId = Object.keys(onlinePlayers).find(k => onlinePlayers[k] === winner);
+                let loseSocketId = Object.keys(onlinePlayers).find(k => onlinePlayers[k] === loser);
+
+                let lootTalons = Math.max(10, Math.floor(pl.talons * 0.25));
+                pl.talons = Math.max(0, pl.talons - lootTalons);
+                pw.talons += lootTalons;
+                pw.xp += 60;
+                pl.hp = 0;
+                pl.location = 'safe_room';
+
+                let winLog = (winnerCombat ? winnerCombat.logs.join('\n') : '') + `\n>>> ПОБЕДА НАД ${loser}! <<<\n> Захвачено талонов: +${lootTalons}\n> Получено опыта: +60 XP\n`;
+                let loseLog = (loserCombat ? loserCombat.logs.join('\n') : '') + `\n>>> ПОРАЖЕНИЕ В ДУЭЛИ ПРОТИВ ${winner}! <<<\n> Потеряно талонов: -${lootTalons}\n> ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ.\n`;
+
+                if (winSocketId) io.to(winSocketId).emit('combatEnd', { log: winLog, enemy: { name: loser, hp: 0, maxHp: pl.maxHp, isPlayer: true, skin: pl.appearance ? pl.appearance.skin : 'skin_1' }, win: true });
+                if (loseSocketId) io.to(loseSocketId).emit('combatEnd', { log: loseLog, enemy: { name: winner, hp: pw.hp, maxHp: pw.maxHp, isPlayer: true, skin: pw.appearance ? pw.appearance.skin : 'skin_1' }, win: false });
+
+                delete activeCombats[winner];
+                delete activeCombats[loser];
+                saveDB(); broadcastGameState();
+                continue;
+            }
+
+            if (combat.logs.length > 0) {
+                io.to(socketId).emit('combatTick', {
+                    enemyHp: Math.max(0, po.hp),
+                    enemyMaxHp: po.maxHp,
+                    logs: combat.logs,
+                    sounds: combat.sounds,
+                    vfx: combat.vfx
+                });
+                combat.logs = []; combat.sounds = []; combat.vfx = [];
+            }
+            continue;
+        }
+
+        // Обычный бой с монстром тумана
         combat.pTimer -= 0.25; combat.eTimer -= 0.25; combat.logs = []; combat.sounds = []; combat.vfx = [];
         if (combat.eTimer <= 0) {
             combat.eTimer = 2.0;
