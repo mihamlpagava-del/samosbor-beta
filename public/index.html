@@ -58,6 +58,8 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
 #transition-overlay { position: absolute; inset: 0; z-index: 999; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--term-green); font-size: 22px; font-weight: bold; white-space: pre-wrap; text-align: center; }
 .door-ascii { white-space: pre; line-height: 1.1; margin-bottom: 20px; }
 .support-controls { position: absolute; top: 8px; left: 10px; z-index: 200; display: flex; gap: 6px; }
+.lang-btn { padding: 4px 10px; font-size: 11px; background: rgba(0, 229, 255, 0.15); color: #00e5ff; border: 1px solid #00c4dd; cursor: pointer; text-shadow: 0 0 5px rgba(0, 229, 255, 0.6); font-family: inherit; letter-spacing: 0.8px; font-weight: bold; transition: 0.15s; border-radius: 2px; }
+.lang-btn:hover { background: rgba(0, 229, 255, 0.3); border-color: #00e5ff; box-shadow: 0 0 10px rgba(0, 229, 255, 0.6); transform: translateY(-1px); }
 .support-btn { padding: 4px 10px; font-size: 11px; background: rgba(39, 135, 245, 0.15); color: #61b0ff; border: 1px solid #2787f5; cursor: pointer; text-shadow: 0 0 5px rgba(39, 135, 245, 0.6); font-family: inherit; letter-spacing: 0.5px; transition: 0.15s; border-radius: 2px; }
 .support-btn:hover { background: rgba(39, 135, 245, 0.3); border-color: #61b0ff; box-shadow: 0 0 10px rgba(97, 176, 255, 0.5); }
 .donate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
@@ -290,7 +292,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   .terminal-center { width: 100%; max-width: 100%; }
   .combat-q-slot { width: 55px; height: 40px; font-size: 9px; padding: 2px; }
   .support-controls { top: 4px; left: 4px; }
-  .support-btn { font-size: 10px; padding: 2px 6px; }
+  .support-btn, .lang-btn { font-size: 10px; padding: 2px 6px; }
   .donate-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .intro-ascii-side { font-size: 50px; }
   #intro-text-container { font-size: 13px; min-height: 200px; }
@@ -346,60 +348,61 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div id="chat-modal" class="modal-overlay" style="z-index: 75;">
   <div class="shop-panel" style="width: 700px; display: flex; flex-direction: column; height: 600px;">
-    <div class="shop-header"><span>ОБЩИЙ КАНАЛ [СЕТЬ]</span><button onclick="document.getElementById('chat-modal').style.display='none';">[X]</button></div>
+    <div class="shop-header"><span data-i18n="chat_title">ОБЩИЙ КАНАЛ [СЕТЬ]</span><button onclick="document.getElementById('chat-modal').style.display='none';">[X]</button></div>
     <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; text-align: left; padding: 10px; border: 1px solid var(--term-dim); background: rgba(0,20,0,0.5); margin-bottom: 12px; font-size: 14px; color: #ddd;"></div>
     <div style="display: flex; gap: 8px;">
-      <input type="text" id="chat-input" placeholder="СООБЩЕНИЕ..." style="flex-grow: 1; margin: 0; width: auto; padding: 8px;" maxlength="100">
-      <button id="btn-send-chat" style="margin: 0; width: 120px; padding: 8px;">ОТПРАВИТЬ</button>
+      <input type="text" id="chat-input" placeholder="СООБЩЕНИЕ..." data-i18n-ph="chat_ph" style="flex-grow: 1; margin: 0; width: auto; padding: 8px;" maxlength="100">
+      <button id="btn-send-chat" style="margin: 0; width: 120px; padding: 8px;" data-i18n="chat_send">ОТПРАВИТЬ</button>
     </div>
   </div>
 </div>
 
 <div id="leaderboard-modal" class="modal-overlay" style="z-index: 75;">
   <div class="shop-panel" style="width: 900px; display: flex; flex-direction: column; height: 600px;">
-    <div class="shop-header"><span>ЗАЛ СЛАВЫ ПАРТИИ</span><button onclick="document.getElementById('leaderboard-modal').style.display='none';">[X]</button></div>
+    <div class="shop-header"><span data-i18n="lb_title">ЗАЛ СЛАВЫ ПАРТИИ</span><button onclick="document.getElementById('leaderboard-modal').style.display='none';">[X]</button></div>
     <div style="overflow-y: auto; flex-grow: 1;">
-      <table class="leaderboard-table"><thead><tr><th>МЕСТО</th><th>ИМЯ</th><th>ТИТУЛ</th><th>УР.</th><th>ЭТАЖ</th><th>ВРЕМЯ</th><th>ОЧКИ</th></tr></thead><tbody id="leaderboard-body"></tbody></table>
+      <table class="leaderboard-table"><thead><tr><th data-i18n="lb_rank">МЕСТО</th><th data-i18n="lb_name">ИМЯ</th><th data-i18n="lb_title_col">ТИТУЛ</th><th data-i18n="lb_lvl">УР.</th><th data-i18n="lb_floor">ЭТАЖ</th><th data-i18n="lb_time">ВРЕМЯ</th><th data-i18n="lb_score">ОЧКИ</th></tr></thead><tbody id="leaderboard-body"></tbody></table>
     </div>
   </div>
 </div>
 
 <div id="feedback-modal" class="modal-overlay" style="z-index: 85;">
   <div class="shop-panel" style="width: 650px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
-    <div class="shop-header"><span>ДИСПЕТЧЕРСКАЯ // БАГИ И ИДЕИ</span><button onclick="document.getElementById('feedback-modal').style.display='none';">[X]</button></div>
+    <div class="shop-header"><span data-i18n="fb_title">ДИСПЕТЧЕРСКАЯ // БАГИ И ИДЕИ</span><button onclick="document.getElementById('feedback-modal').style.display='none';">[X]</button></div>
     <div style="display: flex; gap: 6px; border-bottom: 1px solid var(--term-dim); margin-bottom: 14px;">
-      <button id="fb-tab-write" class="feedback-tab-btn active" type="button">✍️ НАПИСАТЬ</button>
-      <button id="fb-tab-list" class="feedback-tab-btn" type="button">📋 ЖУРНАЛ ОБРАЩЕНИЙ [Shift+P]</button>
+      <button id="fb-tab-write" class="feedback-tab-btn active" type="button" data-i18n="fb_tab_write">✍️ НАПИСАТЬ</button>
+      <button id="fb-tab-list" class="feedback-tab-btn" type="button" data-i18n="fb_tab_list">📋 ЖУРНАЛ ОБРАЩЕНИЙ [Shift+P]</button>
     </div>
     <div id="fb-view-write" style="display: block;">
-      <div style="text-align: left; margin-bottom: 15px; font-size: 13px; color: #aaa;">
+      <div style="text-align: left; margin-bottom: 15px; font-size: 13px; color: #aaa;" data-i18n="fb_desc">
         Нашли ошибку или хотите предложить улучшение для игры? Отправьте сообщение напрямую на сервер:
       </div>
       <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-        <button id="fb-type-bug" class="feedback-type-btn active" type="button">🐛 БАГ-РЕПОРТ</button>
-        <button id="fb-type-sugg" class="feedback-type-btn" type="button">💡 ПРЕДЛОЖЕНИЕ</button>
+        <button id="fb-type-bug" class="feedback-type-btn active" type="button" data-i18n="fb_type_bug">🐛 БАГ-РЕПОРТ</button>
+        <button id="fb-type-sugg" class="feedback-type-btn" type="button" data-i18n="fb_type_sugg">💡 ПРЕДЛОЖЕНИЕ</button>
       </div>
-      <textarea id="feedback-input" class="feedback-textarea" placeholder="Опишите найденный баг или вашу идею (до 500 символов)..." maxlength="500"></textarea>
+      <textarea id="feedback-input" class="feedback-textarea" placeholder="Опишите найденный баг или вашу идею (до 500 символов)..." data-i18n-ph="fb_ph" maxlength="500"></textarea>
       <div id="feedback-status" style="font-size: 13px; min-height: 18px; margin-bottom: 10px; text-align: left;"></div>
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        <button onclick="document.getElementById('feedback-modal').style.display='none';" style="margin: 0; padding: 6px 14px; font-size: 12px; border-color: #555; color: #888;">ОТМЕНА</button>
-        <button id="btn-submit-feedback" style="margin: 0; padding: 6px 18px; font-size: 12px; border-color: var(--term-warn); color: var(--term-warn);">ОТПРАВИТЬ</button>
+        <button onclick="document.getElementById('feedback-modal').style.display='none';" style="margin: 0; padding: 6px 14px; font-size: 12px; border-color: #555; color: #888;" data-i18n="btn_cancel">ОТМЕНА</button>
+        <button id="btn-submit-feedback" style="margin: 0; padding: 6px 18px; font-size: 12px; border-color: var(--term-warn); color: var(--term-warn);" data-i18n="btn_submit_fb">ОТПРАВИТЬ</button>
       </div>
     </div>
     <div id="fb-view-list" style="display: none; flex-direction: column; flex-grow: 1; overflow: hidden; min-height: 300px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <div style="font-size: 13px; color: #aaa; text-align: left;">Все зарегистрированные баги и предложения:</div>
-        <button id="fb-btn-refresh" type="button" style="margin:0; padding:4px 10px; font-size:11px;">🔄 ОБНОВИТЬ</button>
+        <div style="font-size: 13px; color: #aaa; text-align: left;" data-i18n="fb_list_desc">Все зарегистрированные баги и предложения:</div>
+        <button id="fb-btn-refresh" type="button" style="margin:0; padding:4px 10px; font-size:11px;" data-i18n="fb_btn_refresh">🔄 ОБНОВИТЬ</button>
       </div>
       <div id="fb-list-container" style="overflow-y: auto; flex-grow: 1; max-height: 50vh; padding-right: 6px;">
-        <div style="color: #666; font-size: 13px; padding: 20px 0;">Загрузка обращений...</div>
+        <div style="color: #666; font-size: 13px; padding: 20px 0;" data-i18n="fb_loading">Загрузка обращений...</div>
       </div>
     </div>
   </div>
 </div>
 
 <div class="support-controls">
-  <button id="btn-donate" class="support-btn" onclick="document.getElementById('donate-modal').style.display='flex';">
+  <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
+  <button id="btn-donate" class="support-btn" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
     💙 ПОДДЕРЖАТЬ ПРОЕКТ
   </button>
 </div>
@@ -407,86 +410,87 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="donate-modal" class="modal-overlay" style="z-index: 92;">
   <div class="shop-panel" style="width: 680px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
     <div class="shop-header">
-      <span style="color: #61b0ff;">💎 ПОДДЕРЖКА ПРОЕКТА // ГОЛОСА VK</span>
+      <span style="color: #61b0ff;" data-i18n="donate_title">💎 ПОДДЕРЖКА ПРОЕКТА // ГОЛОСА VK</span>
       <button onclick="document.getElementById('donate-modal').style.display='none';">[X]</button>
     </div>
     <div style="font-size: 13px; color: #ccc; line-height: 1.5; margin-bottom: 16px; text-align: left;">
-      Игра «САМОСБОР» создается и поддерживается силами разработчика. Если вам нравится атмосфера Гигахрущевки, вы можете поддержать развитие серверов и обновлений голосами ВКонтакте.
+      <span data-i18n="donate_desc_1">Игра «САМОСБОР» создается и поддерживается силами разработчика. Если вам нравится атмосфера Гигахрущевки, вы можете поддержать развитие серверов и обновлений голосами ВКонтакте.</span>
       <br><br>
-      <span style="color: var(--term-warn);">⚡ В знак благодарности вы получите внутриигровые талоны снабжения:</span>
+      <span style="color: var(--term-warn);" data-i18n="donate_desc_2">⚡ В знак благодарности вы получите внутриигровые талоны снабжения:</span>
     </div>
     <div class="donate-grid">
       <div class="donate-card" onclick="donateVkVotes('donate_1_vote', 1, 50)">
         <div class="donate-icon">⭐</div>
-        <div class="donate-title">1 ГОЛОС</div>
-        <div class="donate-bonus">+50 талонов</div>
-        <button class="donate-btn">1 ГОЛОС</button>
+        <div class="donate-title" data-i18n="vote_1">1 ГОЛОС</div>
+        <div class="donate-bonus" data-i18n="talons_50">+50 талонов</div>
+        <button class="donate-btn" data-i18n="vote_1">1 ГОЛОС</button>
       </div>
       <div class="donate-card" onclick="donateVkVotes('donate_3_votes', 3, 200)">
         <div class="donate-icon">🔥</div>
-        <div class="donate-title">3 ГОЛОСА</div>
-        <div class="donate-bonus">+200 талонов</div>
-        <button class="donate-btn">3 ГОЛОСА</button>
+        <div class="donate-title" data-i18n="votes_3">3 ГОЛОСА</div>
+        <div class="donate-bonus" data-i18n="talons_200">+200 талонов</div>
+        <button class="donate-btn" data-i18n="votes_3">3 ГОЛОСА</button>
       </div>
       <div class="donate-card" onclick="donateVkVotes('donate_5_votes', 5, 450)">
         <div class="donate-icon">🎖️</div>
-        <div class="donate-title">5 ГОЛОСОВ</div>
-        <div class="donate-bonus">+450 талонов</div>
-        <button class="donate-btn">5 ГОЛОСОВ</button>
+        <div class="donate-title" data-i18n="votes_5">5 ГОЛОСОВ</div>
+        <div class="donate-bonus" data-i18n="talons_450">+450 талонов</div>
+        <button class="donate-btn" data-i18n="votes_5">5 ГОЛОСОВ</button>
       </div>
       <div class="donate-card" onclick="donateVkVotes('donate_10_votes', 10, 1000)">
         <div class="donate-icon">👑</div>
-        <div class="donate-title">10 ГОЛОСОВ</div>
-        <div class="donate-bonus">+1000 талонов</div>
-        <button class="donate-btn">10 ГОЛОСОВ</button>
+        <div class="donate-title" data-i18n="votes_10">10 ГОЛОСОВ</div>
+        <div class="donate-bonus" data-i18n="talons_1000">+1000 талонов</div>
+        <button class="donate-btn" data-i18n="votes_10">10 ГОЛОСОВ</button>
       </div>
     </div>
     <div id="donate-status" style="font-size: 13px; min-height: 20px; text-align: center; color: var(--term-green);"></div>
     <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-      <button onclick="document.getElementById('donate-modal').style.display='none';" style="margin:0; padding:6px 14px; font-size:12px; border-color:#555; color:#888;">ЗАКРЫТЬ</button>
+      <button onclick="document.getElementById('donate-modal').style.display='none';" style="margin:0; padding:6px 14px; font-size:12px; border-color:#555; color:#888;" data-i18n="btn_close">ЗАКРЫТЬ</button>
     </div>
   </div>
 </div>
 
 <div class="audio-controls">
-  <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);">⚠️ БАГИ / ИДЕИ [Shift+P]</button>
-  <button id="btn-bestiary" class="audio-btn" style="display:none;">📖 БЕСТИАРИЙ</button>
-  <button id="btn-info" class="audio-btn">ℹ️ СПРАВКА</button>
-  <button id="btn-options" class="audio-btn">⚙️ ОПЦИИ</button>
+  <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);" data-i18n="btn_feedback">⚠️ БАГИ / ИДЕИ [Shift+P]</button>
+  <button id="btn-bestiary" class="audio-btn" style="display:none;" data-i18n="btn_bestiary">📖 БЕСТИАРИЙ</button>
+  <button id="btn-info" class="audio-btn" data-i18n="btn_info">ℹ️ СПРАВКА</button>
+  <button id="btn-options" class="audio-btn" data-i18n="btn_options">⚙️ ОПЦИИ</button>
 </div>
 <div id="options-menu" class="options-menu">
+  <button id="btn-opt-lang" class="audio-btn opt-btn" style="color: #00e5ff;" onclick="toggleLanguage()">🌐 Язык: РУССКИЙ (RU/EN)</button>
   <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
-  <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);">📝 Баг-репорт / Предложение [Shift+P]</button>
-  <button id="btn-opt-donate" class="audio-btn opt-btn" style="color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';">💎 Поддержать проект (VK)</button>
-  <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()">👥 Позвать друга (VK)</button>
-  <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()">📢 На стену (VK)</button>
-  <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()">⭐ В закладки (VK)</button>
+  <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
+  <button id="btn-opt-donate" class="audio-btn opt-btn" style="color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
+  <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
+  <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()" data-i18n="opt_wall">📢 На стену (VK)</button>
+  <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()" data-i18n="opt_fav">⭐ В закладки (VK)</button>
 </div>
 
 <div id="login-screen" class="screen active-screen">
   <div class="panel">
-    <h2 style="font-size: 20px; margin-bottom: 20px; letter-spacing: 2px;">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
+    <h2 style="font-size: 20px; margin-bottom: 20px; letter-spacing: 2px;" data-i18n="login_title">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
     
     <!-- Панель входа через VK -->
     <div id="vk-login-box" style="display: none; margin-bottom: 18px; padding: 12px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.1); border-radius: 4px;">
       <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
         <img id="vk-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #2787f5; display: none;" src="" alt="">
         <div style="font-size: 13px; color: #fff;">
-          Заключенный: <span id="vk-user-name" style="color: #61b0ff; font-weight: bold;">VK User</span>
+          <span data-i18n="login_inmate_label">Заключенный:</span> <span id="vk-user-name" style="color: #61b0ff; font-weight: bold;">VK User</span>
         </div>
       </div>
-      <button id="vk-login-btn" style="width: 100%; background: #2787f5; color: #fff; border: 1px solid #5aa5ff; font-size: 13px; padding: 9px; cursor: pointer; font-weight: bold; letter-spacing: 1px; font-family: inherit;">
+      <button id="vk-login-btn" style="width: 100%; background: #2787f5; color: #fff; border: 1px solid #5aa5ff; font-size: 13px; padding: 9px; cursor: pointer; font-weight: bold; letter-spacing: 1px; font-family: inherit;" data-i18n="login_vk_btn">
         🔵 ВОЙТИ ЧЕРЕЗ VK
       </button>
     </div>
 
-    <div id="login-divider" style="display: none; margin-bottom: 15px; color: #777; font-size: 11px;">— ИЛИ ВХОД ПО ПАРОЛЮ —</div>
+    <div id="login-divider" style="display: none; margin-bottom: 15px; color: #777; font-size: 11px;" data-i18n="login_divider">— ИЛИ ВХОД ПО ПАРОЛЮ —</div>
 
-    <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО">
-    <input type="password" id="password" placeholder="ПАРОЛЬ">
-    <button id="login-btn">ВОЙТИ</button>
+    <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО" data-i18n-ph="ph_username">
+    <input type="password" id="password" placeholder="ПАРОЛЬ" data-i18n-ph="ph_password">
+    <button id="login-btn" data-i18n="login_btn">ВОЙТИ</button>
     <div id="auth-error" style="color: var(--term-danger); margin-top:12px; font-size: 14px; min-height: 18px;"></div>
   </div>
 </div>
@@ -497,35 +501,35 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div class="intro-text-side"><div id="intro-text-container"></div></div>
       <div class="intro-ascii-side flicker">☭</div>
     </div>
-    <div style="font-size: 12px; color: #555; margin-top: 20px; animation: blink 2s step-end infinite; letter-spacing: 2px;">[ЛЮБАЯ КЛАВИША ИЛИ КЛИК]</div>
+    <div style="font-size: 12px; color: #555; margin-top: 20px; animation: blink 2s step-end infinite; letter-spacing: 2px;" data-i18n="press_any_key">[ЛЮБАЯ КЛАВИША ИЛИ КЛИК]</div>
   </div>
 </div>
 
 <div id="hub-screen" class="screen">
   <div class="panel" style="width: 550px; max-width: 95%;">
-    <h2 style="font-size: 20px; margin-top: 0; letter-spacing: 2px;">ЖИЛЯЧЕЙКА</h2>
+    <h2 style="font-size: 20px; margin-top: 0; letter-spacing: 2px;" data-i18n="hub_title">ЖИЛЯЧЕЙКА</h2>
     <div class="stats" id="hub-stats-panel" style="position:relative;">
-      <div>УРОВЕНЬ: <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
-      <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score" style="color: var(--term-warn);">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
-      <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
+      <div><span data-i18n="lbl_level">УРОВЕНЬ:</span> <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
+      <div style="margin-top: 6px;"><span data-i18n="lbl_talons">ТАЛОНЫ:</span> <span class="ui-score" style="color: var(--term-warn);">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
+      <div style="margin-top: 6px;"><span data-i18n="lbl_filter">ФИЛЬТР:</span> <span class="ui-filter">100</span>%</div>
       <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
-      <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger" style="color: var(--term-warn);">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
+      <div style="margin-top: 6px; font-size: 14px;"><span data-i18n="lbl_hunger">ГОЛОД:</span> <span class="ui-hunger" style="color: var(--term-warn);">100</span>% | <span data-i18n="lbl_tox">ЗАРАЖЕНИЕ:</span> <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
       <div style="display:flex; gap:10px;">
         <div class="progress-bar bar-hunger"><div class="progress-fill fill-hunger hunger-bar"></div></div>
         <div class="progress-bar bar-tox"><div class="progress-fill fill-tox tox-bar" style="width:0%;"></div></div>
       </div>
       <div class="rating-box">
-        <div style="margin-bottom: 4px;">ВРЕМЯ: <span class="ui-playtime">00:00:00</span></div>
-        <div>УБИТО: <span class="ui-kills" style="color: var(--term-warn);">0</span> | КОМНАТ: <span class="ui-rooms" style="color: var(--term-warn);">0</span></div>
-        <div>РЕЙТИНГ: <span class="ui-rating" style="color: var(--term-warn);">0</span> | <span class="ui-title">ЗАКЛЮЧЕННЫЙ</span> (#<span class="ui-rank">0</span>)</div>
+        <div style="margin-bottom: 4px;"><span data-i18n="lbl_time">ВРЕМЯ:</span> <span class="ui-playtime">00:00:00</span></div>
+        <div><span data-i18n="lbl_kills">УБИТО:</span> <span class="ui-kills" style="color: var(--term-warn);">0</span> | <span data-i18n="lbl_rooms">КОМНАТ:</span> <span class="ui-rooms" style="color: var(--term-warn);">0</span></div>
+        <div><span data-i18n="lbl_rating">РЕЙТИНГ:</span> <span class="ui-rating" style="color: var(--term-warn);">0</span> | <span class="ui-title">ЗАКЛЮЧЕННЫЙ</span> (#<span class="ui-rank">0</span>)</div>
       </div>
       <div id="hub-error" style="color: var(--term-danger); margin-top: 5px; font-size: 13px; min-height: 18px;"></div>
     </div>
     <div class="game-controls" style="margin-top: 15px;">
-      <div class="row-2"><button id="open-notebook-btn">БЛОКНОТ</button><button id="open-chest-btn">СУНДУК</button></div>
-      <div class="row-2"><button id="open-shop-btn">РАСПРЕДЕЛИТЕЛЬ</button><button id="open-craft-btn">ВЕРСТАК</button></div>
-      <div class="row-2"><button id="open-chat-btn">СЕТЬ</button><button id="open-leaderboard-btn">РЕЙТИНГ</button></div>
-      <button id="open-map-btn">ВЫХОД В БЛОК</button>
+      <div class="row-2"><button id="open-notebook-btn" data-i18n="btn_notebook">БЛОКНОТ</button><button id="open-chest-btn" data-i18n="btn_chest">СУНДУК</button></div>
+      <div class="row-2"><button id="open-shop-btn" data-i18n="btn_shop">РАСПРЕДЕЛИТЕЛЬ</button><button id="open-craft-btn" data-i18n="btn_craft">ВЕРСТАК</button></div>
+      <div class="row-2"><button id="open-chat-btn" data-i18n="btn_chat">СЕТЬ</button><button id="open-leaderboard-btn" data-i18n="btn_leaderboard">РЕЙТИНГ</button></div>
+      <button id="open-map-btn" data-i18n="btn_map">ВЫХОД В БЛОК</button>
     </div>
   </div>
 </div>
@@ -533,13 +537,13 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="map-screen" class="screen">
   <div class="panel" style="max-width: 95%;">
     <div class="floor-controls">
-      <button class="floor-btn" id="btn-floor-down" disabled>▼ ВНИЗ (РЕЗЕРВНЫЙ ЛИФТ E4)</button>
-      <div style="font-size: 20px; letter-spacing: 2px;">ЭТАЖ: <span id="ui-current-floor">0</span></div>
-      <button class="floor-btn" id="btn-floor-up" disabled>ВВЕРХ ▲</button>
+      <button class="floor-btn" id="btn-floor-down" disabled data-i18n="btn_floor_down">▼ ВНИЗ (РЕЗЕРВНЫЙ ЛИФТ E4)</button>
+      <div style="font-size: 20px; letter-spacing: 2px;"><span data-i18n="map_floor">ЭТАЖ:</span> <span id="ui-current-floor">0</span></div>
+      <button class="floor-btn" id="btn-floor-up" disabled data-i18n="btn_floor_up">ВВЕРХ ▲</button>
     </div>
     <div id="map-error" style="color:var(--term-danger); font-size:13px; font-weight:bold; margin: 4px 0 8px 0; display:none; padding: 6px; border: 1px dashed var(--term-danger); background: rgba(255,50,50,0.1);"></div>
     <div class="map-grid" id="map-container"></div>
-    <button id="close-map-btn" style="margin-top: 15px;">НАЗАД НА БАЗУ</button>
+    <button id="close-map-btn" style="margin-top: 15px;" data-i18n="btn_back_base">НАЗАД НА БАЗУ</button>
   </div>
 </div>
 
@@ -583,8 +587,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
           <div id="aim-cursor" style="position: absolute; left: 0%; width: 4px; height: 100%; background: #fff;"></div>
         </div>
         <div class="row-2">
-          <button id="btn-attack" style="color: var(--term-danger); border-color: var(--term-danger); font-weight: bold;" onclick="toggleAimAttack()">ПРИЦЕЛЬНАЯ АТАКА</button>
-          <button style="color: var(--term-info); border-color: var(--term-info); font-weight: bold;" onclick="socket.emit('combatAction', 'dodge')">УКЛОНИТЬСЯ</button>
+          <button id="btn-attack" style="color: var(--term-danger); border-color: var(--term-danger); font-weight: bold;" onclick="toggleAimAttack()" data-i18n="btn_aim_attack">ПРИЦЕЛЬНАЯ АТАКА</button>
+          <button id="btn-dodge" style="color: var(--term-info); border-color: var(--term-info); font-weight: bold;" onclick="socket.emit('combatAction', 'dodge')" data-i18n="btn_dodge">УКЛОНИТЬСЯ</button>
         </div>
       </div>
     </div>
@@ -594,30 +598,30 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <img id="enemy-mask" class="avatar-layer" style="z-index: 7; display: none;" src="" alt="">
       <img id="enemy-weapon" class="avatar-layer" style="z-index: 8; display: none;" src="" alt="">
       <div id="enemy-vfx-container" class="vfx-container"></div>
-      <div id="enemy-hp-bar" style="position: absolute; bottom: 4px; left: 0; width: 100%; text-align: center; color: var(--term-danger); font-weight: bold; display: none; background: rgba(0,0,0,0.7); font-size: 12px; padding: 2px 0;">ВРАГ: <span id="ui-enemy-hp">0</span> HP</div>
+      <div id="enemy-hp-bar" style="position: absolute; bottom: 4px; left: 0; width: 100%; text-align: center; color: var(--term-danger); font-weight: bold; display: none; background: rgba(0,0,0,0.7); font-size: 12px; padding: 2px 0;"><span data-i18n="enemy_lbl">ВРАГ:</span> <span id="ui-enemy-hp">0</span> HP</div>
     </div>
   </div>
 </div>
 
 <div id="minigame-modal" class="modal-overlay" style="z-index: 85;">
   <div class="panel" style="width: 700px; max-width: 95%;">
-    <h2 id="mg-title" style="color: var(--term-warn); margin-top: 0; letter-spacing: 2px;">ВЗЛОМ</h2>
+    <h2 id="mg-title" style="color: var(--term-warn); margin-top: 0; letter-spacing: 2px;" data-i18n="mg_title">ВЗЛОМ</h2>
     <div id="mg-text" style="font-size: 14px; color: #ddd; margin-bottom: 15px; white-space: pre-wrap;"></div>
     <div id="mg-art" class="ascii-art flicker"></div>
     <div id="mg-ui"></div>
-    <button id="btn-mg-cancel" onclick="cancelMinigame()" style="color: var(--term-danger); border-color: var(--term-danger); width: 100%;">ОТМЕНА</button>
+    <button id="btn-mg-cancel" onclick="cancelMinigame()" style="color: var(--term-danger); border-color: var(--term-danger); width: 100%;" data-i18n="btn_cancel">ОТМЕНА</button>
   </div>
 </div>
 
 <div id="bestiary-modal" class="modal-overlay" style="z-index: 96;">
   <div class="info-panel" style="width: 1000px; display:flex; padding:0; border-color: #ff33aa; height: 600px;">
     <div style="width: 32%; border-right: 1px dashed #ff33aa; padding: 15px 0;">
-      <h3 style="color: #ff33aa; text-align:center; margin:0 0 10px 0; border:none; letter-spacing: 2px;">ОБИТАТЕЛИ</h3>
+      <h3 style="color: #ff33aa; text-align:center; margin:0 0 10px 0; border:none; letter-spacing: 2px;" data-i18n="bestiary_inhabitants">ОБИТАТЕЛИ</h3>
       <ul class="bestiary-list" id="bestiary-list-ui"></ul>
     </div>
     <div style="width: 68%; padding: 20px; position:relative;">
       <button onclick="document.getElementById('bestiary-modal').style.display='none'" style="position:absolute; right:15px; top:10px; border:none; color:#ff33aa; font-size: 22px; padding:0;">[X]</button>
-      <div id="bestiary-details"><h2 style="color:#555; text-align:center; margin-top:100px;">ВЫБЕРИТЕ ОБЪЕКТ</h2></div>
+      <div id="bestiary-details"><h2 style="color:#555; text-align:center; margin-top:100px;" data-i18n="bestiary_prompt">ВЫБЕРИТЕ ОБЪЕКТ</h2></div>
     </div>
   </div>
 </div>
@@ -625,10 +629,10 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="info-modal" class="modal-overlay" style="z-index: 95;">
   <div class="info-panel">
     <div style="display:flex; justify-content:space-between; border-bottom: 1px solid var(--term-info); margin-bottom: 15px; padding-bottom: 10px;">
-      <h2>РУКОВОДСТВО ПО ВЫЖИВАНИЮ</h2>
+      <h2 data-i18n="guide_title">РУКОВОДСТВО ПО ВЫЖИВАНИЮ</h2>
       <button onclick="document.getElementById('info-modal').style.display='none'">[X]</button>
     </div>
-    
+    <div id="guide-content">
     <h3>= 1. ВВЕДЕНИЕ И ЦЕЛЬ =</h3>
     <p>Вы — один из двадцати трёх заключённых, приговорённых Партией Светлых к «искуплению через труд». Во время спуска вглубь шахты оборвался трос — клеть рухнула на самое дно. Вы выжили и укрылись в первой попавшейся жилячейке.</p>
     <p>Ваша глобальная цель — <b>исследовать этажи Гигахрущевки</b>, преодолевать Самосбор, чинить лифты в секторе <b>E4</b>, уничтожать Аномалий и рейд-боссов и дойти до финала (30-й этаж — Чернобог).</p>
@@ -684,13 +688,14 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     &nbsp;&nbsp;🤝 <b>РЕЙД (Кооператив):</b> Отправить приглашение в совместную вылазку против усиленной элитной твари Тумана с ценным лутом. Оба игрока сражаются одновременно и наносят общий урон!<br>
     &nbsp;&nbsp;🩹 <b>ПОМОЧЬ:</b> Оказать товарищу полевую первую помощь (+15 HP).<br>
     • <b>Случайные события и NPC:</b> Во время вылазок в Туман (28% шанс) вы можете наткнуться на Барыгу с редким оружием, Сталкера Глеба с байками о Самосборе, раненого Ликвидатора или сумасшедшего Ученого с экспериментальной сывороткой, а также найти квестовые тайники с деталями лифта и ключами!</p>
+    </div>
   </div>
 </div>
 
 <div id="notebook-modal" class="modal-overlay" style="z-index: 80;">
   <div class="notebook-panel">
     <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #880000; margin-bottom: 15px;">
-      <h2 style="margin:0;">ДНЕВНИК ЗАКЛЮЧЕННОГО</h2>
+      <h2 style="margin:0;" data-i18n="notebook_title">ДНЕВНИК ЗАКЛЮЧЕННОГО</h2>
       <button onclick="document.getElementById('notebook-modal').style.display='none'">[X]</button>
     </div>
     <div id="notebook-content"></div>
@@ -699,7 +704,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div id="event-modal" class="modal-overlay" style="z-index: 60;">
   <div class="panel" style="width: 650px; max-width: 90%;">
-    <h2 id="event-title" style="color: var(--term-warn); font-size: 20px; margin-top: 0; border-bottom: 1px solid var(--term-warn); padding-bottom: 10px; letter-spacing: 2px;">СОБЫТИЕ</h2>
+    <h2 id="event-title" style="color: var(--term-warn); font-size: 20px; margin-top: 0; border-bottom: 1px solid var(--term-warn); padding-bottom: 10px; letter-spacing: 2px;" data-i18n="event_title">СОБЫТИЕ</h2>
     <div id="event-ascii-box" class="ascii-art flicker" style="font-size: 14px; color:#8f8;"></div>
     <div id="event-text" style="margin-bottom: 15px; font-size: 15px; line-height: 1.6; text-align: left; color: #ddd;"></div>
     <div id="event-choices" style="display: flex; flex-direction: column; gap: 10px;"></div>
@@ -708,7 +713,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div id="inventory-modal" class="modal-overlay" style="z-index: 70;">
   <div class="dossier">
-    <div class="dossier-header"><span>ДЕЛО №7749 // ЗАКЛЮЧЕННЫЙ</span><button class="close-dossier" id="close-inventory-btn">[X]</button></div>
+    <div class="dossier-header"><span data-i18n="dossier_title">ДЕЛО №7749 // ЗАКЛЮЧЕННЫЙ</span><button class="close-dossier" id="close-inventory-btn">[X]</button></div>
     <div class="dossier-content">
       <div class="polaroid-col">
         <div class="polaroid">
@@ -725,22 +730,22 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
             <img id="inv-img-mask" class="avatar-layer" style="z-index: 3;" src="" alt="">
             <img id="inv-img-weapon" class="avatar-layer" style="z-index: 4;" src="" alt="">
           </div>
-          <div style="margin-top: 12px; font-size: 13px; font-weight: bold; color: var(--ink-color);">HP: <span class="ui-hp" style="color: var(--ink-danger);">100</span>/<span class="ui-maxhp">100</span> | УРОН: <span id="inv-dmg">0</span> | БРОНЯ: <span id="inv-def">0</span></div>
+          <div style="margin-top: 12px; font-size: 13px; font-weight: bold; color: var(--ink-color);">HP: <span class="ui-hp" style="color: var(--ink-danger);">100</span>/<span class="ui-maxhp">100</span> | <span data-i18n="stat_dmg">УРОН:</span> <span id="inv-dmg">0</span> | <span data-i18n="stat_def">БРОНЯ:</span> <span id="inv-def">0</span></div>
         </div>
         <div class="quest-items-panel">
-          <div style="font-weight:bold; margin-bottom: 5px; color: var(--ink-danger); font-size: 12px; letter-spacing: 1px;">СЮЖЕТНЫЕ ПРЕДМЕТЫ:</div>
+          <div style="font-weight:bold; margin-bottom: 5px; color: var(--ink-danger); font-size: 12px; letter-spacing: 1px;" data-i18n="quest_items_title">СЮЖЕТНЫЕ ПРЕДМЕТЫ:</div>
           <div id="quest-items-container">Пусто</div>
         </div>
       </div>
       <div class="equipment-panel">
-        <h3>НАДЕТО:</h3>
+        <h3 data-i18n="equipped_title">НАДЕТО:</h3>
         <div id="equip-slot-mask" class="equip-slot" onclick="socket.emit('unequipItem', 'mask')" title="Клик, чтобы снять">
           <div class="equip-slot-icon-box">
             <img id="inv-equip-icon-mask" class="equip-slot-icon" style="display:none;" alt="">
             <div id="inv-equip-ph-mask" class="equip-slot-ph">🤿</div>
           </div>
           <div class="equip-slot-info">
-            <div class="item-type">ДЫХАНИЕ</div>
+            <div class="item-type" data-i18n="slot_breath">ДЫХАНИЕ</div>
             <div id="inv-mask-name">Пусто</div>
           </div>
         </div>
@@ -750,7 +755,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
             <div id="inv-equip-ph-clothes" class="equip-slot-ph">🦺</div>
           </div>
           <div class="equip-slot-info">
-            <div class="item-type">ЗАЩИТА</div>
+            <div class="item-type" data-i18n="slot_protection">ЗАЩИТА</div>
             <div id="inv-clothes-name">Пусто</div>
           </div>
         </div>
@@ -760,7 +765,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
             <div id="inv-equip-ph-backpack" class="equip-slot-ph">🎒</div>
           </div>
           <div class="equip-slot-info">
-            <div class="item-type">СПИНА</div>
+            <div class="item-type" data-i18n="slot_backpack">СПИНА</div>
             <div id="inv-backpack-name">Пусто</div>
           </div>
         </div>
@@ -770,20 +775,20 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
             <div id="inv-equip-ph-weapon" class="equip-slot-ph">🗡️</div>
           </div>
           <div class="equip-slot-info">
-            <div class="item-type">ОРУЖИЕ</div>
+            <div class="item-type" data-i18n="slot_weapon">ОРУЖИЕ</div>
             <div id="inv-weapon-name">Пусто</div>
           </div>
         </div>
-        <h3 style="color: var(--ink-danger); margin-top: 10px;">ПОЯС:</h3>
+        <h3 style="color: var(--ink-danger); margin-top: 10px;" data-i18n="belt_title">ПОЯС:</h3>
         <div id="inv-qslot-0" class="quick-slot">[ПУСТО]</div>
         <div id="inv-qslot-1" class="quick-slot">[ПУСТО]</div>
         <div class="perks-panel">
-          <div style="font-weight:bold; color: var(--ink-danger); font-size: 12px; letter-spacing: 1px;">ПЕРКИ И МУТАЦИИ:</div>
+          <div style="font-weight:bold; color: var(--ink-danger); font-size: 12px; letter-spacing: 1px;" data-i18n="perks_title">ПЕРКИ И МУТАЦИИ:</div>
           <div id="perks-container" style="margin-top: 5px;">Пусто</div>
         </div>
       </div>
       <div class="chest-panel">
-        <h3>СУНДУК [<span id="inv-capacity">0/12</span>]:</h3>
+        <h3><span data-i18n="chest_title">СУНДУК</span> [<span id="inv-capacity">0/12</span>]:</h3>
         <div class="chest-grid" id="chest-container"></div>
       </div>
     </div>
@@ -792,20 +797,20 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div id="craft-modal" class="modal-overlay" style="z-index: 70;">
   <div class="shop-panel" style="width: 800px; max-height: 90vh; overflow-y: auto;">
-    <div class="shop-header"><span>ВЕРСТАК И МОДДИНГ</span><button onclick="document.getElementById('craft-modal').style.display='none';">[X]</button></div>
+    <div class="shop-header"><span data-i18n="craft_title">ВЕРСТАК И МОДДИНГ</span><button onclick="document.getElementById('craft-modal').style.display='none';">[X]</button></div>
     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
       <div style="flex: 1; min-width: 240px;">
-        <h3 style="color: var(--term-info); border-bottom: 1px dashed var(--term-info); padding-bottom: 5px;">= СБОРКА =</h3>
-        <div class="shop-item"><div>Вентиль <span class="item-stat-badge stat-dmg">⚔️ 8 УРОН</span><br><small style="color:#666;">[Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'weapon_pipe')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
-        <div class="shop-item"><div>Аптечка <span class="item-stat-badge stat-heal">❤️ +60 HP</span><br><small style="color:#666;">[Химикаты + Слизь]</small></div><button onclick="socket.emit('craftItem', 'food_medkit')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
-        <div class="shop-item"><div>Шокер <span class="item-stat-badge stat-dmg">⚡ 45 УРОН</span><br><small style="color:#666;">[Электроника + Металл]</small></div><button onclick="socket.emit('craftItem', 'special_shocker')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
-        <div class="shop-item"><div>Сборщик <span class="item-stat-badge stat-cap">🤖 АВТО</span><br><small style="color:#666;">[Электроника + Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'tool_robot')" style="margin:0; padding:5px 10px; font-size:11px;">СОБРАТЬ</button></div>
+        <h3 style="color: var(--term-info); border-bottom: 1px dashed var(--term-info); padding-bottom: 5px;" data-i18n="craft_assembly">= СБОРКА =</h3>
+        <div class="shop-item"><div><span data-i18n="craft_pipe">Вентиль</span> <span class="item-stat-badge stat-dmg">⚔️ 8 <span data-i18n="stat_dmg_unit">УРОН</span></span><br><small style="color:#666;" data-i18n="craft_pipe_sub">[Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'weapon_pipe')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
+        <div class="shop-item"><div><span data-i18n="craft_medkit">Аптечка</span> <span class="item-stat-badge stat-heal">❤️ +60 HP</span><br><small style="color:#666;" data-i18n="craft_medkit_sub">[Химикаты + Слизь]</small></div><button onclick="socket.emit('craftItem', 'food_medkit')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
+        <div class="shop-item"><div><span data-i18n="craft_shocker">Шокер</span> <span class="item-stat-badge stat-dmg">⚡ 45 <span data-i18n="stat_dmg_unit">УРОН</span></span><br><small style="color:#666;" data-i18n="craft_shocker_sub">[Электроника + Металл]</small></div><button onclick="socket.emit('craftItem', 'special_shocker')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
+        <div class="shop-item"><div><span data-i18n="craft_robot">Сборщик</span> <span class="item-stat-badge stat-cap">🤖 <span data-i18n="badge_auto">АВТО</span></span><br><small style="color:#666;" data-i18n="craft_robot_sub">[Электроника + Металл + Изолента]</small></div><button onclick="socket.emit('craftItem', 'tool_robot')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
       </div>
       <div style="flex: 1; min-width: 240px;">
-        <h3 style="color: var(--term-warn); border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">= МОДДИНГ =</h3>
+        <h3 style="color: var(--term-warn); border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;" data-i18n="craft_modding">= МОДДИНГ =</h3>
         <select id="mod-weapon-select" style="width: 100%; margin-bottom: 10px; background: #000; color: #fff; padding: 6px; border: 1px solid var(--term-dim); font-family: inherit;"><option value="">-- ОРУЖИЕ --</option></select>
         <select id="mod-mat-select" style="width: 100%; margin-bottom: 15px; background: #000; color: #fff; padding: 6px; border: 1px solid var(--term-dim); font-family: inherit;"><option value="">-- МАТЕРИАЛ --</option></select>
-        <button onclick="sendModRequest()" style="width: 100%; margin:0;">МОДИФИЦИРОВАТЬ</button>
+        <button onclick="sendModRequest()" style="width: 100%; margin:0;" data-i18n="btn_modify">МОДИФИЦИРОВАТЬ</button>
       </div>
     </div>
   </div>
@@ -813,15 +818,15 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div id="shop-modal" class="modal-overlay" style="z-index: 70;">
   <div class="shop-panel">
-    <div class="shop-header"><span>РАСПРЕДЕЛИТЕЛЬ</span><button id="close-shop-btn">[X]</button></div>
-    <div style="text-align: left; margin-bottom: 15px;">ДОСТУПНО: <span class="ui-score" style="color: var(--term-warn); font-size: 20px;">0</span> ТАЛОНОВ</div>
+    <div class="shop-header"><span data-i18n="shop_title">РАСПРЕДЕЛИТЕЛЬ</span><button id="close-shop-btn">[X]</button></div>
+    <div style="text-align: left; margin-bottom: 15px;"><span data-i18n="shop_available">ДОСТУПНО:</span> <span class="ui-score" style="color: var(--term-warn); font-size: 20px;">0</span> <span data-i18n="shop_talons_unit">ТАЛОНОВ</span></div>
     <div style="display: flex; gap: 20px; text-align: left; flex-wrap: wrap;">
       <div style="flex: 1; min-width: 280px;">
-        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">= АССОРТИМЕНТ = <span style="font-size:12px; color:#666;">(<span id="shop-timer">10:00</span>)</span></h3>
+        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;"><span data-i18n="shop_goods">= АССОРТИМЕНТ =</span> <span style="font-size:12px; color:#666;">(<span id="shop-timer">10:00</span>)</span></h3>
         <div id="shop-items-container"></div>
       </div>
       <div style="flex: 1; min-width: 280px; border-left: 1px dashed var(--term-dim); padding-left: 15px;">
-        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">= СДАТЬ ХАБАР =</h3>
+        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;" data-i18n="shop_sell_loot">= СДАТЬ ХАБАР =</h3>
         <div id="shop-sell-container" style="max-height: 400px; overflow-y: auto;"></div>
       </div>
     </div>
@@ -879,10 +884,572 @@ document.getElementById('btn-options').onclick = () => {
   const m = document.getElementById('options-menu');
   m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
 };
-document.getElementById('btn-toggle-music').onclick = () => { musicEnabled = !musicEnabled; document.getElementById('btn-toggle-music').innerText = musicEnabled ? "🎵 Музыка (ВКЛ)" : "🎵 Музыка (ВЫКЛ)"; if (musicEnabled && currentAmbient && AMBIENTS[currentAmbient]) AMBIENTS[currentAmbient].play().catch(()=>{}); else Object.values(AMBIENTS).forEach(a => a.pause()); };
-document.getElementById('btn-toggle-sfx').onclick = () => { sfxEnabled = !sfxEnabled; document.getElementById('btn-toggle-sfx').innerText = sfxEnabled ? "🔊 Звуки (ВКЛ)" : "🔊 Звуки (ВЫКЛ)"; };
-document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEnabled; document.getElementById('btn-toggle-crt').innerText = crtEnabled ? "📺 CRT-эффект (ВКЛ)" : "📺 CRT-эффект (ВЫКЛ)"; document.body.classList.toggle('crt-enabled', crtEnabled); };
+document.getElementById('btn-toggle-music').onclick = () => { musicEnabled = !musicEnabled; updateOptionsLabels(); if (musicEnabled && currentAmbient && AMBIENTS[currentAmbient]) AMBIENTS[currentAmbient].play().catch(()=>{}); else Object.values(AMBIENTS).forEach(a => a.pause()); };
+document.getElementById('btn-toggle-sfx').onclick = () => { sfxEnabled = !sfxEnabled; updateOptionsLabels(); };
+document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEnabled; updateOptionsLabels(); document.body.classList.toggle('crt-enabled', crtEnabled); };
 document.getElementById('btn-info').onclick = () => { document.getElementById('info-modal').style.display = 'flex'; };
+
+// ===== МУЛЬТИЯЗЫЧНОСТЬ / INTERNATIONALIZATION (RU / EN) =====
+let currentLang = localStorage.getItem('samosbor_lang') || 'ru';
+let cachedBestiary = null;
+let cachedGuideRu = null;
+
+const I18N = {
+  ru: {
+    btn_donate: "💙 ПОДДЕРЖАТЬ ПРОЕКТ",
+    donate_title: "💎 ПОДДЕРЖКА ПРОЕКТА // ГОЛОСА VK",
+    donate_desc_1: "Игра «САМОСБОР» создается и поддерживается силами разработчика. Если вам нравится атмосфера Гигахрущевки, вы можете поддержать развитие серверов и обновлений голосами ВКонтакте.",
+    donate_desc_2: "⚡ В знак благодарности вы получите внутриигровые талоны снабжения:",
+    vote_1: "1 ГОЛОС",
+    votes_3: "3 ГОЛОСА",
+    votes_5: "5 ГОЛОСОВ",
+    votes_10: "10 ГОЛОСОВ",
+    talons_50: "+50 талонов",
+    talons_200: "+200 талонов",
+    talons_450: "+450 талонов",
+    talons_1000: "+1000 талонов",
+    btn_feedback: "⚠️ БАГИ / ИДЕИ [Shift+P]",
+    btn_bestiary: "📖 БЕСТИАРИЙ",
+    btn_info: "ℹ️ СПРАВКА",
+    btn_options: "⚙️ ОПЦИИ",
+    opt_feedback: "📝 Баг-репорт / Предложение [Shift+P]",
+    opt_donate: "💎 Поддержать проект (VK)",
+    opt_invite: "👥 Позвать друга (VK)",
+    opt_wall: "📢 На стену (VK)",
+    opt_fav: "⭐ В закладки (VK)",
+    login_title: "САМОСБОР // ВХОД В СИСТЕМУ",
+    login_inmate_label: "Заключенный:",
+    login_vk_btn: "ВОЙТИ ЧЕРЕЗ VK GAMES",
+    login_divider: "- ИЛИ ВРУЧНУЮ -",
+    login_btn: "ВОЙТИ",
+    press_any_key: "[НАЖМИТЕ ЛЮБУЮ КНОПКУ ЧТОБЫ ПРОДОЛЖИТЬ]",
+    hub_title: "ЖИЛЯЧЕЙКА",
+    lbl_level: "Уровень:",
+    lbl_talons: "Талоны:",
+    lbl_filter: "Фильтр:",
+    lbl_hunger: "Голод:",
+    lbl_tox: "Заражение:",
+    lbl_time: "Смена:",
+    lbl_kills: "Убито:",
+    lbl_rooms: "Секторов:",
+    lbl_rating: "Рейтинг:",
+    btn_notebook: "📓 ДНЕВНИК",
+    btn_chest: "🎒 ИНВЕНТАРЬ / ДЕЛО",
+    btn_shop: "🛒 ТОРГОВЕЦ",
+    btn_craft: "⚒️ ВЕРСТАК",
+    btn_chat: "💬 ОБЩИЙ ЧАТ",
+    btn_leaderboard: "🏆 ДОСКА ПОЧЕТА",
+    btn_map: "🗺️ КАРТА ЭТАЖА",
+    btn_floor_down: "▼ НА СЛЕДУЮЩИЙ ЭТАЖ (ЛИФТ В E4)",
+    btn_floor_up: "▲ НА ВЕРХНИЙ ЭТАЖ",
+    btn_back_base: "⬅ НА БАЗУ",
+    map_floor: "ЭТАЖ:",
+    guide_title: "РУКОВОДСТВО ПО ВЫЖИВАНИЮ",
+    notebook_title: "ДНЕВНИК ЗАКЛЮЧЕННОГО",
+    event_title: "СОБЫТИЕ",
+    dossier_title: "ДЕЛО №7749 // ЗАКЛЮЧЕННЫЙ",
+    stat_dmg: "Урон:",
+    stat_def: "Броня:",
+    quest_items_title: "КВЕСТОВЫЕ ПРЕДМЕТЫ:",
+    equipped_title: "НАДЕТО:",
+    slot_breath: "ДЫХАНИЕ",
+    slot_protection: "ЗАЩИТА",
+    slot_backpack: "СПИНА",
+    slot_weapon: "ОРУЖИЕ",
+    belt_title: "ПОЯС:",
+    perks_title: "ПЕРКИ И МУТАЦИИ:",
+    chest_title: "СУНДУК",
+    craft_title: "ВЕРСТАК И МОДДИНГ",
+    craft_assembly: "= СБОРКА =",
+    craft_pipe: "Тяжелый вентиль",
+    craft_pipe_sub: "[Кусок металла + Изолента]",
+    craft_medkit: "Военная аптечка",
+    craft_medkit_sub: "[Химикаты + Изолента]",
+    craft_shocker: "Электрошокер",
+    craft_shocker_sub: "[Электроника + Кусок металла]",
+    craft_robot: "Автосборщик",
+    craft_robot_sub: "[Электроника + Кусок металла + Изолента]",
+    craft_modding: "= МОДИФИКАЦИЯ ОРУЖИЯ СТИХИЯМИ =",
+    btn_modify: "МОДИФИЦИРОВАТЬ",
+    badge_auto: "АВТО",
+    stat_dmg_unit: "УРОН",
+    shop_title: "ТОРГОВЕЦ БЛОКА",
+    shop_available: "Доступно:",
+    shop_talons_unit: "талонов",
+    shop_goods: "= ТОВАРЫ СНАБЖЕНИЯ =",
+    shop_sell_loot: "= СДАТЬ НАГРАБЛЕННОЕ =",
+    chat_title: "ОБЩИЙ РАДИОКАНАЛ // ЧАТ СВЯЗИ",
+    chat_send: "ОТПРАВИТЬ",
+    lb_title: "ДОСКА ПОЧЕТА СТАХАНОВЦЕВ // ТОП ВЫЖИВШИХ",
+    lb_rank: "Место",
+    lb_name: "Заключенный",
+    lb_title_col: "Звание",
+    lb_lvl: "Ур.",
+    lb_floor: "Этаж",
+    lb_time: "Время",
+    lb_score: "Очки",
+    btn_close: "ЗАКРЫТЬ",
+    fb_title: "ДИСПЕТЧЕРСКАЯ // БАГИ И ИДЕИ",
+    fb_desc: "Нашли ошибку или хотите предложить улучшение? Напишите напрямую разработчику — мы читаем каждое сообщение!",
+    fb_tab_write: "✏️ Написать",
+    fb_tab_list: "📜 Журнал обращений",
+    fb_type_bug: "🐛 Баг / Ошибка",
+    fb_type_sugg: "💡 Предложение",
+    btn_submit_fb: "ОТПРАВИТЬ ОБРАЩЕНИЕ",
+    fb_list_desc: "Список последних обращений от заключенных блока:",
+    fb_btn_refresh: "🔄 Обновить",
+    fb_loading: "Загрузка списка...",
+    btn_aim_attack: "ПРИЦЕЛЬНАЯ АТАКА",
+    btn_dodge: "УКЛОНИТЬСЯ",
+    enemy_lbl: "ВРАГ:",
+    mg_title: "ВЗЛОМ",
+    btn_cancel: "ОТМЕНА",
+    bestiary_inhabitants: "ОБИТАТЕЛИ",
+    bestiary_prompt: "ВЫБЕРИТЕ ОБЪЕКТ",
+    chat_ph: "Написать в радиоканал...",
+    fb_ph: "Опишите найденный баг или вашу идею подробно...",
+    ph_username: "Номер (Логин)",
+    ph_password: "Пароль"
+  },
+  en: {
+    btn_donate: "💙 SUPPORT PROJECT",
+    donate_title: "💎 SUPPORT PROJECT // VK VOTES",
+    donate_desc_1: "SAMOSBOR is developed and maintained independently. If you enjoy the atmosphere of the Gigakhrushchyovka, you can support server hosting and new updates with VK Votes.",
+    donate_desc_2: "⚡ As a token of gratitude, you will receive in-game supply talons:",
+    vote_1: "1 VOTE",
+    votes_3: "3 VOTES",
+    votes_5: "5 VOTES",
+    votes_10: "10 VOTES",
+    talons_50: "+50 talons",
+    talons_200: "+200 talons",
+    talons_450: "+450 talons",
+    talons_1000: "+1000 talons",
+    btn_feedback: "⚠️ BUGS / IDEAS [Shift+P]",
+    btn_bestiary: "📖 BESTIARY",
+    btn_info: "ℹ️ GUIDE",
+    btn_options: "⚙️ OPTIONS",
+    opt_feedback: "📝 Bug Report / Suggestion [Shift+P]",
+    opt_donate: "💎 Support Project (VK)",
+    opt_invite: "👥 Invite Friends (VK)",
+    opt_wall: "📢 Share on Wall (VK)",
+    opt_fav: "⭐ Add to Favorites (VK)",
+    login_title: "SAMOSBOR // SYSTEM LOGIN",
+    login_inmate_label: "Inmate:",
+    login_vk_btn: "LOGIN VIA VK GAMES",
+    login_divider: "- OR MANUAL LOGIN -",
+    login_btn: "ENTER",
+    press_any_key: "[PRESS ANY KEY TO CONTINUE]",
+    hub_title: "LIVING CELL",
+    lbl_level: "Level:",
+    lbl_talons: "Talons:",
+    lbl_filter: "Filter:",
+    lbl_hunger: "Satiety:",
+    lbl_tox: "Toxicity:",
+    lbl_time: "Shift:",
+    lbl_kills: "Kills:",
+    lbl_rooms: "Sectors:",
+    lbl_rating: "Rating:",
+    btn_notebook: "📓 DIARY",
+    btn_chest: "🎒 DOSSIER / INVENTORY",
+    btn_shop: "🛒 TRADER",
+    btn_craft: "⚒️ WORKBENCH",
+    btn_chat: "💬 GLOBAL CHAT",
+    btn_leaderboard: "🏆 LEADERBOARD",
+    btn_map: "🗺️ FLOOR MAP",
+    btn_floor_down: "▼ TO NEXT FLOOR (E4 ELEVATOR)",
+    btn_floor_up: "▲ TO UPPER FLOOR",
+    btn_back_base: "⬅ TO BASE",
+    map_floor: "FLOOR:",
+    guide_title: "SURVIVAL GUIDE",
+    notebook_title: "INMATE'S DIARY",
+    event_title: "EVENT",
+    dossier_title: "FILE #7749 // INMATE DOSSIER",
+    stat_dmg: "Damage:",
+    stat_def: "Defense:",
+    quest_items_title: "KEY ITEMS:",
+    equipped_title: "EQUIPPED:",
+    slot_breath: "BREATHING",
+    slot_protection: "PROTECTION",
+    slot_backpack: "BACKPACK",
+    slot_weapon: "WEAPON",
+    belt_title: "QUICK BELT:",
+    perks_title: "PERKS & MUTATIONS:",
+    chest_title: "CHEST",
+    craft_title: "WORKBENCH & MODS",
+    craft_assembly: "= ASSEMBLY =",
+    craft_pipe: "Heavy Valve Pipe",
+    craft_pipe_sub: "[Scrap Metal + Duct Tape]",
+    craft_medkit: "Military Medkit",
+    craft_medkit_sub: "[Chemicals + Duct Tape]",
+    craft_shocker: "Stun Shocker",
+    craft_shocker_sub: "[Electronics + Scrap Metal]",
+    craft_robot: "Auto-Harvester",
+    craft_robot_sub: "[Electronics + Scrap Metal + Duct Tape]",
+    craft_modding: "= ELEMENTAL WEAPON MODS =",
+    btn_modify: "MODIFY",
+    badge_auto: "AUTO",
+    stat_dmg_unit: "DMG",
+    shop_title: "BLOCK TRADER",
+    shop_available: "Available:",
+    shop_talons_unit: "talons",
+    shop_goods: "= SUPPLY GOODS =",
+    shop_sell_loot: "= SELL SALVAGE =",
+    chat_title: "GLOBAL RADIO // COMMS CHAT",
+    chat_send: "SEND",
+    lb_title: "HONOR ROLL // TOP SURVIVORS",
+    lb_rank: "Rank",
+    lb_name: "Inmate",
+    lb_title_col: "Title",
+    lb_lvl: "Lvl",
+    lb_floor: "Floor",
+    lb_time: "Time",
+    lb_score: "Score",
+    btn_close: "CLOSE",
+    fb_title: "DISPATCH // BUGS & IDEAS",
+    fb_desc: "Found a bug or want to suggest an improvement? Send a message directly to the developer — we review every entry!",
+    fb_tab_write: "✏️ New Report",
+    fb_tab_list: "📜 Report Log",
+    fb_type_bug: "🐛 Bug / Glitch",
+    fb_type_sugg: "💡 Suggestion",
+    btn_submit_fb: "SUBMIT REPORT",
+    fb_list_desc: "Recent reports from block inmates:",
+    fb_btn_refresh: "🔄 Refresh",
+    fb_loading: "Loading list...",
+    btn_aim_attack: "AIMED ATTACK",
+    btn_dodge: "DODGE",
+    enemy_lbl: "ENEMY:",
+    mg_title: "HACKING",
+    btn_cancel: "CANCEL",
+    bestiary_inhabitants: "INHABITANTS",
+    bestiary_prompt: "SELECT AN OBJECT",
+    chat_ph: "Type message in radio...",
+    fb_ph: "Describe the bug or your idea in detail...",
+    ph_username: "Inmate ID (Login)",
+    ph_password: "Password"
+  }
+};
+
+const GUIDE_EN_HTML = `
+<h3>= 1. INTRODUCTION & OBJECTIVE =</h3>
+<p>You are one of twenty-three inmates sentenced by the Party of the Radiant to "redemption through labor." During the descent into the deep shaft, the cable snapped — the cage crashed to the very bottom. You survived and barricaded yourself in the first living cell you found.</p>
+<p>Your ultimate goal is to <b>explore the floors of the Gigakhrushchyovka</b>, endure the Samosbor, repair the elevators in sector <b>E4</b>, destroy Anomalies and raid bosses, and reach the final floor (Floor 30 — Chernobog).</p>
+
+<h3>= 2. VITAL SIGNS =</h3>
+<p>• <b>Health (HP):</b> When it drops to 0, critical condition occurs — emergency evacuation to the Living Cell with the loss of half your talons.<br>
+• <b>Gas Mask Filter:</b> Consumed on every expedition into the Fog (exploration). The higher your filter level, the faster your attack speed in battle. When the filter is below 10%, expeditions are impossible.<br>
+• <b>Satiety (Hunger):</b> Gradually drains over time and when moving between sectors. At 0, you begin losing HP every minute.<br>
+• <b>Infection (Toxicity):</b> Builds up when taking hits from Fog creatures. At 100%, it resets and triggers a random permanent <b>Mutation</b>. Reduce toxicity using <b>Chemicals</b>.</p>
+
+<h3>= 3. LIVING CELL (SAFE ZONE) =</h3>
+<p>The Living Cell is your only refuge from the horrors of Samosbor. While here:<br>
+• <b>Filter</b> and <b>Health</b> automatically and freely regenerate (provided you are not starving).<br>
+• Safely manage your chest, configure your quick belt, and craft at the workbench.</p>
+
+<h3>= 4. SLIME HARVESTING & AUTOMATION =</h3>
+<p>• <b>Manual Harvest:</b> Clicking the harvest button yields <b>Slime Briquettes</b> (satisfies hunger and used in crafting).<br>
+• <b>Tools:</b> Keeping a Scraper (+1), Pneumatic Pump (+3), or Extractor (+7) in your chest multiplies slime yield per harvest.<br>
+• <b>Auto-Harvester (Robot):</b> Craft or purchase a robot and deploy it in any sector. It passively accumulates talons (up to 250). Remember to collect your earnings regularly!</p>
+
+<h3>= 5. MAP, SECTORS & HACKING =</h3>
+<p>Each floor consists of a grid of sectors from <b>A0</b> to <b>E4</b>.<br>
+• Entering an unexplored sector may require a <b>quest item</b> (Bolt Cutter, Fuel Cell, Red Keycard, Fuse).<br>
+• Or it may require <b>hacking a blast door</b> (solving worn keypad puzzles, decoding the commandant's note, or calibrating substation voltage).</p>
+
+<h3>= 6. COMBAT SYSTEM & TACTICS =</h3>
+<p>• <b>Standard Attack:</b> Base weapon damage with cooldown influenced by your filter cleanliness.<br>
+• <b>Aimed Attack (Crit):</b> Reflex challenge. Land the cursor in the green zone to inflict double damage (or x2.3 with Butcher perk). Missing grants the enemy a counterattack!<br>
+• <b>Dodge:</b> 75% chance to evade enemy attack. If successful, your next hit is guaranteed to be a critical strike.<br>
+• <b>Quick Belt:</b> Equip food, medkits, or tactical items (throwing knives, shockers, grenades) onto your belt in inventory. Activate them instantly during battle!</p>
+
+<h3>= 7. INVENTORY, CRAFTING & ELEMENTS =</h3>
+<p>• <b>Chest Capacity:</b> Base storage is 12 slots. Equip backpacks (Duffel Bag, Stalker Backpack, Tactical Crate) to expand capacity.<br>
+• <b>Item Actions:</b> Click any item to equip to belt, use, equip, sell to merchant, or discard.<br>
+• <b>Crafting:</b> Assemble weapons, medkits, shockers, and automated harvesters from salvaged materials.<br>
+• <b>Weapon Modification:</b> Infuse pure weapons with elemental power at the workbench:<br>
+&nbsp;&nbsp;🔥 <b>Fire (+15% dmg):</b> Imbue with Chemicals.<br>
+&nbsp;&nbsp;⚡ <b>Electro (+10% dmg):</b> Imbue with Electronics.<br>
+&nbsp;&nbsp;🩸 <b>Bleed (+5% dmg):</b> Imbue with Scrap Metal.</p>
+
+<h3>= 8. LEVELING, PERKS & MUTATIONS =</h3>
+<p>• Defeating enemies grants XP. Each level-up lets you choose 1 of 3 random <b>Perks</b> (increased Max HP, reduced filter drain, vampirism, higher loot chance, etc.).<br>
+• <b>Mutations</b> occur upon critical infection (100% toxicity). They provide powerful advantages paired with severe penalties (e.g., lower damage taken at the cost of double filter drain).</p>
+
+<h3>= 9. MAIN ELEVATOR & RAID BOSSES =</h3>
+<p>• Sector <b>E4</b> contains the floor's damaged main elevator.<br>
+• To repair it, locate 3 components: <b>Elevator Repair Kit</b>, <b>Button Panel</b>, and <b>Generator Cable</b>.<br>
+• Activating the elevator awakens the mighty <b>Floor Raid Boss</b>. Defeat it together with other survivors in the sector to unlock access to the next floor!</p>
+
+<h3>= 10. INTERACTION, PVP & RANDOM NPCS =</h3>
+<p>• <b>Sector Radar:</b> Detects other inmates in your current sector:<br>
+&nbsp;&nbsp;⚔️ <b>ATTACK (PvP):</b> Initiate a duel on the fog combat screen. The victor claims talons and XP, while the defeated returns to their Living Cell.<br>
+&nbsp;&nbsp;🤝 <b>RAID (Co-op):</b> Send an invitation to team up against a dangerous elite Fog creature with valuable loot. Both players fight simultaneously and deal shared damage!<br>
+&nbsp;&nbsp;🩹 <b>HEAL:</b> Administer field first aid to a comrade (+15 HP).<br>
+• <b>Random Events & NPCs:</b> During Fog expeditions (28% chance), encounter a Shady Trader with rare gear, Stalker Gleb with Samosbor stories, a wounded Liquidator, or a mad Scientist with experimental serum, as well as secret stashes with elevator parts and keys!</p>
+`;
+
+const BASE_EQUIP_EN = {
+  weapon_wood: "Nail Plank",
+  weapon_pipe: "Heavy Valve Pipe",
+  weapon_crowbar: "Rusty Crowbar",
+  weapon_machete: "Handmade Machete",
+  weapon_axe: "Fire Axe",
+  weapon_spear: "Rebar Spear",
+  weapon_chainsaw: "Rusty Chainsaw",
+  weapon_pistol: "Makarov Pistol",
+  weapon_shotgun: "KS-23 Shotgun",
+  weapon_flamethrower: "Samosbor Flamethrower",
+  clothes_robe: "Inmate Robe",
+  clothes_worker: "Plumber Overalls",
+  clothes_ozk: "Hazmat Suit (OZK)",
+  clothes_guard: "VOKhR Uniform",
+  clothes_stalker: "Stalker Coat",
+  clothes_scout: "Scout Armor",
+  clothes_hazmat: "Heavy Hazmat",
+  clothes_kevlar: "Kevlar Vest",
+  clothes_exosuit: "Loader Exoskeleton",
+  clothes_liquidator: "Liquidator Armor",
+  mask_cloth: "Cloth Mask",
+  mask_respirator: "Lepestok Respirator",
+  mask_gp5: "GP-5 Gas Mask",
+  mask_tactical: "Zaslon Helmet",
+  backpack_small: "Duffel Bag",
+  backpack_med: "Stalker Backpack",
+  backpack_large: "Tactical Crate"
+};
+
+const RARITY_EN_MAP = {
+  common: "",
+  uncommon: "Upgraded ",
+  rare: "Rare ",
+  epic: "Epic ",
+  legendary: "LEGENDARY "
+};
+
+const ITEM_EN_MAP = {
+  food_ration: { name: "Slime Briquette" },
+  food_pure: { name: "Bio-Concentrate" },
+  food_medkit: { name: "Military Medkit" },
+  food_energy: { name: "Energy Drink" },
+  special_knife: { name: "Throwing Knife" },
+  special_shocker: { name: "Stun Shocker" },
+  special_grenade: { name: "F-1 Grenade" },
+  mat_scrap: { name: "Scrap Metal" },
+  mat_tape: { name: "Duct Tape" },
+  mat_chem: { name: "Chemicals" },
+  mat_electro: { name: "Electronics" },
+  tool_scraper: { name: "Crude Scraper" },
+  tool_pump: { name: "Pneumatic Pump" },
+  tool_harvester: { name: "Promo Extractor" },
+  tool_robot: { name: "Auto-Harvester" },
+  quest_boltcutter: { name: "Rusty Bolt Cutter" },
+  quest_battery: { name: "Fuel Cell" },
+  quest_red_card: { name: "Red Keycard" },
+  quest_fuse: { name: "Fuse" },
+  quest_lift_repair: { name: "Elevator Repair Kit" },
+  quest_lift_buttons: { name: "Button Panel" },
+  quest_lift_wire: { name: "Generator Cable" }
+};
+
+const LOC_NAMES_EN = {
+  "Жилячейка": "Living Cell",
+  "Безопасная зона": "Safe Zone",
+  "Резервный лифт": "Backup Elevator",
+  "Гермошлюз": "Airlock",
+  "Вентшахта": "Vent Shaft",
+  "Цех": "Workshop",
+  "Техкоридор": "Utility Corridor",
+  "Узел связи": "Comm Station",
+  "Насосная": "Pump Station",
+  "Склад": "Warehouse",
+  "Резервуар": "Reservoir",
+  "Медблок": "Medbay",
+  "Карантин": "Quarantine",
+  "Бойлерная": "Boiler Room",
+  "Генераторная": "Generator Room",
+  "Столовая": "Cafeteria",
+  "Морозильники": "Freezers",
+  "Гидропоника": "Hydroponics",
+  "Очистные": "Treatment Plant"
+};
+
+const MONSTERS_EN = {
+  "Плесень-ползун": { name: "Crawler Mold", lore: "Simplest lifeform." },
+  "Слизневик": { name: "Slime Spore", lore: "A cluster of pulsating slime." },
+  "Ржавый паразит": { name: "Rust Parasite", lore: "An overgrown insect." },
+  "Трубный трупоед": { name: "Pipe Scavenger", lore: "Feeds on fallen stalkers." },
+  "Обезумевший жилец": { name: "Demented Tenant", lore: "Mind destroyed by the fog." },
+  "Туманный утопленник": { name: "Fog Drowned", lore: "Smells of bleach and rust." },
+  "Безглазый конвоир": { name: "Eyeless Guard", lore: "Former Party guard." },
+  "Червеобразный нарост": { name: "Vermiform Growth", lore: "Pulsating fleshy biomass." },
+  "Мясной культист": { name: "Flesh Cultist", lore: "Worships the Samosbor." },
+  "Адепт Чернобога": { name: "Chernobog Adept", lore: "Communes with the fog." },
+  "Паук-арматурщик": { name: "Rebar Spider", lore: "Constructed of concrete and steel." },
+  "Гончая Тумана": { name: "Fog Hound", lore: "Swift predatory beast." },
+  "Мутировавший сварщик": { name: "Mutated Welder", lore: "Gas cylinder fused into spine." },
+  "Свинорыл": { name: "Pig Snout", lore: "Horrific cafeteria cook mutation." },
+  "Некро-сантехник": { name: "Necro-Plumber", lore: "Wields a rusty pipe wrench." },
+  "Зараженный Ликвидатор": { name: "Infected Liquidator", lore: "Once cleansed infested floors." },
+  "Токсичный плевун": { name: "Toxic Spitter", lore: "Spits acidic slime." },
+  "Бронированный мясник": { name: "Armored Butcher", lore: "Enclosed in a shell of cement." },
+  "Ходячий улей слизи": { name: "Walking Slime Hive", lore: "A roaming nest of parasites." },
+  "Проповедник Бетона": { name: "Concrete Preacher", lore: "Chants mad architectural hymns." },
+  "Искаженный дезертир": { name: "Twisted Deserter", lore: "Lost forever in the catacombs." },
+  "Амальгама плоти": { name: "Flesh Amalgam", lore: "Fused mass of human remains." },
+  "Гигантская сколопендра": { name: "Giant Scolopendra", lore: "Dwells within deep shafts." },
+  "Биомеханический страж": { name: "Biomech Sentinel", lore: "Abandoned Party prototype." },
+  "Пожиратель фильтров": { name: "Filter Devourer", lore: "Hunts activated carbon." },
+  "Тень Самосбора": { name: "Samosbor Shadow", lore: "Devours light and sound." },
+  "Сросшиеся близнецы": { name: "Conjoined Twins", lore: "Two bodies, one tormented mind." },
+  "Жрец Кровавого Цемента": { name: "Bloody Cement Priest", lore: "Whispers driving listeners mad." },
+  "Архитектор плоти": { name: "Flesh Architect", lore: "Sculpts walls out of human remains." },
+  "Истинный обитатель Тумана": { name: "True Dweller of Fog", lore: "Absolute living nightmare." },
+  "СМОТРИТЕЛЬ СЛИЗИ [РЕЙД-БОСС]": { name: "SLIME OVERSEER [RAID BOSS]", lore: "The overseer has fallen." },
+  "АРХИВАРИУС [РЕЙД-БОСС]": { name: "ARCHIVIST [RAID BOSS]", lore: "Samosbor is building renewal." },
+  "ЖИВОЙ РЕАКТОР [РЕЙД-БОСС]": { name: "LIVING REACTOR [RAID BOSS]", lore: "The reactor core has cooled." },
+  "КОМЕНДАНТ БЛОКА [РЕЙД-БОСС]": { name: "BLOCK COMMANDANT [RAID BOSS]", lore: "The commandant is slain." },
+  "ЧЕРНОБОГ [ФИНАЛ]": { name: "CHERNOBOG [FINALE]", lore: "The cycle has been broken." }
+};
+
+const PERKS_EN = {
+  perk_health: { name: "Bull Lead", desc: "+25 to Maximum HP." },
+  perk_lungs: { name: "Cast-Iron Lungs", desc: "Filter drain in Fog reduced to 7%." },
+  perk_butcher: { name: "Butcher", desc: "Aimed attack (Crit) damage increased by 30%." },
+  perk_hoarder: { name: "Hoarder", desc: "Significantly higher loot drop rate from enemies." },
+  perk_vampire: { name: "Vampirism", desc: "Restores 5 HP upon slaying an enemy." }
+};
+
+const MUTATIONS_EN = {
+  mut_thick_skin: { name: "Thick Skin", desc: "Enemy damage reduced by 20%, but filter depletes 2x faster." },
+  mut_adrenaline: { name: "Adrenaline Gland", desc: "Your damage increased by 30%, but hunger grows faster." },
+  mut_toxic_blood: { name: "Toxic Blood", desc: "Toxicity no longer increases, but Medkits have no effect." }
+};
+
+function t(key, def) {
+  const dict = I18N[currentLang] || I18N.ru;
+  return (dict && dict[key] !== undefined) ? dict[key] : (def !== undefined ? def : key);
+}
+
+function getItemDisplayName(item, itemId) {
+  if (!item) return '';
+  if (currentLang !== 'en') return item.name;
+  if (itemId && ITEM_EN_MAP[itemId]) return ITEM_EN_MAP[itemId].name;
+  if (itemId) {
+    for (let baseKey in BASE_EQUIP_EN) {
+      if (itemId.startsWith(baseKey)) {
+        let baseName = BASE_EQUIP_EN[baseKey];
+        let rest = itemId.substring(baseKey.length);
+        let rarityPrefix = "";
+        for (let r in RARITY_EN_MAP) {
+          if (r !== 'common' && rest.includes(`_${r}`)) {
+            rarityPrefix = RARITY_EN_MAP[r];
+            break;
+          }
+        }
+        let elemSuffix = "";
+        if (rest.includes('_fire') || item.isFire) elemSuffix = " 🔥";
+        else if (rest.includes('_electro') || item.isElectro) elemSuffix = " ⚡";
+        else if (rest.includes('_bleed') || item.isBleed) elemSuffix = " 🩸";
+        return `${rarityPrefix}${baseName}${elemSuffix}`;
+      }
+    }
+  }
+  return item.name;
+}
+
+function getItemTypeLabel(type) {
+  const isEn = (currentLang === 'en');
+  if (type === 'consumable') return isEn ? 'MEDICINE' : 'МЕДИЦИНА';
+  if (type === 'special') return isEn ? 'TACTICAL' : 'СПЕЦСРЕДСТВО';
+  if (type === 'material') return isEn ? 'MATERIAL' : 'МАТЕРИАЛ';
+  if (type === 'tool') return isEn ? 'TOOL' : 'ИНСТРУМЕНТ';
+  if (type === 'backpack') return isEn ? 'BACKPACK' : 'РЮКЗАК';
+  if (type === 'weapon') return isEn ? 'WEAPON' : 'ОРУЖИЕ';
+  if (type === 'clothes') return isEn ? 'ARMOR' : 'ЗАЩИТА';
+  if (type === 'mask') return isEn ? 'GAS MASK' : 'МАСКА';
+  return isEn ? 'ITEM' : 'ПРЕДМЕТ';
+}
+
+function getDisplayLocationName(name) {
+  if (currentLang !== 'en' || !name) return name || '';
+  return LOC_NAMES_EN[name] || name;
+}
+
+function getDisplayMonsterName(name) {
+  if (currentLang !== 'en' || !name) return name || '';
+  if (MONSTERS_EN[name]) return MONSTERS_EN[name].name;
+  if (name.includes('АНОМАЛИЯ [РЕЙД ЭТ.')) {
+    return name.replace('АНОМАЛИЯ [РЕЙД ЭТ.', 'ANOMALY [RAID FL.');
+  }
+  return name;
+}
+
+function getDisplayMonsterLore(name, fallback) {
+  if (currentLang !== 'en') return fallback;
+  if (MONSTERS_EN[name] && MONSTERS_EN[name].lore) return MONSTERS_EN[name].lore;
+  return fallback;
+}
+
+function updateOptionsLabels() {
+  const m = document.getElementById('btn-toggle-music');
+  const s = document.getElementById('btn-toggle-sfx');
+  const c = document.getElementById('btn-toggle-crt');
+  const l = document.getElementById('btn-opt-lang');
+  const lt = document.getElementById('btn-lang-toggle');
+  if (currentLang === 'en') {
+    if (m) m.innerText = musicEnabled ? "🎵 Music (ON)" : "🎵 Music (OFF)";
+    if (s) s.innerText = sfxEnabled ? "🔊 Sound FX (ON)" : "🔊 Sound FX (OFF)";
+    if (c) c.innerText = crtEnabled ? "📺 CRT Effect (ON)" : "📺 CRT Effect (OFF)";
+    if (l) l.innerText = "🌐 Language: ENGLISH (EN/RU)";
+    if (lt) lt.innerText = "🌐 RU";
+  } else {
+    if (m) m.innerText = musicEnabled ? "🎵 Музыка (ВКЛ)" : "🎵 Музыка (ВЫКЛ)";
+    if (s) s.innerText = sfxEnabled ? "🔊 Звуки (ВКЛ)" : "🔊 Звуки (ВЫКЛ)";
+    if (c) c.innerText = crtEnabled ? "📺 CRT-эффект (ВКЛ)" : "📺 CRT-эффект (ВЫКЛ)";
+    if (l) l.innerText = "🌐 Язык: РУССКИЙ (RU/EN)";
+    if (lt) lt.innerText = "🌐 EN";
+  }
+}
+
+function applyLanguage() {
+  if (!cachedGuideRu) {
+    const gc = document.getElementById('guide-content');
+    if (gc) cachedGuideRu = gc.innerHTML;
+  }
+  const dict = I18N[currentLang] || I18N.ru;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) {
+      el.innerText = dict[key];
+    }
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    if (dict[key] !== undefined) {
+      el.placeholder = dict[key];
+    }
+  });
+
+  const gc = document.getElementById('guide-content');
+  if (gc) {
+    gc.innerHTML = (currentLang === 'en') ? GUIDE_EN_HTML : (cachedGuideRu || gc.innerHTML);
+  }
+
+  updateOptionsLabels();
+
+  if (cachedBestiary) renderBestiaryList();
+  if (clientMe) updateUI(clientMe, window.lastSectorPlayers || []);
+  renderMap();
+  renderShop();
+}
+
+function toggleLanguage() {
+  currentLang = currentLang === 'ru' ? 'en' : 'ru';
+  localStorage.setItem('samosbor_lang', currentLang);
+  applyLanguage();
+}
+
+window.addEventListener('DOMContentLoaded', applyLanguage);
+applyLanguage();
 
 const socket = io();
 
@@ -895,7 +1462,7 @@ socket.on('connect', () => {
 socket.on('connect_error', (err) => {
   console.error('[Socket] Ошибка подключения:', err);
   const errEl = document.getElementById('auth-error');
-  if (errEl) errEl.innerHTML = '<span style="color:var(--term-danger);">Ошибка подключения к серверу игры!</span>';
+  if (errEl) errEl.innerHTML = '<span style="color:var(--term-danger);">' + (currentLang === 'en' ? 'Game server connection error!' : 'Ошибка подключения к серверу игры!') + '</span>';
 });
 let myUsername = "", clientMe = null, serverMap = {}, myUnlockedSectors = [], myQuestItems = [], myQuickSlots = [null, null];
 let GAME_PERKS = [], GAME_ITEMS = {}, MUTATIONS = [], currentShopItems = [], shopUpdateTimestamp = 0;
@@ -909,26 +1476,45 @@ function formatTime(sec) { let h = Math.floor(sec/3600).toString().padStart(2,'0
 function getItemStatBadges(item) {
   if (!item) return '';
   let badges = [];
+  const isEn = (currentLang === 'en');
   if (item.type === 'weapon' && item.dmg) {
     let suffix = item.isFire ? ' 🔥' : item.isElectro ? ' ⚡' : item.isBleed ? ' 🩸' : '';
-    badges.push(`<span class="item-stat-badge stat-dmg">⚔️ ${item.dmg} УРОН${suffix}</span>`);
+    let dmgLbl = isEn ? 'DMG' : 'УРОН';
+    badges.push(`<span class="item-stat-badge stat-dmg">⚔️ ${item.dmg} ${dmgLbl}${suffix}</span>`);
   }
   if ((item.type === 'clothes' || item.type === 'mask') && item.def) {
-    badges.push(`<span class="item-stat-badge stat-def">🛡️ +${item.def} БРОНЯ</span>`);
+    let defLbl = isEn ? 'DEF' : 'БРОНЯ';
+    badges.push(`<span class="item-stat-badge stat-def">🛡️ +${item.def} ${defLbl}</span>`);
   }
   if (item.type === 'backpack' && item.bonusCap) {
-    badges.push(`<span class="item-stat-badge stat-cap">🎒 +${item.bonusCap} МЕСТ</span>`);
+    let capLbl = isEn ? 'SLOTS' : 'МЕСТ';
+    badges.push(`<span class="item-stat-badge stat-cap">🎒 +${item.bonusCap} ${capLbl}</span>`);
   }
   if (item.type === 'consumable') {
     if (item.restoreHp) badges.push(`<span class="item-stat-badge stat-heal">❤️ +${item.restoreHp} HP</span>`);
-    if (item.restoreFilter) badges.push(`<span class="item-stat-badge stat-filter">💨 +${item.restoreFilter}% ФИЛЬТР</span>`);
-    if (item.restoreHunger) badges.push(`<span class="item-stat-badge stat-cap">🍖 +${item.restoreHunger}% СЫТ</span>`);
+    if (item.restoreFilter) {
+      let fltLbl = isEn ? 'FILTER' : 'ФИЛЬТР';
+      badges.push(`<span class="item-stat-badge stat-filter">💨 +${item.restoreFilter}% ${fltLbl}</span>`);
+    }
+    if (item.restoreHunger) {
+      let satLbl = isEn ? 'SAT' : 'СЫТ';
+      badges.push(`<span class="item-stat-badge stat-cap">🍖 +${item.restoreHunger}% ${satLbl}</span>`);
+    }
   }
   if (item.type === 'special' && item.combatDmg) {
-    badges.push(`<span class="item-stat-badge stat-dmg">💥 ${item.combatDmg} УРОН</span>`);
+    let dmgLbl = isEn ? 'DMG' : 'УРОН';
+    badges.push(`<span class="item-stat-badge stat-dmg">💥 ${item.combatDmg} ${dmgLbl}</span>`);
   }
   if (item.type === 'tool' && item.desc) {
-    badges.push(`<span class="item-stat-badge stat-cap">⚙️ ${item.desc}</span>`);
+    let desc = item.desc;
+    if (isEn) {
+      if (item.desc.includes('слизь') || item.desc.includes('слизи')) {
+        desc = item.desc.replace('слизи', 'slime').replace('слизь', 'slime');
+      } else if (item.desc.includes('Добывает')) {
+        desc = 'Harvests slime autonomously';
+      }
+    }
+    badges.push(`<span class="item-stat-badge stat-cap">⚙️ ${desc}</span>`);
   }
   return badges.length ? `<div style="margin-top:2px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${badges.join('')}</div>` : '';
 }
@@ -1098,7 +1684,11 @@ function startBootSequence() {
   let itc = document.getElementById('intro-text-container');
   if(itc) itc.innerHTML = "";
   isTyping = true; charIndex = 0;
-  fullLoreText = `GIGAHOUSE-OS v.19.84 загрузка...\nАВТОРИЗАЦИЯ: #${myUsername.toUpperCase()}\n\n[СИСТЕМНОЕ ОПОВЕЩЕНИЕ]: СИРЕНА САМОСБОРА В АКТИВНОЙ ФАЗЕ.\n\nПАМЯТЬ ПОВРЕЖДЕНА.\n\nПриговор приведён в исполнение. Нас, 23 заключённых,\nпогрузили в клеть и отправили вниз, на нулевой этаж.\n\nМы почти достигли дна, когда лопнул трос.\nКлеть полетела вниз. Удар. Темнота.\n\nЯ очнулся среди обломков. Рядом — растерзанный конвоир.\nОстальные разбежались кто куда.\n\nЯ сорвал с конвоира противогаз и заперся\nв первой свободной жилячейке.\n\nЦЕЛЬ: Добраться до Главного Лифта (E4).\nПодняться наверх. Выжить.`;
+  if (currentLang === 'en') {
+    fullLoreText = `GIGAHOUSE-OS v.19.84 booting...\nAUTHORIZED: #${myUsername.toUpperCase()}\n\n[SYSTEM ALERT]: SAMOSBOR SIREN IN ACTIVE PHASE.\n\nMEMORY DAMAGED.\n\nSentence carried out. 23 inmates,\nloaded into a cage and sent down to floor zero.\n\nWe almost reached the bottom when the cable snapped.\nThe cage plummeted. Impact. Darkness.\n\nI awoke among the wreckage. Beside me — a mauled guard.\nThe others scattered into the dark.\n\nI snatched the gas mask off the guard and barricaded myself\nin the first available living cell.\n\nOBJECTIVE: Reach the Main Elevator (E4).\nAscend to the surface. Survive.`;
+  } else {
+    fullLoreText = `GIGAHOUSE-OS v.19.84 загрузка...\nАВТОРИЗАЦИЯ: #${myUsername.toUpperCase()}\n\n[СИСТЕМНОЕ ОПОВЕЩЕНИЕ]: СИРЕНА САМОСБОРА В АКТИВНОЙ ФАЗЕ.\n\nПАМЯТЬ ПОВРЕЖДЕНА.\n\nПриговор приведён в исполнение. Нас, 23 заключённых,\nпогрузили в клеть и отправили вниз, на нулевой этаж.\n\nМы почти достигли дна, когда лопнул трос.\nКлеть полетела вниз. Удар. Темнота.\n\nЯ очнулся среди обломков. Рядом — растерзанный конвоир.\nОстальные разбежались кто куда.\n\nЯ сорвал с конвоира противогаз и заперся\nв первой свободной жилячейке.\n\nЦЕЛЬ: Добраться до Главного Лифта (E4).\nПодняться наверх. Выжить.`;
+  }
   function typeChar() {
     if (!isTyping) return;
     let el = document.getElementById('intro-text-container');
@@ -1130,6 +1720,32 @@ socket.on('startGame', () => { document.getElementById('login-screen').classList
 socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML = ''; h.forEach(m => b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`); b.scrollTop = b.scrollHeight; });
 socket.on('chatMessage', (m) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`; b.scrollTop = b.scrollHeight; });
 
+function renderBestiaryList() {
+  if (!cachedBestiary) return;
+  let lu = document.getElementById('bestiary-list-ui');
+  let du = document.getElementById('bestiary-details');
+  let bb = document.getElementById('btn-bestiary');
+  if (bb) { bb.style.display = 'block'; bb.onclick = () => { document.getElementById('bestiary-modal').style.display = 'flex'; }; }
+  if (lu && du) {
+    lu.innerHTML = '';
+    const isEn = (currentLang === 'en');
+    cachedBestiary.forEach(mob => {
+      let li = document.createElement('li');
+      let mName = getDisplayMonsterName(mob.name);
+      li.innerText = mName;
+      li.onclick = () => {
+        document.querySelectorAll('.bestiary-list li').forEach(el => el.classList.remove('active'));
+        li.classList.add('active');
+        let floorLbl = isEn ? 'MIN FLOOR' : 'МИНИМАЛЬНЫЙ ЭТАЖ';
+        let lore = getDisplayMonsterLore(mob.name, mob.lore);
+        du.innerHTML = `<div style="display:flex; gap:15px; flex-wrap:wrap;"><div style="width:180px; height:180px; border:1px dashed var(--term-warn); display:flex; justify-content:center; align-items:center; background:#111;"><img src="assets/monsters/${mob.img}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex-grow:1; min-width:200px;"><h2 style="margin-top:0; color:var(--term-warn);">${mName}</h2><div style="color:#666; font-size:13px; margin-bottom:12px;">${floorLbl}: ${mob.minFloor}</div><div style="font-size:14px; color:#ccc; line-height:1.6;">${lore}</div></div></div>`;
+      };
+      lu.appendChild(li);
+    });
+  }
+  bestiaryRendered = true;
+}
+
 socket.on('gameState', (data) => {
   clientMe = data.me;
   serverMap = data.map || {};
@@ -1142,33 +1758,19 @@ socket.on('gameState', (data) => {
   if(data.shopItems) currentShopItems = data.shopItems;
   if(data.nextShopUpdate) shopUpdateTimestamp = data.nextShopUpdate;
 
-  if (data.BESTIARY && !bestiaryRendered) {
-    let lu = document.getElementById('bestiary-list-ui');
-    let du = document.getElementById('bestiary-details');
-    let bb = document.getElementById('btn-bestiary');
-    if (bb) { bb.style.display = 'block'; bb.onclick = () => { document.getElementById('bestiary-modal').style.display = 'flex'; }; }
-    if (lu && du) {
-      data.BESTIARY.forEach(mob => {
-        let li = document.createElement('li');
-        li.innerText = mob.name;
-        li.onclick = () => {
-          document.querySelectorAll('.bestiary-list li').forEach(el => el.classList.remove('active'));
-          li.classList.add('active');
-          du.innerHTML = `<div style="display:flex; gap:15px; flex-wrap:wrap;"><div style="width:180px; height:180px; border:1px dashed var(--term-warn); display:flex; justify-content:center; align-items:center; background:#111;"><img src="assets/monsters/${mob.img}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex-grow:1; min-width:200px;"><h2 style="margin-top:0; color:var(--term-warn);">${mob.name}</h2><div style="color:#666; font-size:13px; margin-bottom:12px;">МИНИМАЛЬНЫЙ ЭТАЖ: ${mob.minFloor}</div><div style="font-size:14px; color:#ccc; line-height:1.6;">${mob.lore}</div></div></div>`;
-        };
-        lu.appendChild(li);
-      });
-    }
-    bestiaryRendered = true;
+  if (data.BESTIARY) {
+    cachedBestiary = data.BESTIARY;
+    renderBestiaryList();
   }
 
   if(data.leaderboard) {
     let lb = document.getElementById('leaderboard-body');
     if(lb) {
       lb.innerHTML = '';
+      const youTxt = currentLang === 'en' ? ' (YOU)' : ' (ВЫ)';
       data.leaderboard.forEach(x => {
         let rc = x.rank===1?'lb-rank-1':x.rank===2?'lb-rank-2':x.rank===3?'lb-rank-3':'';
-        let n = x.name === myUsername ? `<span style="color:var(--term-green);">${x.name} (ВЫ)</span>` : x.name;
+        let n = x.name === myUsername ? `<span style="color:var(--term-green);">${x.name}${youTxt}</span>` : x.name;
         lb.innerHTML += `<tr class="${rc}"><td>#${x.rank}</td><td>${n}</td><td>${x.title}</td><td>${x.level}</td><td>${x.floor}</td><td>${formatTime(x.playtime)}</td><td style="color:var(--term-warn);">${x.rating}</td></tr>`;
       });
     }
@@ -1219,7 +1821,8 @@ socket.on('vfxHeal', () => applyVFX('player-vfx-container', 'vfx-heal'));
 socket.on('combatStart', (data) => {
   changeAmbient('combat');
   let cl = document.getElementById('combat-log');
-  if(cl) cl.innerHTML = `> ВСТРЕЧА: ${data.enemy.name}!\n`;
+  let eName = data.enemy.isPlayer ? data.enemy.name : getDisplayMonsterName(data.enemy.name);
+  if(cl) cl.innerHTML = (currentLang === 'en' ? `> ENCOUNTER: ${eName}!\n` : `> ВСТРЕЧА: ${eName}!\n`);
   playSound('roar');
   document.getElementById('explore-controls').style.display = 'none';
   document.getElementById('combat-controls').style.display = 'flex';
@@ -1259,7 +1862,7 @@ socket.on('combatStart', (data) => {
   document.getElementById('ui-enemy-hp').innerText = data.enemy.hp;
   isAiming = false; clearInterval(aimInterval);
   document.getElementById('aim-bar-container').style.display = 'none';
-  document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+  document.getElementById('btn-attack').innerText = (currentLang === 'en' ? 'AIMED ATTACK' : 'ПРИЦЕЛЬНАЯ АТАКА');
 });
 
 let mgData = null, mgStep = 0, mgInput = [], currentGameLoc = null;
@@ -1267,8 +1870,8 @@ let mgData = null, mgStep = 0, mgInput = [], currentGameLoc = null;
 socket.on('startCombatMinigame', (data) => {
   if(data.type === 'voltage') {
     mgStep = 0; mgInput = [0]; mgData = data;
-    document.getElementById('mg-title').innerText = "ПЕРЕГРУЗКА РЕАКТОРА";
-    document.getElementById('mg-text').innerText = "КАЛИБРОВКА ЯДРА.";
+    document.getElementById('mg-title').innerText = currentLang === 'en' ? "REACTOR OVERLOAD" : "ПЕРЕГРУЗКА РЕАКТОРА";
+    document.getElementById('mg-text').innerText = currentLang === 'en' ? "CORE CALIBRATION." : "КАЛИБРОВКА ЯДРА.";
     document.getElementById('btn-mg-cancel').style.display = 'none';
     updateVoltageUI();
     document.getElementById('minigame-modal').style.display = 'flex';
@@ -1300,7 +1903,7 @@ socket.on('combatEnd', (data) => {
   document.getElementById('enemy-hp-bar').style.display = 'none';
   isAiming = false; clearInterval(aimInterval);
   document.getElementById('aim-bar-container').style.display = 'none';
-  document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+  document.getElementById('btn-attack').innerText = (currentLang === 'en' ? 'AIMED ATTACK' : 'ПРИЦЕЛЬНАЯ АТАКА');
 
   let es = document.getElementById('enemy-sprite');
   let ec = document.getElementById('enemy-clothes');
@@ -1333,12 +1936,15 @@ socket.on('combatEnd', (data) => {
 
 socket.on('coopRaidInvitePrompt', (data) => {
   playSound('roar');
-  document.getElementById('event-title').innerText = "ПРИГЛАШЕНИЕ В РЕЙД";
-  document.getElementById('event-text').innerText = `Заключенный [${data.fromUser}] зовет вас в СОВМЕСТНЫЙ РЕЙД в Туман!\nВы пойдете в вылазку плечом к плечу и сможете атаковать сильную тварь вдвоем.`;
+  const isEn = (currentLang === 'en');
+  document.getElementById('event-title').innerText = isEn ? "RAID INVITATION" : "ПРИГЛАШЕНИЕ В РЕЙД";
+  document.getElementById('event-text').innerText = isEn
+    ? `Inmate [${data.fromUser}] invites you to a CO-OP RAID into the Fog!\nYou will fight shoulder to shoulder against a powerful creature.`
+    : `Заключенный [${data.fromUser}] зовет вас в СОВМЕСТНЫЙ РЕЙД в Туман!\nВы пойдете в вылазку плечом к плечу и сможете атаковать сильную тварь вдвоем.`;
   const c = document.getElementById('event-choices');
   c.innerHTML = '';
   let btnAccept = document.createElement('button');
-  btnAccept.innerText = "ПРИНЯТЬ ВЫЗОВ (В БОЙ)";
+  btnAccept.innerText = isEn ? "ACCEPT (INTO BATTLE)" : "ПРИНЯТЬ ВЫЗОВ (В БОЙ)";
   btnAccept.style.width = '100%';
   btnAccept.style.borderColor = 'var(--term-warn)';
   btnAccept.style.color = 'var(--term-warn)';
@@ -1347,7 +1953,7 @@ socket.on('coopRaidInvitePrompt', (data) => {
     document.getElementById('event-modal').style.display = 'none';
   };
   let btnDecline = document.createElement('button');
-  btnDecline.innerText = "ОТКАЗАТЬСЯ";
+  btnDecline.innerText = isEn ? "DECLINE" : "ОТКАЗАТЬСЯ";
   btnDecline.style.width = '100%';
   btnDecline.onclick = () => {
     document.getElementById('event-modal').style.display = 'none';
@@ -1512,6 +2118,9 @@ function updateUI(me, sectorPlayers) {
   document.querySelectorAll('.ui-tox').forEach(el => el.innerText = me.tox);
   document.querySelectorAll('.tox-bar').forEach(el => el.style.width = me.tox + '%');
 
+  const isEn = (currentLang === 'en');
+  window.lastSectorPlayers = sectorPlayers;
+
   if (me.equipment) {
     ['clothes', 'mask', 'weapon'].forEach(slot => {
       const itemId = me.equipment[slot];
@@ -1532,17 +2141,18 @@ function updateUI(me, sectorPlayers) {
         let statBadge = '';
         if (slot === 'weapon' && itemData.dmg) {
           let sfx = itemData.isFire ? ' 🔥' : itemData.isElectro ? ' ⚡' : itemData.isBleed ? ' 🩸' : '';
-          statBadge = ` <span class="item-stat-badge stat-dmg">⚔️ ${itemData.dmg} УРОН${sfx}</span>`;
+          statBadge = ` <span class="item-stat-badge stat-dmg">⚔️ ${itemData.dmg} ${isEn ? 'DMG' : 'УРОН'}${sfx}</span>`;
         } else if ((slot === 'clothes' || slot === 'mask') && itemData.def) {
-          statBadge = ` <span class="item-stat-badge stat-def">🛡️ +${itemData.def} БРОНЯ</span>`;
+          statBadge = ` <span class="item-stat-badge stat-def">🛡️ +${itemData.def} ${isEn ? 'DEF' : 'БРОНЯ'}</span>`;
         }
-        if(nD) nD.innerHTML = `<span style="font-weight:bold; font-size:12px;">${itemData.name}</span>${statBadge}`;
+        let dName = getItemDisplayName(itemData, itemId);
+        if(nD) nD.innerHTML = `<span style="font-weight:bold; font-size:12px;">${dName}</span>${statBadge}`;
       } else {
         if(iI) { iI.src = ''; iI.style.display = 'none'; }
         if(bI) { bI.src = ''; bI.style.display = 'none'; }
         if(slotIcon) { slotIcon.src = ''; slotIcon.style.display = 'none'; }
         if(slotPh) { slotPh.style.display = 'block'; }
-        if(nD) nD.innerHTML = '<span style="color:var(--ink-dim); font-size:12px;">[Пусто]</span>';
+        if(nD) nD.innerHTML = `<span style="color:var(--ink-dim); font-size:12px;">${isEn ? '[Empty]' : '[Пусто]'}</span>`;
       }
     });
     let bpId = me.equipment.backpack;
@@ -1554,12 +2164,13 @@ function updateUI(me, sectorPlayers) {
       let iconId = bp.iconId || bpId;
       if(bpIcon) { bpIcon.src = `assets/icons/${iconId}.png`; bpIcon.style.display = 'block'; }
       if(bpPh) { bpPh.style.display = 'none'; }
-      let capBadge = bp.bonusCap ? ` <span class="item-stat-badge stat-cap">🎒 +${bp.bonusCap} МЕСТ</span>` : '';
-      bpN.innerHTML = `<span style="font-weight:bold; font-size:12px;">${bp.name}</span>${capBadge}`;
+      let capBadge = bp.bonusCap ? ` <span class="item-stat-badge stat-cap">🎒 +${bp.bonusCap} ${isEn ? 'SLOTS' : 'МЕСТ'}</span>` : '';
+      let dName = getItemDisplayName(bp, bpId);
+      bpN.innerHTML = `<span style="font-weight:bold; font-size:12px;">${dName}</span>${capBadge}`;
     } else if (bpN) {
       if(bpIcon) { bpIcon.src = ''; bpIcon.style.display = 'none'; }
       if(bpPh) { bpPh.style.display = 'block'; }
-      bpN.innerHTML = '<span style="color:var(--ink-dim); font-size:12px;">[Пусто]</span>';
+      bpN.innerHTML = `<span style="color:var(--ink-dim); font-size:12px;">${isEn ? '[Empty]' : '[Пусто]'}</span>`;
     }
     let id = document.getElementById('inv-dmg'); if(id) id.innerText = me.stats.dmg;
     let idef = document.getElementById('inv-def'); if(idef) idef.innerText = me.stats.def;
@@ -1573,19 +2184,23 @@ function updateUI(me, sectorPlayers) {
     if (itemId && GAME_ITEMS[itemId]) {
       let qItem = GAME_ITEMS[itemId];
       let qBadge = getItemStatBadges(qItem);
-      if(iS) { iS.innerHTML = `<div style="font-weight:bold; color:var(--ink-accent);">${qItem.name}</div>${qBadge}<div style="font-size:10px; color:var(--ink-dim); margin-top:2px;">(КЛИК - СНЯТЬ)</div>`; }
-      if(cS) { cS.innerHTML = `${qItem.name}${qBadge}<div style="color:#fff; font-size:10px; margin-top:2px;">(ПРИМЕНИТЬ)</div>`; }
+      let qName = getItemDisplayName(qItem, itemId);
+      let unequipPrompt = isEn ? '(CLICK - UNEQUIP)' : '(КЛИК - СНЯТЬ)';
+      let applyPrompt = isEn ? '(USE)' : '(ПРИМЕНИТЬ)';
+      if(iS) { iS.innerHTML = `<div style="font-weight:bold; color:var(--ink-accent);">${qName}</div>${qBadge}<div style="font-size:10px; color:var(--ink-dim); margin-top:2px;">${unequipPrompt}</div>`; }
+      if(cS) { cS.innerHTML = `${qName}${qBadge}<div style="color:#fff; font-size:10px; margin-top:2px;">${applyPrompt}</div>`; }
     } else if (pendingEquipIndex === null) {
-      if(iS) { iS.innerHTML = "[ПУСТО]"; iS.style.borderColor = '#880000'; iS.style.background = 'rgba(122,0,0,0.08)'; }
-      if(cS) { cS.innerHTML = "[ПУСТО]"; }
+      let emptyText = isEn ? "[EMPTY]" : "[ПУСТО]";
+      if(iS) { iS.innerHTML = emptyText; iS.style.borderColor = '#880000'; iS.style.background = 'rgba(122,0,0,0.08)'; }
+      if(cS) { cS.innerHTML = emptyText; }
     }
   }
 
   if (me.questItems) {
     const qc = document.getElementById('quest-items-container');
     if(qc) {
-      if (me.questItems.length === 0) qc.innerHTML = '<span style="color:var(--ink-dim);">Пусто...</span>';
-      else { qc.innerHTML = ''; me.questItems.forEach(iId => { let q = GAME_ITEMS[iId]; if(q) qc.innerHTML += `<div class="quest-item"><div class="quest-item-title">${q.name}</div></div>`; }); }
+      if (me.questItems.length === 0) qc.innerHTML = `<span style="color:var(--ink-dim);">${isEn ? 'Empty...' : 'Пусто...'}</span>`;
+      else { qc.innerHTML = ''; me.questItems.forEach(iId => { let q = GAME_ITEMS[iId]; if(q) { let qName = getItemDisplayName(q, iId); qc.innerHTML += `<div class="quest-item"><div class="quest-item-title">${qName}</div></div>`; } }); }
     }
   }
 
@@ -1597,18 +2212,23 @@ function updateUI(me, sectorPlayers) {
       if(me.perks) me.perks.forEach(pId => {
         let p = GAME_PERKS.find(x => x.id === pId);
         if(p) {
-          pc.innerHTML += `<div class="perk-card"><div class="perk-card-title">⭐ ${p.name}</div><div class="perk-card-desc">${p.desc}</div></div>`;
+          let pName = (isEn && PERKS_EN[pId]) ? PERKS_EN[pId].name : p.name;
+          let pDesc = (isEn && PERKS_EN[pId]) ? PERKS_EN[pId].desc : p.desc;
+          pc.innerHTML += `<div class="perk-card"><div class="perk-card-title">⭐ ${pName}</div><div class="perk-card-desc">${pDesc}</div></div>`;
           any = true;
         }
       });
       if(me.mutations) me.mutations.forEach(mId => {
         let m = MUTATIONS.find(x => x.id === mId);
         if(m) {
-          pc.innerHTML += `<div class="perk-card mutation"><div class="perk-card-title">☣️ [МУТАЦИЯ] ${m.name}</div><div class="perk-card-desc">${m.desc}</div></div>`;
+          let mName = (isEn && MUTATIONS_EN[mId]) ? MUTATIONS_EN[mId].name : m.name;
+          let mDesc = (isEn && MUTATIONS_EN[mId]) ? MUTATIONS_EN[mId].desc : m.desc;
+          let mutPrefix = isEn ? '☣️ [MUTATION]' : '☣️ [МУТАЦИЯ]';
+          pc.innerHTML += `<div class="perk-card mutation"><div class="perk-card-title">${mutPrefix} ${mName}</div><div class="perk-card-desc">${mDesc}</div></div>`;
           any = true;
         }
       });
-      if(!any) pc.innerHTML = '<span style="color:var(--ink-dim); font-size:12px;">Пусто...</span>';
+      if(!any) pc.innerHTML = `<span style="color:var(--ink-dim); font-size:12px;">${isEn ? 'Empty...' : 'Пусто...'}</span>`;
     }
   }
 
@@ -1621,17 +2241,18 @@ function updateUI(me, sectorPlayers) {
 
   let wSel = document.getElementById('mod-weapon-select');
   let mSel = document.getElementById('mod-mat-select');
-  if(wSel) wSel.innerHTML = '<option value="">-- ОРУЖИЕ --</option>';
-  if(mSel) mSel.innerHTML = '<option value="">-- МАТЕРИАЛ --</option>';
+  if(wSel) wSel.innerHTML = `<option value="">${isEn ? '-- WEAPON --' : '-- ОРУЖИЕ --'}</option>`;
+  if(mSel) mSel.innerHTML = `<option value="">${isEn ? '-- MATERIAL --' : '-- МАТЕРИАЛ --'}</option>`;
 
   if (me.inventory) {
     me.inventory.forEach((itemId, index) => {
       const item = GAME_ITEMS[itemId];
       if (!item) return;
+      let dName = getItemDisplayName(item, itemId);
       if (item.type === 'weapon' && wSel && !item.isFire && !item.isElectro && !item.isBleed)
-        wSel.innerHTML += `<option value="${index}">${item.name}</option>`;
+        wSel.innerHTML += `<option value="${index}">${dName}</option>`;
       if (item.type === 'material' && mSel && (itemId === 'mat_chem' || itemId === 'mat_electro' || itemId === 'mat_scrap'))
-        mSel.innerHTML += `<option value="${index}">${item.name}</option>`;
+        mSel.innerHTML += `<option value="${index}">${dName}</option>`;
 
       const iconName = item.iconId || itemId;
       const iconPath = `assets/icons/${iconName}.png`;
@@ -1640,32 +2261,26 @@ function updateUI(me, sectorPlayers) {
       if (chestC) {
         let div = document.createElement('div');
         div.className = 'chest-item';
-        let typeLabel = 'ПРЕДМЕТ';
-        if (item.type === 'consumable') typeLabel = 'МЕДИЦИНА';
-        else if (item.type === 'special') typeLabel = 'СПЕЦСРЕДСТВО';
-        else if (item.type === 'material') typeLabel = 'МАТЕРИАЛ';
-        else if (item.type === 'tool') typeLabel = 'ИНСТРУМЕНТ';
-        else if (item.type === 'backpack') typeLabel = 'РЮКЗАК';
-        else if (item.type === 'weapon') typeLabel = 'ОРУЖИЕ';
-        else if (item.type === 'clothes') typeLabel = 'ЗАЩИТА';
-        else if (item.type === 'mask') typeLabel = 'МАСКА';
+        let typeLabel = getItemTypeLabel(item.type);
 
         let btns = '';
         if (item.type === 'consumable' || item.type === 'special' || item.isCure)
-          btns += `<button data-action="belt" data-index="${index}">НА ПОЯС</button>`;
+          btns += `<button data-action="belt" data-index="${index}">${isEn ? 'TO BELT' : 'НА ПОЯС'}</button>`;
         if (item.type === 'consumable' || item.isCure)
-          btns += `<button data-action="use" data-index="${index}">ИСПОЛЬЗ.</button>`;
+          btns += `<button data-action="use" data-index="${index}">${isEn ? 'USE' : 'ИСПОЛЬЗ.'}</button>`;
         if (item.type === 'weapon' || item.type === 'clothes' || item.type === 'mask' || item.type === 'backpack')
-          btns += `<button data-action="equip" data-index="${index}">НАДЕТЬ</button>`;
-        btns += `<button data-action="drop" data-index="${index}">ВЫБРОС</button>`;
+          btns += `<button data-action="equip" data-index="${index}">${isEn ? 'EQUIP' : 'НАДЕТЬ'}</button>`;
+        btns += `<button data-action="drop" data-index="${index}">${isEn ? 'DROP' : 'ВЫБРОС'}</button>`;
 
-        div.innerHTML = `<img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div class="item-type">[${typeLabel}]</div><div style="font-weight:bold; font-size: 12px;">${item.name}</div>${statBadges}<div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${btns}</div>`;
+        div.innerHTML = `<img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div class="item-type">[${typeLabel}]</div><div style="font-weight:bold; font-size: 12px;">${dName}</div>${statBadges}<div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; justify-content:center;">${btns}</div>`;
         chestC.appendChild(div);
       }
 
       if (sellC && item.type !== 'material' && item.type !== 'tool') {
         let price = Math.min(35, Math.max(3, Math.floor((item.cost || 5) * 0.4)));
-        sellC.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div><div style="font-size: 13px;">${item.name}</div>${statBadges}</div></div><div><span style="color:var(--term-warn); font-size: 13px;">+${price} т.</span> <button onclick="socket.emit('sellItem', ${index})" style="border-color:var(--term-danger); color:var(--term-danger); margin-left:6px; padding:3px 8px; font-size:11px;">СДАТЬ</button></div></div>`;
+        let tUnit = isEn ? 't.' : 'т.';
+        let sellBtnTxt = isEn ? 'SELL' : 'СДАТЬ';
+        sellC.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div><div style="font-size: 13px;">${dName}</div>${statBadges}</div></div><div><span style="color:var(--term-warn); font-size: 13px;">+${price} ${tUnit}</span> <button onclick="socket.emit('sellItem', ${index})" style="border-color:var(--term-danger); color:var(--term-danger); margin-left:6px; padding:3px 8px; font-size:11px;">${sellBtnTxt}</button></div></div>`;
       }
     });
   }
@@ -1678,19 +2293,24 @@ function updateUI(me, sectorPlayers) {
   if (me.location !== 'safe_room') {
     if(rp) rp.style.display = 'block';
     if (me.currentRobot !== null) {
-      if(rs) rs.innerHTML = `🤖 Сборщик: <span style="color:var(--term-warn);">${me.currentRobot}/250</span>`;
-      if(rb) { rb.innerText = 'СОБРАТЬ'; rb.onclick = () => socket.emit('collectRobot'); rb.style.borderColor = 'var(--term-info)'; rb.style.color = 'var(--term-info)'; }
+      if(rs) rs.innerHTML = isEn ? `🤖 Harvester: <span style="color:var(--term-warn);">${me.currentRobot}/250</span>` : `🤖 Сборщик: <span style="color:var(--term-warn);">${me.currentRobot}/250</span>`;
+      if(rb) { rb.innerText = isEn ? 'COLLECT' : 'СОБРАТЬ'; rb.onclick = () => socket.emit('collectRobot'); rb.style.borderColor = 'var(--term-info)'; rb.style.color = 'var(--term-info)'; }
     } else {
-      if(rs) rs.innerHTML = `🤖 Сборщик не установлен`;
-      if(rb) { rb.innerText = 'УСТАНОВИТЬ'; rb.onclick = () => socket.emit('installRobot'); rb.style.borderColor = 'var(--term-warn)'; rb.style.color = 'var(--term-warn)'; }
+      if(rs) rs.innerHTML = isEn ? `🤖 Harvester not installed` : `🤖 Сборщик не установлен`;
+      if(rb) { rb.innerText = isEn ? 'INSTALL' : 'УСТАНОВИТЬ'; rb.onclick = () => socket.emit('installRobot'); rb.style.borderColor = 'var(--term-warn)'; rb.style.color = 'var(--term-warn)'; }
     }
   } else { if(rp) rp.style.display = 'none'; }
 
-  let expT = me.location === 'E4' ? '[ ЗАПУСТИТЬ РЕЗЕРВНЫЙ ЛИФТ ]' : 'ВЫЛАЗКА В ТУМАН';
+  let expT = me.location === 'E4' ? (isEn ? '[ START BACKUP ELEVATOR ]' : '[ ЗАПУСТИТЬ РЕЗЕРВНЫЙ ЛИФТ ]') : (isEn ? 'EXPEDITION INTO FOG' : 'ВЫЛАЗКА В ТУМАН');
   let expC = me.location === 'E4' ? 'var(--term-warn)' : 'var(--term-danger)';
   let ec = document.getElementById('explore-controls');
+  let farmTxt = isEn ? 'HARVEST SLIME' : 'ФАРМ СЛИЗИ';
+  let noteTxt = isEn ? 'NOTEBOOK' : 'БЛОКНОТ';
+  let mapTxt = isEn ? 'SECTOR MAP' : 'КАРТА СЕКТОРОВ';
+  let baseTxt = isEn ? 'TO BASE' : 'НА БАЗУ';
+  let enterLog = isEn ? '> Entering the fog...\\n' : '> Входим в туман...\\n';
   if (ec) {
-    ec.innerHTML = `<div class="row-2"><button onclick="socket.emit('work');" style="color: var(--term-info); border-color: var(--term-info);">ФАРМ СЛИЗИ</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">БЛОКНОТ</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='> Входим в туман...\\n'; socket.emit('explore');" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">КАРТА СЕКТОРОВ</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">НА БАЗУ</button></div>`;
+    ec.innerHTML = `<div class="row-2"><button onclick="socket.emit('work');" style="color: var(--term-info); border-color: var(--term-info);">${farmTxt}</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">${noteTxt}</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='${enterLog}'; socket.emit('explore');" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">${mapTxt}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">${baseTxt}</button></div>`;
   }
   const bfd = document.getElementById('btn-floor-down');
   if (bfd) {
@@ -1732,7 +2352,8 @@ function updateUI(me, sectorPlayers) {
     if (node) {
       if (clt) {
         let iconImg = node.icon ? `<img src="assets/locations/icons/${node.icon}" class="loc-header-icon" onerror="this.style.display='none'"> ` : '';
-        clt.innerHTML = `${iconImg}${node.name}`;
+        let dLoc = getDisplayLocationName(node.name);
+        clt.innerHTML = `${iconImg}${dLoc}`;
       }
       if (bg) bg.style.backgroundImage = `url('assets/locations/${node.bg}')`;
     }
@@ -1756,14 +2377,20 @@ function updateUI(me, sectorPlayers) {
     const radar = document.getElementById('players-in-sector');
     if (radar && sectorPlayers) {
       radar.innerHTML = '';
+      let atkTxt = isEn ? 'ATTACK' : 'АТАКА';
+      let raidTxt = isEn ? 'RAID' : 'РЕЙД';
+      let healTxt = isEn ? 'HEAL' : 'ПОМОЧЬ';
+      let atkTip = isEn ? 'Attack in fog' : 'Напасть в тумане';
+      let raidTip = isEn ? 'Invite to co-op raid' : 'Пригласить в совместный рейд';
+      let healTip = isEn ? 'Provide medical aid (+15 HP)' : 'Оказать медпомощь (+15 HP)';
       sectorPlayers.forEach(p => {
         if (p.username !== myUsername) {
           let d = document.createElement('div'); d.className = 'player-entry';
-          d.innerHTML = `<span>[${p.username}] HP:${p.hp}</span><div style="display:flex; gap:3px;"><button onclick="socket.emit('pvpBattleStart', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-danger); color:var(--term-danger);" title="Напасть в тумане">АТАКА</button><button onclick="socket.emit('coopRaidInvite', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-warn); color:var(--term-warn);" title="Пригласить в совместный рейд">РЕЙД</button><button onclick="socket.emit('coopHeal', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-green); color:var(--term-green);" title="Оказать медпомощь (+15 HP)">ПОМОЧЬ</button></div>`;
+          d.innerHTML = `<span>[${p.username}] HP:${p.hp}</span><div style="display:flex; gap:3px;"><button onclick="socket.emit('pvpBattleStart', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-danger); color:var(--term-danger);" title="${atkTip}">${atkTxt}</button><button onclick="socket.emit('coopRaidInvite', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-warn); color:var(--term-warn);" title="${raidTip}">${raidTxt}</button><button onclick="socket.emit('coopHeal', '${p.id}')" style="margin:0; padding:3px 6px; font-size:11px; border-color:var(--term-green); color:var(--term-green);" title="${healTip}">${healTxt}</button></div>`;
           radar.appendChild(d);
         }
       });
-      if (radar.innerHTML === '') radar.innerHTML = '<span style="color:#555">Пусто. Вы здесь одни.</span>';
+      if (radar.innerHTML === '') radar.innerHTML = `<span style="color:#555">${isEn ? 'Empty. You are alone here.' : 'Пусто. Вы здесь одни.'}</span>`;
     }
   }
   } catch(err) {
@@ -1774,6 +2401,7 @@ function updateUI(me, sectorPlayers) {
 function renderMap() {
   const c = document.getElementById('map-container'); if(!c) return;
   c.innerHTML = '';
+  const isEn = (currentLang === 'en');
   const letters = ['A', 'B', 'C', 'D', 'E'];
   const curPlayerLoc = (clientMe && clientMe.location) || '';
   for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) {
@@ -1789,16 +2417,17 @@ function renderMap() {
       div.className = isUnlocked ? 'map-node' : canUnlock ? 'map-node can-unlock' : 'map-node locked';
       if (isCurrent) div.className += ' current-location';
       div.style.backgroundImage = `url('assets/locations/${node.bg}')`;
-      let dId = isUnlocked || canUnlock ? id : '[ЗАКРЫТО]';
+      let dId = isUnlocked || canUnlock ? id : (isEn ? '[LOCKED]' : '[ЗАКРЫТО]');
       let lock = '';
       if (isCurrent) {
-        lock = `<div class="node-badge-here">[ВЫ ЗДЕСЬ]</div>`;
+        lock = `<div class="node-badge-here">${isEn ? '[YOU ARE HERE]' : '[ВЫ ЗДЕСЬ]'}</div>`;
       } else if (!isUnlocked && canUnlock) {
-        if (node.reqType === 'item') lock = `<div style="color:var(--term-warn); font-size:10px;">[КЛЮЧ]</div>`;
-        else if (node.reqType === 'minigame') lock = `<div style="color:var(--term-info); font-size:10px;">[ВЗЛОМ]</div>`;
+        if (node.reqType === 'item') lock = `<div style="color:var(--term-warn); font-size:10px;">${isEn ? '[KEY]' : '[КЛЮЧ]'}</div>`;
+        else if (node.reqType === 'minigame') lock = `<div style="color:var(--term-info); font-size:10px;">${isEn ? '[HACK]' : '[ВЗЛОМ]'}</div>`;
       }
       let iconImg = (node.icon && (isUnlocked || canUnlock)) ? `<img class="node-icon" src="assets/locations/icons/${node.icon}" onerror="this.style.display='none'">` : '';
-      div.innerHTML = `<div class="node-content">${iconImg}<div class="node-id">${dId}</div><div class="node-name">${node.name}</div>${lock}</div>`;
+      let dLoc = getDisplayLocationName(node.name);
+      div.innerHTML = `<div class="node-content">${iconImg}<div class="node-id">${dId}</div><div class="node-name">${dLoc}</div>${lock}</div>`;
       div.onclick = () => {
         playSound('click');
         socket.emit('changeLocation', id);
@@ -1811,18 +2440,22 @@ function renderMap() {
 function renderShop() {
   const c = document.getElementById('shop-items-container'); if(!c) return;
   c.innerHTML = '';
+  const isEn = (currentLang === 'en');
   currentShopItems.forEach(id => {
     let item = GAME_ITEMS[id]; if(!item) return;
-    let typeLabel = 'Экип.';
-    if(item.reqLevel) typeLabel += ` Ур.${item.reqLevel}`;
-    if(item.type === 'consumable') typeLabel = 'Медицина';
-    if(item.type === 'special') typeLabel = 'Спецсредство';
-    if(item.type === 'material') typeLabel = 'Материал';
-    if(item.type === 'tool') typeLabel = 'Инструмент';
-    if(item.type === 'backpack') typeLabel = 'Рюкзак';
+    let typeLabel = isEn ? 'Equip.' : 'Экип.';
+    if(item.reqLevel) typeLabel += ` ${isEn ? 'Lv.' : 'Ур.'}${item.reqLevel}`;
+    if(item.type === 'consumable') typeLabel = isEn ? 'Medicine' : 'Медицина';
+    if(item.type === 'special') typeLabel = isEn ? 'Tactical' : 'Спецсредство';
+    if(item.type === 'material') typeLabel = isEn ? 'Material' : 'Материал';
+    if(item.type === 'tool') typeLabel = isEn ? 'Tool' : 'Инструмент';
+    if(item.type === 'backpack') typeLabel = isEn ? 'Backpack' : 'Рюкзак';
     const iconName = item.iconId || id;
     let shopBadges = getItemStatBadges(item);
-    c.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${iconName}.png" onerror="this.style.display='none'"><div><div><span style="color:${item.color || '#fff'}">${item.name}</span><span style="color:#666; font-size:12px;"> [${typeLabel}]</span></div>${shopBadges}</div></div><div><span style="color:var(--term-warn); font-size:13px;">${item.cost} т.</span><button onclick="socket.emit('buyItem', '${id}')" style="margin-left:6px; padding:3px 10px; font-size:11px;">КУПИТЬ</button></div></div>`;
+    let dName = getItemDisplayName(item, id);
+    let btnBuy = isEn ? 'BUY' : 'КУПИТЬ';
+    let tUnit = isEn ? 't.' : 'т.';
+    c.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${iconName}.png" onerror="this.style.display='none'"><div><div><span style="color:${item.color || '#fff'}">${dName}</span><span style="color:#666; font-size:12px;"> [${typeLabel}]</span></div>${shopBadges}</div></div><div><span style="color:var(--term-warn); font-size:13px;">${item.cost} ${tUnit}</span><button onclick="socket.emit('buyItem', '${id}')" style="margin-left:6px; padding:3px 10px; font-size:11px;">${btnBuy}</button></div></div>`;
   });
 }
 setInterval(() => {
@@ -1836,10 +2469,11 @@ setInterval(() => {
 }, 1000);
 
 function toggleAimAttack() {
+  const isEn = (currentLang === 'en');
   if (!isAiming) {
     isAiming = true;
     document.getElementById('aim-bar-container').style.display = 'block';
-    document.getElementById('btn-attack').innerText = 'УДАР!';
+    document.getElementById('btn-attack').innerText = isEn ? 'STRIKE!' : 'УДАР!';
     aimPos = 0; aimDir = 1;
     aimInterval = setInterval(() => {
       aimPos += aimDir * 5;
@@ -1850,7 +2484,7 @@ function toggleAimAttack() {
   } else {
     clearInterval(aimInterval); isAiming = false;
     document.getElementById('aim-bar-container').style.display = 'none';
-    document.getElementById('btn-attack').innerText = 'ПРИЦЕЛЬНАЯ АТАКА';
+    document.getElementById('btn-attack').innerText = isEn ? 'AIMED ATTACK' : 'ПРИЦЕЛЬНАЯ АТАКА';
     if (aimPos >= 40 && aimPos <= 60) socket.emit('combatAction', 'aimed_success');
     else socket.emit('combatAction', 'aimed_fail');
   }
