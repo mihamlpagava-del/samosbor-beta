@@ -889,6 +889,12 @@ document.getElementById('btn-toggle-sfx').onclick = () => { sfxEnabled = !sfxEna
 document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEnabled; updateOptionsLabels(); document.body.classList.toggle('crt-enabled', crtEnabled); };
 document.getElementById('btn-info').onclick = () => { document.getElementById('info-modal').style.display = 'flex'; };
 
+let myUsername = "", clientMe = null, serverMap = {}, myUnlockedSectors = [], myQuestItems = [], myQuickSlots = [null, null];
+let GAME_PERKS = [], GAME_ITEMS = {}, MUTATIONS = [], currentShopItems = [], shopUpdateTimestamp = 0;
+let pendingEquipIndex = null, isAiming = false, aimInterval = null, aimPos = 0, aimDir = 1;
+let isTyping = false, typingTimer, fullLoreText = "", charIndex = 0;
+let bestiaryRendered = false;
+
 // ===== МУЛЬТИЯЗЫЧНОСТЬ / INTERNATIONALIZATION (RU / EN) =====
 let currentLang = localStorage.getItem('samosbor_lang') || 'ru';
 let cachedBestiary = null;
@@ -1436,10 +1442,18 @@ function applyLanguage() {
 
   updateOptionsLabels();
 
-  if (cachedBestiary) renderBestiaryList();
-  if (clientMe) updateUI(clientMe, window.lastSectorPlayers || []);
-  renderMap();
-  renderShop();
+  if (typeof cachedBestiary !== 'undefined' && cachedBestiary && typeof renderBestiaryList === 'function') {
+    renderBestiaryList();
+  }
+  if (typeof clientMe !== 'undefined' && clientMe && typeof updateUI === 'function') {
+    updateUI(clientMe, window.lastSectorPlayers || []);
+  }
+  if (typeof renderMap === 'function' && typeof serverMap !== 'undefined' && serverMap && Object.keys(serverMap).length > 0) {
+    renderMap();
+  }
+  if (typeof renderShop === 'function' && typeof currentShopItems !== 'undefined' && currentShopItems && currentShopItems.length > 0) {
+    renderShop();
+  }
 }
 
 function toggleLanguage() {
@@ -1447,9 +1461,6 @@ function toggleLanguage() {
   localStorage.setItem('samosbor_lang', currentLang);
   applyLanguage();
 }
-
-window.addEventListener('DOMContentLoaded', applyLanguage);
-applyLanguage();
 
 const socket = io();
 
@@ -1464,11 +1475,6 @@ socket.on('connect_error', (err) => {
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.innerHTML = '<span style="color:var(--term-danger);">' + (currentLang === 'en' ? 'Game server connection error!' : 'Ошибка подключения к серверу игры!') + '</span>';
 });
-let myUsername = "", clientMe = null, serverMap = {}, myUnlockedSectors = [], myQuestItems = [], myQuickSlots = [null, null];
-let GAME_PERKS = [], GAME_ITEMS = {}, MUTATIONS = [], currentShopItems = [], shopUpdateTimestamp = 0;
-let pendingEquipIndex = null, isAiming = false, aimInterval = null, aimPos = 0, aimDir = 1;
-let isTyping = false, typingTimer, fullLoreText = "", charIndex = 0;
-let bestiaryRendered = false;
 
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen')); document.getElementById(id).classList.add('active-screen'); }
 function formatTime(sec) { let h = Math.floor(sec/3600).toString().padStart(2,'0'); let m = Math.floor((sec%3600)/60).toString().padStart(2,'0'); let s = (sec%60).toString().padStart(2,'0'); return `${h}:${m}:${s}`; }
@@ -2745,6 +2751,9 @@ socket.on('feedbackList', (list) => {
   });
   fbListContainer.innerHTML = html;
 });
+
+window.addEventListener('DOMContentLoaded', applyLanguage);
+applyLanguage();
 </script>
 </body>
 </html>
