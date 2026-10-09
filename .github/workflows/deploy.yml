@@ -22,7 +22,7 @@ jobs:
         run: npm ci || npm install
 
       - name: Deploy to VK Mini Apps
-        run: yes | npx @vkontakte/vk-miniapps-deploy -a
+        run: printf "y\n" | npx @vkontakte/vk-miniapps-deploy
         env:
           MINI_APPS_APP_ID: ${{ secrets.VK_APP_ID }}
           MINI_APPS_ACCESS_TOKEN: ${{ secrets.VK_ACCESS_TOKEN }}
