@@ -21,8 +21,25 @@ jobs:
       - name: Install dependencies
         run: npm ci || npm install
 
+      - name: Install VK Deploy Tool
+        run: npm install @vkontakte/vk-miniapps-deploy
+
       - name: Deploy to VK Mini Apps
-        uses: vkontakte/vk-miniapps-deploy-action@v1
-        with:
-          app-id: ${{ secrets.VK_APP_ID }}
-          access-token: ${{ secrets.VK_ACCESS_TOKEN }}
+        env:
+          MINI_APPS_APP_ID: ${{ secrets.VK_APP_ID }}
+          MINI_APPS_ACCESS_TOKEN: ${{ secrets.VK_ACCESS_TOKEN }}
+        run: |
+          node -e "
+            const deploy = require('@vkontakte/vk-miniapps-deploy');
+            const runDeploy = deploy.default || deploy;
+            runDeploy({
+              appId: Number(process.env.MINI_APPS_APP_ID),
+              accessToken: process.env.MINI_APPS_ACCESS_TOKEN,
+              staticPath: 'public'
+            }).then(() => {
+              console.log('Successfully deployed to VK Hosting!');
+            }).catch(err => {
+              console.error(err);
+              process.exit(1);
+            });
+          "
