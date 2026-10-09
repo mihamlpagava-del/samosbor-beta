@@ -4,7 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ТЕРМИНАЛ: САМОСБОР</title>
-<script src="assets/vk-bridge.min.js" defer></script>
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+<script>
+if (typeof vkBridge === 'undefined') {
+  document.write('<script src="assets/vk-bridge.min.js"><\/script>');
+}
+</script>
+<script>
+try {
+  if (window.vkBridge) {
+    vkBridge.send('VKWebAppInit').catch(function(){});
+  }
+} catch(e) {}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=PT+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -870,7 +882,8 @@ let vkUserData = null;
 
 try {
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('vk_user_id') || urlParams.get('vk_app_id')) {
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  if (urlParams.get('vk_user_id') || urlParams.get('vk_app_id') || hashParams.get('vk_user_id') || window.location.hostname.includes('vk-apps.ru') || (window.parent && window.parent !== window)) {
     isVkEnvironment = true;
   }
 } catch(e) {
@@ -878,11 +891,11 @@ try {
 }
 
 function initVkBridgeIfAvailable() {
-  if (!isVkEnvironment || typeof vkBridge === 'undefined') return;
+  if (typeof vkBridge === 'undefined') return;
   try {
     vkBridge.send('VKWebAppInit')
       .then(() => {
-        console.log('[VK Bridge] Успешно инициализирован');
+        console.log('[VK Bridge] Успешно инициализирован (VKWebAppInit OK)');
         document.querySelectorAll('#btn-vk-invite, #btn-vk-wall, #btn-vk-fav').forEach(b => b.style.display = 'block');
         vkBridge.send('VKWebAppGetUserInfo')
           .then(data => {
@@ -932,10 +945,11 @@ if (vkLoginBtn) {
   };
 }
 
-// Запускаем VK Bridge только внутри VK
-if (isVkEnvironment) {
-  if (document.readyState === 'complete') initVkBridgeIfAvailable();
-  else window.addEventListener('load', initVkBridgeIfAvailable);
+// Запускаем VK Bridge всегда при наличии объекта
+if (typeof vkBridge !== 'undefined') {
+  initVkBridgeIfAvailable();
+} else {
+  window.addEventListener('load', initVkBridgeIfAvailable);
 }
 
 function vkShareOnWall() {
