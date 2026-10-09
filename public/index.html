@@ -1346,7 +1346,13 @@ const LOC_NAMES_EN = {
   "Столовая": "Cafeteria",
   "Морозильники": "Freezers",
   "Гидропоника": "Hydroponics",
-  "Очистные": "Treatment Plant"
+  "Очистные": "Treatment Plant",
+  "Спецархив": "Classified Archive",
+  "Подстанция": "High-Voltage Substation",
+  "Реакторный зал": "Reactor Hall",
+  "Арсенал ВОХР": "VOKhR Armory",
+  "Мясной тоннель": "Flesh Tunnel",
+  "Чертог Чернобога": "Chernobog Sanctum"
 };
 
 const MONSTERS_EN = {
@@ -1448,7 +1454,15 @@ function getItemTypeLabel(type) {
 
 function getDisplayLocationName(name) {
   if (currentLang !== 'en' || !name) return name || '';
-  return LOC_NAMES_EN[name] || name;
+  if (LOC_NAMES_EN[name]) return LOC_NAMES_EN[name];
+  const match = name.match(/^(.*?)\s*\[Эт\.(\d+)\]$/);
+  if (match) {
+    const base = match[1].trim();
+    const flNum = match[2];
+    const transBase = LOC_NAMES_EN[base] || base;
+    return `${transBase} [Fl.${flNum}]`;
+  }
+  return name;
 }
 
 function getDisplayMonsterName(name) {

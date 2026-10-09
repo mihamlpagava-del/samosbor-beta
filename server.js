@@ -1033,7 +1033,13 @@ const LOCATION_TYPES = {
     cafeteria: { name: "Столовая", bg: "bg_cafeteria.png", icon: "icon_cafeteria.png" },
     freezer: { name: "Морозильники", bg: "bg_freezer.png", icon: "icon_freezer.png" },
     hydroponics: { name: "Гидропоника", bg: "bg_hydroponics.png", icon: "icon_hydroponics.png" },
-    treatment: { name: "Очистные", bg: "bg_treatment.png", icon: "icon_treatment.png" }
+    treatment: { name: "Очистные", bg: "bg_treatment.png", icon: "icon_treatment.png" },
+    archive: { name: "Спецархив", bg: "bg_archive.png", icon: "icon_archive.png" },
+    substation: { name: "Подстанция", bg: "bg_substation.png", icon: "icon_substation.png" },
+    reactor: { name: "Реакторный зал", bg: "bg_reactor.png", icon: "icon_reactor.png" },
+    armory: { name: "Арсенал ВОХР", bg: "bg_armory.png", icon: "icon_armory.png" },
+    flesh_corridor: { name: "Мясной тоннель", bg: "bg_flesh_corridor.png", icon: "icon_flesh_corridor.png" },
+    abyss_rift: { name: "Чертог Чернобога", bg: "bg_abyss_rift.png", icon: "icon_abyss_rift.png" }
 };
 const RANDOM_LOC_KEYS = Object.keys(LOCATION_TYPES).filter(k => k !== 'elevator' && k !== 'airlock');
 
@@ -1057,7 +1063,19 @@ function generateFloor(floorIndex) {
     let mPool = shuffleArray(MINIGAME_POOL).slice(0, 5);
     mPool.forEach(mg => locks.push({ type: 'minigame', val: mg }));
     
-    let pool = shuffleArray([...RANDOM_LOC_KEYS, ...RANDOM_LOC_KEYS]);
+    let floorKeys = [...RANDOM_LOC_KEYS];
+    if (floorIndex >= 5 && floorIndex < 10) {
+        floorKeys.push('archive', 'archive', 'warehouse');
+    } else if (floorIndex >= 10 && floorIndex < 15) {
+        floorKeys.push('substation', 'reactor', 'generator', 'substation');
+    } else if (floorIndex >= 15 && floorIndex < 20) {
+        floorKeys.push('armory', 'armory', 'quarantine');
+    } else if (floorIndex >= 20 && floorIndex < 25) {
+        floorKeys.push('flesh_corridor', 'flesh_corridor', 'treatment');
+    } else if (floorIndex >= 25) {
+        floorKeys.push('abyss_rift', 'abyss_rift', 'flesh_corridor');
+    }
+    let pool = shuffleArray([...floorKeys, ...floorKeys]);
     let locIdx = 0;
 
     let floorThreat = 'Низкая';
