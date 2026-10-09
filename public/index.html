@@ -927,8 +927,10 @@ function setupVkLoginUI(data) {
 const vkLoginBtn = document.getElementById('vk-login-btn');
 if (vkLoginBtn) {
   vkLoginBtn.onclick = () => {
+    const launchParams = window.location.search || window.location.hash.substring(1);
     if (vkUserData && vkUserData.id) {
       socket.emit('vkLogin', {
+        search: launchParams,
         vkUserId: vkUserData.id,
         firstName: vkUserData.first_name || 'Заключенный',
         photo: vkUserData.photo_200 || null
@@ -936,7 +938,7 @@ if (vkLoginBtn) {
     } else {
       const urlParams = new URLSearchParams(window.location.search);
       const fallbackId = urlParams.get('vk_user_id') || 'guest';
-      socket.emit('vkLogin', { vkUserId: fallbackId, firstName: 'Заключенный' });
+      socket.emit('vkLogin', { search: launchParams, vkUserId: fallbackId, firstName: 'Заключенный' });
     }
   };
 }

@@ -25,6 +25,28 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Эндпоинты проверки работоспособности (защита от 404/502 на туннелях и чекерах)
+app.get('/health', (req, res) => {
+    res.json({
+        status: "ok",
+        game: "SAMOSBOR",
+        playersOnline: Object.keys(onlinePlayers).length,
+        uptime: Math.floor(process.uptime())
+    });
+});
+
+app.get('/', (req, res, next) => {
+    const indexPath = path.join(__dirname, 'public', 'index.html');
+    if (fs.existsSync(indexPath) && req.accepts('html')) {
+        return res.sendFile(indexPath);
+    }
+    res.json({
+        status: "ok",
+        game: "SAMOSBOR",
+        playersOnline: Object.keys(onlinePlayers).length
+    });
+});
+
 const LOG_FILE = path.join(__dirname, 'server_logs.txt');
 function writeLog(message) {
     const time = new Date().toLocaleString('ru-RU');
@@ -38,10 +60,13 @@ let db = { players: {}, map: {} };
 let isDbDirty = false;
 let isSavingDb = false;
 
+// Атомарная запись БД (защита от повреждения файла при сбоях/перезагрузке)
 function flushDBSync() {
     if (!isDbDirty) return;
+    const tempFile = DB_FILE + '.tmp';
     try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+        fs.writeFileSync(tempFile, JSON.stringify(db, null, 2), 'utf8');
+        fs.renameSync(tempFile, DB_FILE);
         isDbDirty = false;
     } catch (err) {
         writeLog(`Ошибка синхронной записи БД: ${err.message}`);
@@ -51,15 +76,23 @@ function flushDBSync() {
 function flushDBAsync() {
     if (!isDbDirty || isSavingDb) return;
     isSavingDb = true;
+    const tempFile = DB_FILE + '.tmp';
     try {
         const data = JSON.stringify(db, null, 2);
-        fs.writeFile(DB_FILE, data, 'utf8', (err) => {
-            isSavingDb = false;
+        fs.writeFile(tempFile, data, 'utf8', (err) => {
             if (err) {
-                writeLog(`Ошибка асинхронной записи БД: ${err.message}`);
-            } else {
-                isDbDirty = false;
+                isSavingDb = false;
+                writeLog(`Ошибка записи темп-файла БД: ${err.message}`);
+                return;
             }
+            fs.rename(tempFile, DB_FILE, (renameErr) => {
+                isSavingDb = false;
+                if (!renameErr) {
+                    isDbDirty = false;
+                } else {
+                    writeLog(`Ошибка переименования темп-файла БД: ${renameErr.message}`);
+                }
+            });
         });
     } catch (err) {
         isSavingDb = false;
@@ -604,6 +637,50 @@ function broadcastGameState() {
     }
 }
 
+const VK_SECRET_KEY = process.env.VK_SECRET_KEY || process.env.VK_APP_SECRET || process.env.VK_CLIENT_SECRET || null;
+
+function verifyVkLaunchParams(searchString, secretKey) {
+    if (!searchString) return { valid: false, reason: 'Отсутствуют параметры запуска' };
+    try {
+        const raw = typeof searchString === 'string' && searchString.startsWith('?') ? searchString.slice(1) : String(searchString);
+        const query = new URLSearchParams(raw);
+        const sign = query.get('sign');
+        const userId = query.get('vk_user_id');
+
+        if (!secretKey) {
+            // Если ключ VK_SECRET_KEY не установлен на сервере (режим локальной разработки)
+            if (userId) {
+                return { valid: true, userId, isDev: true };
+            }
+            return { valid: false, reason: 'Параметр vk_user_id не найден' };
+        }
+
+        if (!sign) return { valid: false, reason: 'Подпись sign отсутствует' };
+
+        const vkParams = [];
+        for (const [key, val] of query.entries()) {
+            if (key.startsWith('vk_')) {
+                vkParams.push([key, val]);
+            }
+        }
+
+        if (vkParams.length === 0) return { valid: false, reason: 'Нет параметров vk_*' };
+
+        vkParams.sort((a, b) => a[0].localeCompare(b[0]));
+        const queryString = vkParams.map(([k, v]) => `${k}=${v}`).join('&');
+
+        const calculatedHash = crypto
+            .createHmac('sha256', secretKey)
+            .update(queryString)
+            .digest('base64url');
+
+        const isValid = calculatedHash === sign;
+        return { valid: isValid, userId: isValid ? userId : null, reason: isValid ? null : 'Недействительная подпись sign' };
+    } catch (e) {
+        return { valid: false, reason: e.message };
+    }
+}
+
 io.on('connection', (socket) => {
     socket.emit('chatHistory', chatHistory);
 
@@ -652,9 +729,31 @@ io.on('connection', (socket) => {
     });
 
     socket.on('vkLogin', (data) => {
-        if (!data || !data.vkUserId) return;
-        const vkUserId = String(data.vkUserId).replace(/[^0-9]/g, '');
-        if (!vkUserId) return;
+        if (!data) return;
+
+        let vkUserId = null;
+        if (data.search || data.sign) {
+            const check = verifyVkLaunchParams(data.search || '', VK_SECRET_KEY);
+            if (!check.valid) {
+                writeLog(`[VK БЕЗОПАСНОСТЬ] Отклонена авторизация сокета ${socket.id}: ${check.reason}`);
+                socket.emit('terminalError', 'ОШИБКА АВТОРИЗАЦИИ: недействительная подпись VK!');
+                return;
+            }
+            vkUserId = check.userId;
+        } else if (!VK_SECRET_KEY && data.vkUserId) {
+            // Режим разработки: ключ приложения не настроен в process.env
+            writeLog(`[VK DEV] Вход без подписи (VK_SECRET_KEY не задан): ID ${data.vkUserId}`);
+            vkUserId = String(data.vkUserId).replace(/[^0-9]/g, '');
+        } else {
+            writeLog(`[VK БЕЗОПАСНОСТЬ] Отклонена попытка входа без подписи сокета ${socket.id}`);
+            socket.emit('terminalError', 'ОШИБКА АВТОРИЗАЦИИ: требуются параметры запуска VK!');
+            return;
+        }
+
+        if (!vkUserId) {
+            socket.emit('terminalError', 'ОШИБКА АВТОРИЗАЦИИ: невозможно определить VK ID');
+            return;
+        }
 
         if (!db.vkMap) db.vkMap = {};
 
@@ -1444,12 +1543,29 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         let u = onlinePlayers[socket.id];
-        if (activeCombats[u]) {
-            if(activeCombats[u].isGlobal && globalBosses[`boss_${activeCombats[u].floor}`]) globalBosses[`boss_${activeCombats[u].floor}`].participants.delete(u);
-            delete activeCombats[u];
+        if (u) {
+            if (activeCombats[u]) {
+                let c = activeCombats[u];
+                if (c.isPvP && c.opponent) {
+                    let opp = c.opponent;
+                    let oppSocketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === opp);
+                    if (oppSocketId && activeCombats[opp]) {
+                        io.to(oppSocketId).emit('combatEnd', {
+                            log: `> Противник ${u} отключился от сети. Победа за вами!`,
+                            enemy: { name: u, hp: 0, maxHp: 100, isPlayer: true },
+                            win: true
+                        });
+                        delete activeCombats[opp];
+                    }
+                }
+                if (c.isGlobal && globalBosses[`boss_${c.floor}`]) {
+                    globalBosses[`boss_${c.floor}`].participants.delete(u);
+                }
+                delete activeCombats[u];
+            }
+            delete onlinePlayers[socket.id];
+            broadcastGameState();
         }
-        delete onlinePlayers[socket.id];
-        broadcastGameState();
     });
 });
 
@@ -1584,7 +1700,24 @@ setInterval(() => {
     for (let username in activeCombats) {
         let combat = activeCombats[username]; if (combat.isGlobal) continue;
         let p = db.players[username]; let socketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === username);
-        if (!p || !socketId || combat.paused) continue;
+        if (!p || !socketId) {
+            if (combat && combat.isPvP && combat.opponent) {
+                let opponent = combat.opponent;
+                let oppCombat = activeCombats[opponent];
+                let oppSocketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === opponent);
+                if (oppCombat && oppSocketId) {
+                    io.to(oppSocketId).emit('combatEnd', {
+                        log: `> Противник ${username} покинул бой. Победа за вами!`,
+                        enemy: { name: username, hp: 0, maxHp: 100, isPlayer: true },
+                        win: true
+                    });
+                    delete activeCombats[opponent];
+                }
+            }
+            delete activeCombats[username];
+            continue;
+        }
+        if (combat.paused) continue;
 
         if (combat.isPvP) {
             let opponent = combat.opponent;
