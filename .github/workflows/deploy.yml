@@ -22,15 +22,7 @@ jobs:
         run: npm ci || npm install
 
       - name: Deploy to VK Mini Apps
-        env:
-          MINI_APPS_APP_ID: ${{ secrets.VK_APP_ID }}
-          MINI_APPS_ACCESS_TOKEN: ${{ secrets.VK_ACCESS_TOKEN }}
-        run: |
-          node -e "
-            const { deploy } = require('@vkontakte/vk-miniapps-deploy/lib/deploy');
-            deploy({
-              appId: Number(process.env.MINI_APPS_APP_ID),
-              accessToken: process.env.MINI_APPS_ACCESS_TOKEN,
-              staticPath: 'public'
-            }).then(() => console.log('Successfully deployed to VK!'));
-          "
+        uses: vkontakte/vk-miniapps-deploy-action@v1
+        with:
+          app-id: ${{ secrets.VK_APP_ID }}
+          access-token: ${{ secrets.VK_ACCESS_TOKEN }}
