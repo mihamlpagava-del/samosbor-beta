@@ -7,6 +7,8 @@ const crypto = require('crypto');
 
 const app = express();
 app.enable('trust proxy');
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -680,6 +682,189 @@ function verifyVkLaunchParams(searchString, secretKey) {
         return { valid: false, reason: e.message };
     }
 }
+
+// Товары и вознаграждения за поддержку проекта голосами ВКонтакте
+const VK_DONATE_ITEMS = {
+    'donate_1_vote': { title: '50 талонов снабжения', price: 1, bonusTalons: 50 },
+    'donate_3_votes': { title: '200 талонов снабжения', price: 3, bonusTalons: 200 },
+    'donate_5_votes': { title: '450 талонов снабжения', price: 5, bonusTalons: 450 },
+    'donate_10_votes': { title: '1000 талонов снабжения', price: 10, bonusTalons: 1000 }
+};
+
+// Проверка подписи платежных уведомлений ВКонтакте (MD5 от отсортированных параметров + секретный ключ)
+function verifyVkPaymentSignature(body, secretKey) {
+    if (!secretKey) return true; // Режим разработки без установленного ключа
+    if (!body || !body.sig) return false;
+    const receivedSig = String(body.sig).toLowerCase().trim();
+    const keys = Object.keys(body).filter(k => k !== 'sig').sort();
+    let paramStr = '';
+    for (const key of keys) {
+        paramStr += `${key}=${body[key]}`;
+    }
+    const computedSig = crypto.createHash('md5').update(paramStr + secretKey).digest('hex').toLowerCase();
+    return computedSig === receivedSig;
+}
+
+// GET-заглушка для проверки доступности эндпоинта браузером / чекерами
+app.get('/vk-payment', (req, res) => {
+    res.status(200).send('VK Payment Webhook Endpoint is Active');
+});
+
+// Официальный эндпоинт обработки платежей от ВКонтакте
+app.post('/vk-payment', (req, res) => {
+    try {
+        const body = req.body || {};
+        const notificationType = body.notification_type;
+        writeLog(`[VK ПЛАТЕЖ ВХОДЯЩИЙ] notification_type=${notificationType}, item=${body.item}, user_id=${body.user_id || body.receiver_id}, order_id=${body.order_id}`);
+
+        // Валидация подписи запроса
+        if (!verifyVkPaymentSignature(body, VK_SECRET_KEY)) {
+            writeLog(`[VK ПЛАТЕЖ ОШИБКА] Несовпадение подписи платежа sig: ${body.sig}`);
+            return res.json({
+                error: {
+                    error_code: 10,
+                    error_msg: 'Несовпадение вычисленной и переданной подписи',
+                    critical: true
+                }
+            });
+        }
+
+        // Запрос информации о товаре
+        if (notificationType === 'get_item' || notificationType === 'get_item_test') {
+            const itemKey = body.item;
+            const itemData = VK_DONATE_ITEMS[itemKey];
+            if (!itemData) {
+                return res.json({
+                    error: {
+                        error_code: 20,
+                        error_msg: 'Товар не найден',
+                        critical: true
+                    }
+                });
+            }
+            return res.json({
+                response: {
+                    title: itemData.title,
+                    price: itemData.price,
+                    item_id: itemKey
+                }
+            });
+        }
+
+        // Изменение статуса заказа (успешная оплата / возврат)
+        if (notificationType === 'order_status_change' || notificationType === 'order_status_change_test') {
+            const status = body.status;
+            const orderId = String(body.order_id || '');
+            const userId = String(body.user_id || body.receiver_id || '').trim();
+            const itemKey = body.item;
+
+            if (status === 'chargeable') {
+                if (!db.processedOrders) db.processedOrders = {};
+
+                // Защита от повторной обработки одного и того же заказа
+                if (db.processedOrders[orderId]) {
+                    writeLog(`[VK ПЛАТЕЖ ПОВТОР] Заказ #${orderId} уже был обработан ранее`);
+                    return res.json({
+                        response: {
+                            order_id: Number(orderId),
+                            app_order_id: Number(orderId)
+                        }
+                    });
+                }
+
+                const itemData = VK_DONATE_ITEMS[itemKey] || { bonusTalons: 50 };
+                const bonus = itemData.bonusTalons || 50;
+
+                // Поиск игрока по vkUserId
+                let username = (db.vkMap && db.vkMap[userId]) || null;
+                if (!username) {
+                    username = Object.keys(db.players).find(k => String(db.players[k].vkUserId) === userId);
+                }
+
+                if (username && db.players[username]) {
+                    let p = db.players[username];
+                    p.talons = (p.talons || 0) + bonus;
+                    if (!p.notebook.some(e => e.includes('МЕЦЕНАТ'))) {
+                        p.notebook.push(`[МЕЦЕНАТ]: Вы поддержали проект голосами VK. Партия выражает благодарность! (+${bonus} талонов)`);
+                    }
+
+                    db.processedOrders[orderId] = {
+                        time: Date.now(),
+                        item: itemKey,
+                        userId: userId,
+                        username: username,
+                        bonus: bonus
+                    };
+
+                    saveDB(true);
+                    broadcastGameState();
+
+                    // Если игрок в этот момент онлайн в игре — звуковой эффект и уведомление
+                    const userSocketId = Object.keys(onlinePlayers).find(sid => onlinePlayers[sid] === username);
+                    if (userSocketId) {
+                        io.to(userSocketId).emit('playSound', 'buy');
+                        io.to(userSocketId).emit('terminalError', `БЛАГОДАРИМ ЗА ПОДДЕРЖКУ! ПОЛУЧЕНО: +${bonus} ТАЛОНОВ.`);
+                    }
+
+                    // Системное сообщение в общий чат
+                    let donateMsg = {
+                        user: "СИСТЕМА",
+                        text: `⭐ Заключенный [${username}] поддержал проект голосами VK (+${bonus} талонов)! Спасибо!`,
+                        time: new Date().toLocaleTimeString().slice(0, 5)
+                    };
+                    chatHistory.push(donateMsg);
+                    if (chatHistory.length > MAX_CHAT_MESSAGES) chatHistory.shift();
+                    io.emit('chatMessage', donateMsg);
+
+                    writeLog(`[VK ПЛАТЕЖ УСПЕШНО] Заказ #${orderId}, игрок ${username} (VK ${userId}), начислено +${bonus} талонов`);
+                } else {
+                    writeLog(`[VK ПЛАТЕЖ ВНИМАНИЕ] Заказ #${orderId}, игрок с VK ID ${userId} не найден в БД`);
+                }
+
+                return res.json({
+                    response: {
+                        order_id: Number(orderId),
+                        app_order_id: Number(orderId)
+                    }
+                });
+            }
+
+            if (status === 'refunded') {
+                writeLog(`[VK ПЛАТЕЖ ВОЗВРАТ] Заказ #${orderId} возвращен пользователю`);
+                return res.json({
+                    response: {
+                        order_id: Number(orderId),
+                        app_order_id: Number(orderId)
+                    }
+                });
+            }
+
+            return res.json({
+                response: {
+                    order_id: Number(orderId),
+                    app_order_id: Number(orderId)
+                }
+            });
+        }
+
+        return res.status(400).json({
+            error: {
+                error_code: 1,
+                error_msg: 'Неизвестный тип уведомления',
+                critical: false
+            }
+        });
+    } catch (err) {
+        writeLog(`[VK ПЛАТЕЖ ОШИБКА ИСКЛЮЧЕНИЯ] ${err.message}`);
+        return res.status(500).json({
+            error: {
+                error_code: 1,
+                error_msg: 'Внутренняя ошибка сервера',
+                critical: true
+            }
+        });
+    }
+});
 
 io.on('connection', (socket) => {
     socket.emit('chatHistory', chatHistory);
@@ -1402,6 +1587,16 @@ io.on('connection', (socket) => {
         let p = db.players[username];
         if (!p || !data) return;
 
+        // Если задан защищенный ключ VK, начисление производится СТРОГО через серверный эндпоинт /vk-payment
+        if (VK_SECRET_KEY) {
+            writeLog(`[VK СОКЕТ] Игрок ${username} сообщил об оплате заказа #${data.orderId || 'н/д'}. Ожидание подтверждения от /vk-payment.`);
+            if (data.orderId && db.processedOrders && db.processedOrders[String(data.orderId)]) {
+                socket.emit('terminalError', 'ПЛАТЕЖ ПОДТВЕРЖДЕН СЕРВЕРОМ VK!');
+            }
+            return;
+        }
+
+        // Режим локальной разработки без секретного ключа
         const bonusMap = {
             'donate_1_vote': 50,
             'donate_3_votes': 200,
@@ -1416,7 +1611,7 @@ io.on('connection', (socket) => {
         }
 
         socket.emit('playSound', 'buy');
-        socket.emit('terminalError', `БЛАГОДАРИМ ЗА ПОДДЕРЖКУ! ПОЛУЧЕНО: +${bonus} ТАЛОНОВ.`);
+        socket.emit('terminalError', `БЛАГОДАРИМ ЗА ПОДДЕРЖКУ (DEV)! ПОЛУЧЕНО: +${bonus} ТАЛОНОВ.`);
 
         let donateMsg = {
             user: "СИСТЕМА",
