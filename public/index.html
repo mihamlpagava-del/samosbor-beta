@@ -703,11 +703,32 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div id="event-modal" class="modal-overlay" style="z-index: 60;">
-  <div class="panel" style="width: 650px; max-width: 90%;">
-    <h2 id="event-title" style="color: var(--term-warn); font-size: 20px; margin-top: 0; border-bottom: 1px solid var(--term-warn); padding-bottom: 10px; letter-spacing: 2px;" data-i18n="event_title">СОБЫТИЕ</h2>
-    <div id="event-ascii-box" class="ascii-art flicker" style="font-size: 14px; color:#8f8;"></div>
-    <div id="event-text" style="margin-bottom: 15px; font-size: 15px; line-height: 1.6; text-align: left; color: #ddd;"></div>
-    <div id="event-choices" style="display: flex; flex-direction: column; gap: 10px;"></div>
+  <div class="panel event-dialogue-panel" style="width: 780px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 18px; border: 2px solid var(--term-color); background: rgba(8, 12, 10, 0.96); box-shadow: 0 0 30px rgba(0, 255, 65, 0.25);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--term-color); padding-bottom: 8px; margin-bottom: 14px;">
+      <h2 id="event-title" style="color: var(--term-warn); font-size: 18px; margin: 0; letter-spacing: 2px; text-transform: uppercase;" data-i18n="event_title">СОБЫТИЕ</h2>
+      <div id="event-floor-badge" style="font-size: 11px; color: var(--term-dim); border: 1px solid var(--term-dim); padding: 2px 8px; border-radius: 3px; font-family: monospace;">СЕКТОР ТУМАНА</div>
+    </div>
+    
+    <div id="event-body-container" style="display: flex; gap: 16px; flex: 1; min-height: 0; align-items: stretch; overflow: hidden;">
+      <!-- Foreground NPC Portrait Column -->
+      <div id="event-npc-col" style="display: none; width: 250px; min-width: 230px; flex-direction: column; align-items: center; position: relative;">
+        <div class="npc-portrait-frame" style="width: 100%; height: 260px; position: relative; border: 2px solid var(--term-color); border-radius: 4px; overflow: hidden; background: #000; box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.3);">
+          <img id="event-npc-img" src="" alt="NPC" style="width: 100%; height: 100%; object-fit: cover; object-position: center top; filter: contrast(1.1) brightness(0.95);">
+          <div class="crt-scanline-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.06)); background-size: 100% 3px, 6px 100%;"></div>
+        </div>
+        <div id="event-npc-name" style="margin-top: 8px; font-weight: bold; font-size: 13px; color: var(--term-warn); text-align: center; width: 100%; letter-spacing: 1px; text-transform: uppercase;">НЕИЗВЕСТНЫЙ</div>
+        <div id="event-npc-role" style="font-size: 11px; color: var(--term-dim); text-align: center; width: 100%;">[ОБИТАТЕЛЬ БЛОКА]</div>
+      </div>
+
+      <!-- Dialogue / Event Content Column -->
+      <div id="event-content-col" style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+        <div id="event-ascii-box" class="ascii-art flicker" style="font-size: 13px; color:#8f8; margin-bottom: 8px; display: none;"></div>
+        <div id="event-speech-box" style="background: rgba(0, 20, 10, 0.7); border: 1px solid rgba(0, 255, 65, 0.3); border-radius: 4px; padding: 12px; margin-bottom: 12px; max-height: 200px; overflow-y: auto;">
+          <div id="event-text" style="font-size: 14px; line-height: 1.6; text-align: left; color: #eee; font-family: 'Share Tech Mono', monospace; white-space: pre-wrap;"></div>
+        </div>
+        <div id="event-choices" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 200px;"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1253,7 +1274,57 @@ const ITEM_EN_MAP = {
   quest_fuse: { name: "Fuse" },
   quest_lift_repair: { name: "Elevator Repair Kit" },
   quest_lift_buttons: { name: "Button Panel" },
-  quest_lift_wire: { name: "Generator Cable" }
+  quest_lift_wire: { name: "Generator Cable" },
+
+  // Tier 1 (Floors 1-4)
+  quest_wrench_heavy: { name: "Heavy Pipe Wrench" },
+  quest_pressure_valve: { name: "Pressure Release Valve" },
+  quest_coagulant: { name: "Coagulant Canister" },
+  quest_pipe_patch: { name: "Lead Pipe Patch" },
+  quest_manometer: { name: "High-Pressure Manometer" },
+  quest_boiler_crank: { name: "Boiler Valve Handle" },
+  quest_slime_sample: { name: "Corrosive Slime Sample" },
+  quest_elevator_gear_1: { name: "Winch Cogwheel" },
+
+  // Tier 2 (Floors 5-9)
+  quest_punchcard_secret: { name: "Classified Punch Card" },
+  quest_cipher_disc: { name: "Enigma-X Cipher Disc" },
+  quest_commissar_stamp: { name: "Commissar's Official Stamp" },
+  quest_magnetic_tape: { name: "Special Broadcast Tape Reel" },
+  quest_archive_keycard: { name: "Archivist's Keycard" },
+  quest_elevator_cable_2: { name: "Reinforced Steel Cable" },
+
+  // Tier 3 (Floors 10-14)
+  quest_coolant_rod: { name: "Coolant Control Rod" },
+  quest_highvolt_relay: { name: "High-Voltage Relay" },
+  quest_copper_inductor: { name: "Copper Inductor Coil" },
+  quest_dielectric_gloves: { name: "Dielectric Insulator" },
+  quest_lead_baffle: { name: "Lead Radiation Shield" },
+  quest_elevator_motor_3: { name: "Elevator Drive Motor" },
+
+  // Tier 4 (Floors 15-19)
+  quest_vokhr_token: { name: "VOKhR Sergeant Dog Tag" },
+  quest_officer_cipher: { name: "Officer Cipher Logbook" },
+  quest_decon_filter: { name: "Military Decon Filter" },
+  quest_brass_keys: { name: "Brass Cell Keys" },
+  quest_commandant_seal: { name: "Commandant Magnetic Seal" },
+  quest_elevator_hydraulic_4: { name: "Hydraulic Hoist Piston" },
+
+  // Tier 5 (Floors 20-24)
+  quest_meat_relic: { name: "Petrified Flesh Relic" },
+  quest_bone_chisel: { name: "Cultist Bone Chisel" },
+  quest_ritual_chalice: { name: "Fog Blood Chalice" },
+  quest_cult_psalter: { name: "Psalter of the Inevitable Fog" },
+  quest_flesh_key: { name: "Living Symbiote Key" },
+  quest_elevator_seal_5: { name: "Purification Shaft Seal" },
+
+  // Tier 6 (Floors 25-29)
+  quest_singularity_core: { name: "Temporal Singularity Core" },
+  quest_black_prism: { name: "Obsidian Mirror Prism" },
+  quest_master_blueprint: { name: "Architect Blueprint of Gigakhrushchyovka" },
+  quest_reality_anchor: { name: "Reality Gyro Anchor" },
+  quest_chernobog_key: { name: "Cycle-Breaker Key" },
+  quest_elevator_final_key: { name: "Abyss Final Key" }
 };
 
 const LOC_NAMES_EN = {
@@ -1947,6 +2018,8 @@ socket.on('coopRaidInvitePrompt', (data) => {
   document.getElementById('event-text').innerText = isEn
     ? `Inmate [${data.fromUser}] invites you to a CO-OP RAID into the Fog!\nYou will fight shoulder to shoulder against a powerful creature.`
     : `Заключенный [${data.fromUser}] зовет вас в СОВМЕСТНЫЙ РЕЙД в Туман!\nВы пойдете в вылазку плечом к плечу и сможете атаковать сильную тварь вдвоем.`;
+  const npcCol = document.getElementById('event-npc-col');
+  if (npcCol) npcCol.style.display = 'none';
   const c = document.getElementById('event-choices');
   c.innerHTML = '';
   let btnAccept = document.createElement('button');
@@ -1978,14 +2051,44 @@ socket.on('combatEventResult', (log) => {
 });
 
 socket.on('triggerEvent', (ev) => {
+  const isEn = (currentLang === 'en');
   document.getElementById('event-title').innerText = ev.title;
+  
+  const npcCol = document.getElementById('event-npc-col');
+  const npcImg = document.getElementById('event-npc-img');
+  const npcName = document.getElementById('event-npc-name');
+  const npcRole = document.getElementById('event-npc-role');
+  
+  if (ev.npc && ev.npc.portrait) {
+    if (npcImg) npcImg.src = `assets/npc/${ev.npc.portrait}`;
+    if (npcName) npcName.innerText = ev.npc.name || (isEn ? "UNKNOWN" : "НЕИЗВЕСТНЫЙ");
+    if (npcRole) npcRole.innerText = ev.npc.role ? `[${ev.npc.role}]` : '';
+    if (npcCol) npcCol.style.display = 'flex';
+  } else {
+    if (npcCol) npcCol.style.display = 'none';
+  }
+
   document.getElementById('event-text').innerText = ev.text;
   const c = document.getElementById('event-choices');
   c.innerHTML = '';
   ev.choices.forEach(x => {
-    let b = document.createElement('button'); b.innerText = x.text; b.style.width = '100%';
-    if (x.text.includes('[РИСК]')) { b.style.borderColor = 'var(--term-warn)'; b.style.color = 'var(--term-warn)'; }
-    b.onclick = () => { socket.emit('resolveEvent', x.id); document.getElementById('event-modal').style.display = 'none'; };
+    let b = document.createElement('button');
+    b.innerText = x.text;
+    b.style.width = '100%';
+    b.style.textAlign = 'left';
+    b.style.padding = '8px 12px';
+    b.style.fontFamily = "'Share Tech Mono', monospace";
+    b.style.lineHeight = '1.4';
+    if (x.text.includes('[РИСК]')) {
+      b.style.borderColor = 'var(--term-warn)';
+      b.style.color = 'var(--term-warn)';
+    }
+    b.onclick = () => {
+      socket.emit('resolveEvent', x.id);
+      if (!x.nextNode) {
+        document.getElementById('event-modal').style.display = 'none';
+      }
+    };
     c.appendChild(b);
   });
   document.getElementById('event-modal').style.display = 'flex';

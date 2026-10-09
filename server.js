@@ -241,7 +241,57 @@ let GAME_ITEMS = {
     quest_fuse: { name: "Предохранитель", type: "quest", color: '#ffaa00', paperColor: '#a65300' },
     quest_lift_repair: { name: "Ремкомплект лифта", type: "quest", color: '#ffaa00', paperColor: '#a65300' },
     quest_lift_buttons: { name: "Блок кнопок", type: "quest", color: '#ffaa00', paperColor: '#a65300' },
-    quest_lift_wire: { name: "Провод генератора", type: "quest", color: '#ffaa00', paperColor: '#a65300' }
+    quest_lift_wire: { name: "Провод генератора", type: "quest", color: '#ffaa00', paperColor: '#a65300' },
+
+    // Сюжетные предметы Этажи 1-4 (Катакомбы ЖКХ)
+    quest_wrench_heavy: { name: "Тяжелый разводной ключ", type: "quest", color: '#ffd27d', paperColor: '#a65300' },
+    quest_pressure_valve: { name: "Клапан сброса давления", type: "quest", color: '#ffb03a', paperColor: '#a65300' },
+    quest_coagulant: { name: "Канистра коагулянта", type: "quest", color: '#39ff14', paperColor: '#006600' },
+    quest_pipe_patch: { name: "Свинцовая заплата", type: "quest", color: '#a8b5c2', paperColor: '#555' },
+    quest_manometer: { name: "Манометр высокого давления", type: "quest", color: '#ffd84d', paperColor: '#a65300' },
+    quest_boiler_crank: { name: "Вентильная рукоять", type: "quest", color: '#ff7733', paperColor: '#882200' },
+    quest_slime_sample: { name: "Проба едкой слизи", type: "quest", color: '#c724e0', paperColor: '#660066' },
+    quest_elevator_gear_1: { name: "Зубчатая шестерня лебедки", type: "quest", color: '#ffcc00', paperColor: '#a65300' },
+
+    // Сюжетные предметы Этажи 5-9 (Спецархив и Бюрократия)
+    quest_punchcard_secret: { name: "Секретная перфокарта", type: "quest", color: '#5ce1e6', paperColor: '#005577' },
+    quest_cipher_disc: { name: "Диск шифратора «Энигма-Х»", type: "quest", color: '#ffc83b', paperColor: '#a65300' },
+    quest_commissar_stamp: { name: "Печать комиссара", type: "quest", color: '#ff3333', paperColor: '#880000' },
+    quest_magnetic_tape: { name: "Бобина спецвещания", type: "quest", color: '#40c4ff', paperColor: '#004488' },
+    quest_archive_keycard: { name: "Ключ-карта Архивариуса", type: "quest", color: '#ff5252', paperColor: '#880000' },
+    quest_elevator_cable_2: { name: "Бронированный трос", type: "quest", color: '#d0d8e0', paperColor: '#555' },
+
+    // Сюжетные предметы Этажи 10-14 (Энергоблок и Реактор)
+    quest_coolant_rod: { name: "Стержень охладителя", type: "quest", color: '#00e5ff', paperColor: '#006688' },
+    quest_highvolt_relay: { name: "Высоковольтное реле", type: "quest", color: '#ffea00', paperColor: '#887700' },
+    quest_copper_inductor: { name: "Медная катушка индуктивности", type: "quest", color: '#ff8533', paperColor: '#883300' },
+    quest_dielectric_gloves: { name: "Диэлектрический изолятор", type: "quest", color: '#ff9100', paperColor: '#884400' },
+    quest_lead_baffle: { name: "Свинцовая заслонка", type: "quest", color: '#ffd600', paperColor: '#666600' },
+    quest_elevator_motor_3: { name: "Электропривод лифта", type: "quest", color: '#00e676', paperColor: '#006622' },
+
+    // Сюжетные предметы Этажи 15-19 (Цитадель ВОХР)
+    quest_vokhr_token: { name: "Жетон старшины ВОХР", type: "quest", color: '#ff3d00', paperColor: '#881100' },
+    quest_officer_cipher: { name: "Блокнот с шифрами взвода", type: "quest", color: '#ff1744', paperColor: '#880011' },
+    quest_decon_filter: { name: "Дегазационный фильтр", type: "quest", color: '#76ff03', paperColor: '#336600' },
+    quest_brass_keys: { name: "Связка латунных ключей", type: "quest", color: '#ffc107', paperColor: '#775500' },
+    quest_commandant_seal: { name: "Магнитная пломба коменданта", type: "quest", color: '#d50000', paperColor: '#660000' },
+    quest_elevator_hydraulic_4: { name: "Гидроцилиндр клети", type: "quest", color: '#00b0ff', paperColor: '#004477' },
+
+    // Сюжетные предметы Этажи 20-24 (Мясные Катакомбы и Культ)
+    quest_meat_relic: { name: "Окаменевший мясной нарост", type: "quest", color: '#ff1744', paperColor: '#880011' },
+    quest_bone_chisel: { name: "Костяное зубило сектантов", type: "quest", color: '#eceff1', paperColor: '#555' },
+    quest_ritual_chalice: { name: "Чаша крови тумана", type: "quest", color: '#d500f9', paperColor: '#660077' },
+    quest_cult_psalter: { name: "Псалтырь Неизбежного Тумана", type: "quest", color: '#aa00ff', paperColor: '#550077' },
+    quest_flesh_key: { name: "Живой ключ-симбиот", type: "quest", color: '#ff4081', paperColor: '#770033' },
+    quest_elevator_seal_5: { name: "Очистительный знак лифта", type: "quest", color: '#ff007f', paperColor: '#770033' },
+
+    // Сюжетные предметы Этажи 25-29 (Чрево Чернобога)
+    quest_singularity_core: { name: "Сгусток времени", type: "quest", color: '#7c4dff', paperColor: '#330088' },
+    quest_black_prism: { name: "Призма черного стекла", type: "quest", color: '#b388ff', paperColor: '#441188' },
+    quest_master_blueprint: { name: "Истинный чертеж Гигахрущевки", type: "quest", color: '#00e5ff', paperColor: '#005577' },
+    quest_reality_anchor: { name: "Якорь реальности", type: "quest", color: '#ffab00', paperColor: '#885500' },
+    quest_chernobog_key: { name: "Ключ разрыва цикла", type: "quest", color: '#ff1744', paperColor: '#880000' },
+    quest_elevator_final_key: { name: "Ключ Бездны", type: "quest", color: '#ffffff', paperColor: '#222' }
 };
 
 for (let key in BASE_EQUIP) {
@@ -298,9 +348,26 @@ const GAME_PERKS = [
 ];
 
 const MINIGAME_POOL = [
+    // --- ПАРОЛИ И ЛОГИЧЕСКИЕ ЗАГАДКИ ---
     { id: 'mg_1', type: 'password', title: 'СТЕРТАЯ КЛАВИАТУРА', text: 'Стерты цифры 2, 5, 8, 9. Сумма первых двух = 7, вторая больше первой, последняя наибольшая.', answer: '2589' },
     { id: 'mg_2', type: 'password', title: 'СЕЙФ КОМЕНДАНТА', text: 'Записка: «Самосбор был 14 июля. Код дата спустя неделю (ДДММ)».', answer: '2107' },
-    { id: 'mg_9', type: 'voltage', title: 'ПОДСТАНЦИЯ', text: 'Откалибровать напряжение на 80W.', target: 80 }
+    { id: 'mg_code_3', type: 'password', title: 'ШИФРОГРАММА ПАРТИИ', text: 'На терминале надпись: «Год великой закладки фундамента Жилого Блока №7». Код в архиве: 1984.', answer: '1984' },
+    { id: 'mg_code_4', type: 'password', title: 'АВАРИЙНЫЙ ШЛЮЗ ГАЗА', text: 'Шифр замка: номера букв в слове Г-А-З (Г=4, А=1, З=9). Введите 4-значный код с ведущим нулем.', answer: '0419' },
+    { id: 'mg_code_5', type: 'password', title: 'АРХИВНЫЙ КОД НКВД', text: 'Инструкция: «Первая цифра 7, каждая последующая на 2 меньше предыдущей (7, 5, 3, 1)».', answer: '7531' },
+    { id: 'mg_code_6', type: 'password', title: 'ЯДЕРНЫЙ БЛОКИРАТОР', text: 'Умножьте 12 на 12 и прибавьте номер аварийного сектора (40). Введите 4-значный код (0184).', answer: '0184' },
+    { id: 'mg_code_7', type: 'password', title: 'ПАСПОРТНЫЙ СТОЛ', text: 'Штамп на стене: «Прогрессия кратна трем: 3, 6, 9, затем 2 (остаток цикла)».', answer: '3692' },
+    { id: 'mg_code_8', type: 'password', title: 'ШИФР КУЛЬТИСТОВ ПЛОТИ', text: 'Надпись кровью: «Число очей у трех пауков тумана и двух крыс (3*8 + 2*2 = 28)». Введите 4 цифры (0028).', answer: '0028' },
+    { id: 'mg_code_9', type: 'password', title: 'ТЕЛЕТАЙП СВЯЗИ', text: 'В формуле резонанса: половина от 1000 минус 80. Полученное четырехзначное число (0420).', answer: '0420' },
+    { id: 'mg_code_10', type: 'password', title: 'РЕАКТОРНЫЙ КОД', text: 'Шифр изотопа: 235 уран плюс номер этажа (15). Итоговое 4-значное число (0250).', answer: '0250' },
+    { id: 'mg_code_11', type: 'password', title: 'ТЕРМИНАЛ ВОХР', text: 'Пароль караула: сумма квадратов 3 и 4 (9+16=25), повторенная дважды (2525).', answer: '2525' },
+    { id: 'mg_code_12', type: 'password', title: 'ПЕЧАТЬ ЧЕРНОБОГА', text: 'Надпись на черном монолите: «Конец равен началу: 1, 0, 0, 1».', answer: '1001' },
+
+    // --- ПОДСТАНЦИИ И КАЛИБРОВКА НАПРЯЖЕНИЯ ---
+    { id: 'mg_9', type: 'voltage', title: 'ПОДСТАНЦИЯ: НИЗКИЙ ТОК', text: 'Откалибровать напряжение на 80W.', target: 80 },
+    { id: 'mg_v_40', type: 'voltage', title: 'СЛАБОТОЧНЫЙ ЩИТОК', text: 'Откалибровать напряжение на 40W для запуска аварийного реле.', target: 40 },
+    { id: 'mg_v_60', type: 'voltage', title: 'ОСВЕЩЕНИЕ СЕКТОРА', text: 'Откалибровать напряжение на 60W для включения прожекторов.', target: 60 },
+    { id: 'mg_v_100', type: 'voltage', title: 'ТРАНСФОРМАТОР ТЕХБЛОКА', text: 'Откалибровать напряжение ровно на 100W.', target: 100 },
+    { id: 'mg_v_120', type: 'voltage', title: 'СИЛОВАЯ МАГИСТРАЛЬ', text: 'Откалибровать напряжение на 120W для открытия электрогермодвери.', target: 120 }
 ];
 
 const BASE_MONSTERS = [
@@ -357,7 +424,191 @@ function getBossForFloor(f) {
     return { name: `АНОМАЛИЯ [РЕЙД ЭТ.${f}]`, hp: 1500 + (f * 600), dmg: 25 + (f * 6), reward: 250 + (f * 20), xp: 600 + (f * 120), img: "m_hive.png", lore: `[ДНЕВНИК]: Путь на этаж ${f+1} очищен.` };
 }
 
+const FLOOR_CONFIGS = {
+    0: {
+        title: "Жилой Блок и Катакомбы",
+        keys: ['quest_boltcutter', 'quest_battery', 'quest_red_card', 'quest_fuse'],
+        elevatorKeys: ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'],
+        elevatorHint: "ЛИФТ РАЗБИТ. Нужны: Ремкомплект лифта, Блок кнопок, Провод генератора."
+    },
+    1: {
+        title: "Технический шурф гидросистемы",
+        keys: ['quest_wrench_heavy', 'quest_pressure_valve', 'quest_boltcutter', 'quest_fuse'],
+        elevatorKeys: ['quest_wrench_heavy', 'quest_pressure_valve'],
+        elevatorHint: "ПЕРЕКРЫТИЕ ГИДРАВЛИКИ. Нужны: Тяжелый разводной ключ и Клапан сброса давления."
+    },
+    2: {
+        title: "Станция очистки стоков",
+        keys: ['quest_coagulant', 'quest_pipe_patch', 'quest_wrench_heavy', 'quest_battery'],
+        elevatorKeys: ['quest_coagulant', 'quest_pipe_patch'],
+        elevatorHint: "ПРОРЫВ КИСЛОТНОГО СТОКА. Нужны: Канистра коагулянта и Свинцовая заплата."
+    },
+    3: {
+        title: "Аварийный коллектор пара",
+        keys: ['quest_manometer', 'quest_boiler_crank', 'quest_coagulant', 'quest_red_card'],
+        elevatorKeys: ['quest_manometer', 'quest_boiler_crank'],
+        elevatorHint: "КЛАПАН СВЕРХДАВЛЕНИЯ ЗАКРЫТ. Нужны: Манометр высокого давления и Вентильная рукоять."
+    },
+    4: {
+        title: "Нижний отстойник биомассы",
+        keys: ['quest_slime_sample', 'quest_elevator_gear_1', 'quest_manometer', 'quest_fuse'],
+        elevatorKeys: ['quest_elevator_gear_1'],
+        elevatorHint: "ПРИВОД ЛЕБЕДКИ СЛОМАН. Нужна: Зубчатая шестерня лебедки (к логову Смотрителя Слизи)."
+    },
+    5: {
+        title: "Приемная Спецархива Партии",
+        keys: ['quest_punchcard_secret', 'quest_cipher_disc', 'quest_battery', 'quest_red_card'],
+        elevatorKeys: ['quest_punchcard_secret'],
+        elevatorHint: "ДОСТУП ОГРАНИЧЕН ПАРТИЕЙ. Нужна: Секретная перфокарта."
+    },
+    6: {
+        title: "Шифрокабинет Политотдела",
+        keys: ['quest_cipher_disc', 'quest_commissar_stamp', 'quest_punchcard_secret', 'quest_fuse'],
+        elevatorKeys: ['quest_cipher_disc'],
+        elevatorHint: "ШИФРОВАННЫЙ ШЛЮЗ. Нужен: Диск шифратора «Энигма-Х»."
+    },
+    7: {
+        title: "Архив протоколов Самосбора",
+        keys: ['quest_commissar_stamp', 'quest_magnetic_tape', 'quest_cipher_disc', 'quest_wrench_heavy'],
+        elevatorKeys: ['quest_commissar_stamp'],
+        elevatorHint: "РЕЖИМ ЧП. Нужна: Печать комиссара."
+    },
+    8: {
+        title: "Фонотека спецвещания",
+        keys: ['quest_magnetic_tape', 'quest_archive_keycard', 'quest_commissar_stamp', 'quest_battery'],
+        elevatorKeys: ['quest_magnetic_tape'],
+        elevatorHint: "АКУСТИЧЕСКИЙ БЛОКИРАТОР. Нужна: Бобина спецвещания."
+    },
+    9: {
+        title: "Преддверие Спецхрана",
+        keys: ['quest_archive_keycard', 'quest_elevator_cable_2', 'quest_magnetic_tape', 'quest_red_card'],
+        elevatorKeys: ['quest_elevator_cable_2'],
+        elevatorHint: "ОБРЫВ ТРОСОВ ЛИФТА. Нужен: Бронированный трос (к чертогу Архивариуса)."
+    },
+    10: {
+        title: "Высоковольтная распределительная",
+        keys: ['quest_coolant_rod', 'quest_highvolt_relay', 'quest_archive_keycard', 'quest_fuse'],
+        elevatorKeys: ['quest_coolant_rod'],
+        elevatorHint: "КОНТУР ПЕРЕГРЕТ. Нужен: Стержень охладителя."
+    },
+    11: {
+        title: "Трансформаторный лабиринт",
+        keys: ['quest_highvolt_relay', 'quest_copper_inductor', 'quest_coolant_rod', 'quest_battery'],
+        elevatorKeys: ['quest_highvolt_relay'],
+        elevatorHint: "ОБРЫВ СИЛОВОЙ ЦЕПИ. Нужен: Высоковольтное реле."
+    },
+    12: {
+        title: "Генераторный зал глубокого залегания",
+        keys: ['quest_copper_inductor', 'quest_dielectric_gloves', 'quest_highvolt_relay', 'quest_wrench_heavy'],
+        elevatorKeys: ['quest_copper_inductor'],
+        elevatorHint: "МАГНИТНАЯ БЛОКИРОВКА. Нужна: Медная катушка индуктивности."
+    },
+    13: {
+        title: "Охлаждающий контур жидкого свинца",
+        keys: ['quest_dielectric_gloves', 'quest_lead_baffle', 'quest_copper_inductor', 'quest_red_card'],
+        elevatorKeys: ['quest_dielectric_gloves'],
+        elevatorHint: "УТЕЧКА ВЫСОКОГО ТОКА. Нужен: Диэлектрический изолятор."
+    },
+    14: {
+        title: "Шахта Живого Реактора",
+        keys: ['quest_lead_baffle', 'quest_elevator_motor_3', 'quest_dielectric_gloves', 'quest_coolant_rod'],
+        elevatorKeys: ['quest_elevator_motor_3'],
+        elevatorHint: "ДВИГАТЕЛЬ ЛИФТА СГОРЕЛ. Нужен: Электропривод лифта (к Живому Реактору)."
+    },
+    15: {
+        title: "Передовой гарнизон ВОХР",
+        keys: ['quest_vokhr_token', 'quest_officer_cipher', 'quest_lead_baffle', 'quest_fuse'],
+        elevatorKeys: ['quest_vokhr_token'],
+        elevatorHint: "КАРАУЛЬНЫЙ ПОСТ ВОХР. Нужен: Жетон старшины ВОХР."
+    },
+    16: {
+        title: "Казарменный блокпост «Красный угол»",
+        keys: ['quest_officer_cipher', 'quest_decon_filter', 'quest_vokhr_token', 'quest_battery'],
+        elevatorKeys: ['quest_officer_cipher'],
+        elevatorHint: "ШТАБНОЙ КОДОВЫЙ ЗАМОК. Нужен: Блокнот с шифрами взвода."
+    },
+    17: {
+        title: "Станция армейской дегазации",
+        keys: ['quest_decon_filter', 'quest_brass_keys', 'quest_officer_cipher', 'quest_red_card'],
+        elevatorKeys: ['quest_decon_filter'],
+        elevatorHint: "ЗОНА ЗАРАЖЕНИЯ ЗАБЛОКИРОВАНА. Нужен: Дегазационный фильтр."
+    },
+    18: {
+        title: "Штрафной изолятор и карцеры",
+        keys: ['quest_brass_keys', 'quest_commandant_seal', 'quest_decon_filter', 'quest_vokhr_token'],
+        elevatorKeys: ['quest_brass_keys'],
+        elevatorHint: "ТЮРЕМНЫЕ РЕШЕТКИ. Нужна: Связка латунных ключей."
+    },
+    19: {
+        title: "Штаб Коменданта Блока",
+        keys: ['quest_commandant_seal', 'quest_elevator_hydraulic_4', 'quest_brass_keys', 'quest_officer_cipher'],
+        elevatorKeys: ['quest_elevator_hydraulic_4'],
+        elevatorHint: "ГИДРАВЛИКА КЛЕТИ СОРВАНА. Нужен: Гидроцилиндр клети (к цитадели Коменданта)."
+    },
+    20: {
+        title: "Мясные катакомбы первого круга",
+        keys: ['quest_meat_relic', 'quest_bone_chisel', 'quest_commandant_seal', 'quest_fuse'],
+        elevatorKeys: ['quest_meat_relic'],
+        elevatorHint: "ПЛОТЬ СРОСЛАСЬ С ДВЕРЬЮ. Нужен: Окаменевший мясной нарост."
+    },
+    21: {
+        title: "Костяная часовня",
+        keys: ['quest_bone_chisel', 'quest_ritual_chalice', 'quest_meat_relic', 'quest_battery'],
+        elevatorKeys: ['quest_bone_chisel'],
+        elevatorHint: "РИТУАЛЬНАЯ ПЛОМБА. Нужен: Костяное зубило сектантов."
+    },
+    22: {
+        title: "Колодец поглощения",
+        keys: ['quest_ritual_chalice', 'quest_cult_psalter', 'quest_bone_chisel', 'quest_red_card'],
+        elevatorKeys: ['quest_ritual_chalice'],
+        elevatorHint: "ЖЕРТВЕННЫЙ АЛТАРЬ. Нужна: Чаша крови тумана."
+    },
+    23: {
+        title: "Зал шепчущих стен",
+        keys: ['quest_cult_psalter', 'quest_flesh_key', 'quest_ritual_chalice', 'quest_meat_relic'],
+        elevatorKeys: ['quest_cult_psalter'],
+        elevatorHint: "ГОЛОСА ТРЕБУЮТ СЛОВО. Нужен: Псалтырь Неизбежного Тумана."
+    },
+    24: {
+        title: "Врата Преображения",
+        keys: ['quest_flesh_key', 'quest_elevator_seal_5', 'quest_cult_psalter', 'quest_bone_chisel'],
+        elevatorKeys: ['quest_elevator_seal_5'],
+        elevatorHint: "ВРАТА ОПЛЕТЕНЫ МЯСОМ. Нужен: Очистительный знак лифта (к глубинам Бездны)."
+    },
+    25: {
+        title: "Пространственный разлом",
+        keys: ['quest_singularity_core', 'quest_black_prism', 'quest_flesh_key', 'quest_battery'],
+        elevatorKeys: ['quest_singularity_core'],
+        elevatorHint: "ВРЕМЕННОЙ ПАРАДОКС. Нужен: Сгусток времени."
+    },
+    26: {
+        title: "Зеркальный лабиринт бетона",
+        keys: ['quest_black_prism', 'quest_master_blueprint', 'quest_singularity_core', 'quest_red_card'],
+        elevatorKeys: ['quest_black_prism'],
+        elevatorHint: "ИСКАЖЕННОЕ ОТРАЖЕНИЕ. Нужна: Призма черного стекла."
+    },
+    27: {
+        title: "Зал забытых строителей",
+        keys: ['quest_master_blueprint', 'quest_reality_anchor', 'quest_black_prism', 'quest_fuse'],
+        elevatorKeys: ['quest_master_blueprint'],
+        elevatorHint: "ТАЙНА ЗОДЧИХ. Нужен: Истинный чертеж Гигахрущевки."
+    },
+    28: {
+        title: "Сердцевина первородного Тумана",
+        keys: ['quest_reality_anchor', 'quest_chernobog_key', 'quest_master_blueprint', 'quest_singularity_core'],
+        elevatorKeys: ['quest_reality_anchor'],
+        elevatorHint: "РАЗРУШЕНИЕ МАТЕРИИ. Нужен: Якорь реальности."
+    },
+    29: {
+        title: "Врата в Чертог Чернобога",
+        keys: ['quest_chernobog_key', 'quest_elevator_final_key', 'quest_reality_anchor', 'quest_black_prism'],
+        elevatorKeys: ['quest_elevator_final_key'],
+        elevatorHint: "ТОЧКА НЕВОЗВРАТА. Нужен: Ключ Бездны (для спуска к Чернобогу на 30 этаж)."
+    }
+};
+
 const RANDOM_EVENTS = [
+    // --- ОПАСНОСТИ ОКРУЖЕНИЯ ---
     {
         id: 'meat_smell',
         title: 'ЗАПАХ СЫРОГО МЯСА',
@@ -366,6 +617,265 @@ const RANDOM_EVENTS = [
             { id: 'run', text: '[РИСК] Бежать обратно к шлюзу', chance: 0.7, winHp: 0, winLog: '> Вы успели захлопнуть за собой гермодверь.', failHp: -25, failLog: '> Тварь из тумана зацепила вас когтями! (-25 HP)' },
             { id: 'hide', text: 'Затаиться в вентиляционной нише', chance: 0.85, winHp: 0, winLog: '> Существо проползло мимо, не заметив вас.', failHp: -15, failLog: '> Ядовитые испарения обожгли дыхательные пути. (-15 HP)' }
         ]
+    },
+    {
+        id: 'toxic_steam',
+        title: 'СВИСТЯЩИЙ ПАРОВОЙ КЛАПАН',
+        text: 'Труба лопнула прямо над головой. Белый раскаленный пар с запахом аммиака заливает проход!',
+        choices: [
+            { id: 'rush_through', text: '[РИСК] Проскочить сквозь струю пара', chance: 0.6, winHp: 0, winLog: '> Вы пригнулись и проскочили без ожогов!', failHp: -30, failLog: '> Пар обжег плечи и повредил маску! (-30 HP)' },
+            { id: 'crawl', text: 'Ползти по мокрому бетону у пола', chance: 0.9, winHp: 0, winLog: '> Вы благополучно проползли под облаком пара.', failHp: -10, failLog: '> Горячая вода залила сапоги. (-10 HP)' }
+        ]
+    },
+    {
+        id: 'whispering_concrete',
+        title: 'ШЕПОТ ИЗ ТРЕЩИН БЕТОНА',
+        text: 'Шероховатые плиты стен тихо вибрируют. Голоса десятков погибших жильцов шепчут в голове забытые имена и формулы...',
+        choices: [
+            { id: 'listen_carefully', text: '[РИСК] Вслушаться в голоса стен', chance: 0.55, winXp: 45, winNotebook: '[ШЕПОТ СТЕН]: «Самосбор не имеет конца. Бетон помнит каждого, кто оставил след на полу».', winLog: '> Вы уловили древние знания блока! (+45 XP, запись в блокнот)', failHp: -20, failLog: '> Разум помутился от безумного шепота! (-20 HP)' },
+            { id: 'recite_hymn', text: 'Громко читать устав Партии', winHp: 0, winLog: '> Голоса в голове отступили перед твердым словом закона.' }
+        ]
+    },
+
+    // --- ИНТЕРАКТИВНЫЕ ДИАЛОГИ С NPC (ПЕРЕДНИЙ ПЛАН) ---
+    {
+        id: 'npc_stalker',
+        title: 'ВСТРЕЧА: СТАЛКЕР ГЛЕБ',
+        npc: { name: 'Сталкер Глеб', role: 'Ветеран глубоких вылазок', portrait: 'npc_stalker.png' },
+        text: 'У самодельной печурки греется сталкер в потертом кожаном плаще и противогазе ГП-5.\n«Здорово, заключенный. Подсаживайся к теплу, пока Самосбор не накрыл блок. О чем поговорить хочешь?»',
+        choices: [
+            { id: 'gleb_lore', text: '1. «Расскажи, что творится на этих этажах»', nextNode: 'node_gleb_lore' },
+            { id: 'gleb_boss', text: '2. «Как пробиться через запертый лифт?»', nextNode: 'node_gleb_boss' },
+            { id: 'gleb_trade', text: '3. «Нужен инструмент для дверей» (Обмен)', nextNode: 'node_gleb_trade' },
+            { id: 'leave', text: '4. «Бывай, Глеб. Мне пора дальше.»', winLog: '> Вы попрощались со сталкером.' }
+        ],
+        nodes: {
+            node_gleb_lore: {
+                title: 'ГЛЕБ: БАЙКИ О ТУМАНЕ',
+                text: 'Глеб негромко хрипит через фильтр: «Гигахрущевка не имеет дна. Чем глубже спускаешься, тем меньше бетона и больше сырой плоти. На 10-м этаже архивы Партии, где директивы оживают. А на 15-м реактор пульсирует как сердце. Не суйся туда без тяжелой брони!»',
+                choices: [
+                    { id: 'gleb_lore_rec', text: '«Запишу это в блокнот. Что еще посоветуешь?»', winXp: 30, winNotebook: '[СТАЛКЕР ГЛЕБ]: «Самосбор — дыхание Гигахрущевки. Документы на 10 этаже живые, а реактор на 15 этаже бьется как сердце».', nextNode: 'node_gleb_main' },
+                    { id: 'leave', text: '«Спасибо за предупреждение. Мне пора.»', winLog: '> Вы покинули стоянку сталкера.' }
+                ]
+            },
+            node_gleb_boss: {
+                title: 'ГЛЕБ: СОВЕТ ПО ЛИФТУ',
+                text: '«Лифт на каждом этаже заклинило или опечатано. Ищи ключи и детали в технических нишах. А когда запустишь клеть — готовься к бою. Твари тумана чуют пуск лебедки со всего горизонта!»',
+                choices: [
+                    { id: 'gleb_back', text: '«Понятно. Вернемся к разговору.»', nextNode: 'node_gleb_main' },
+                    { id: 'leave', text: '«Я готов к схватке. Бывай.»', winLog: '> Вы продолжили путь.' }
+                ]
+            },
+            node_gleb_trade: {
+                title: 'ГЛЕБ: ОБМЕН ХАБАРОМ',
+                text: '«Могу отдать Предохранитель или Разводной ключ. Но даром в тумане ничего не бывает — гони 1 Брикет слизи или 50 талонов на фильтры».',
+                choices: [
+                    { id: 'gleb_buy_fuse', text: 'Отдать Брикет слизи -> получить Предохранитель', reqItem: 'food_ration', winQuestItem: 'quest_fuse', nextNode: 'node_gleb_traded' },
+                    { id: 'gleb_buy_wrench', text: 'Отдать 50 талонов -> получить Тяжелый ключ', reqCost: 50, winQuestItem: 'quest_wrench_heavy', nextNode: 'node_gleb_traded' },
+                    { id: 'gleb_back', text: '«Пока ничего не нужно.»', nextNode: 'node_gleb_main' }
+                ]
+            },
+            node_gleb_traded: {
+                title: 'ГЛЕБ: СДЕЛКА СОВЕРШЕНА',
+                text: '«Держи железо. Пусть послужит. Не забывай менять угольные патроны вовремя!»',
+                choices: [
+                    { id: 'gleb_back', text: '«Еще пара вопросов...»', nextNode: 'node_gleb_main' },
+                    { id: 'leave', text: '«Спасибо за помощь. До встречи.»', winLog: '> Сделка со сталкером завершена.' }
+                ]
+            },
+            node_gleb_main: {
+                title: 'ВСТРЕЧА: СТАЛКЕР ГЛЕБ',
+                text: 'Глеб ворошит угли прутом: «Что еще тебя интересует, заключенный?»',
+                choices: [
+                    { id: 'gleb_lore', text: '1. «Расскажи о нижних этажах»', nextNode: 'node_gleb_lore' },
+                    { id: 'gleb_trade', text: '2. «Давай поторгуем»', nextNode: 'node_gleb_trade' },
+                    { id: 'leave', text: '3. «Пора в путь.»', winLog: '> Вы двинулись дальше.' }
+                ]
+            }
+        }
+    },
+    {
+        id: 'npc_liquidator',
+        title: 'ВСТРЕЧА: РАНЕНЫЙ ЛИКВИДАТОР',
+        npc: { name: 'Ликвидатор Семен', role: 'Штурмовая группа зачистки', portrait: 'npc_liquidator.png' },
+        text: 'Тяжелый боец в освинцованной броне сидит у переборки. Стекло гермошлема покрыто гарью и трещинами, дыхание с тяжелым хрипом:\n«Брат... Нашу группу накрыло кислотным выбросом. Промывочный состав кончился. Помоги нейтрализовать ожог — я в долгу не останусь!»',
+        choices: [
+            { id: 'cure_liquidator', text: '1. Отдать Химикаты для дегазации (нужны Химикаты)', reqItem: 'mat_chem', winQuestItem: 'quest_red_card', nextNode: 'node_liq_cured' },
+            { id: 'liq_tactics', text: '2. «Как пробивать броню мутантов в нижних блоках?»', nextNode: 'node_liq_tactics' },
+            { id: 'loot_liquidator', text: '3. [РИСК] Обыскать карманы бойца', chance: 0.65, winLoot: 'clothes_guard_rare', winTalons: 40, winLog: '> Вы забрали форму ВОХР и 40 талонов.', failHp: -30, failLog: '> Ликвидатор отбился прикладом и сбил маску! (-30 HP)' },
+            { id: 'leave', text: '4. Оставить бойца', winLog: '> Вы тихо удалились.' }
+        ],
+        nodes: {
+            node_liq_cured: {
+                title: 'ЛИКВИДАТОР: БЛАГОДАРНОСТЬ',
+                text: 'Семен жадно вводит щелочной нейтрализатор через клапан шлема. Хрип утихает:\n«Уф-ф... Легче стало. Забирай мою Красную ключ-карту от армейских шлюзов, мне уже не до штурма. Держись подальше от открытого огня!»',
+                choices: [
+                    { id: 'liq_more', text: '«Расскажи о тактике зачистки»', winXp: 40, nextNode: 'node_liq_tactics' },
+                    { id: 'leave', text: '«Поправляйся, боец.»', winLog: '> Вы помогли ликвидатору и получили ключ-карту.' }
+                ]
+            },
+            node_liq_tactics: {
+                title: 'ЛИКВИДАТОР: ТАКТИКА БОЯ',
+                text: '«Целься точно в сочленения плит и дыхала. Когда тварь замахивается — сразу уходи в сторону, контратака после уклонения бьет вдвое больнее! И держи фильтр полным, в тумане реакция падает вдвое».',
+                choices: [
+                    { id: 'leave', text: '«Понял. Буду начеку!»', winXp: 25, winLog: '> Вы усвоили армейскую тактику боя.' }
+                ]
+            }
+        }
+    },
+    {
+        id: 'npc_scientist',
+        title: 'ВСТРЕЧА: ПРОФЕССОР ШУХОВ',
+        npc: { name: 'Проф. Шухов', role: 'Сектор прикладной физики Тумана', portrait: 'npc_scientist.png' },
+        text: 'Сутулый ученый в запятнанном халате и круглых очках над респиратором исступленно чертит мелом формулы прямо на стене:\n«Они думают, Самосбор случаен! Глупцы! Это гиперболическая геометрия пространства! Хочешь взглянуть на расчеты или испытать экспериментальную сыворотку?»',
+        choices: [
+            { id: 'sci_formula', text: '1. «Что значат эти формулы на стене?»', nextNode: 'node_sci_formula' },
+            { id: 'take_stim', text: '2. [РИСК] Принять экспериментальную сыворотку', chance: 0.55, winHp: 50, winXp: 60, winLog: '> Прилив сил! Разум обострился, здоровье восстановлено! (+50 HP, +60 XP)', failHp: -25, failLog: '> Препарат вызвал токсический шок! (-25 HP)' },
+            { id: 'sci_trade_elec', text: '3. Предложить Электронику (нужна 1 Электроника)', reqItem: 'mat_electro', winQuestItem: 'quest_highvolt_relay', nextNode: 'node_sci_traded' },
+            { id: 'leave', text: '4. Пройти мимо сумасшедшего', winLog: '> Вы оставили ученого наедине с формулами.' }
+        ],
+        nodes: {
+            node_sci_formula: {
+                title: 'ПРОФЕССОР: ТАЙНА ГИГАХРУЩЕВКИ',
+                text: '«Стены не параллельны! Здание растет внутрь самого себя! Внизу, на тридцатом горизонте, находится точка абсолютной энтропии — Чернобог. Если откалибровать частоту подстанции на 80 или 120 ватт, гермозатворы подчиняются алгоритму!»',
+                choices: [
+                    { id: 'sci_notes', text: '«Записать частоты подстанции в блокнот.»', winNotebook: '[ПРОФЕССОР ШУХОВ]: «Гигахрущевка бесконечна внутрь себя. Точка энтропии на 30 этаже. Частоты реле: 80W и 120W».', winXp: 35, nextNode: 'node_sci_main' },
+                    { id: 'leave', text: '«Звучит безумно. Я пошел.»', winLog: '> Вы продолжили путь.' }
+                ]
+            },
+            node_sci_traded: {
+                title: 'ПРОФЕССОР: ЭКСПЕРИМЕНТ',
+                text: '«О-о, кремниевые чипы! Прекрасно! Вот, забирай Высоковольтное реле — с ним ты запитаешь распределительный щит лифта!»',
+                choices: [
+                    { id: 'leave', text: '«Благодарю, профессор.»', winLog: '> Вы получили Высоковольтное реле.' }
+                ]
+            },
+            node_sci_main: {
+                title: 'ВСТРЕЧА: ПРОФЕССОР ШУХОВ',
+                text: 'Шухов поправляет запотевшие очки: «Ну что, готов проникнуть глубже в суть феномена?»',
+                choices: [
+                    { id: 'sci_trade_elec', text: 'Предложить Электронику', reqItem: 'mat_electro', winQuestItem: 'quest_highvolt_relay', nextNode: 'node_sci_traded' },
+                    { id: 'leave', text: '«Мне пора идти.»', winLog: '> Вы покинули профессора.' }
+                ]
+            }
+        }
+    },
+    {
+        id: 'npc_vokhr',
+        title: 'ВСТРЕЧА: МАЙОР БОРИСОВ',
+        npc: { name: 'Майор Борисов', role: 'Комендатура ВОХР 7-го блока', portrait: 'npc_vokhr.png' },
+        text: 'Офицер ВОХР с тяжелым шрамом на скуле держит руку на кобуре. Его фуражка со звездой запылена бетонной крошкой:\n«Стоять! Руки на виду! В блоке объявлен режим ЧП. Предъяви документы или докажи, что ты не заражен туманом!»',
+        choices: [
+            { id: 'vokhr_report', text: '1. «Я выполняю работы по ремонту лифта блока.»', nextNode: 'node_vokhr_order' },
+            { id: 'vokhr_buy_pass', text: '2. Выкупить Жетон старшины ВОХР (120 т.)', reqCost: 120, winQuestItem: 'quest_vokhr_token', nextNode: 'node_vokhr_deal' },
+            { id: 'vokhr_threat', text: '3. [РИСК] Попытаться разоружить майора', chance: 0.45, winLoot: 'weapon_shotgun_rare', winTalons: 80, winLog: '> Вы перехватили оружие майора и забрали патроны!', failHp: -35, failLog: '> Майор ударил рукоятью пистолета в челюсть! (-35 HP)' },
+            { id: 'leave', text: '4. Медленно отступить в тень', winLog: '> Вы благополучно разошлись с патрулем.' }
+        ],
+        nodes: {
+            node_vokhr_order: {
+                title: 'МАЙОР БОРИСОВ: ПРИКАЗ',
+                text: '«Ремонт лифта? Комендатура одобряет. Нижние сектора захвачены мутантами, связь со штабом потеряна. Вот тебе Блокнот с шифрами взвода. Используй его на кодовых терминалах, но упаси Партия разгласить секрет!»',
+                choices: [
+                    { id: 'vokhr_take_cipher', text: 'Принять Блокнот с шифрами взвода', winQuestItem: 'quest_officer_cipher', winXp: 50, winLog: '> Получен Блокнот с шифрами взвода (+50 XP).' },
+                    { id: 'leave', text: '«Служу народу Гигахрущевки!»', winLog: '> Вы получили доступ к армейским терминалам.' }
+                ]
+            },
+            node_vokhr_deal: {
+                title: 'МАЙОР БОРИСОВ: ПРОПУСК',
+                text: 'Майор пересчитывает талоны: «Держи жетон. С ним караульные пулеметы на блокпосту не откроют огонь на поражение. И не попадайся конвоирам на глаза».',
+                choices: [
+                    { id: 'leave', text: '«Благодарю за содействие.»', winLog: '> Вы получили Жетон старшины ВОХР.' }
+                ]
+            }
+        }
+    },
+    {
+        id: 'npc_cultist',
+        title: 'ВСТРЕЧА: БРАТ ИОНА',
+        npc: { name: 'Брат Иона', role: 'Глас Мясного Святилища', portrait: 'npc_cultist.png' },
+        text: 'Человек в грубой мешковине, с маской из кости и горящими безумием глазами, монотонно раскачивается у стены, покрытой венами:\n«Ты слышишь зов?.. Плоть зовет плоть... Самосбор не убивает — он соединяет разорванный мир в единое целое... Принеси жертву Святилищу!»',
+        choices: [
+            { id: 'cult_listen', text: '1. «Что ждет внизу, в Чертоге Чернобога?»', nextNode: 'node_cult_lore' },
+            { id: 'cult_offer_meat', text: '2. Пожертвовать Брикет слизи Святилищу', reqItem: 'food_ration', winQuestItem: 'quest_meat_relic', nextNode: 'node_cult_blessed' },
+            { id: 'cult_ritual_key', text: '3. Выменять Живой ключ-симбиот (150 т.)', reqCost: 150, winQuestItem: 'quest_flesh_key', nextNode: 'node_cult_key' },
+            { id: 'leave', text: '4. Бежать прочь от сектанта', winLog: '> Вы скрылись в глубине коридора.' }
+        ],
+        nodes: {
+            node_cult_lore: {
+                title: 'БРАТ ИОНА: ПРОРОЧЕСТВО',
+                text: 'Иона шепчет, касаясь стены: «Чернобог — это Сердце Гигахрущевки. Он спит на тридцатом круге. Когда цикл замкнется, стены сожмутся, и все жильцы станут одним телом. Возьми Псалтырь Неизбежного Тумана, читай его, когда дрогнет дух!»',
+                choices: [
+                    { id: 'cult_take_book', text: 'Забрать Псалтырь Тумана', winQuestItem: 'quest_cult_psalter', winNotebook: '[ПРОРОЧЕСТВО ИОНЫ]: «Чернобог спит на 30 этаже. Самосбор стремится слить весь мир в единое живое тело».', winXp: 50, nextNode: 'node_cult_main' },
+                    { id: 'leave', text: '«Жуткая ересь. Я ухожу.»', winLog: '> Вы покинули сектанта.' }
+                ]
+            },
+            node_cult_blessed: {
+                title: 'БРАТ ИОНА: БЛАГОСЛОВЕНИЕ',
+                text: 'Сектант прижимает слизь к пульсирующей стене, и бетон жадно впитывает ее:\n«Святилище довольно! Прими Окаменевший мясной нарост — он откроет врата нижнего круга!»',
+                choices: [
+                    { id: 'leave', text: '«Забираю и ухожу.»', winLog: '> Вы получили Окаменевший мясной нарост.' }
+                ]
+            },
+            node_cult_key: {
+                title: 'БРАТ ИОНА: ЖИВОЙ КЛЮЧ',
+                text: '«Он чувствует твою кровь... Не бойся, он не укусит, пока ты служишь Туману...»',
+                choices: [
+                    { id: 'leave', text: '«Главное, чтобы открывал гермозатвор.»', winLog: '> Вы получили Живой ключ-симбиот.' }
+                ]
+            },
+            node_cult_main: {
+                title: 'ВСТРЕЧА: БРАТ ИОНА',
+                text: '«Святилище ждет твоих решений, странник...»',
+                choices: [
+                    { id: 'cult_offer_meat', text: 'Пожертвовать Брикет слизи', reqItem: 'food_ration', winQuestItem: 'quest_meat_relic', nextNode: 'node_cult_blessed' },
+                    { id: 'leave', text: '«Хватит разговоров.»', winLog: '> Вы ушли.' }
+                ]
+            }
+        }
+    },
+    {
+        id: 'npc_archivist',
+        title: 'ВСТРЕЧА: ГЛАВНЫЙ АРХИВИСТ',
+        npc: { name: 'Главный Архивист', role: 'Хранитель грифа «Секретно»', portrait: 'npc_archivist.png' },
+        text: 'Бледный человек с латунным моноклем и механическими пальцами перебирает сотни перфокарт:\n«Дело №7749... Приговорен к исправительным работам в подвалах... Чего вам, гражданин? Архив Партии закрыт на дезинфекцию!»',
+        choices: [
+            { id: 'arch_ask_records', text: '1. «Где найти документы на запуск лифта?»', nextNode: 'node_arch_records' },
+            { id: 'arch_buy_card', text: '2. Выкупить Ключ-карту Архивариуса (100 т.)', reqCost: 100, winQuestItem: 'quest_archive_keycard', nextNode: 'node_arch_deal' },
+            { id: 'arch_give_paper', text: '3. Передать найденные формулы НИИ', winQuestItem: 'quest_punchcard_secret', winXp: 40, nextNode: 'node_arch_accepted' },
+            { id: 'leave', text: '4. Не мешать работе бюрократа', winLog: '> Вы покинули архив.' }
+        ],
+        nodes: {
+            node_arch_records: {
+                title: 'АРХИВИСТ: СЕКРЕТНЫЙ РЕЕСТР',
+                text: '«Лифты контролируются перфокартами серии "Х". На шестом этаже шифрокабинет, на восьмом — фонотека. Держи Диск шифратора, без него кодовые замки не расшифровать!»',
+                choices: [
+                    { id: 'arch_take_disc', text: 'Взять Диск шифратора «Энигма-Х»', winQuestItem: 'quest_cipher_disc', winNotebook: '[АРХИВИСТ]: «Шифры Партии расшифровываются диском "Энигма-Х". Без перфокарт доступ к лифтам заблокирован».', winXp: 40, nextNode: 'node_arch_main' },
+                    { id: 'leave', text: '«Спасибо за справку.»', winLog: '> Вы записали указания архивиста.' }
+                ]
+            },
+            node_arch_deal: {
+                title: 'АРХИВИСТ: ПРОПУСК ВЫДАН',
+                text: '«Штамп поставлен. Ключ-карта активирована. Соблюдайте тишину в читальном зале!»',
+                choices: [
+                    { id: 'leave', text: '«Понял.»', winLog: '> Получена Ключ-карта Архивариуса.' }
+                ]
+            },
+            node_arch_accepted: {
+                title: 'АРХИВИСТ: ДОКУМЕНТ ПРИНЯТ',
+                text: '«Ценные сведения. Взамен выдаю Секретную перфокарту с директивами спуска».',
+                choices: [
+                    { id: 'leave', text: '«Благодарю.»', winLog: '> Получена Секретная перфокарта.' }
+                ]
+            },
+            node_arch_main: {
+                title: 'ВСТРЕЧА: ГЛАВНЫЙ АРХИВИСТ',
+                text: '«Гражданин, регламент не терпит задержек. Что еще?»',
+                choices: [
+                    { id: 'arch_buy_card', text: 'Выкупить Ключ-карту (100 т.)', reqCost: 100, winQuestItem: 'quest_archive_keycard', nextNode: 'node_arch_deal' },
+                    { id: 'leave', text: '«Я уже ухожу.»', winLog: '> Вы покинули архив.' }
+                ]
+            }
+        }
     },
     {
         id: 'npc_trader',
@@ -377,103 +887,131 @@ const RANDOM_EVENTS = [
             { id: 'leave', text: 'Пройти мимо', winLog: '> Вы разошлись в тумане.' }
         ]
     },
-    {
-        id: 'npc_stalker',
-        title: 'ВСТРЕЧА: СТАЛКЕР ГЛЕБ',
-        text: 'У самодельной печурки греется сталкер. «Садись к огню. В этом блоке Туман злой... Могу рассказать байку о том, что творится ниже, а могу обменяться хабаром».',
-        choices: [
-            { id: 'listen_story', text: 'Послушать историю о Самосборе', winXp: 35, winNotebook: '[СТАЛКЕР ГЛЕБ]: «Самосбор — это не болезнь, а дыхание гигахрущевки. Не пытайся с ним спорить, учись вовремя задраивать люки».', winLog: '> Вы выслушали сталкера и узнали о повадках Тумана (+35 XP).' },
-            { id: 'share_food', text: 'Угостить Слизью (нужен 1 брикет)', reqItem: 'food_ration', winQuestItem: 'quest_fuse', winLog: '> Сталкер поблагодарил: «Держи Предохранитель, мне без надобности, а тебе дверь в щитовую откроет! (+Предохранитель)».', failLog: '> У вас нет брикета слизи.' },
-            { id: 'leave', text: 'Пожелать удачи и уйти', winLog: '> Вы продолжили путь.' }
-        ]
-    },
-    {
-        id: 'npc_liquidator',
-        title: 'ВСТРЕЧА: РАНЕНЫЙ ЛИКВИДАТОР',
-        text: 'Боец в тяжелой броне сидит у стены. Стекло шлема треснуло, дыхание с хрипом: «Брат... Наш отряд накрыло в цеху. Фильтр пробит. Помоги сбить токсин, отдам снаряжение!»',
-        choices: [
-            { id: 'cure_liquidator', text: 'Помочь Химикатами (нужны Химикаты)', reqItem: 'mat_chem', winQuestItem: 'quest_red_card', winXp: 50, winLog: '> Ликвидатор принял состав: «Спасибо, выкарабкаюсь... Держи Красную ключ-карту от поста ВОХР! (+Красная ключ-карта, +50 XP)».', failLog: '> У вас нет Химикатов.' },
-            { id: 'loot_liquidator', text: '[РИСК] Обыскать карманы бойца', chance: 0.65, winLoot: 'clothes_guard_rare', winTalons: 40, winLog: '> Вы забрали форму ВОХР и 40 талонов.', failHp: -30, failLog: '> Ликвидатор отбился прикладом и сорвал маску! (-30 HP)' },
-            { id: 'leave', text: 'Оставить его', winLog: '> Вы тихо удалились.' }
-        ]
-    },
-    {
-        id: 'npc_scientist',
-        title: 'ВСТРЕЧА: ОБЕЗУМЕВШИЙ УЧЕНЫЙ',
-        text: 'Человек в рваном халате НИИ чертит формулы мелом: «Они не понимают! Самосбор можно подчинить! Хочешь испытать экспериментальную сыворотку Партии?»',
-        choices: [
-            { id: 'take_stim', text: '[РИСК] Принять сыворотку', chance: 0.5, winHp: 50, winXp: 60, winLog: '> Прилив сил! Здоровье восстановилось, разум обострился! (+50 HP, +60 XP)', failHp: -25, failLog: '> Препарат вызвал токсический шок! (-25 HP)' },
-            { id: 'buy_notes', text: 'Выкупить детали генератора (60 т.)', reqCost: 60, winQuestItem: 'quest_battery', winLog: '> Ученый отдал вам Топливный элемент от лабораторного генератора! (+Топливный элемент)' },
-            { id: 'leave', text: 'Пройти мимо сумасшедшего', winLog: '> Вы прошли мимо.' }
-        ]
-    },
-    {
-        id: 'cache_toolbox',
-        title: 'НАХОДКА: РАЗБИТЫЙ ЯЩИК СЛЕСАРЯ',
-        text: 'В технической нише валяется перевернутый ящик аварийной сантехнической бригады.',
-        choices: [
-            { id: 'take_tools', text: 'Обыскать ящик', winQuestItem: 'quest_boltcutter', winTalons: 20, winLog: '> Вы нашли Ржавый болторез и 20 талонов! (+Болторез)' }
-        ]
-    },
-    {
-        id: 'cache_corpse',
-        title: 'НАХОДКА: ОСТАНКИ КОНВОИРА',
-        text: 'У развороченного электрощитка лежат останки конвоира в разорванной шинели.',
-        choices: [
-            { id: 'search_corpse', text: 'Осмотреть тело', winQuestItem: 'quest_battery', winLoot: 'special_knife', winLog: '> Найден Топливный элемент и Метательный нож!' }
-        ]
-    },
-    {
-        id: 'find_lift_repair',
-        title: 'НАХОДКА: ЗАПЧАСТИ ЛИФТА',
-        text: 'Среди груды механизмов виднеется опечатанный ящик со знаком службы главного лифта.',
-        choices: [
-            { id: 'take_repair', text: 'Забрать Ремкомплект лифта', winQuestItem: 'quest_lift_repair', winLog: '> Найден Ремкомплект лифта!' }
-        ]
-    },
-    {
-        id: 'find_lift_buttons',
-        title: 'НАХОДКА: ПАНЕЛЬ УПРАВЛЕНИЯ',
-        text: 'На стене сорванная панель диспетчера со связкой проводов и кнопок.',
-        choices: [
-            { id: 'take_buttons', text: 'Снять Блок кнопок', winQuestItem: 'quest_lift_buttons', winLog: '> Найден Блок кнопок лифта!' }
-        ]
-    },
-    {
-        id: 'cache_fusebox',
-        title: 'НАХОДКА: РАСПРЕДЕЛИТЕЛЬНЫЙ ЩИТ',
-        text: 'На обугленной стене висит полуоткрытый щиток автоматики. Внутри тускло блестит керамический корпус.',
-        choices: [
-            { id: 'take_fuse', text: 'Извлечь Предохранитель', winQuestItem: 'quest_fuse', winLog: '> Вы аккуратно вытащили рабочий Предохранитель! (+Предохранитель)' }
-        ]
-    },
-    {
-        id: 'find_lift_wire',
-        title: 'НАХОДКА: СИЛОВОЙ КАБЕЛЬ',
-        text: 'Из резервного генератора торчит неповрежденный медный силовой кабель.',
-        choices: [
-            { id: 'take_wire', text: 'Срезать Провод генератора', winQuestItem: 'quest_lift_wire', winLog: '> Найден Провод генератора!' }
-        ]
-    }
+
+    // --- ТАЙНИКИ И НАХОДКИ КВЕСТОВЫХ ПРЕДМЕТОВ (ЭТАЖИ 0-29) ---
+    // Стартовые (Этаж 0)
+    { id: 'cache_toolbox', title: 'НАХОДКА: РАЗБИТЫЙ ЯЩИК СЛЕСАРЯ', text: 'В технической нише валяется перевернутый ящик сантехников.', choices: [{ id: 'take_tools', text: 'Забрать Болторез', winQuestItem: 'quest_boltcutter', winTalons: 20, winLog: '> Найден Ржавый болторез!' }] },
+    { id: 'cache_fusebox', title: 'НАХОДКА: РАСПРЕДЕЛИТЕЛЬНЫЙ ЩИТ', text: 'В обугленном щитке автоматики блестит керамический корпус.', choices: [{ id: 'take_fuse', text: 'Извлечь Предохранитель', winQuestItem: 'quest_fuse', winLog: '> Найден Предохранитель!' }] },
+    { id: 'cache_corpse', title: 'НАХОДКА: ОСТАНКИ КОНВОИРА', text: 'У щитка лежат останки конвоира в разорванной шинели.', choices: [{ id: 'search_corpse', text: 'Осмотреть тело', winQuestItem: 'quest_battery', winLoot: 'special_knife', winLog: '> Найден Топливный элемент!' }] },
+    { id: 'find_lift_repair', title: 'НАХОДКА: ЗАПЧАСТИ ЛИФТА', text: 'Опечатанный ящик со знаком службы главного лифта.', choices: [{ id: 'take_repair', text: 'Забрать Ремкомплект лифта', winQuestItem: 'quest_lift_repair', winLog: '> Найден Ремкомплект лифта!' }] },
+    { id: 'find_lift_buttons', title: 'НАХОДКА: ПАНЕЛЬ УПРАВЛЕНИЯ', text: 'Сорванная панель диспетчера со связкой кнопок.', choices: [{ id: 'take_buttons', text: 'Снять Блок кнопок', winQuestItem: 'quest_lift_buttons', winLog: '> Найден Блок кнопок лифта!' }] },
+    { id: 'find_lift_wire', title: 'НАХОДКА: СИЛОВОЙ КАБЕЛЬ', text: 'Из генератора торчит неповрежденный силовой кабель.', choices: [{ id: 'take_wire', text: 'Срезать Провод генератора', winQuestItem: 'quest_lift_wire', winLog: '> Найден Провод генератора!' }] },
+
+    // Этажи 1-4 (Катакомбы ЖКХ)
+    { id: 'cache_wrench_heavy', title: 'НАХОДКА: СЛЕСАРНЫЙ СТЕЛЛАЖ', text: 'На верстаке аварийной бригады лежит тяжелый разводной ключ.', choices: [{ id: 'take_wrench', text: 'Взять Разводной ключ', winQuestItem: 'quest_wrench_heavy', winLog: '> Найден Тяжелый разводной ключ!' }] },
+    { id: 'cache_pressure_valve', title: 'НАХОДКА: ГИДРАВЛИЧЕСКИЙ УЗЕЛ', text: 'В разобранной трубе закреплен латунный клапан сброса давления.', choices: [{ id: 'take_valve', text: 'Скрутить Клапан сброса давления', winQuestItem: 'quest_pressure_valve', winLog: '> Найден Клапан сброса давления!' }] },
+    { id: 'cache_coagulant', title: 'НАХОДКА: ХИМИЧЕСКИЙ СКЛАД', text: 'В герметичном контейнере сохранилась канистра реагента.', choices: [{ id: 'take_coag', text: 'Забрать Канистру коагулянта', winQuestItem: 'quest_coagulant', winLog: '> Найдена Канистра коагулянта!' }] },
+    { id: 'cache_pipe_patch', title: 'НАХОДКА: АВАРИЙНЫЙ НАБОР', text: 'На полке лежит толстая свинцовая заплата для пробоин.', choices: [{ id: 'take_patch', text: 'Забрать Свинцовую заплату', winQuestItem: 'quest_pipe_patch', winLog: '> Найдена Свинцовая заплата!' }] },
+    { id: 'cache_manometer', title: 'НАХОДКА: КОТЕЛЬНЫЙ ЩИТ', text: 'Среди осколков уцелел манометр сверхвысокого давления.', choices: [{ id: 'take_mano', text: 'Снять Манометр давления', winQuestItem: 'quest_manometer', winLog: '> Найден Манометр высокого давления!' }] },
+    { id: 'cache_boiler_crank', title: 'НАХОДКА: МАГИСТРАЛЬНЫЙ ВЕНТИЛЬ', text: 'На полу валяется чугунный штурвал задвижки.', choices: [{ id: 'take_crank', text: 'Поднять Вентильную рукоять', winQuestItem: 'quest_boiler_crank', winLog: '> Найдена Вентильная рукоять!' }] },
+    { id: 'cache_slime_sample', title: 'НАХОДКА: КОЛБА ИССЛЕДОВАТЕЛЯ', text: 'В сумке погибшего лаборанта лежит проба едкой слизи.', choices: [{ id: 'take_slime', text: 'Взять Пробу слизи', winQuestItem: 'quest_slime_sample', winLog: '> Найдена Проба едкой слизи!' }] },
+    { id: 'find_elevator_gear_1', title: 'НАХОДКА: ЛЕБЕДОЧНЫЙ РЕДУКТОР', text: 'В разобранной лебедке блестит массивная зубчатая шестерня.', choices: [{ id: 'take_gear', text: 'Извлечь Зубчатую шестерню лебедки', winQuestItem: 'quest_elevator_gear_1', winLog: '> Найдена Зубчатая шестерня лебедки!' }] },
+
+    // Этажи 5-9 (Спецархив и Бюрократия)
+    { id: 'cache_punchcard', title: 'НАХОДКА: СЕЙФ ПЕРФОКАРТ', text: 'В стальном шкафу лежит секретная перфокарта с гербом.', choices: [{ id: 'take_pc', text: 'Забрать Секретную перфокарту', winQuestItem: 'quest_punchcard_secret', winLog: '> Найдена Секретная перфокарта!' }] },
+    { id: 'cache_cipher_disc', title: 'НАХОДКА: ДЕШИФРАТОР НКВД', text: 'В тайнике машинистки спрятан латунный диск шифратора.', choices: [{ id: 'take_cd', text: 'Взять Диск шифратора', winQuestItem: 'quest_cipher_disc', winLog: '> Найден Диск шифратора!' }] },
+    { id: 'cache_commissar_stamp', title: 'НАХОДКА: СТОЛ КОМИССАРА', text: 'На массивном столе лежит тяжелая печать политотдела.', choices: [{ id: 'take_stamp', text: 'Забрать Печать комиссара', winQuestItem: 'quest_commissar_stamp', winLog: '> Найдена Печать комиссара!' }] },
+    { id: 'cache_magnetic_tape', title: 'НАХОДКА: БОБИНА СПЕЦВЕЩАНИЯ', text: 'В радиоаппаратной найдена пленка с записями директив.', choices: [{ id: 'take_tape', text: 'Забрать Бобину спецвещания', winQuestItem: 'quest_magnetic_tape', winLog: '> Найдена Бобина спецвещания!' }] },
+    { id: 'cache_archive_keycard', title: 'НАХОДКА: КАРТА СПЕЦХРАНА', text: 'В опечатанном кейсе лежит карта доступа высшего уровня.', choices: [{ id: 'take_card', text: 'Забрать Ключ-карту Архивариуса', winQuestItem: 'quest_archive_keycard', winLog: '> Найдена Ключ-карта Архивариуса!' }] },
+    { id: 'find_elevator_cable_2', title: 'НАХОДКА: БУХТА СТАЛЬНОГО ТРОСА', text: 'В шахте лежит неповрежденный бронированный трос.', choices: [{ id: 'take_cable', text: 'Срезать Бронированный трос', winQuestItem: 'quest_elevator_cable_2', winLog: '> Найден Бронированный трос!' }] },
+
+    // Этажи 10-14 (Энергоблок и Реактор)
+    { id: 'cache_coolant_rod', title: 'НАХОДКА: КАССЕТА ОХЛАДИТЕЛЯ', text: 'В защитном пенале светится стержень охладителя.', choices: [{ id: 'take_rod', text: 'Извлечь Стержень охладителя', winQuestItem: 'quest_coolant_rod', winLog: '> Найден Стержень охладителя!' }] },
+    { id: 'cache_highvolt_relay', title: 'НАХОДКА: ВЫСОКОВОЛЬТНЫЙ ЩИТ', text: 'Среди оплавленных проводов уцелело мощное реле.', choices: [{ id: 'take_relay', text: 'Забрать Высоковольтное реле', winQuestItem: 'quest_highvolt_relay', winLog: '> Найдено Высоковольтное реле!' }] },
+    { id: 'cache_copper_inductor', title: 'НАХОДКА: МЕДНЫЙ СТАТОР', text: 'В трансформаторе установлена массивная медная катушка.', choices: [{ id: 'take_ind', text: 'Снять Медную катушку', winQuestItem: 'quest_copper_inductor', winLog: '> Найдена Медная катушка индуктивности!' }] },
+    { id: 'cache_dielectric_gloves', title: 'НАХОДКА: СТОЙКА ЭЛЕКТРИКА', text: 'На полке лежит надежный керамический диэлектрический изолятор.', choices: [{ id: 'take_iso', text: 'Взять Диэлектрический изолятор', winQuestItem: 'quest_dielectric_gloves', winLog: '> Найден Диэлектрический изолятор!' }] },
+    { id: 'cache_lead_baffle', title: 'НАХОДКА: РАДИАЦИОННАЯ ЗАЩИТА', text: 'Тяжелая свинцовая заслонка с маркировкой радиации.', choices: [{ id: 'take_lead', text: 'Забрать Свинцовую заслонку', winQuestItem: 'quest_lead_baffle', winLog: '> Найдена Свинцовая заслонка!' }] },
+    { id: 'find_elevator_motor_3', title: 'НАХОДКА: ТЯГОВЫЙ ПРИВОД', text: 'В технической нише лежит запасной электропривод клети.', choices: [{ id: 'take_motor', text: 'Погрузить Электропривод лифта', winQuestItem: 'quest_elevator_motor_3', winLog: '> Найден Электропривод лифта!' }] },
+
+    // Этажи 15-19 (Цитадель ВОХР)
+    { id: 'cache_vokhr_token', title: 'НАХОДКА: ЖЕТОН СТАРШИНЫ', text: 'На гильзах лежит стальной армейский личный жетон.', choices: [{ id: 'take_tok', text: 'Забрать Жетон старшины ВОХР', winQuestItem: 'quest_vokhr_token', winLog: '> Найден Жетон старшины ВОХР!' }] },
+    { id: 'cache_officer_cipher', title: 'НАХОДКА: ПЛАНШЕТ ДЕЖУРНОГО', text: 'В командирской сумке лежит блокнот с кодами постов.', choices: [{ id: 'take_ciph', text: 'Взять Блокнот с шифрами взвода', winQuestItem: 'quest_officer_cipher', winLog: '> Найден Блокнот с шифрами взвода!' }] },
+    { id: 'cache_decon_filter', title: 'НАХОДКА: АРМЕЙСКИЙ ФИЛЬТР', text: 'В ящике химзащиты лежит мощный дегазационный фильтр.', choices: [{ id: 'take_decon', text: 'Забрать Дегазационный фильтр', winQuestItem: 'quest_decon_filter', winLog: '> Найден Дегазационный фильтр!' }] },
+    { id: 'cache_brass_keys', title: 'НАХОДКА: КЛЮЧИ НАДЗИРАТЕЛЯ', text: 'На поясе конвоира висит связка тяжелых латунных ключей.', choices: [{ id: 'take_bkeys', text: 'Снять Связку латунных ключей', winQuestItem: 'quest_brass_keys', winLog: '> Найдена Связка латунных ключей!' }] },
+    { id: 'cache_commandant_seal', title: 'НАХОДКА: ПЛОМБА ШТАБА', text: 'Красная магнитная пломба с личной печатью Коменданта.', choices: [{ id: 'take_seal', text: 'Забрать Магнитную пломбу', winQuestItem: 'quest_commandant_seal', winLog: '> Найдена Магнитная пломба коменданта!' }] },
+    { id: 'find_elevator_hydraulic_4', title: 'НАХОДКА: ГИДРАВЛИЧЕСКИЙ ПОРШЕНЬ', text: 'В ремонтной нише лежит гидроцилиндр подъемника.', choices: [{ id: 'take_hydra', text: 'Забрать Гидроцилиндр клети', winQuestItem: 'quest_elevator_hydraulic_4', winLog: '> Найден Гидроцилиндр клети!' }] },
+
+    // Этажи 20-24 (Мясные Катакомбы)
+    { id: 'cache_meat_relic', title: 'НАХОДКА: ОКАМЕНЕВШАЯ ПЛОТЬ', text: 'Кусок биомассы, затвердевший до прочности базальта.', choices: [{ id: 'take_mrelic', text: 'Взять Окаменевший мясной нарост', winQuestItem: 'quest_meat_relic', winLog: '> Найден Окаменевший мясной нарост!' }] },
+    { id: 'cache_bone_chisel', title: 'НАХОДКА: РИТУАЛЬНЫЙ РЕЗЕЦ', text: 'Острое зубило, выточенное из бедренной кости мутанта.', choices: [{ id: 'take_chisel', text: 'Взять Костяное зубило', winQuestItem: 'quest_bone_chisel', winLog: '> Найдено Костяное зубило сектантов!' }] },
+    { id: 'cache_ritual_chalice', title: 'НАХОДКА: ЧАША КРОВИ ТУМАНА', text: 'Медный кубок, наполненный темной шипящей влагой.', choices: [{ id: 'take_chalice', text: 'Взять Чашу крови тумана', winQuestItem: 'quest_ritual_chalice', winLog: '> Найдена Чаша крови тумана!' }] },
+    { id: 'cache_cult_psalter', title: 'НАХОДКА: КНИГА ПСАЛМОВ', text: 'Переплетенный в сыромятную кожу псалтырь культа.', choices: [{ id: 'take_psalter', text: 'Забрать Псалтырь Тумана', winQuestItem: 'quest_cult_psalter', winLog: '> Найден Псалтырь Неизбежного Тумана!' }] },
+    { id: 'cache_flesh_key', title: 'НАХОДКА: ЖИВОЙ КЛЮЧ-СИМБИОТ', text: 'Органический ключ с шевелящимися усиками на жале.', choices: [{ id: 'take_fkey', text: 'Взять Живой ключ-симбиот', winQuestItem: 'quest_flesh_key', winLog: '> Найден Живой ключ-симбиот!' }] },
+    { id: 'find_elevator_seal_5', title: 'НАХОДКА: ОЧИСТИТЕЛЬНЫЙ ЗНАК', text: 'Свинцовая плита с вытравленной антибиотической руной.', choices: [{ id: 'take_seal5', text: 'Забрать Очистительный знак лифта', winQuestItem: 'quest_elevator_seal_5', winLog: '> Найден Очистительный знак лифта!' }] },
+
+    // Этажи 25-29 (Чрево Чернобога)
+    { id: 'cache_singularity_core', title: 'НАХОДКА: СГУСТОК ВРЕМЕНИ', text: 'В эпицентре пространственной воронки застыл сгусток времени.', choices: [{ id: 'take_core', text: 'Забрать Сгусток времени', winQuestItem: 'quest_singularity_core', winLog: '> Найден Сгусток времени!' }] },
+    { id: 'cache_black_prism', title: 'НАХОДКА: ОБСИДИАНОВАЯ ПРИЗМА', text: 'Осколок зеркала из черного стекла, поглощающий свет.', choices: [{ id: 'take_prism', text: 'Взять Призму черного стекла', winQuestItem: 'quest_black_prism', winLog: '> Найдена Призма черного стекла!' }] },
+    { id: 'cache_master_blueprint', title: 'НАХОДКА: ИСТИННЫЙ ЧЕРТЕЖ', text: 'Первородный свиток плана Гигахрущевки.', choices: [{ id: 'take_bp', text: 'Забрать Истинный чертеж', winQuestItem: 'quest_master_blueprint', winLog: '> Найден Истинный чертеж Гигахрущевки!' }] },
+    { id: 'cache_reality_anchor', title: 'НАХОДКА: ЯКОРЬ РЕАЛЬНОСТИ', text: 'Латунный гироскоп, удерживающий границы материи.', choices: [{ id: 'take_anc', text: 'Забрать Якорь реальности', winQuestItem: 'quest_reality_anchor', winLog: '> Найден Якорь реальности!' }] },
+    { id: 'cache_chernobog_key', title: 'НАХОДКА: КЛЮЧ РАЗРЫВА ЦИКЛА', text: 'Черный ключ, источающий темное пламя Самосбора.', choices: [{ id: 'take_ckey', text: 'Забрать Ключ разрыва цикла', winQuestItem: 'quest_chernobog_key', winLog: '> Найден Ключ разрыва цикла!' }] },
+    { id: 'find_elevator_final_key', title: 'НАХОДКА: КЛЮЧ БЕЗДНЫ', text: 'Финальный ключ спуска в логово Чернобога на 30 этаж.', choices: [{ id: 'take_finkey', text: 'Принять Ключ Бездны', winQuestItem: 'quest_elevator_final_key', winLog: '> Найден Ключ Бездны!' }] }
 ];
 
 function getRandomEventForPlayer(p, currentFloor) {
     let pool = [];
-    let hasFound = (id) => (p.foundItems && p.foundItems.includes(id)) || (p.questItems && p.questItems.includes(id));
+    let hasItem = (id) => (p.foundItems && p.foundItems.includes(id)) || (p.questItems && p.questItems.includes(id));
+    const cfg = FLOOR_CONFIGS[currentFloor] || FLOOR_CONFIGS[0];
 
-    if (!hasFound('quest_lift_repair')) pool.push(RANDOM_EVENTS.find(e => e.id === 'find_lift_repair'));
-    if (!hasFound('quest_lift_buttons')) pool.push(RANDOM_EVENTS.find(e => e.id === 'find_lift_buttons'));
-    if (!hasFound('quest_lift_wire')) pool.push(RANDOM_EVENTS.find(e => e.id === 'find_lift_wire'));
-    if (!hasFound('quest_boltcutter')) pool.push(RANDOM_EVENTS.find(e => e.id === 'cache_toolbox'));
-    if (!hasFound('quest_fuse')) pool.push(RANDOM_EVENTS.find(e => e.id === 'cache_fusebox'));
-    if (!hasFound('quest_battery') || !hasFound('quest_red_card')) pool.push(RANDOM_EVENTS.find(e => e.id === 'cache_corpse'));
+    // Приоритет: квестовые ключи текущего этажа и лифта
+    const needed = [...(cfg.elevatorKeys || []), ...(cfg.keys || [])];
+    const keyEventMap = {
+        quest_lift_repair: 'find_lift_repair', quest_lift_buttons: 'find_lift_buttons', quest_lift_wire: 'find_lift_wire',
+        quest_boltcutter: 'cache_toolbox', quest_fuse: 'cache_fusebox', quest_battery: 'cache_corpse', quest_red_card: 'cache_corpse',
+        quest_wrench_heavy: 'cache_wrench_heavy', quest_pressure_valve: 'cache_pressure_valve', quest_coagulant: 'cache_coagulant',
+        quest_pipe_patch: 'cache_pipe_patch', quest_manometer: 'cache_manometer', quest_boiler_crank: 'cache_boiler_crank',
+        quest_slime_sample: 'cache_slime_sample', quest_elevator_gear_1: 'find_elevator_gear_1',
+        quest_punchcard_secret: 'cache_punchcard', quest_cipher_disc: 'cache_cipher_disc', quest_commissar_stamp: 'cache_commissar_stamp',
+        quest_magnetic_tape: 'cache_magnetic_tape', quest_archive_keycard: 'cache_archive_keycard', quest_elevator_cable_2: 'find_elevator_cable_2',
+        quest_coolant_rod: 'cache_coolant_rod', quest_highvolt_relay: 'cache_highvolt_relay', quest_copper_inductor: 'cache_copper_inductor',
+        quest_dielectric_gloves: 'cache_dielectric_gloves', quest_lead_baffle: 'cache_lead_baffle', quest_elevator_motor_3: 'find_elevator_motor_3',
+        quest_vokhr_token: 'cache_vokhr_token', quest_officer_cipher: 'cache_officer_cipher', quest_decon_filter: 'cache_decon_filter',
+        quest_brass_keys: 'cache_brass_keys', quest_commandant_seal: 'cache_commandant_seal', quest_elevator_hydraulic_4: 'find_elevator_hydraulic_4',
+        quest_meat_relic: 'cache_meat_relic', quest_bone_chisel: 'cache_bone_chisel', quest_ritual_chalice: 'cache_ritual_chalice',
+        quest_cult_psalter: 'cache_cult_psalter', quest_flesh_key: 'cache_flesh_key', quest_elevator_seal_5: 'find_elevator_seal_5',
+        quest_singularity_core: 'cache_singularity_core', quest_black_prism: 'cache_black_prism', quest_master_blueprint: 'cache_master_blueprint',
+        quest_reality_anchor: 'cache_reality_anchor', quest_chernobog_key: 'cache_chernobog_key', quest_elevator_final_key: 'find_elevator_final_key'
+    };
+
+    for (let k of needed) {
+        if (!hasItem(k) && keyEventMap[k]) {
+            let ev = RANDOM_EVENTS.find(e => e.id === keyEventMap[k]);
+            if (ev) pool.push(ev);
+        }
+    }
+
+    // NPC в зависимости от яруса этажей
+    if (currentFloor <= 4) {
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_stalker'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_liquidator'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'meat_smell'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'toxic_steam'));
+    } else if (currentFloor <= 9) {
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_archivist'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_scientist'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_stalker'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'whispering_concrete'));
+    } else if (currentFloor <= 14) {
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_scientist'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_liquidator'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'toxic_steam'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'meat_smell'));
+    } else if (currentFloor <= 19) {
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_vokhr'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_liquidator'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'whispering_concrete'));
+    } else if (currentFloor <= 24) {
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_cultist'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'meat_smell'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'whispering_concrete'));
+    } else {
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_cultist'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_scientist'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'whispering_concrete'));
+        pool.push(RANDOM_EVENTS.find(e => e.id === 'meat_smell'));
+    }
 
     pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_trader'));
-    pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_stalker'));
-    pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_liquidator'));
-    pool.push(RANDOM_EVENTS.find(e => e.id === 'npc_scientist'));
-    pool.push(RANDOM_EVENTS.find(e => e.id === 'meat_smell'));
-
     pool = pool.filter(Boolean);
     return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -502,22 +1040,31 @@ const RANDOM_LOC_KEYS = Object.keys(LOCATION_TYPES).filter(k => k !== 'elevator'
 function generateFloor(floorIndex) {
     if (db.map[floorIndex]) return;
     db.map[floorIndex] = {};
+    const cfg = FLOOR_CONFIGS[floorIndex] || FLOOR_CONFIGS[0];
     const letters = ['A', 'B', 'C', 'D', 'E'];
     let allSectors = [];
     for (let y = 0; y < 5; y++) {
         for (let x = 0; x < 5; x++) {
             let id = `${letters[y]}${x}`;
-            if(id !== 'A0' && id !== 'E4') allSectors.push(id);
+            if (id !== 'A0' && id !== 'E4') allSectors.push(id);
         }
     }
     allSectors = shuffleArray(allSectors);
     let locks = [];
-    ['quest_boltcutter', 'quest_battery', 'quest_red_card', 'quest_fuse'].forEach(item => { locks.push({ type: 'item', val: item }); });
+    (cfg.keys || ['quest_boltcutter', 'quest_battery', 'quest_red_card', 'quest_fuse']).forEach(item => {
+        locks.push({ type: 'item', val: item });
+    });
     let mPool = shuffleArray(MINIGAME_POOL).slice(0, 5);
     mPool.forEach(mg => locks.push({ type: 'minigame', val: mg }));
     
     let pool = shuffleArray([...RANDOM_LOC_KEYS, ...RANDOM_LOC_KEYS]);
     let locIdx = 0;
+
+    let floorThreat = 'Низкая';
+    if (floorIndex >= 25) floorThreat = 'СМЕРТЕЛЬНАЯ';
+    else if (floorIndex >= 15) floorThreat = 'Критическая';
+    else if (floorIndex >= 5) floorThreat = 'Высокая';
+    else if (floorIndex > 0) floorThreat = 'Средняя';
 
     for (let y = 0; y < 5; y++) {
         for (let x = 0; x < 5; x++) {
@@ -543,7 +1090,7 @@ function generateFloor(floorIndex) {
                 name: `${info.name} [Эт.${floorIndex}]`,
                 bg: info.bg,
                 icon: info.icon,
-                threat: floorIndex === 0 ? 'Низкая' : 'Высокая',
+                threat: floorThreat,
                 reqType: reqType,
                 reqValue: reqValue
             };
@@ -1633,10 +2180,19 @@ io.on('connection', (socket) => {
         if (p.filter < 10) { socket.emit('terminalError', 'НЕДОСТАТОЧНО ФИЛЬТРА.'); return; }
         if (p.location === 'E4') {
             if (p.bossDefeated && p.bossDefeated[currentFloor]) { socket.emit('terminalError', 'ЛИФТ УЖЕ ЗАПУЩЕН.'); return; }
-            let hasRepair = (p.foundItems && p.foundItems.includes('quest_lift_repair')) || (p.questItems && p.questItems.includes('quest_lift_repair'));
-            let hasButtons = (p.foundItems && p.foundItems.includes('quest_lift_buttons')) || (p.questItems && p.questItems.includes('quest_lift_buttons'));
-            let hasWire = (p.foundItems && p.foundItems.includes('quest_lift_wire')) || (p.questItems && p.questItems.includes('quest_lift_wire'));
-            if (!hasRepair || !hasButtons || !hasWire) { socket.emit('terminalError', 'ЛИФТ РАЗБИТ. Нужны: Ремкомплект, Блок кнопок, Провод.'); socket.emit('playSound', 'click'); return; }
+            const cfg = FLOOR_CONFIGS[currentFloor] || FLOOR_CONFIGS[0];
+            const neededKeys = cfg.elevatorKeys || ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'];
+            let missing = [];
+            for (let k of neededKeys) {
+                let hasKey = (p.foundItems && p.foundItems.includes(k)) || (p.questItems && p.questItems.includes(k));
+                if (!hasKey) missing.push(GAME_ITEMS[k] ? GAME_ITEMS[k].name : k);
+            }
+            if (missing.length > 0) {
+                let hint = cfg.elevatorHint || `ЛИФТ НЕ АКТИВИРОВАН. Требуются: ${missing.join(', ')}.`;
+                socket.emit('terminalError', hint);
+                socket.emit('playSound', 'click');
+                return;
+            }
             let bossKey = `boss_${currentFloor}`;
             if (!globalBosses[bossKey]) {
                 let bossBase = getBossForFloor(currentFloor);
@@ -1663,7 +2219,7 @@ io.on('connection', (socket) => {
             }
             globalBosses[bossKey].pTimers[username] = 2.0 / getSpeedMult(p.filter);
             activeCombats[username] = { isGlobal: true, floor: currentFloor, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
-            p.questItems = p.questItems.filter(i => !['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'].includes(i));
+            p.questItems = p.questItems.filter(i => !neededKeys.includes(i));
             saveDB(); socket.emit('transition', {to: 'combat', text: "ВХОД В ЗОНУ РЕЙДА..."});
             setTimeout(() => { socket.emit('combatStart', { enemy: globalBosses[bossKey] }); broadcastGameState(); }, 2000);
             return;
@@ -1674,6 +2230,7 @@ io.on('connection', (socket) => {
             let ev = getRandomEventForPlayer(p, currentFloor);
             if (ev) {
                 p.activeEvent = ev.id;
+                p.activeEventNode = null;
                 let fCost = p.perks.includes('perk_lungs') ? 7 : 10;
                 let pRate = p.mutations && p.mutations.includes('mut_thick_skin') ? 2.0 : 1.0;
                 p.filter -= Math.floor(fCost * pRate);
@@ -1759,68 +2316,105 @@ io.on('connection', (socket) => {
         let p = db.players[username];
         if (!p || !p.activeEvent) return;
         let ev = RANDOM_EVENTS.find(e => e.id === p.activeEvent);
-        p.activeEvent = null;
-        let log = "";
-        if (ev) {
-            let choice = ev.choices.find(c => c.id === choiceId);
-            if (choice) {
-                if (choice.reqCost && p.talons < choice.reqCost) {
-                    socket.emit('terminalError', `НЕ ХВАТАЕТ ТАЛОНОВ (${choice.reqCost} т.).`);
-                    return;
-                }
-                if (choice.reqItem) {
-                    let hasItem = (p.inventory && p.inventory.includes(choice.reqItem)) || (p.questItems && p.questItems.includes(choice.reqItem));
-                    if (!hasItem) {
-                        let itemName = GAME_ITEMS[choice.reqItem] ? GAME_ITEMS[choice.reqItem].name : choice.reqItem;
-                        socket.emit('terminalError', `ТРЕБУЕТСЯ: ${itemName}`);
-                        return;
-                    }
-                    if (p.inventory && p.inventory.includes(choice.reqItem)) {
-                        let idx = p.inventory.indexOf(choice.reqItem);
-                        p.inventory.splice(idx, 1);
-                    }
-                }
-                if (choice.reqCost) p.talons -= choice.reqCost;
+        if (!ev) { p.activeEvent = null; p.activeEventNode = null; return; }
 
-                if (Math.random() <= (choice.chance !== undefined ? choice.chance : 1)) {
-                    log = choice.winLog || "> Успех.";
-                    if (choice.winLoot) {
-                        let gl = rollItemWithRarity(choice.winLoot);
-                        if (p.inventory.length < getMaxInv(p)) {
-                            p.inventory.push(gl);
-                            log += ` (+${GAME_ITEMS[gl] ? GAME_ITEMS[gl].name : gl})`;
-                        } else {
-                            log += `\n> Добыча брошена: сундук переполнен!`;
-                        }
-                    }
-                    if (choice.winQuestItem) {
-                        if (!p.questItems.includes(choice.winQuestItem)) p.questItems.push(choice.winQuestItem);
-                        if (!p.foundItems) p.foundItems = [];
-                        if (!p.foundItems.includes(choice.winQuestItem)) p.foundItems.push(choice.winQuestItem);
-                        let qName = GAME_ITEMS[choice.winQuestItem] ? GAME_ITEMS[choice.winQuestItem].name : choice.winQuestItem;
-                        log += ` (+${qName})`;
-                        socket.emit('playSound', 'victory');
-                    }
-                    if (choice.winTalons) { p.talons += choice.winTalons; log += ` (+${choice.winTalons} т.)`; }
-                    if (choice.winHp) p.hp = Math.min(p.maxHp, p.hp + choice.winHp);
-                    if (choice.winXp) { p.xp += choice.winXp; log += ` (+${choice.winXp} XP)`; }
-                    if (choice.winNotebook) {
-                        if (!p.notebook) p.notebook = [];
-                        p.notebook.push(choice.winNotebook);
-                        log += `\n> Новая запись в блокноте!`;
-                    }
-                } else {
-                    log = choice.failLog || "> Провал.";
-                    if (choice.failHp) p.hp += choice.failHp;
-                }
+        let activeNode = (p.activeEventNode && ev.nodes && ev.nodes[p.activeEventNode]) ? ev.nodes[p.activeEventNode] : ev;
+        let choice = activeNode.choices ? activeNode.choices.find(c => c.id === choiceId) : null;
+        if (!choice && ev.choices) {
+            choice = ev.choices.find(c => c.id === choiceId);
+        }
+        if (!choice) { p.activeEvent = null; p.activeEventNode = null; return; }
+
+        if (choice.reqCost && p.talons < choice.reqCost) {
+            socket.emit('terminalError', `НЕ ХВАТАЕТ ТАЛОНОВ (${choice.reqCost} т.).`);
+            return;
+        }
+        if (choice.reqItem) {
+            let hasItem = (p.inventory && p.inventory.includes(choice.reqItem)) || (p.questItems && p.questItems.includes(choice.reqItem));
+            if (!hasItem) {
+                let itemName = GAME_ITEMS[choice.reqItem] ? GAME_ITEMS[choice.reqItem].name : choice.reqItem;
+                socket.emit('terminalError', `ТРЕБУЕТСЯ: ${itemName}`);
+                return;
+            }
+            if (p.inventory && p.inventory.includes(choice.reqItem)) {
+                let idx = p.inventory.indexOf(choice.reqItem);
+                p.inventory.splice(idx, 1);
             }
         }
+        if (choice.reqCost) p.talons -= choice.reqCost;
+
+        let isWin = Math.random() <= (choice.chance !== undefined ? choice.chance : 1);
+        let log = "";
+        if (isWin) {
+            log = choice.winLog || "> Успех.";
+            if (choice.winLoot) {
+                let gl = rollItemWithRarity(choice.winLoot);
+                if (p.inventory.length < getMaxInv(p)) {
+                    p.inventory.push(gl);
+                    log += ` (+${GAME_ITEMS[gl] ? GAME_ITEMS[gl].name : gl})`;
+                } else {
+                    log += `\n> Добыча брошена: сундук переполнен!`;
+                }
+            }
+            if (choice.winQuestItem) {
+                if (!p.questItems.includes(choice.winQuestItem)) p.questItems.push(choice.winQuestItem);
+                if (!p.foundItems) p.foundItems = [];
+                if (!p.foundItems.includes(choice.winQuestItem)) p.foundItems.push(choice.winQuestItem);
+                let qName = GAME_ITEMS[choice.winQuestItem] ? GAME_ITEMS[choice.winQuestItem].name : choice.winQuestItem;
+                log += ` (+${qName})`;
+                socket.emit('playSound', 'victory');
+            }
+            if (choice.winTalons) { p.talons += choice.winTalons; log += ` (+${choice.winTalons} т.)`; }
+            if (choice.winHp) p.hp = Math.min(p.maxHp, p.hp + choice.winHp);
+            if (choice.winXp) { p.xp += choice.winXp; log += ` (+${choice.winXp} XP)`; }
+            if (choice.winNotebook) {
+                if (!p.notebook) p.notebook = [];
+                if (!p.notebook.includes(choice.winNotebook)) {
+                    p.notebook.push(choice.winNotebook);
+                    log += `\n> Новая запись в блокноте!`;
+                }
+            }
+        } else {
+            log = choice.failLog || "> Провал.";
+            if (choice.failHp) p.hp += choice.failHp;
+        }
+
         if (p.hp <= 0) {
             p.hp = 0;
             p.talons = Math.floor(p.talons / 2);
             p.location = 'safe_room';
+            p.activeEvent = null;
+            p.activeEventNode = null;
             log += "\n> КРИТИЧЕСКИЙ УРОН: ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ.";
+            saveDB();
+            socket.emit('combatEventResult', log);
+            broadcastGameState();
+            return;
         }
+
+        // Ветвление диалога (переход к следующей реплике)
+        if (isWin && choice.nextNode && ev.nodes && ev.nodes[choice.nextNode]) {
+            p.activeEventNode = choice.nextNode;
+            let nextData = ev.nodes[choice.nextNode];
+            let payload = {
+                id: ev.id,
+                title: nextData.title || ev.title,
+                npc: ev.npc,
+                text: nextData.text,
+                choices: nextData.choices
+            };
+            saveDB();
+            socket.emit('triggerEvent', payload);
+            if (log && log.trim() !== "> Успех.") {
+                socket.emit('terminalError', log.replace(/^>\s*/, ''));
+            }
+            broadcastGameState();
+            return;
+        }
+
+        // Завершение события / диалога
+        p.activeEvent = null;
+        p.activeEventNode = null;
         saveDB();
         socket.emit('combatEventResult', log);
         broadcastGameState();
