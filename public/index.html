@@ -2114,21 +2114,67 @@ socket.on('startMinigame', (data) => {
   const art = document.getElementById('mg-art');
   const ui = document.getElementById('mg-ui');
   document.getElementById('btn-mg-cancel').style.display = 'block';
-  document.getElementById('mg-title').innerText = mgData.title;
-  document.getElementById('mg-text').innerText = mgData.text;
+  document.getElementById('mg-title').innerText = mgData.title || 'ВЗЛОМ';
+  document.getElementById('mg-text').innerText = mgData.text || '';
   modal.style.display = 'flex';
   if (mgData.type === 'password') {
-    art.innerText = `\n  +---------------+\n  | КОД ДОСТУПА   |\n  +---------------+`;
-    ui.innerHTML = `<input type="text" id="mg-pass-input" placeholder="____" maxlength="4" style="text-align:center; letter-spacing:10px; font-size:22px;"><button onclick="checkPass()" style="width:100%;">ВВОД</button>`;
+    art.innerText = `\n  +-----------------+\n  |   КОД ДОСТУПА   |\n  +-----------------+`;
+    ui.innerHTML = `<input type="text" id="mg-pass-input" placeholder="Код / Ответ" maxlength="32" onkeydown="if(event.key==='Enter')checkPass()" style="text-align:center; font-size:18px; margin-bottom:10px; width:100%; box-sizing:border-box;"><button onclick="checkPass()" style="width:100%;">ВВОД</button>`;
+    setTimeout(() => { const el = document.getElementById('mg-pass-input'); if(el) el.focus(); }, 100);
+  } else if (mgData.type === 'choice') {
+    art.innerText = `\n  +-----------------+\n  | ВЫБОР ДЕЙСТВИЯ  |\n  +-----------------+`;
+    let btns = (mgData.options || []).map((opt, idx) => {
+      let isCorrect = (typeof opt === 'object' && opt.correct !== undefined) ? opt.correct : (idx === (mgData.correctIndex || 0));
+      let text = (typeof opt === 'string' ? opt : opt.text).replace(/"/g, '&quot;');
+      return `<button onclick="handleChoice(${isCorrect}, this)" style="width:100%; margin-bottom:8px; text-align:left; font-size:13px; line-height:1.3; white-space:normal; padding:9px 12px; cursor:pointer;">${idx + 1}. ${text}</button>`;
+    }).join('');
+    ui.innerHTML = `<div style="display:flex; flex-direction:column; width:100%; box-sizing:border-box;">${btns}</div>`;
   } else if (mgData.type === 'voltage') {
     mgStep = 0; mgInput = [0]; updateVoltageUI();
   } else {
-    art.innerText = `\n  +---------------+\n  | ВЗЛОМ...      |\n  +---------------+`;
+    art.innerText = `\n  +-----------------+\n  |    ВЗЛОМ...     |\n  +-----------------+`;
     ui.innerHTML = `<button onclick="socket.emit('minigameWon', '${data.locId}'); document.getElementById('minigame-modal').style.display='none';">ВЗЛОМАТЬ</button>`;
   }
 });
 
-function checkPass() { let p = document.getElementById('mg-pass-input'); if (p && p.value === mgData.answer) { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('minigameWon', currentGameLoc); } else { playSound('defeat'); if (p) p.value = ''; } }
+function checkPass() {
+  let p = document.getElementById('mg-pass-input');
+  if (!p) return;
+  let val = p.value.trim().toUpperCase().replace(/Ё/g, 'Е');
+  let ans = String(mgData.answer || '').trim().toUpperCase().replace(/Ё/g, 'Е');
+  let altAnswers = (mgData.altAnswers || []).map(a => String(a).trim().toUpperCase().replace(/Ё/g, 'Е'));
+  
+  if (val && (val === ans || altAnswers.includes(val))) {
+    document.getElementById('minigame-modal').style.display = 'none';
+    let cc = document.getElementById('combat-controls');
+    if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+    else socket.emit('minigameWon', currentGameLoc);
+  } else {
+    playSound('defeat');
+    p.value = '';
+    p.placeholder = 'НЕВЕРНО! ПОПРОБУЙТЕ СНОВА';
+    setTimeout(() => { if (p) p.placeholder = 'Код / Ответ'; }, 1500);
+  }
+}
+
+function handleChoice(isCorrect, btnEl) {
+  if (isCorrect) {
+    document.getElementById('minigame-modal').style.display = 'none';
+    let cc = document.getElementById('combat-controls');
+    if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+    else socket.emit('minigameWon', currentGameLoc);
+  } else {
+    playSound('defeat');
+    if (btnEl) {
+      btnEl.style.borderColor = 'var(--term-danger)';
+      btnEl.style.color = 'var(--term-danger)';
+      if (!btnEl.innerText.startsWith('[ОТКАЗ]')) {
+        btnEl.innerText = '[ОТКАЗ] ' + btnEl.innerText;
+      }
+      btnEl.disabled = true;
+    }
+  }
+}
 function updateVoltageUI() { const art = document.getElementById('mg-art'), ui = document.getElementById('mg-ui'); if(!art || !ui) return; let w = mgInput[0].toString().padStart(3, '0'); art.innerText = `\n      ___\n     | + |\n     |---|\n     |${w}W|\n     |___|`; ui.innerHTML = `<div style="margin-bottom:10px;">Цель: ${mgData.target}W | Кликов: ${4 - mgStep}</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button onclick="addVolt(30)">+30</button><button onclick="addVolt(20)">+20</button><button onclick="addVolt(10)">+10</button><button onclick="addVolt(-10)">-10</button></div>`; }
 function addVolt(v) { mgInput[0] += v; mgStep++; if (mgStep >= 4) { if (mgInput[0] === mgData.target) { document.getElementById('minigame-modal').style.display = 'none'; let cc = document.getElementById('combat-controls'); if(cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true); else socket.emit('minigameWon', currentGameLoc); } else { playSound('defeat'); let cc = document.getElementById('combat-controls'); if(cc && cc.style.display === 'flex' && !currentGameLoc) { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('combatMinigameResult', false); } else { document.getElementById('mg-ui').innerHTML = `<div style="color:var(--term-danger); font-size:20px; margin-bottom:10px;">ПРОМАХ</div><button onclick="mgStep=0; mgInput=[0]; updateVoltageUI();" style="width:100%;">ПОВТОРИТЬ</button>`; } } } else updateVoltageUI(); }
 function cancelMinigame() { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('minigameCancel'); }
