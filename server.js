@@ -345,14 +345,14 @@ generateShop();
 
 function getBossForFloor(f) {
     const storyBosses = {
-        5: { name: "СМОТРИТЕЛЬ СЛИЗИ [РЕЙД-БОСС]", hp: 1500, dmg: 25, reward: 300, xp: 800, img: "boss_slime.png", lore: "[ДНЕВНИК]: Смотритель пал." },
-        10: { name: "АРХИВАРИУС [РЕЙД-БОСС]", hp: 3000, dmg: 45, reward: 700, xp: 1500, img: "boss_arch.png", lore: "[ДНЕВНИК]: Самосбор — обновление здания." },
-        15: { name: "ЖИВОЙ РЕАКТОР [РЕЙД-БОСС]", hp: 5000, dmg: 80, reward: 1200, xp: 3000, img: "boss_reactor.png", lore: "[ДНЕВНИК]: Ядро остыло." },
-        20: { name: "КОМЕНДАНТ БЛОКА [РЕЙД-БОСС]", hp: 8000, dmg: 120, reward: 2000, xp: 5000, img: "boss_com.png", lore: "[ДНЕВНИК]: Комендант мертв." },
-        30: { name: "ЧЕРНОБОГ [ФИНАЛ]", hp: 15000, dmg: 250, reward: 5000, xp: 15000, img: "boss_final.png", lore: "[ДНЕВНИК]: Цикл разорван." }
+        5: { name: "СМОТРИТЕЛЬ СЛИЗИ [РЕЙД-БОСС]", hp: 4500, dmg: 35, reward: 600, xp: 1600, img: "boss_slime.png", lore: "[ДНЕВНИК]: Смотритель пал." },
+        10: { name: "АРХИВАРИУС [РЕЙД-БОСС]", hp: 9000, dmg: 65, reward: 1400, xp: 3000, img: "boss_arch.png", lore: "[ДНЕВНИК]: Самосбор — обновление здания." },
+        15: { name: "ЖИВОЙ РЕАКТОР [РЕЙД-БОСС]", hp: 15000, dmg: 110, reward: 2400, xp: 6000, img: "boss_reactor.png", lore: "[ДНЕВНИК]: Ядро остыло." },
+        20: { name: "КОМЕНДАНТ БЛОКА [РЕЙД-БОСС]", hp: 24000, dmg: 160, reward: 4000, xp: 10000, img: "boss_com.png", lore: "[ДНЕВНИК]: Комендант мертв." },
+        30: { name: "ЧЕРНОБОГ [ФИНАЛ]", hp: 45000, dmg: 350, reward: 10000, xp: 30000, img: "boss_final.png", lore: "[ДНЕВНИК]: Цикл разорван." }
     };
     if (storyBosses[f]) return storyBosses[f];
-    return { name: `АНОМАЛИЯ [РЕЙД ЭТ.${f}]`, hp: 500 + (f*200), dmg: 15 + (f*4), reward: 100 + (f*10), xp: 300 + (f*60), img: "m_hive.png", lore: `[ДНЕВНИК]: Путь на этаж ${f+1} очищен.` };
+    return { name: `АНОМАЛИЯ [РЕЙД ЭТ.${f}]`, hp: 1500 + (f * 600), dmg: 25 + (f * 6), reward: 250 + (f * 20), xp: 600 + (f * 120), img: "m_hive.png", lore: `[ДНЕВНИК]: Путь на этаж ${f+1} очищен.` };
 }
 
 const RANDOM_EVENTS = [
@@ -1298,23 +1298,57 @@ io.on('connection', (socket) => {
         pa.filter -= 10;
         pi.filter -= 10;
 
-        let possibleMonsters = BASE_MONSTERS.filter(m => currentFloor >= m.minFloor && currentFloor <= m.minFloor + 10);
-        if (possibleMonsters.length === 0) possibleMonsters = [BASE_MONSTERS[BASE_MONSTERS.length - 1]];
-        let baseMob = Object.assign({}, possibleMonsters[Math.floor(Math.random() * possibleMonsters.length)]);
-        let multiplier = (1 + (currentFloor * 0.4)) * 1.8;
-        let monster = {
-            name: `[ЭЛИТА] ${baseMob.name} [Lvl ${currentFloor + 1}]`,
-            hp: Math.floor(baseMob.hp * multiplier),
-            maxHp: Math.floor(baseMob.hp * multiplier),
-            dmg: Math.floor(baseMob.dmg * (1 + currentFloor * 0.3)),
-            reward: Math.floor(baseMob.reward * multiplier * 1.5),
-            xp: Math.floor(baseMob.xp * multiplier * 1.5),
-            img: baseMob.img,
-            isCoopRaid: true,
-            loot: [ {id: rollItemWithRarity('food_medkit'), chance: 0.6}, {id: rollItemWithRarity('mat_chem'), chance: 0.5}, {id: rollItemWithRarity('mat_electro'), chance: 0.4} ]
-        };
+        let isFloorBoss = (pa.location === 'E4');
+        let raidKey = isFloorBoss ? `boss_${currentFloor}` : `coop_${Date.now()}`;
+        let monster;
 
-        let raidKey = `coop_${Date.now()}`;
+        if (isFloorBoss) {
+            let bossBase = getBossForFloor(currentFloor);
+            let coopHpMult = 2.0;
+            let coopDmgMult = 1.3;
+            monster = {
+                name: `[РЕЙД x2] ${bossBase.name}`,
+                hp: Math.floor(bossBase.hp * coopHpMult),
+                maxHp: Math.floor(bossBase.hp * coopHpMult),
+                dmg: Math.floor(bossBase.dmg * coopDmgMult),
+                reward: Math.floor(bossBase.reward * 1.5),
+                xp: Math.floor(bossBase.xp * 1.5),
+                img: bossBase.img,
+                isElevatorBoss: true,
+                lore: bossBase.lore,
+                isCoopRaid: true,
+                isScaledForCoop: true,
+                loot: [
+                    { id: rollItemWithRarity('food_medkit'), chance: 0.8 },
+                    { id: rollItemWithRarity('mat_chem'), chance: 0.7 },
+                    { id: rollItemWithRarity('mat_electro'), chance: 0.6 }
+                ]
+            };
+        } else {
+            let possibleMonsters = BASE_MONSTERS.filter(m => currentFloor >= m.minFloor && currentFloor <= m.minFloor + 10);
+            if (possibleMonsters.length === 0) possibleMonsters = [BASE_MONSTERS[BASE_MONSTERS.length - 1]];
+            let baseMob = Object.assign({}, possibleMonsters[Math.floor(Math.random() * possibleMonsters.length)]);
+            let multiplier = (1 + (currentFloor * 0.4)) * 3.0;
+            let coopHpMult = 2.0;
+            let coopDmgMult = 1.3;
+            monster = {
+                name: `[РЕЙД x2] ${baseMob.name} [Lvl ${currentFloor + 1}]`,
+                hp: Math.floor(baseMob.hp * multiplier * coopHpMult),
+                maxHp: Math.floor(baseMob.hp * multiplier * coopHpMult),
+                dmg: Math.floor(baseMob.dmg * (1 + currentFloor * 0.3) * coopDmgMult),
+                reward: Math.floor(baseMob.reward * multiplier * 1.5),
+                xp: Math.floor(baseMob.xp * multiplier * 1.5),
+                img: baseMob.img,
+                isCoopRaid: true,
+                isScaledForCoop: true,
+                loot: [
+                    { id: rollItemWithRarity('food_medkit'), chance: 0.7 },
+                    { id: rollItemWithRarity('mat_chem'), chance: 0.6 },
+                    { id: rollItemWithRarity('mat_electro'), chance: 0.5 }
+                ]
+            };
+        }
+
         globalBosses[raidKey] = {
             name: monster.name,
             hp: monster.hp,
@@ -1323,7 +1357,10 @@ io.on('connection', (socket) => {
             reward: monster.reward,
             xp: monster.xp,
             img: monster.img,
+            isElevatorBoss: monster.isElevatorBoss || false,
+            lore: monster.lore || null,
             isCoopRaid: true,
+            isScaledForCoop: true,
             loot: monster.loot,
             participants: new Set([inviter, accepter]),
             eTimer: 2.0,
@@ -1333,8 +1370,8 @@ io.on('connection', (socket) => {
             }
         };
 
-        activeCombats[inviter] = { isGlobal: true, floor: raidKey, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
-        activeCombats[accepter] = { isGlobal: true, floor: raidKey, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
+        activeCombats[inviter] = { isGlobal: true, floor: isFloorBoss ? currentFloor : raidKey, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
+        activeCombats[accepter] = { isGlobal: true, floor: isFloorBoss ? currentFloor : raidKey, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
 
         socket.emit('transition', { to: 'combat', text: `СОВМЕСТНЫЙ РЕЙД С ${inviter}!` });
         io.to(inviterSocketId).emit('transition', { to: 'combat', text: `СОВМЕСТНЫЙ РЕЙД С ${accepter}!` });
@@ -1375,7 +1412,26 @@ io.on('connection', (socket) => {
             if (!globalBosses[bossKey]) {
                 let bossBase = getBossForFloor(currentFloor);
                 globalBosses[bossKey] = { name: bossBase.name, hp: bossBase.hp, maxHp: bossBase.hp, dmg: bossBase.dmg, reward: bossBase.reward, xp: bossBase.xp, img: bossBase.img, isElevatorBoss: true, lore: bossBase.lore, participants: new Set([username]), eTimer: 2.0, pTimers: {} };
-            } else { globalBosses[bossKey].participants.add(username); }
+            } else {
+                globalBosses[bossKey].participants.add(username);
+                if (!globalBosses[bossKey].isScaledForCoop && globalBosses[bossKey].participants.size >= 2) {
+                    globalBosses[bossKey].isScaledForCoop = true;
+                    let coopHpMult = 2.0;
+                    let coopDmgMult = 1.3;
+                    globalBosses[bossKey].maxHp = Math.floor(globalBosses[bossKey].maxHp * coopHpMult);
+                    globalBosses[bossKey].hp = Math.floor(globalBosses[bossKey].hp * coopHpMult);
+                    globalBosses[bossKey].dmg = Math.floor(globalBosses[bossKey].dmg * coopDmgMult);
+                    globalBosses[bossKey].reward = Math.floor(globalBosses[bossKey].reward * 1.5);
+                    globalBosses[bossKey].xp = Math.floor(globalBosses[bossKey].xp * 1.5);
+                    if (!globalBosses[bossKey].name.includes('[РЕЙД x2]')) {
+                        globalBosses[bossKey].name = `[РЕЙД x2] ${globalBosses[bossKey].name}`;
+                    }
+                    globalBosses[bossKey].participants.forEach(u => {
+                        let c = activeCombats[u];
+                        if (c) c.logs.push(`> [РЕЙД x2] В битву вступил второй заключенный! Множитель рейда активирован: HP x2, Урон x1.3!`);
+                    });
+                }
+            }
             globalBosses[bossKey].pTimers[username] = 2.0 / getSpeedMult(p.filter);
             activeCombats[username] = { isGlobal: true, floor: currentFloor, pDodging: false, pCritNext: false, logs: [], sounds: [], vfx: [], paused: false };
             p.questItems = p.questItems.filter(i => !['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'].includes(i));
