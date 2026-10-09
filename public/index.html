@@ -800,12 +800,8 @@ document.getElementById('btn-toggle-sfx').onclick = () => { sfxEnabled = !sfxEna
 document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEnabled; document.getElementById('btn-toggle-crt').innerText = crtEnabled ? "📺 CRT-эффект (ВКЛ)" : "📺 CRT-эффект (ВЫКЛ)"; document.body.classList.toggle('crt-enabled', crtEnabled); };
 document.getElementById('btn-info').onclick = () => { document.getElementById('info-modal').style.display = 'flex'; };
 
-const BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname.endsWith('alwaysdata.net'))
-  ? undefined
-  : 'https://mikhail-pagava.alwaysdata.net';
-
-const socket = io(BACKEND_URL, {
-  transports: ['polling', 'websocket']
+const socket = io("https://cited-dimension-scotia-gravity.trycloudflare.com", {
+  transports: ["websocket", "polling"]
 });
 
 socket.on('connect', () => {
