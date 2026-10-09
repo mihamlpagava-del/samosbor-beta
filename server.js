@@ -1397,6 +1397,40 @@ io.on('connection', (socket) => {
         saveDB(); broadcastGameState();
     });
 
+    socket.on('vkDonationSuccess', (data) => {
+        let username = onlinePlayers[socket.id];
+        let p = db.players[username];
+        if (!p || !data) return;
+
+        const bonusMap = {
+            'donate_1_vote': 50,
+            'donate_3_votes': 200,
+            'donate_5_votes': 450,
+            'donate_10_votes': 1000
+        };
+        let bonus = bonusMap[data.item] || 50;
+
+        p.talons += bonus;
+        if (!p.notebook.some(e => e.includes('МЕЦЕНАТ'))) {
+            p.notebook.push(`[МЕЦЕНАТ]: Вы поддержали проект голосами VK. Партия выражает благодарность! (+${bonus} талонов)`);
+        }
+
+        socket.emit('playSound', 'buy');
+        socket.emit('terminalError', `БЛАГОДАРИМ ЗА ПОДДЕРЖКУ! ПОЛУЧЕНО: +${bonus} ТАЛОНОВ.`);
+
+        let donateMsg = {
+            user: "СИСТЕМА",
+            text: `⭐ Заключенный [${username}] поддержал проект голосами VK (+${bonus} талонов)! Спасибо!`,
+            time: new Date().toLocaleTimeString().slice(0, 5)
+        };
+        chatHistory.push(donateMsg);
+        if (chatHistory.length > MAX_CHAT_MESSAGES) chatHistory.shift();
+        io.emit('chatMessage', donateMsg);
+
+        saveDB();
+        broadcastGameState();
+    });
+
     socket.on('explore', () => {
         let username = onlinePlayers[socket.id]; let p = db.players[username]; let currentFloor = p.floor || 0;
         if (!p || p.location === 'safe_room' || activeCombats[username]) return;

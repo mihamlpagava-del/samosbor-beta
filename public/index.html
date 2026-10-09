@@ -57,6 +57,17 @@ body.crt-enabled::after { content: ""; display: block; position: absolute; inset
 body.crt-enabled::before { content: ""; display: block; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.85) 100%); z-index: 101; pointer-events: none; }
 #transition-overlay { position: absolute; inset: 0; z-index: 999; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: var(--term-green); font-size: 22px; font-weight: bold; white-space: pre-wrap; text-align: center; }
 .door-ascii { white-space: pre; line-height: 1.1; margin-bottom: 20px; }
+.support-controls { position: absolute; top: 8px; left: 10px; z-index: 200; display: flex; gap: 6px; }
+.support-btn { padding: 4px 10px; font-size: 11px; background: rgba(39, 135, 245, 0.15); color: #61b0ff; border: 1px solid #2787f5; cursor: pointer; text-shadow: 0 0 5px rgba(39, 135, 245, 0.6); font-family: inherit; letter-spacing: 0.5px; transition: 0.15s; border-radius: 2px; }
+.support-btn:hover { background: rgba(39, 135, 245, 0.3); border-color: #61b0ff; box-shadow: 0 0 10px rgba(97, 176, 255, 0.5); }
+.donate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.donate-card { border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.08); padding: 12px 6px; text-align: center; border-radius: 3px; cursor: pointer; transition: 0.15s; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px; }
+.donate-card:hover { background: rgba(39, 135, 245, 0.22); border-color: #61b0ff; box-shadow: 0 0 12px rgba(97, 176, 255, 0.4); transform: translateY(-2px); }
+.donate-icon { font-size: 24px; }
+.donate-title { color: #fff; font-weight: bold; font-size: 13px; letter-spacing: 0.5px; }
+.donate-bonus { color: var(--term-warn); font-size: 12px; font-weight: bold; }
+.donate-btn { width: 100%; margin: 4px 0 0 0; padding: 6px 4px; font-size: 11px; color: #fff; background: #2787f5; border: 1px solid #5aa5ff; border-radius: 2px; font-family: inherit; cursor: pointer; }
+.donate-btn:hover { background: #3b95ff; }
 .audio-controls { position: absolute; top: 8px; right: 10px; z-index: 200; display: flex; gap: 6px; }
 .options-menu { position: absolute; top: 38px; right: 10px; background: rgba(0, 15, 0, 0.97); border: 1px solid var(--term-dim); padding: 10px; display: none; flex-direction: column; gap: 5px; z-index: 200; }
 .audio-btn { padding: 4px 8px; font-size: 11px; background: rgba(0, 12, 0, 0.85); color: var(--term-green); border: 1px solid var(--term-dim); cursor: pointer; text-shadow: none; font-family: inherit; letter-spacing: 0.5px; transition: 0.15s; }
@@ -278,6 +289,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   .combat-avatar { width: 130px; height: 170px; margin: 0 auto; flex: 0 0 auto; }
   .terminal-center { width: 100%; max-width: 100%; }
   .combat-q-slot { width: 55px; height: 40px; font-size: 9px; padding: 2px; }
+  .support-controls { top: 4px; left: 4px; }
+  .support-btn { font-size: 10px; padding: 2px 6px; }
+  .donate-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .intro-ascii-side { font-size: 50px; }
   #intro-text-container { font-size: 13px; min-height: 200px; }
 }
@@ -384,6 +398,56 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
+<div class="support-controls">
+  <button id="btn-donate" class="support-btn" onclick="document.getElementById('donate-modal').style.display='flex';">
+    💙 ПОДДЕРЖАТЬ ПРОЕКТ
+  </button>
+</div>
+
+<div id="donate-modal" class="modal-overlay" style="z-index: 92;">
+  <div class="shop-panel" style="width: 680px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="shop-header">
+      <span style="color: #61b0ff;">💎 ПОДДЕРЖКА ПРОЕКТА // ГОЛОСА VK</span>
+      <button onclick="document.getElementById('donate-modal').style.display='none';">[X]</button>
+    </div>
+    <div style="font-size: 13px; color: #ccc; line-height: 1.5; margin-bottom: 16px; text-align: left;">
+      Игра «САМОСБОР» создается и поддерживается силами разработчика. Если вам нравится атмосфера Гигахрущевки, вы можете поддержать развитие серверов и обновлений голосами ВКонтакте.
+      <br><br>
+      <span style="color: var(--term-warn);">⚡ В знак благодарности вы получите внутриигровые талоны снабжения:</span>
+    </div>
+    <div class="donate-grid">
+      <div class="donate-card" onclick="donateVkVotes('donate_1_vote', 1, 50)">
+        <div class="donate-icon">⭐</div>
+        <div class="donate-title">1 ГОЛОС</div>
+        <div class="donate-bonus">+50 талонов</div>
+        <button class="donate-btn">1 ГОЛОС</button>
+      </div>
+      <div class="donate-card" onclick="donateVkVotes('donate_3_votes', 3, 200)">
+        <div class="donate-icon">🔥</div>
+        <div class="donate-title">3 ГОЛОСА</div>
+        <div class="donate-bonus">+200 талонов</div>
+        <button class="donate-btn">3 ГОЛОСА</button>
+      </div>
+      <div class="donate-card" onclick="donateVkVotes('donate_5_votes', 5, 450)">
+        <div class="donate-icon">🎖️</div>
+        <div class="donate-title">5 ГОЛОСОВ</div>
+        <div class="donate-bonus">+450 талонов</div>
+        <button class="donate-btn">5 ГОЛОСОВ</button>
+      </div>
+      <div class="donate-card" onclick="donateVkVotes('donate_10_votes', 10, 1000)">
+        <div class="donate-icon">👑</div>
+        <div class="donate-title">10 ГОЛОСОВ</div>
+        <div class="donate-bonus">+1000 талонов</div>
+        <button class="donate-btn">10 ГОЛОСОВ</button>
+      </div>
+    </div>
+    <div id="donate-status" style="font-size: 13px; min-height: 20px; text-align: center; color: var(--term-green);"></div>
+    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+      <button onclick="document.getElementById('donate-modal').style.display='none';" style="margin:0; padding:6px 14px; font-size:12px; border-color:#555; color:#888;">ЗАКРЫТЬ</button>
+    </div>
+  </div>
+</div>
+
 <div class="audio-controls">
   <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);">⚠️ БАГИ / ИДЕИ [Shift+P]</button>
   <button id="btn-bestiary" class="audio-btn" style="display:none;">📖 БЕСТИАРИЙ</button>
@@ -395,6 +459,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);">📝 Баг-репорт / Предложение [Shift+P]</button>
+  <button id="btn-opt-donate" class="audio-btn opt-btn" style="color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';">💎 Поддержать проект (VK)</button>
   <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()">👥 Позвать друга (VK)</button>
   <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()">📢 На стену (VK)</button>
   <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()">⭐ В закладки (VK)</button>
@@ -984,6 +1049,48 @@ function vkInviteFriends() {
 function vkAddToFavorites() {
   if (typeof vkBridge === 'undefined' || !isVkEnvironment) return;
   vkBridge.send('VKWebAppAddToFavorites').catch(() => {});
+}
+
+function donateVkVotes(itemCode, votesCount, bonusTalons) {
+  const statusEl = document.getElementById('donate-status');
+  if (statusEl) {
+    statusEl.style.color = '#aaa';
+    statusEl.innerText = 'Открытие платежного окна VK...';
+  }
+  if (typeof vkBridge !== 'undefined' && vkBridge && vkBridge.send) {
+    vkBridge.send('VKWebAppShowOrderBox', {
+      type: 'item',
+      item: itemCode
+    })
+    .then((data) => {
+      console.log('[VK Donation Success]', data);
+      if (data && data.success) {
+        if (statusEl) {
+          statusEl.style.color = 'var(--term-green)';
+          statusEl.innerText = `УСПЕШНО! Начислено +${bonusTalons} талонов. Спасибо за поддержку!`;
+        }
+        playSound('buy');
+        socket.emit('vkDonationSuccess', {
+          item: itemCode,
+          orderId: data.order_id,
+          votes: votesCount,
+          bonusTalons: bonusTalons
+        });
+      }
+    })
+    .catch((err) => {
+      console.log('[VK Donation Error/Cancelled]', err);
+      if (statusEl) {
+        statusEl.style.color = 'var(--term-warn)';
+        statusEl.innerText = 'Оплата отменена или закрыта.';
+      }
+    });
+  } else {
+    if (statusEl) {
+      statusEl.style.color = 'var(--term-info)';
+      statusEl.innerText = 'Оплата голосами доступна при запуске игры через платформу ВКонтакте.';
+    }
+  }
 }
 
 function startBootSequence() {
