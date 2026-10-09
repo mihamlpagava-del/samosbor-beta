@@ -750,7 +750,7 @@ if (typeof io === 'undefined') {
   document.write('<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"><\/script>');
 }
 </script>
-
+<script>
 const DEFAULT_NOTEBOOK = [
   "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, 23 заключённых, погрузили в клеть и отправили вниз, на нулевой этаж.",
   "[ВВОДНАЯ]: Мы почти достигли дна, когда лопнул трос. Клеть рухнула.",
@@ -800,9 +800,7 @@ document.getElementById('btn-toggle-sfx').onclick = () => { sfxEnabled = !sfxEna
 document.getElementById('btn-toggle-crt').onclick = () => { crtEnabled = !crtEnabled; document.getElementById('btn-toggle-crt').innerText = crtEnabled ? "📺 CRT-эффект (ВКЛ)" : "📺 CRT-эффект (ВЫКЛ)"; document.body.classList.toggle('crt-enabled', crtEnabled); };
 document.getElementById('btn-info').onclick = () => { document.getElementById('info-modal').style.display = 'flex'; };
 
-const socket = io("https://cited-dimension-scotia-gravity.trycloudflare.com", {
-  transports: ["websocket", "polling"]
-});
+const socket = io();
 
 socket.on('connect', () => {
   console.log('[Socket] Соединение установлено:', socket.id);
