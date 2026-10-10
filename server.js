@@ -890,6 +890,69 @@ const RANDOM_EVENTS = [
             { id: 'leave', text: 'Пройти мимо', winLog: '> Вы разошлись в тумане.' }
         ]
     },
+    {
+        id: 'npc_lifter',
+        title: 'ВСТРЕЧА: СЛЕПОЙ ЛИФТЁР МАКАР',
+        npc: { name: 'Дед Макар', role: 'Слепой лифтёр шахты', portrait: 'npc_lifter.png' },
+        text: 'В полумраке шахты у разбитой клети сидит седой старик в засаленной телогрейке и поцарапанных сварочных очках. Он медленно поворачивает слепое лицо на звук ваших шагов:\n«Слышу поступь... Ты живой? Я уж думал, никто живой сюда больше не доберётся. Я старый слепой лифтёр Макар. Всю жизнь эти тросы смазывал, пока клеть не сорвалась. Лифт наш разбит вдребезги. Чтобы его починить и пустить клеть на нижние этажи, мне нужны три вещи: Ремкомплект лифта, Блок кнопок и Силовой провод генератора. Обыщи этаж, они где-то раскиданы в складах и щитках. Если подвернётся что-то похожее — тащи всё мне, я налажу клеть!»',
+        choices: [
+            { id: 'makar_quest_info', text: '1. «Где именно искать детали на этаже, дед?»', nextNode: 'node_makar_info' },
+            { id: 'makar_repair', text: '2. «Я принёс запчасти! Почини клеть.»', nextNode: 'node_makar_check' },
+            { id: 'makar_lore', text: '3. «Как ты выжил здесь в слепоте во время Самосбора?»', nextNode: 'node_makar_lore' },
+            { id: 'leave', text: '4. «Я пойду искать детали. Держись тут.»', winLog: '> Вы оставили слепого лифтёра у шахты.' }
+        ],
+        nodes: {
+            node_makar_info: {
+                title: 'МАКАР: ГДЕ ИСКАТЬ ЗАПЧАСТИ',
+                text: 'Старик стучит сухим мозолистым пальцем по кожуху редуктора:\n«Слушай память слепого: Ремкомплект лифта обычно лежит в опечатанных ящиках аварийной службы на технических складах. Блок кнопок срывали с диспетчерских пультов в коридорах. А силовой провод генератора торчит прямо из распределительных щитов и дизельных установок этажа. Сделай вылазки в неизведанные сектора, обшарь тайники — если подвернётся что-то похожее, тащи мне!»',
+                choices: [
+                    { id: 'makar_back', text: '«Понял, вернусь к разговору.»', nextNode: 'node_makar_main' },
+                    { id: 'leave', text: '«Пошёл на поиски.»', winLog: '> Вы отправились на поиски деталей для лифта.' }
+                ]
+            },
+            node_makar_check: {
+                title: 'МАКАР: ОСМОТР ДЕТАЛЕЙ',
+                text: 'Дед Макар протягивает загрубевшие, перепачканные солидолом ладони:\n«Давай сюда, ощупаю... Нам нужны сразу три детали: Ремкомплект лифта, Блок кнопок и Провод генератора. Всё собрал, сынок?»',
+                choices: [
+                    { 
+                        id: 'makar_submit_parts', 
+                        text: 'Сдать детали: Ремкомплект + Блок кнопок + Провод',
+                        reqItems: ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'],
+                        winNotebook: '[СЛЕПОЙ ЛИФТЁР МАКАР]: Старик починил клеть подъемника E4. Дорога на нижние этажи открыта!',
+                        winXp: 100,
+                        winTalons: 50,
+                        activateElevator: true,
+                        nextNode: 'node_makar_repaired'
+                    },
+                    { id: 'makar_back', text: '«У меня пока не всё собрано. Вернусь позже.»', nextNode: 'node_makar_main' }
+                ]
+            },
+            node_makar_repaired: {
+                title: 'МАКАР: ЛИФТ ЗАПУЩЕН!',
+                text: 'Старик ловко на ощупь затягивает клеммы, спаивает кабели и со щелчком врубает рубильник. Стальные тросы со звоном натягиваются, в шахте вспыхивают желтые сигнальные огни подъемника!\n«Ай молодец, сынок! Слышишь этот ровный гул? Лебедка снова дышит! Теперь лифт готов к спуску. Но будь начеку: при пуске клети сюда сползутся твари из тумана, приготовь оружие!»',
+                choices: [
+                    { id: 'leave', text: '«Спасибо, дед Макар! Я готов к спуску.»', winLog: '> Лифт успешно отремонтирован дедом Макаром!' }
+                ]
+            },
+            node_makar_lore: {
+                title: 'МАКАР: СУДЬБА В ШАХТЕ',
+                text: '«Глаза мне выжгло кислотной гарью Самосбора ещё тридцать смен назад. Зато уши стали чуткими — я по скрипу бетона слышу, как твари крадутся по вентиляции за два пролёта. Здесь, у шахты, сквозняк правильный, туман не застаивается. Главное — гермошторку вовремя захлопнуть.»',
+                choices: [
+                    { id: 'makar_back', text: '«Удивительно... Вернемся к лифту.»', nextNode: 'node_makar_main' },
+                    { id: 'leave', text: '«Береги себя, дед.»', winLog: '> Вы попрощались с Макаром.' }
+                ]
+            },
+            node_makar_main: {
+                title: 'ВСТРЕЧА: СЛЕПОЙ ЛИФТЁР МАКАР',
+                text: '«Ну что, сынок? Нашел детали? Ремкомплект лифта, блок кнопок и провод генератора — вот что нам нужно, чтобы запустить эту махину.»',
+                choices: [
+                    { id: 'makar_quest_info', text: '1. «Напомни, где искать детали?»', nextNode: 'node_makar_info' },
+                    { id: 'makar_repair', text: '2. «Я принес запчасти! Почини клеть.»', nextNode: 'node_makar_check' },
+                    { id: 'leave', text: '3. «Пока ищу. Бывай.»', winLog: '> Вы вернулись к осмотру сектора.' }
+                ]
+            }
+        }
+    },
 
     // --- ТАЙНИКИ И НАХОДКИ КВЕСТОВЫХ ПРЕДМЕТОВ (ЭТАЖИ 0-29) ---
     // Стартовые (Этаж 0)
@@ -1614,6 +1677,33 @@ io.on('connection', (socket) => {
 
     socket.on('selectPerk', (perkId) => { let p = db.players[onlinePlayers[socket.id]]; if(p && !p.perks.includes(perkId)) { p.perks.push(perkId); if(perkId === 'perk_health') { p.maxHp += 25; p.hp += 25; } saveDB(); broadcastGameState(); } });
 
+    function checkLifterTrigger(player, sock, loc) {
+        if (loc === 'E4' && !player.talkedToLifter) {
+            player.talkedToLifter = true;
+            let evLifter = RANDOM_EVENTS.find(e => e.id === 'npc_lifter');
+            if (evLifter) {
+                player.activeEvent = evLifter.id;
+                player.activeEventNode = null;
+                setTimeout(() => { sock.emit('triggerEvent', evLifter); }, 350);
+            }
+        }
+    }
+
+    socket.on('talkToNpc', (npcId) => {
+        let username = onlinePlayers[socket.id];
+        let p = db.players[username];
+        if (!p || activeCombats[username]) return;
+        let targetId = npcId || 'npc_lifter';
+        let ev = RANDOM_EVENTS.find(e => e.id === targetId);
+        if (ev) {
+            p.activeEvent = ev.id;
+            p.activeEventNode = null;
+            saveDB();
+            socket.emit('triggerEvent', ev);
+            broadcastGameState();
+        }
+    });
+
     socket.on('changeLocation', (locId) => {
         let username = onlinePlayers[socket.id];
         let p = db.players[username]; if (!p) return;
@@ -1649,6 +1739,7 @@ io.on('connection', (socket) => {
 
         if (p.unlockedSectors[currentFloor].includes(locId)) {
             p.location = locId;
+            checkLifterTrigger(p, socket, locId);
             saveDB();
             socket.emit('transition', {to: locId, text: `ВХОД В СЕКТОР ${locId}...`});
             broadcastGameState();
@@ -1668,6 +1759,7 @@ io.on('connection', (socket) => {
                     p.unlockedSectors[currentFloor].push(locId);
                 }
                 p.location = locId;
+                checkLifterTrigger(p, socket, locId);
                 p.roomsCleared = (p.roomsCleared || 0) + 1;
                 p.notebook.push(`[ЭТАЖ ${currentFloor}]: Открыл сектор ${locId} с помощью ${GAME_ITEMS[reqItem] ? GAME_ITEMS[reqItem].name : reqItem}.`);
                 socket.emit('playSound', 'victory');
@@ -1687,6 +1779,7 @@ io.on('connection', (socket) => {
                 p.unlockedSectors[currentFloor].push(locId);
             }
             p.location = locId;
+            checkLifterTrigger(p, socket, locId);
             saveDB();
             socket.emit('transition', {to: locId, text: `ВХОД В СЕКТОР ${locId}...`});
             broadcastGameState();
@@ -1705,6 +1798,7 @@ io.on('connection', (socket) => {
             p.unlockedSectors[currentFloor].push(locId);
         }
         p.location = locId;
+        checkLifterTrigger(p, socket, locId);
         p.roomsCleared = (p.roomsCleared || 0) + 1;
         p.notebook.push(`[ЭТАЖ ${currentFloor}]: Взломал гермодверь в ${locId}.`);
         socket.emit('playSound', 'victory');
@@ -2205,13 +2299,20 @@ io.on('connection', (socket) => {
             const neededKeys = cfg.elevatorKeys || ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'];
             let missing = [];
             for (let k of neededKeys) {
-                let hasKey = (p.foundItems && p.foundItems.includes(k)) || (p.questItems && p.questItems.includes(k));
+                let hasKey = p.liftRepaired || (p.foundItems && p.foundItems.includes(k)) || (p.questItems && p.questItems.includes(k));
                 if (!hasKey) missing.push(GAME_ITEMS[k] ? GAME_ITEMS[k].name : k);
             }
             if (missing.length > 0) {
                 let hint = cfg.elevatorHint || `ЛИФТ НЕ АКТИВИРОВАН. Требуются: ${missing.join(', ')}.`;
                 socket.emit('terminalError', hint);
                 socket.emit('playSound', 'click');
+                let evLifter = RANDOM_EVENTS.find(e => e.id === 'npc_lifter');
+                if (evLifter) {
+                    p.activeEvent = evLifter.id;
+                    p.activeEventNode = null;
+                    saveDB();
+                    socket.emit('triggerEvent', evLifter);
+                }
                 return;
             }
             let bossKey = `boss_${currentFloor}`;
@@ -2362,12 +2463,43 @@ io.on('connection', (socket) => {
                 p.inventory.splice(idx, 1);
             }
         }
+        if (choice.reqItems && Array.isArray(choice.reqItems)) {
+            let missing = [];
+            for (let rItem of choice.reqItems) {
+                let has = (p.inventory && p.inventory.includes(rItem)) || (p.questItems && p.questItems.includes(rItem)) || (p.foundItems && p.foundItems.includes(rItem));
+                if (!has) {
+                    missing.push(GAME_ITEMS[rItem] ? GAME_ITEMS[rItem].name : rItem);
+                }
+            }
+            if (missing.length > 0) {
+                socket.emit('terminalError', `НЕ ХВАТАЕТ ДЕТАЛЕЙ: ${missing.join(', ')}`);
+                return;
+            }
+            for (let rItem of choice.reqItems) {
+                if (p.inventory && p.inventory.includes(rItem)) {
+                    let idx = p.inventory.indexOf(rItem);
+                    p.inventory.splice(idx, 1);
+                }
+                if (p.questItems && p.questItems.includes(rItem)) {
+                    let idx = p.questItems.indexOf(rItem);
+                    p.questItems.splice(idx, 1);
+                }
+            }
+        }
         if (choice.reqCost) p.talons -= choice.reqCost;
 
         let isWin = Math.random() <= (choice.chance !== undefined ? choice.chance : 1);
         let log = "";
         if (isWin) {
             log = choice.winLog || "> Успех.";
+            if (choice.activateElevator) {
+                p.liftRepaired = true;
+                if (!p.foundItems) p.foundItems = [];
+                ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'].forEach(k => {
+                    if (!p.foundItems.includes(k)) p.foundItems.push(k);
+                });
+                socket.emit('playSound', 'victory');
+            }
             if (choice.winLoot) {
                 let gl = rollItemWithRarity(choice.winLoot);
                 if (p.inventory.length < getMaxInv(p)) {
