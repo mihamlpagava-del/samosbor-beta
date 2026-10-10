@@ -2288,6 +2288,19 @@ io.on('connection', (socket) => {
         broadcastGameState();
     });
 
+    socket.on('rewardAdWatched', () => {
+        let username = onlinePlayers[socket.id];
+        let p = db.players[username];
+        if (!p) return;
+        p.talons = (p.talons || 0) + 50;
+        if (!p.notebook) p.notebook = [];
+        p.notebook.push(`[СНАБЖЕНИЕ]: Получена гуманитарная помощь блока (+50 талонов).`);
+        saveDB();
+        socket.emit('terminalError', 'НАГРАДА ЗА ПРОСМОТР РЕКЛАМЫ: +50 ТАЛОНОВ!');
+        socket.emit('playSound', 'buy');
+        broadcastGameState();
+    });
+
     socket.on('explore', () => {
         let username = onlinePlayers[socket.id]; let p = db.players[username]; let currentFloor = p.floor || 0;
         if (!p || p.location === 'safe_room' || activeCombats[username]) return;
