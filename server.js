@@ -1825,6 +1825,11 @@ io.on('connection', (socket) => {
     socket.on('buyItem', (itemId) => {
         let p = db.players[onlinePlayers[socket.id]]; let item = GAME_ITEMS[itemId];
         if (item && p.talons >= item.cost && currentShopItems.includes(itemId)) {
+            if (item.reqLevel && p.level < item.reqLevel) {
+                socket.emit('terminalError', `ТРЕБУЕТСЯ УРОВЕНЬ ${item.reqLevel}!`);
+                socket.emit('playSound', 'defeat');
+                return;
+            }
             if (p.inventory.length >= getMaxInv(p)) { socket.emit('terminalError', 'СУНДУК ПОЛОН!'); return; }
             p.talons -= item.cost; p.inventory.push(itemId); socket.emit('playSound', 'buy'); socket.emit('terminalError', `ПОЛУЧЕНО: ${item.name}`); saveDB(); broadcastGameState();
         }
