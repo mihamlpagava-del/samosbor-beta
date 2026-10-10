@@ -1,0 +1,14 @@
+{
+  "background_color": "#050505",
+  "dir": "ltr",
+  "display": "fullscreen",
+  "name": "САМОСБОР WEB",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "САМОСБОР",
+  "start_url": "https://195-19-219-215.sslip.io/",
+  "theme_color": "#050505",
+  "id": "com.samosbor.game",
+  "description": "Атмосферная текстовая survival-RPG в сеттинге Самосбора.",
+  "lang": "ru"
+}
