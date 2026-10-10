@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "deploy": "vk-miniapps-deploy",
-    "build:yandex": "node build-yandex.js"
+    "build:yandex": "node build-yandex.js",
+    "build:itch": "node build-itch.js"
   },
   "engines": {
     "node": ">=18.0.0"

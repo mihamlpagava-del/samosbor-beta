@@ -126,7 +126,7 @@ const yaLoginBox = `<!-- Панель входа через Яндекс Игр�
 html = html.replace(vkLoginBoxRegex, yaLoginBox);
 
 // Ж. Замена JS интеграции VK Bridge на Яндекс SDK методы
-const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?function donateVkVotes[\s\S]*?}\s*}/;
+const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?(?=\s*function startBootSequence)/;
 const yaJsCode = `// ===== ИНТЕГРАЦИЯ ЯНДЕКС ИГР (YANDEX GAMES SDK v2) =====
 let ysdk = null;
 let yaPlayer = null;
@@ -337,3 +337,4 @@ try {
   console.error('Ошибка при создании zip-архива:', err);
   process.exit(1);
 }
+
