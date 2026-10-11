@@ -183,21 +183,22 @@ fs.writeFileSync(path.join(BUILD_DIR, 'index.html'), html, 'utf8');
 console.log('Готово: itch-build/index.html создан.');
 
 // 4. Упаковка в ZIP архив
-console.log('4. Создание zip-архива samosbor-itch-io.zip...');
+console.log('4. Создание zip-архива samosbor-itch-io.zip с POSIX путями (forward slash)...');
 if (fs.existsSync(ZIP_OUTPUT)) {
   fs.unlinkSync(ZIP_OUTPUT);
 }
 
 try {
-  // Архивируем содержимое itch-build так, чтобы index.html был прямо в корне архива
-  execSync(`powershell -Command "Compress-Archive -Path '${BUILD_DIR}\\*' -DestinationPath '${ZIP_OUTPUT}' -CompressionLevel Optimal"`, {
+  // Используем tar.exe (bsdtar, встроен в Windows 10/11) для создания zip со стандартными прямыми слэшами (assets/...),
+  // что критически важно для Linux-серверов Itch.io и CDN.
+  execSync(`tar.exe -a -c -f "${ZIP_OUTPUT}" -C "${BUILD_DIR}" index.html assets`, {
     stdio: 'inherit'
   });
   const zipStat = fs.statSync(ZIP_OUTPUT);
   console.log(`\n🎉 УСПЕХ! Архив для Itch.io успешно создан:`);
   console.log(`- Файл: ${ZIP_OUTPUT}`);
   console.log(`- Размер архива: ${(zipStat.size / (1024 * 1024)).toFixed(2)} MB`);
-  console.log(`- index.html расположен в корне архива (требование Itch.io).`);
+  console.log(`- index.html и папка assets/ упакованы с правильными Unix-путями (assets/...).`);
 } catch (err) {
   console.error('Ошибка при создании zip-архива:', err);
   process.exit(1);
