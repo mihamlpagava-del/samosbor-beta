@@ -43,9 +43,43 @@ copyDir(path.join(PUBLIC_DIR, 'assets'), path.join(BUILD_DIR, 'assets'));
 console.log('3. Адаптация index.html для платформы Яндекс Игры...');
 let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
 
-// А. Замена VK Bridge на Yandex Games SDK в <head>
+// А. Подключение актуального Yandex Games SDK в <head> по требованиям п. 1.1
 const vkHeadRegex = /<script src="https:\/\/unpkg\.com\/@vkontakte\/vk-bridge\/dist\/browser\.min\.js"><\/script>[\s\S]*?<\/script>\s*<script>[\s\S]*?<\/script>/;
-const yaHeadSdk = `<!-- Яндекс Игры SDK v2 -->\n<script src="https://yandex.ru/games/sdk/v2"></script>`;
+const yaHeadSdk = `<!-- Yandex Games SDK (п. 1.1 Требований платформы) -->
+<script>
+window.ysdk = null;
+window.yaPlayer = null;
+
+function initYandexSDK() {
+  if (typeof YaGames === 'undefined') {
+    console.log('[Yandex] YaGames SDK не обнаружен (запуск вне каталога Яндекса).');
+    return;
+  }
+  if (window.ysdk) return;
+
+  YaGames.init().then(_ysdk => {
+    window.ysdk = _ysdk;
+    console.log('[Yandex] SDK успешно инициализирован (IT: Init True)');
+
+    // Обязательное требование п. 1.1: вызов LoadingAPI.ready()
+    try {
+      if (_ysdk.features && _ysdk.features.LoadingAPI) {
+        _ysdk.features.LoadingAPI.ready();
+        console.log('[Yandex] LoadingAPI.ready() успешно вызван');
+      }
+    } catch(e) {
+      console.warn('[Yandex] Ошибка при вызове LoadingAPI.ready():', e);
+    }
+
+    if (typeof initYandexPlayer === 'function') {
+      initYandexPlayer();
+    }
+  }).catch(err => {
+    console.warn('[Yandex] Ошибка YaGames.init():', err);
+  });
+}
+</script>
+<script async src="/sdk.js" onload="initYandexSDK()" onerror="this.onerror=null;this.src='https://sdk.games.s3.yandex.net/sdk.js';this.onload=initYandexSDK;"></script>`;
 if (vkHeadRegex.test(html)) {
   html = html.replace(vkHeadRegex, yaHeadSdk);
 } else {
@@ -128,42 +162,28 @@ html = html.replace(vkLoginBoxRegex, yaLoginBox);
 // Ж. Замена JS интеграции VK Bridge на Яндекс SDK методы
 const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?(?=\s*function startBootSequence)/;
 const yaJsCode = `// ===== ИНТЕГРАЦИЯ ЯНДЕКС ИГР (YANDEX GAMES SDK v2) =====
-let ysdk = null;
-let yaPlayer = null;
-
-function initYandexSDK() {
-  if (typeof YaGames === 'undefined') {
-    console.log('[Yandex] YaGames SDK не обнаружен (запуск вне каталога Яндекса).');
-    return;
-  }
-  YaGames.init().then(_ysdk => {
-    ysdk = _ysdk;
-    window.ysdk = _ysdk;
-    console.log('[Yandex] SDK v2 успешно инициализирован');
-
-    // Оповещаем каталог Яндекса о завершении загрузки игры
-    if (ysdk.features && ysdk.features.LoadingAPI) {
-      ysdk.features.LoadingAPI.ready();
+function reportGameplayStart() {
+  try {
+    if (window.ysdk && window.ysdk.features && window.ysdk.features.GameplayAPI) {
+      window.ysdk.features.GameplayAPI.start();
     }
+  } catch(e) {}
+}
 
-    // Инициализация игрока Яндекс
-    initYandexPlayer();
-
-    // Первый показ межстраничного баннера через небольшую паузу
-    setTimeout(() => {
-      showYandexFullscreenAdv();
-    }, 1500);
-  }).catch(err => {
-    console.warn('[Yandex] Ошибка инициализации YaGames:', err);
-  });
+function reportGameplayStop() {
+  try {
+    if (window.ysdk && window.ysdk.features && window.ysdk.features.GameplayAPI) {
+      window.ysdk.features.GameplayAPI.stop();
+    }
+  } catch(e) {}
 }
 
 function initYandexPlayer() {
-  if (!ysdk) return;
-  ysdk.getPlayer({ scopes: false }).then(_player => {
-    yaPlayer = _player;
-    let pName = yaPlayer.getName() || ('Inmate_' + yaPlayer.getUniqueID().slice(-6));
-    let pPhoto = yaPlayer.getPhoto('medium') || '';
+  if (!window.ysdk) return;
+  window.ysdk.getPlayer({ scopes: false }).then(_player => {
+    window.yaPlayer = _player;
+    let pName = window.yaPlayer.getName() || ('Inmate_' + window.yaPlayer.getUniqueID().slice(-6));
+    let pPhoto = window.yaPlayer.getPhoto('medium') || '';
 
     let yaBox = document.getElementById('ya-login-box');
     let yaName = document.getElementById('ya-user-name');
@@ -178,7 +198,7 @@ function initYandexPlayer() {
     let uInput = document.getElementById('username');
     let pInput = document.getElementById('password');
     if (uInput && !uInput.value) uInput.value = pName;
-    if (pInput && !pInput.value) pInput.value = 'ya_' + yaPlayer.getUniqueID().slice(-8);
+    if (pInput && !pInput.value) pInput.value = 'ya_' + window.yaPlayer.getUniqueID().slice(-8);
   }).catch(err => {
     console.log('[Yandex] Гостевой режим:', err);
     let uInput = document.getElementById('username');
@@ -196,12 +216,13 @@ function initYandexPlayer() {
 const yaLoginBtn = document.getElementById('ya-login-btn');
 if (yaLoginBtn) {
   yaLoginBtn.onclick = () => {
-    if (yaPlayer) {
-      let uname = yaPlayer.getName() || ('Inmate_' + yaPlayer.getUniqueID().slice(-6));
-      let upass = 'ya_' + yaPlayer.getUniqueID();
+    reportGameplayStart();
+    if (window.yaPlayer) {
+      let uname = window.yaPlayer.getName() || ('Inmate_' + window.yaPlayer.getUniqueID().slice(-6));
+      let upass = 'ya_' + window.yaPlayer.getUniqueID();
       socket.emit('login', { username: uname, password: upass });
-    } else if (ysdk && ysdk.auth) {
-      ysdk.auth.openAuthDialog().then(() => {
+    } else if (window.ysdk && window.ysdk.auth) {
+      window.ysdk.auth.openAuthDialog().then(() => {
         initYandexPlayer();
       }).catch(() => {
         let u = document.getElementById('username').value || ('Inmate_' + Math.floor(1000 + Math.random()*9000));
@@ -218,16 +239,19 @@ if (yaLoginBtn) {
 
 // Межстраничная полноэкранная реклама
 function showYandexFullscreenAdv(callback) {
-  if (ysdk && ysdk.adv) {
-    if (ysdk.features && ysdk.features.GameplayAPI) ysdk.features.GameplayAPI.stop();
-    ysdk.adv.showFullscreenAdv({
+  if (window.ysdk && window.ysdk.adv) {
+    reportGameplayStop();
+    window.ysdk.adv.showFullscreenAdv({
       callbacks: {
+        onOpen: function() {
+          reportGameplayStop();
+        },
         onClose: function(wasShown) {
-          if (ysdk.features && ysdk.features.GameplayAPI) ysdk.features.GameplayAPI.start();
+          reportGameplayStart();
           if (callback) callback();
         },
         onError: function(err) {
-          if (ysdk.features && ysdk.features.GameplayAPI) ysdk.features.GameplayAPI.start();
+          reportGameplayStart();
           if (callback) callback();
         }
       }
@@ -239,19 +263,21 @@ function showYandexFullscreenAdv(callback) {
 
 // Вознаграждаемая реклама (Rewarded Video)
 function showYandexRewardedAdv(onSuccess, onFail) {
-  if (ysdk && ysdk.adv) {
-    if (ysdk.features && ysdk.features.GameplayAPI) ysdk.features.GameplayAPI.stop();
-    ysdk.adv.showRewardedVideo({
+  if (window.ysdk && window.ysdk.adv) {
+    reportGameplayStop();
+    window.ysdk.adv.showRewardedVideo({
       callbacks: {
-        onOpen: () => {},
-        onRewarded: () => {
+        onOpen: function() {
+          reportGameplayStop();
+        },
+        onRewarded: function() {
           if (onSuccess) onSuccess();
         },
-        onClose: () => {
-          if (ysdk.features && ysdk.features.GameplayAPI) ysdk.features.GameplayAPI.start();
+        onClose: function() {
+          reportGameplayStart();
         },
-        onError: (err) => {
-          if (ysdk.features && ysdk.features.GameplayAPI) ysdk.features.GameplayAPI.start();
+        onError: function(err) {
+          reportGameplayStart();
           if (onFail) onFail(err);
         }
       }
@@ -288,10 +314,10 @@ function watchRewardAdForTalons() {
 }
 
 function requestYandexReview() {
-  if (ysdk && ysdk.feedback) {
-    ysdk.feedback.canReview().then(({ value, reason }) => {
+  if (window.ysdk && window.ysdk.feedback) {
+    window.ysdk.feedback.canReview().then(({ value, reason }) => {
       if (value) {
-        ysdk.feedback.requestReview().then(({ feedbackSent }) => {
+        window.ysdk.feedback.requestReview().then(({ feedbackSent }) => {
           console.log('[Yandex] Запрос отзыва выполнен:', feedbackSent);
         });
       } else {
@@ -301,12 +327,25 @@ function requestYandexReview() {
   }
 }
 
-// Инициализация
-if (typeof YaGames !== 'undefined') {
-  initYandexSDK();
-} else {
-  window.addEventListener('load', initYandexSDK);
-}`;
+// Гарантированный запуск initYandexSDK, если скрипт в head еще не успел вызваться
+if (typeof initYandexSDK === 'function') {
+  if (typeof YaGames !== 'undefined') {
+    initYandexSDK();
+  } else {
+    window.addEventListener('load', () => {
+      if (typeof YaGames !== 'undefined') initYandexSDK();
+    });
+  }
+}
+if (window.ysdk) {
+  initYandexPlayer();
+  try {
+    if (window.ysdk.features && window.ysdk.features.LoadingAPI) {
+      window.ysdk.features.LoadingAPI.ready();
+    }
+  } catch(e) {}
+}
+`;
 
 html = html.replace(vkJsRegex, yaJsCode);
 
