@@ -3256,7 +3256,7 @@ function renderShop() {
   c.innerHTML = '';
   const isEn = (currentLang === 'en');
   const myLvl = (clientMe && clientMe.level) ? clientMe.level : 1;
-  const myScore = (clientMe && clientMe.score !== undefined) ? clientMe.score : 0;
+  const myTalons = (clientMe && clientMe.talons !== undefined) ? clientMe.talons : 0;
   const myInvCount = (clientMe && clientMe.inventory) ? clientMe.inventory.length : 0;
   const myMaxInv = (clientMe && clientMe.maxInv) ? clientMe.maxInv : 12;
   const isInvFull = myInvCount >= myMaxInv;
@@ -3276,7 +3276,7 @@ function renderShop() {
     let tUnit = isEn ? 't.' : 'т.';
 
     let isLevelLocked = (item.reqLevel && myLvl < item.reqLevel);
-    let isTooExpensive = (myScore < item.cost);
+    let isTooExpensive = (myTalons < item.cost);
 
     let btnHtml = '';
     let lockNotice = '';
