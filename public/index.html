@@ -1045,10 +1045,10 @@ const DEFAULT_NOTEBOOK = [
 ];
 
 let musicEnabled = true, sfxEnabled = true, crtEnabled = true;
-const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/sounds/ambient_combat.mp3') };
+const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/sounds/ambient_explore.mp3') };
 Object.values(AMBIENTS).forEach(a => { a.loop = true; a.volume = 0; });
 let currentAmbient = null; const AMBIENT_MAX_VOL = 0.35;
-const SOUNDS = { click: new Audio('assets/sounds/click.mp3'), hit_player: new Audio('assets/sounds/hit_player.mp3'), hit_enemy: new Audio('assets/sounds/hit_enemy.mp3'), hit_crit: new Audio('assets/sounds/hit_crit.mp3'), dodge: new Audio('assets/sounds/dodge.mp3'), roar: new Audio('assets/sounds/roar.mp3'), heal: new Audio('assets/sounds/heal.mp3'), special: new Audio('assets/sounds/special.mp3'), victory: new Audio('assets/sounds/victory.mp3'), defeat: new Audio('assets/sounds/defeat.mp3'), low_hp: new Audio('assets/sounds/low_hp.mp3'), equip: new Audio('assets/sounds/equip.mp3'), buy: new Audio('assets/sounds/buy.mp3'), farm: new Audio('assets/sounds/farm.mp3') };
+const SOUNDS = { click: new Audio('assets/sounds/click.mp3'), hit_player: new Audio('assets/sounds/hit_player.mp3'), hit_enemy: new Audio('assets/sounds/hit_enemy.mp3'), hit_crit: new Audio('assets/sounds/hit_enemy.mp3'), dodge: new Audio('assets/sounds/dodge.mp3'), roar: new Audio('assets/sounds/roar.mp3'), heal: new Audio('assets/sounds/heal.mp3'), special: new Audio('assets/sounds/shocker.mp3'), victory: new Audio('assets/sounds/buy.mp3'), defeat: new Audio('assets/sounds/low_hp.mp3'), low_hp: new Audio('assets/sounds/low_hp.mp3'), equip: new Audio('assets/sounds/equip.mp3'), buy: new Audio('assets/sounds/buy.mp3'), farm: new Audio('assets/sounds/farm.mp3') };
 Object.values(SOUNDS).forEach(s => s.volume = 0.5);
 let lowHpWarningPlayed = false;
 function playSound(name) { if (SOUNDS[name] && sfxEnabled) { try { let s = SOUNDS[name].cloneNode(); s.volume = SOUNDS[name].volume; s.play().catch(()=>{}); } catch(e){} } }
@@ -2080,12 +2080,65 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-const socket = io();
+// Подключение к серверу игры (локально или удаленный прод)
+const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '195-19-219-215.sslip.io')
+  ? ''
+  : 'https://195-19-219-215.sslip.io';
+const socket = io(BACKEND_URL, {
+  transports: ['websocket', 'polling']
+});
+
+let cachedLoginPayload = null;
+try {
+  const saved = sessionStorage.getItem('samosbor_auth') || localStorage.getItem('samosbor_auth');
+  if (saved) cachedLoginPayload = JSON.parse(saved);
+} catch(e){}
+
+function performAutoLogin() {
+  if (!cachedLoginPayload) {
+    try {
+      const saved = sessionStorage.getItem('samosbor_auth') || localStorage.getItem('samosbor_auth');
+      if (saved) cachedLoginPayload = JSON.parse(saved);
+    } catch(e){}
+  }
+  if (cachedLoginPayload && socket && socket.connected) {
+    console.log('[Socket] Повторная авторизация сессии:', cachedLoginPayload.type);
+    if (cachedLoginPayload.type === 'vk') socket.emit('vkLogin', cachedLoginPayload.data);
+    else if (cachedLoginPayload.type === 'manual') socket.emit('login', cachedLoginPayload.data);
+    return true;
+  }
+  return false;
+}
 
 socket.on('connect', () => {
   console.log('[Socket] Соединение установлено:', socket.id);
   const errEl = document.getElementById('auth-error');
   if (errEl && errEl.innerText.includes('соединения')) errEl.innerHTML = '';
+  performAutoLogin();
+});
+
+socket.on('requireAuth', () => {
+  console.warn('[Socket] Сервер запросил авторизацию');
+  if (!performAutoLogin()) {
+    if (isVkEnvironment) {
+      const launchParams = window.location.search || window.location.hash.substring(1);
+      const urlParams = new URLSearchParams(window.location.search);
+      const fallbackId = (vkUserData && vkUserData.id) || urlParams.get('vk_user_id');
+      if (fallbackId) {
+        const payload = {
+          search: launchParams,
+          vkUserId: fallbackId,
+          firstName: (vkUserData && vkUserData.first_name) || 'Заключенный',
+          photo: (vkUserData && vkUserData.photo_200) || null
+        };
+        cachedLoginPayload = { type: 'vk', data: payload };
+        try { sessionStorage.setItem('samosbor_auth', JSON.stringify(cachedLoginPayload)); } catch(e){}
+        socket.emit('vkLogin', payload);
+        return;
+      }
+    }
+    showScreen('login-screen');
+  }
 });
 
 socket.on('connect_error', (err) => {
@@ -2149,6 +2202,8 @@ function submitManualLogin() {
   const err = document.getElementById('auth-error');
   if (u && p) {
     if (err) err.innerHTML = '<span style="color:var(--term-warn);">Авторизация...</span>';
+    cachedLoginPayload = { type: 'manual', data: { username: u, password: p } };
+    try { sessionStorage.setItem('samosbor_auth', JSON.stringify(cachedLoginPayload)); } catch(e){}
     socket.emit('login', { username: u, password: p });
   } else {
     if (err) err.innerHTML = '<span style="color:var(--term-danger);">Введите номер и пароль заключенного.</span>';
@@ -2221,18 +2276,22 @@ const vkLoginBtn = document.getElementById('vk-login-btn');
 if (vkLoginBtn) {
   vkLoginBtn.onclick = () => {
     const launchParams = window.location.search || window.location.hash.substring(1);
+    let payload;
     if (vkUserData && vkUserData.id) {
-      socket.emit('vkLogin', {
+      payload = {
         search: launchParams,
         vkUserId: vkUserData.id,
         firstName: vkUserData.first_name || 'Заключенный',
         photo: vkUserData.photo_200 || null
-      });
+      };
     } else {
       const urlParams = new URLSearchParams(window.location.search);
       const fallbackId = urlParams.get('vk_user_id') || 'guest';
-      socket.emit('vkLogin', { search: launchParams, vkUserId: fallbackId, firstName: 'Заключенный' });
+      payload = { search: launchParams, vkUserId: fallbackId, firstName: 'Заключенный' };
     }
+    cachedLoginPayload = { type: 'vk', data: payload };
+    try { sessionStorage.setItem('samosbor_auth', JSON.stringify(cachedLoginPayload)); } catch(e){}
+    socket.emit('vkLogin', payload);
   };
 }
 
@@ -2341,7 +2400,19 @@ document.addEventListener('click', (e) => {
   if (is && is.classList.contains('active-screen') && e.target.closest('#intro-screen')) trySkipIntro();
 });
 
-socket.on('loginSuccess', (data) => { myUsername = data.username; if (data.showIntro) startBootSequence(); else { showScreen('hub-screen'); changeAmbient('hub'); checkAutoTutorial(); } });
+socket.on('loginSuccess', (data) => {
+  myUsername = data.username;
+  if (data.showIntro) {
+    startBootSequence();
+  } else {
+    const curScreen = document.querySelector('.screen.active-screen');
+    if (!curScreen || curScreen.id === 'login-screen' || curScreen.id === 'intro-screen') {
+      showScreen('hub-screen');
+      changeAmbient('hub');
+    }
+    checkAutoTutorial();
+  }
+});
 socket.on('startGame', () => { document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
 
 socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML = ''; h.forEach(m => b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`); b.scrollTop = b.scrollHeight; });

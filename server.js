@@ -1505,7 +1505,17 @@ io.on('connection', (socket) => {
     let lastPvpTime = 0;
     let lastCoopTime = 0;
 
+    function getAuthPlayer() {
+        let username = onlinePlayers[socket.id];
+        if (!username || !db.players[username]) {
+            socket.emit('requireAuth');
+            return null;
+        }
+        return { username, p: db.players[username] };
+    }
+
     socket.on('login', (data) => {
+        if (!data || !data.username) return;
         const { username, password } = data;
         writeLog(`Вход: ${username}`);
         try {
@@ -1538,6 +1548,16 @@ io.on('connection', (socket) => {
                 saveDB(true);
             }
             onlinePlayers[socket.id] = username;
+            if (activeCombats[username]) {
+                let c = activeCombats[username];
+                if (!c.isGlobal || !c.enemy || c.enemy.hp <= 0 || db.players[username].hp <= 0) {
+                    delete activeCombats[username];
+                }
+            }
+            if (db.players[username].hp <= 0) {
+                db.players[username].hp = db.players[username].maxHp || 100;
+                db.players[username].location = 'safe_room';
+            }
             socket.emit('loginSuccess', { username, showIntro: db.players[username].appearance === null });
             if (db.players[username].appearance !== null) socket.emit('startGame');
             broadcastGameState();
@@ -1609,6 +1629,16 @@ io.on('connection', (socket) => {
                 writeLog(`Вход через VK: ${username} (VK ID: ${vkUserId})`);
             }
             onlinePlayers[socket.id] = username;
+            if (activeCombats[username]) {
+                let c = activeCombats[username];
+                if (!c.isGlobal || !c.enemy || c.enemy.hp <= 0 || db.players[username].hp <= 0) {
+                    delete activeCombats[username];
+                }
+            }
+            if (db.players[username].hp <= 0) {
+                db.players[username].hp = db.players[username].maxHp || 100;
+                db.players[username].location = 'safe_room';
+            }
             socket.emit('loginSuccess', { username, showIntro: db.players[username].appearance === null });
             if (db.players[username].appearance !== null) socket.emit('startGame');
             broadcastGameState();
@@ -1675,7 +1705,15 @@ io.on('connection', (socket) => {
         socket.emit('feedbackList', db.feedback || []);
     });
 
-    socket.on('selectPerk', (perkId) => { let p = db.players[onlinePlayers[socket.id]]; if(p && !p.perks.includes(perkId)) { p.perks.push(perkId); if(perkId === 'perk_health') { p.maxHp += 25; p.hp += 25; } saveDB(); broadcastGameState(); } });
+    socket.on('selectPerk', (perkId) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!p.perks.includes(perkId)) {
+            p.perks.push(perkId);
+            if (perkId === 'perk_health') { p.maxHp += 25; p.hp += 25; }
+            saveDB(); broadcastGameState();
+        }
+    });
 
     function checkLifterTrigger(player, sock, loc) {
         if (loc === 'E4' && !player.talkedToLifter) {
@@ -1690,9 +1728,9 @@ io.on('connection', (socket) => {
     }
 
     socket.on('talkToNpc', (npcId) => {
-        let username = onlinePlayers[socket.id];
-        let p = db.players[username];
-        if (!p || activeCombats[username]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        if (activeCombats[username]) return;
         let targetId = npcId || 'npc_lifter';
         let ev = RANDOM_EVENTS.find(e => e.id === targetId);
         if (ev) {
@@ -1705,11 +1743,27 @@ io.on('connection', (socket) => {
     });
 
     socket.on('changeLocation', (locId) => {
-        let username = onlinePlayers[socket.id];
-        let p = db.players[username]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
         if (activeCombats[username]) {
             let c = activeCombats[username];
-            if ((c.enemy && c.enemy.hp <= 0) || p.hp <= 0) {
+            let isDead = (c.enemy && c.enemy.hp <= 0) || p.hp <= 0;
+            let isGlobalBossDead = false;
+            if (c.isGlobal) {
+                let bossKey = (typeof c.floor === 'string' && c.floor.startsWith('coop_')) ? c.floor : `boss_${c.floor}`;
+                let gb = globalBosses[bossKey];
+                if (!gb || gb.hp <= 0) isGlobalBossDead = true;
+            }
+            if (isDead || isGlobalBossDead || locId === 'safe_room') {
+                if (locId === 'safe_room' && !isDead && !isGlobalBossDead) {
+                    p.hp = Math.max(1, Math.floor(p.hp * 0.7)); // штраф за экстренное отступление
+                }
+                if (c.isGlobal) {
+                    let bossKey = (typeof c.floor === 'string' && c.floor.startsWith('coop_')) ? c.floor : `boss_${c.floor}`;
+                    if (globalBosses[bossKey] && globalBosses[bossKey].participants) {
+                        globalBosses[bossKey].participants.delete(username);
+                    }
+                }
                 delete activeCombats[username];
             } else {
                 socket.emit('terminalError', 'НЕЛЬЗЯ ПЕРЕМЕЩАТЬСЯ ВО ВРЕМЯ БОЯ!');
@@ -1787,9 +1841,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('minigameWon', (locId) => {
-        let username = onlinePlayers[socket.id];
-        let p = db.players[username]; let currentFloor = p.floor || 0;
-        if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        let currentFloor = p.floor || 0;
         if (!p.unlockedSectors || typeof p.unlockedSectors !== 'object') p.unlockedSectors = { 0: ['A0'] };
         if (Array.isArray(p.unlockedSectors)) p.unlockedSectors = { 0: p.unlockedSectors };
         if (!Array.isArray(p.unlockedSectors[currentFloor])) p.unlockedSectors[currentFloor] = ['A0'];
@@ -1807,10 +1861,18 @@ io.on('connection', (socket) => {
         broadcastGameState();
     });
 
-    socket.on('minigameCancel', () => { let p = db.players[onlinePlayers[socket.id]]; if (p) { p.location = 'safe_room'; saveDB(); socket.emit('transition', {to: 'safe_room', text: "ОТСТУПЛЕНИЕ..."}); broadcastGameState(); } });
+    socket.on('minigameCancel', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        p.location = 'safe_room';
+        saveDB();
+        socket.emit('transition', {to: 'safe_room', text: "ОТСТУПЛЕНИЕ..."});
+        broadcastGameState();
+    });
 
     socket.on('changeFloor', (dir) => {
-        let username = onlinePlayers[socket.id]; let p = db.players[username]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
         let currentFloor = p.floor || 0;
         if (dir === 'down') {
             if (!p.bossDefeated || !p.bossDefeated[currentFloor]) { socket.emit('terminalError', 'ЛИФТ НЕ АКТИВИРОВАН.'); return; }
@@ -1823,7 +1885,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('buyItem', (itemId) => {
-        let p = db.players[onlinePlayers[socket.id]]; let item = GAME_ITEMS[itemId];
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        let item = GAME_ITEMS[itemId];
         if (item && p.talons >= item.cost && currentShopItems.includes(itemId)) {
             if (item.reqLevel && p.level < item.reqLevel) {
                 socket.emit('terminalError', `ТРЕБУЕТСЯ УРОВЕНЬ ${item.reqLevel}!`);
@@ -1837,7 +1901,9 @@ io.on('connection', (socket) => {
 
     // ===== ПРОДАЖА (было пропущено) =====
     socket.on('sellItem', (invIndex) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p || !p.inventory[invIndex]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!p.inventory[invIndex]) return;
         let itemId = p.inventory[invIndex]; let itemData = GAME_ITEMS[itemId]; if (!itemData) return;
         if (itemData.type === 'material' || itemData.type === 'tool') { socket.emit('terminalError', 'ЭТО НЕЛЬЗЯ СДАТЬ.'); return; }
         let price = Math.min(35, Math.max(3, Math.floor((itemData.cost || 5) * 0.4)));
@@ -1847,12 +1913,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('dropItem', (invIndex) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p || !p.inventory[invIndex]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!p.inventory[invIndex]) return;
         p.inventory.splice(invIndex, 1); socket.emit('playSound', 'equip'); saveDB(); broadcastGameState();
     });
 
     socket.on('equipItem', (invIndex) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p || !p.inventory[invIndex]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!p.inventory[invIndex]) return;
         let itemId = p.inventory[invIndex]; let itemData = GAME_ITEMS[itemId];
         if (itemData && (itemData.type === 'weapon' || itemData.type === 'clothes' || itemData.type === 'mask' || itemData.type === 'backpack')) {
             if (itemData.reqLevel && p.level < itemData.reqLevel) { socket.emit('terminalError', `НУЖЕН УРОВЕНЬ ${itemData.reqLevel}`); socket.emit('playSound', 'defeat'); return; }
@@ -1864,7 +1934,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('unequipItem', (slot) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p || !p.equipment[slot]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!p.equipment[slot]) return;
         if (p.inventory.length >= getMaxInv(p) && slot !== 'backpack') { socket.emit('terminalError', 'СУНДУК ПОЛОН!'); return; }
         p.inventory.push(p.equipment[slot]); p.equipment[slot] = null;
         socket.emit('playSound', 'equip'); saveDB(); broadcastGameState();
@@ -1872,7 +1944,9 @@ io.on('connection', (socket) => {
 
     // ===== БЫСТРЫЕ СЛОТЫ (пояс) — было пропущено =====
     socket.on('setQuickSlot', (data) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!data) return;
         let { invIndex, slotIndex } = data;
         if (!p.inventory[invIndex]) return;
         let itemId = p.inventory[invIndex]; let itemData = GAME_ITEMS[itemId]; if (!itemData) return;
@@ -1890,7 +1964,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('unequipQuickSlot', (idx) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
         if (!p.quickSlots) p.quickSlots = [null, null];
         if (p.quickSlots[idx]) {
             if (p.inventory.length >= getMaxInv(p)) { socket.emit('terminalError', 'СУНДУК ПОЛОН!'); return; }
@@ -1900,8 +1975,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('useQuickSlot', (idx) => {
-        let p = db.players[onlinePlayers[socket.id]]; let combat = activeCombats[onlinePlayers[socket.id]];
-        if (!p || !p.quickSlots || !p.quickSlots[idx]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let combat = activeCombats[username];
+        if (!p.quickSlots || !p.quickSlots[idx]) return;
         let itemId = p.quickSlots[idx]; let itemData = GAME_ITEMS[itemId]; if (!itemData) return;
         if (itemData.type === 'consumable') {
             p.filter = Math.min(100, p.filter + (itemData.restoreFilter||0));
@@ -1923,8 +2000,7 @@ io.on('connection', (socket) => {
                 let oppCombat = activeCombats[opponent];
                 if (po) po.hp -= dmg;
                 if (oppCombat) {
-                    let u = onlinePlayers[socket.id];
-                    oppCombat.logs.push(`> [ДУЭЛЬ] ${u} применил спецсредство ${itemData.name}: -${dmg} HP!`);
+                    oppCombat.logs.push(`> [ДУЭЛЬ] ${username} применил спецсредство ${itemData.name}: -${dmg} HP!`);
                     oppCombat.sounds.push('hit_enemy');
                     oppCombat.vfx.push('player_hit');
                 }
@@ -1939,8 +2015,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('useItem', (invIndex) => {
-        let username = onlinePlayers[socket.id]; let p = db.players[username]; let combat = activeCombats[username];
-        if (!p || !p.inventory[invIndex]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let combat = activeCombats[username];
+        if (!p.inventory[invIndex]) return;
         let itemData = GAME_ITEMS[p.inventory[invIndex]];
         if (itemData && itemData.type === 'consumable') {
             p.filter = Math.min(100, p.filter + (itemData.restoreFilter||0));
@@ -1958,7 +2036,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('modWeapon', (data) => {
-        let { wIdx, mIdx } = data; let p = db.players[onlinePlayers[socket.id]]; if (!p || !p.inventory[wIdx] || !p.inventory[mIdx]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!data) return;
+        let { wIdx, mIdx } = data;
+        if (!p.inventory[wIdx] || !p.inventory[mIdx]) return;
         let wId = p.inventory[wIdx]; let matId = p.inventory[mIdx];
         let wData = GAME_ITEMS[wId]; let mData = GAME_ITEMS[matId];
         if (wData.type !== 'weapon' || mData.type !== 'material') return;
@@ -1979,7 +2061,8 @@ io.on('connection', (socket) => {
 
     // ===== КРАФТ (было пропущено) =====
     socket.on('craftItem', (itemId) => {
-        let p = db.players[onlinePlayers[socket.id]]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
         const RECIPES = {
             weapon_pipe: ['mat_scrap', 'mat_tape'],
             food_medkit: ['mat_chem', 'food_ration'],
@@ -2006,7 +2089,8 @@ io.on('connection', (socket) => {
 
     // ===== ФАРМ СЛИЗИ (было пропущено) =====
     socket.on('work', () => {
-        let username = onlinePlayers[socket.id]; let p = db.players[username]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
         if (activeCombats[username]) { socket.emit('terminalError', 'В БОЮ НЕЛЬЗЯ ФАРМИТЬ.'); return; }
         let now = Date.now();
         if (now - lastWorkTime < 250) return;
@@ -2027,7 +2111,8 @@ io.on('connection', (socket) => {
 
     // ===== РОБОТЫ (было пропущено) =====
     socket.on('installRobot', () => {
-        let username = onlinePlayers[socket.id]; let p = db.players[username]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
         let idx = p.inventory.indexOf('tool_robot');
         if (idx === -1) { socket.emit('terminalError', 'НЕТ АВТОСБОРЩИКА В СУНДУКЕ.'); return; }
         let currentFloor = p.floor || 0;
@@ -2037,15 +2122,16 @@ io.on('connection', (socket) => {
         saveDB(); broadcastGameState();
     });
     socket.on('collectRobot', () => {
-        let username = onlinePlayers[socket.id]; let p = db.players[username]; if (!p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
         let currentFloor = p.floor || 0;
         let locKey = `${currentFloor}_${p.location}`;
         if (p.robots[locKey] === undefined) return;
         let amount = p.robots[locKey];
         if (amount <= 0) { socket.emit('terminalError', 'РОБОТ ПУСТ.'); return; }
         if (p.inventory.length + 1 > getMaxInv(p)) { socket.emit('terminalError', 'СУНДУК ПОЛОН!'); return; }
-        p.talons += amount; p.robots[locKey] = 0;
-        socket.emit('playSound', 'buy'); socket.emit('terminalError', `СОБРАНО ТАЛОНОВ: ${amount}`);
+        p.robots[locKey] = 0; p.inventory.push('food_ration');
+        socket.emit('playSound', 'farm'); socket.emit('terminalError', `СОБРАНО: +${amount} СЛИЗЬ`);
         saveDB(); broadcastGameState();
     });
 
@@ -2307,10 +2393,36 @@ io.on('connection', (socket) => {
     });
 
     socket.on('explore', () => {
-        let username = onlinePlayers[socket.id]; let p = db.players[username]; let currentFloor = p.floor || 0;
-        if (!p || p.location === 'safe_room' || activeCombats[username]) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let currentFloor = p.floor || 0;
+        if (p.location === 'safe_room') {
+            socket.emit('terminalError', 'ВЫ В ЖИЛЯЧЕЙКЕ. ВЫЙДИТЕ В СЕКТОР ЧЕРЕЗ КАРТУ.');
+            return;
+        }
         if (p.hp <= 0) { socket.emit('terminalError', 'КРИТИЧЕСКОЕ СОСТОЯНИЕ.'); return; }
         if (p.filter < 10) { socket.emit('terminalError', 'НЕДОСТАТОЧНО ФИЛЬТРА.'); return; }
+
+        if (activeCombats[username]) {
+            let combat = activeCombats[username];
+            if (combat.isGlobal) {
+                let bossKey = (typeof combat.floor === 'string' && combat.floor.startsWith('coop_')) ? combat.floor : `boss_${combat.floor}`;
+                let gb = globalBosses[bossKey];
+                if (!gb || gb.hp <= 0 || p.hp <= 0) {
+                    delete activeCombats[username];
+                } else {
+                    socket.emit('transition', { to: 'combat', text: "ВОЗВРАТ В РЕЙД..." });
+                    socket.emit('combatStart', { enemy: gb });
+                    return;
+                }
+            } else if (combat.enemy && combat.enemy.hp > 0 && p.hp > 0) {
+                socket.emit('transition', { to: 'combat', text: "ВОЗВРАТ В БОЙ..." });
+                socket.emit('combatStart', { enemy: combat.enemy });
+                return;
+            } else {
+                delete activeCombats[username];
+            }
+        }
         if (p.location === 'E4') {
             if (p.bossDefeated && p.bossDefeated[currentFloor]) { socket.emit('terminalError', 'ЛИФТ УЖЕ ЗАПУЩЕН.'); return; }
             const cfg = FLOOR_CONFIGS[currentFloor] || FLOOR_CONFIGS[0];
@@ -2399,7 +2511,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('combatAction', (actionType) => {
-        let username = onlinePlayers[socket.id]; let combat = activeCombats[username]; let p = db.players[username];
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let combat = activeCombats[username];
         if (!combat || !p || combat.paused) return;
         let stats = getPlayerStats(p);
         if (combat.isGlobal) {
@@ -2444,17 +2558,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('combatMinigameResult', (success) => {
-        let username = onlinePlayers[socket.id]; let combat = activeCombats[username]; let p = db.players[username];
-        if (!combat || !p) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let combat = activeCombats[username];
+        if (!combat) return;
         combat.paused = false;
         if (success) { combat.logs.push(`> [УСПЕХ] РЕАКТОР СТАБИЛИЗИРОВАН!`); combat.sounds.push('victory'); }
         else { combat.logs.push(`> [ПРОМАХ] ВЗРЫВ!`); combat.sounds.push('hit_enemy'); combat.vfx.push('player_hit'); p.hp -= 40; }
     });
 
     socket.on('resolveEvent', (choiceId) => {
-        let username = onlinePlayers[socket.id];
-        let p = db.players[username];
-        if (!p || !p.activeEvent) return;
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        if (!p.activeEvent) return;
         let ev = RANDOM_EVENTS.find(e => e.id === p.activeEvent);
         if (!ev) { p.activeEvent = null; p.activeEventNode = null; return; }
 
@@ -2707,8 +2823,8 @@ setInterval(() => {
         if (gb.hp <= 0) {
             gb.participants.forEach(u => {
                 let combat = activeCombats[u]; let p = db.players[u]; let socketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === u);
-                if (combat && p && socketId) {
-                    let log = combat.logs.join('\n') + '\n';
+                if (combat && p) {
+                    let log = (combat.logs || []).join('\n') + '\n';
                     p.talons += gb.reward; p.xp += gb.xp; p.monstersKilled = (p.monstersKilled || 0) + 1;
                     log += `> БОСС ${gb.name} ПОВЕРЖЕН! +${gb.reward} талонов, +${gb.xp} XP.\n`;
                     if (gb.isElevatorBoss) {
@@ -2726,7 +2842,10 @@ setInterval(() => {
                             }
                         });
                     }
-                    io.to(socketId).emit('combatEnd', { log: log, enemy: gb, win: true }); delete activeCombats[u];
+                    if (socketId) io.to(socketId).emit('combatEnd', { log: log, enemy: gb, win: true });
+                    delete activeCombats[u];
+                } else if (combat) {
+                    delete activeCombats[u];
                 }
             });
             delete globalBosses[bossKey]; saveDB(); broadcastGameState();
@@ -2734,14 +2853,23 @@ setInterval(() => {
         }
         gb.participants.forEach(u => {
             let combat = activeCombats[u]; let p = db.players[u]; let socketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === u);
-            if (combat && p && socketId && !combat.paused) {
+            if (!p || !combat) {
+                gb.participants.delete(u);
+                if (activeCombats[u]) delete activeCombats[u];
+                return;
+            }
+            if (p.hp <= 0) {
+                let log = (combat.logs || []).join('\n') + '\n> ЭВАКУАЦИЯ.';
+                p.hp = 0; p.talons = Math.floor(p.talons / 2); p.location = 'safe_room';
+                if (socketId) io.to(socketId).emit('combatEnd', { log: log, enemy: gb, win: false });
+                delete activeCombats[u]; gb.participants.delete(u);
+                return;
+            }
+            if (!socketId) return;
+            if (!combat.paused) {
                 gb.pTimers[u] -= 0.25;
                 if (gb.pTimers[u] <= 0) { gb.pTimers[u] = 2.0 / getSpeedMult(p.filter); executePlayerAttackGlobal(u, combat, gb, getPlayerStats(p), p); }
-                if (p.hp <= 0) {
-                    let log = combat.logs.join('\n') + '\n> ЭВАКУАЦИЯ.';
-                    p.hp = 0; p.talons = Math.floor(p.talons / 2); p.location = 'safe_room';
-                    io.to(socketId).emit('combatEnd', { log: log, enemy: gb, win: false }); delete activeCombats[u]; gb.participants.delete(u);
-                } else if (combat.logs.length > 0) {
+                if (combat.logs.length > 0) {
                     io.to(socketId).emit('combatTick', { enemyHp: gb.hp, enemyMaxHp: gb.maxHp, logs: combat.logs, sounds: combat.sounds, vfx: combat.vfx }); combat.logs = []; combat.sounds = []; combat.vfx = [];
                 }
             }
@@ -2856,12 +2984,16 @@ setInterval(() => {
         }
 
         // Обычный бой с монстром тумана
+        if (!combat.enemy) {
+            delete activeCombats[username];
+            continue;
+        }
         combat.pTimer -= 0.25; combat.eTimer -= 0.25; combat.logs = []; combat.sounds = []; combat.vfx = [];
         if (combat.eTimer <= 0) {
             combat.eTimer = 2.0;
             if (Math.random() < 0.2) { combat.eDodging = true; combat.logs.push(`> Враг готовит рывок.`); }
             else {
-                let eDmg = Math.max(1, combat.enemy.dmg - Math.floor(getPlayerStats(p).def / 5));
+                let eDmg = Math.max(1, (combat.enemy ? combat.enemy.dmg : 10) - Math.floor(getPlayerStats(p).def / 5));
                 if (combat.pDodging) {
                     if (Math.random() < 0.75) { combat.logs.push(`> УКЛОНЕНИЕ!`); combat.sounds.push('dodge'); combat.vfx.push('player_dodge'); combat.pCritNext = true; combat.pDodging = false; eDmg = 0; }
                     else { combat.logs.push(`> ВРАГ ПОПАЛ! -${eDmg} HP.`); combat.sounds.push('hit_enemy'); combat.vfx.push('player_hit'); p.hp -= eDmg; applyToxicity(p, combat); combat.pDodging = false; }
@@ -2869,9 +3001,9 @@ setInterval(() => {
             }
         }
         if (combat.pTimer <= 0 && !combat.paused) { combat.pTimer = 2.0 / getSpeedMult(p.filter); executePlayerAttack(username, combat, getPlayerStats(p), p); }
-        if (p.hp <= 0 || combat.enemy.hp <= 0) {
-            let log = combat.logs.join('\n') + '\n';
-            if (p.hp > 0) {
+        if (p.hp <= 0 || !combat.enemy || combat.enemy.hp <= 0) {
+            let log = (combat.logs || []).join('\n') + '\n';
+            if (p.hp > 0 && combat.enemy) {
                 if (p.perks.includes('perk_vampire')) { p.hp = Math.min(p.maxHp, p.hp + 5); log += `> +5 HP (вампиризм).\n`; }
                 p.talons += combat.enemy.reward; p.xp += combat.enemy.xp; p.monstersKilled = (p.monstersKilled || 0) + 1;
                 log += `> ВРАГ ПОВЕРЖЕН! +${combat.enemy.reward} талонов, +${combat.enemy.xp} XP.\n`;
