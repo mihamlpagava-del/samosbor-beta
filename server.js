@@ -1262,7 +1262,8 @@ function broadcastGameState() {
                 questItems: p.questItems, unlockedSectors: p.unlockedSectors[floor] || ['A0'], notebook: p.notebook,
                 quickSlots: p.quickSlots, perks: p.perks, level: p.level, xp: p.xp, monstersKilled: p.monstersKilled, roomsCleared: p.roomsCleared,
                 rating: p.rating, rankPos: rankPos, title: title, bossDefeated: p.bossDefeated,
-                currentRobot: p.robots[locKey] !== undefined ? p.robots[locKey] : null, appearance: p.appearance, playtime: p.playtime
+                currentRobot: p.robots[locKey] !== undefined ? p.robots[locKey] : null, appearance: p.appearance, playtime: p.playtime,
+                workbenchLevel: p.workbenchLevel || 1
             },
             sectorPlayers: playersInSector, map: db.map[floor], GAME_PERKS: GAME_PERKS, GAME_ITEMS: GAME_ITEMS, MUTATIONS: MUTATIONS, BESTIARY: BASE_MONSTERS,
             shopItems: currentShopItems, nextShopUpdate: nextShopUpdate, leaderboard: leaderboard
@@ -1533,7 +1534,7 @@ io.on('connection', (socket) => {
                 writeLog(`Регистрация: ${username}`);
                 db.players[username] = {
                     password: hashPassword(password), talons: 0, hp: 100, maxHp: 100, filter: 100, hunger: 100, tox: 0, level: 1, xp: 0, monstersKilled: 0, roomsCleared: 0, rating: 0, playtime: 0,
-                    appearance: null, location: 'safe_room', floor: 0, activeEvent: null,
+                    appearance: null, location: 'safe_room', floor: 0, activeEvent: null, workbenchLevel: 1,
                     unlockedSectors: { 0: ['A0'] }, questItems: [], foundItems: [], quickSlots: [null, null], solvedGames: [], bossDefeated: {}, perks: [], mutations: [], robots: {},
                     notebook: [
                         "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, двадцать три заключённых, погрузили в клеть и отправили вниз, на нулевой этаж, в самое пекло Самосбора.",
@@ -1611,7 +1612,7 @@ io.on('connection', (socket) => {
                     vkUserId: vkUserId,
                     vkPhoto: data.photo || null,
                     talons: 0, hp: 100, maxHp: 100, filter: 100, hunger: 100, tox: 0, level: 1, xp: 0, monstersKilled: 0, roomsCleared: 0, rating: 0, playtime: 0,
-                    appearance: null, location: 'safe_room', floor: 0, activeEvent: null,
+                    appearance: null, location: 'safe_room', floor: 0, activeEvent: null, workbenchLevel: 1,
                     unlockedSectors: { 0: ['A0'] }, questItems: [], foundItems: [], quickSlots: [null, null], solvedGames: [], bossDefeated: {}, perks: [], mutations: [], robots: {},
                     notebook: [
                         "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, двадцать три заключённых, погрузили в клеть и отправили вниз, на нулевой этаж, в самое пекло Самосбора.",
@@ -2059,32 +2060,87 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ===== КРАФТ (было пропущено) =====
+    // ===== МОДЕРНИЗАЦИЯ ВЕРСТАКА И КРАФТ =====
+    socket.on('upgradeWorkbench', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        p.workbenchLevel = p.workbenchLevel || 1;
+        if (p.workbenchLevel >= 5) {
+            socket.emit('terminalError', 'ВЕРСТАК УЖЕ МАКСИМАЛЬНОГО УРОВНЯ (УР. 5)!');
+            return;
+        }
+        let cost = Math.floor(2500 * Math.pow(2, p.workbenchLevel - 1));
+        if ((p.talons || 0) < cost) {
+            socket.emit('terminalError', `НЕДОСТАТОЧНО ТАЛОНОВ! ТРЕБУЕТСЯ: ${cost} ТАЛОНОВ.`);
+            return;
+        }
+        p.talons -= cost;
+        p.workbenchLevel++;
+        socket.emit('playSound', 'equip');
+        socket.emit('terminalError', `⚙️ ВЕРСТАК МОДЕРНИЗИРОВАН ДО УРОВНЯ ${p.workbenchLevel}!`);
+        saveDB();
+        broadcastGameState();
+    });
+
     socket.on('craftItem', (itemId) => {
         let auth = getAuthPlayer(); if (!auth) return;
         let { p } = auth;
+        p.workbenchLevel = p.workbenchLevel || 1;
         const RECIPES = {
-            weapon_pipe: ['mat_scrap', 'mat_tape'],
-            food_medkit: ['mat_chem', 'food_ration'],
-            special_shocker: ['mat_electro', 'mat_scrap'],
-            tool_robot: ['mat_electro', 'mat_scrap', 'mat_tape']
+            // Уровень 1 (Базовый)
+            weapon_pipe: { reqLvl: 1, reqs: ['mat_scrap', 'mat_tape'] },
+            food_medkit: { reqLvl: 1, reqs: ['mat_chem', 'food_ration'] },
+            special_shocker: { reqLvl: 1, reqs: ['mat_electro', 'mat_scrap'] },
+            tool_robot: { reqLvl: 1, reqs: ['mat_electro', 'mat_scrap', 'mat_tape'] },
+
+            // Уровень 2 (Модернизация за 2500 талонов)
+            weapon_crowbar: { reqLvl: 2, reqs: ['mat_scrap', 'mat_scrap', 'mat_tape'] },
+            special_knife: { reqLvl: 2, reqs: ['mat_scrap', 'mat_tape'] },
+            backpack_small: { reqLvl: 2, reqs: ['mat_scrap', 'mat_scrap', 'mat_tape', 'mat_tape'] },
+
+            // Уровень 3 (Модернизация за 5000 талонов)
+            weapon_axe: { reqLvl: 3, reqs: ['mat_scrap', 'mat_scrap', 'mat_scrap', 'mat_tape'] },
+            food_pure: { reqLvl: 3, reqs: ['food_ration', 'food_ration', 'mat_chem'] },
+            backpack_med: { reqLvl: 3, reqs: ['mat_scrap', 'mat_scrap', 'mat_chem', 'mat_tape', 'mat_tape'] },
+
+            // Уровень 4 (Модернизация за 10000 талонов)
+            weapon_shotgun: { reqLvl: 4, reqs: ['mat_scrap', 'mat_scrap', 'mat_electro', 'mat_electro', 'mat_tape'] },
+            special_grenade: { reqLvl: 4, reqs: ['mat_scrap', 'mat_chem', 'mat_electro'] },
+            backpack_large: { reqLvl: 4, reqs: ['mat_scrap', 'mat_scrap', 'mat_electro', 'mat_electro', 'mat_tape', 'mat_tape'] },
+
+            // Уровень 5 (Модернизация за 20000 талонов)
+            weapon_flamethrower: { reqLvl: 5, reqs: ['mat_scrap', 'mat_chem', 'mat_chem', 'mat_electro', 'mat_electro', 'mat_tape'] },
+            clothes_liquidator: { reqLvl: 5, reqs: ['mat_chem', 'mat_chem', 'mat_scrap', 'mat_scrap', 'mat_electro', 'mat_tape'] }
         };
         let recipe = RECIPES[itemId];
         if (!recipe) { socket.emit('terminalError', 'РЕЦЕПТ НЕ НАЙДЕН.'); return; }
+        if (p.workbenchLevel < recipe.reqLvl) {
+            socket.emit('terminalError', `ТРЕБУЕТСЯ ВЕРСТАК УРОВНЯ ${recipe.reqLvl}!`);
+            return;
+        }
         let tempInv = [...p.inventory];
-        for (let ing of recipe) {
+        for (let ing of recipe.reqs) {
             let idx = tempInv.indexOf(ing);
-            if (idx === -1) { socket.emit('terminalError', `НУЖНО: ${GAME_ITEMS[ing] ? GAME_ITEMS[ing].name : ing}`); return; }
+            if (idx === -1) {
+                let name = GAME_ITEMS[ing] ? GAME_ITEMS[ing].name : ing;
+                socket.emit('terminalError', `НУЖНО: ${name}`);
+                return;
+            }
             tempInv.splice(idx, 1);
         }
-        if (p.inventory.length - recipe.length + 1 > getMaxInv(p)) { socket.emit('terminalError', 'СУНДУК ПЕРЕПОЛНЕН.'); return; }
-        for (let ing of recipe) {
+        if (p.inventory.length - recipe.reqs.length + 1 > getMaxInv(p)) {
+            socket.emit('terminalError', 'СУНДУК ПЕРЕПОЛНЕН.');
+            return;
+        }
+        for (let ing of recipe.reqs) {
             let idx = p.inventory.indexOf(ing);
             if (idx !== -1) p.inventory.splice(idx, 1);
         }
         p.inventory.push(itemId);
-        socket.emit('playSound', 'equip'); socket.emit('terminalError', `СОБРАНО: ${GAME_ITEMS[itemId].name}`);
-        saveDB(); broadcastGameState();
+        socket.emit('playSound', 'equip');
+        socket.emit('terminalError', `СОБРАНО: ${GAME_ITEMS[itemId] ? GAME_ITEMS[itemId].name : itemId}`);
+        saveDB();
+        broadcastGameState();
     });
 
     // ===== ФАРМ СЛИЗИ (было пропущено) =====

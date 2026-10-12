@@ -961,12 +961,20 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
       <div style="flex: 1; min-width: 260px;">
         <h3 style="color: var(--term-info); border-bottom: 1px dashed var(--term-info); padding-bottom: 5px;" data-i18n="craft_assembly">= СБОРКА ПРЕДМЕТОВ =</h3>
-        <div id="assembly-recipes-container">
-          <div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/weapon_pipe.png" onerror="this.style.display='none'"><div><div><span data-i18n="craft_pipe">Вентиль</span> <span class="item-stat-badge stat-dmg">⚔️ 8 <span data-i18n="stat_dmg_unit">УРОН</span></span></div><small style="color:#888;" data-i18n="craft_pipe_sub">[Металл + Изолента]</small></div></div><button onclick="socket.emit('craftItem', 'weapon_pipe')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
-          <div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/food_medkit.png" onerror="this.style.display='none'"><div><div><span data-i18n="craft_medkit">Аптечка</span> <span class="item-stat-badge stat-heal">❤️ +60 HP</span></div><small style="color:#888;" data-i18n="craft_medkit_sub">[Химикаты + Брикет]</small></div></div><button onclick="socket.emit('craftItem', 'food_medkit')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
-          <div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/special_shocker.png" onerror="this.style.display='none'"><div><div><span data-i18n="craft_shocker">Шокер</span> <span class="item-stat-badge stat-dmg">⚡ 45 <span data-i18n="stat_dmg_unit">УРОН</span></span></div><small style="color:#888;" data-i18n="craft_shocker_sub">[Электроника + Металл]</small></div></div><button onclick="socket.emit('craftItem', 'special_shocker')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
-          <div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/tool_robot.png" onerror="this.style.display='none'"><div><div><span data-i18n="craft_robot">Сборщик</span> <span class="item-stat-badge stat-cap">🤖 <span data-i18n="badge_auto">АВТО</span></span></div><small style="color:#888;" data-i18n="craft_robot_sub">[Электроника + Металл + Изолента]</small></div></div><button onclick="socket.emit('craftItem', 'tool_robot')" style="margin:0; padding:5px 10px; font-size:11px;" data-i18n="btn_craft">СОБРАТЬ</button></div>
+        <!-- ПАНЕЛЬ МОДЕРНИЗАЦИИ ВЕРСТАКА -->
+        <div id="workbench-upgrade-box" style="margin-bottom: 12px; background: rgba(255, 170, 0, 0.08); border: 1px solid var(--term-warn); border-radius: 4px; padding: 8px 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div>
+              <div style="font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px;" data-i18n="craft_wb_title">ВЕРСТАК СНАБЖЕНИЯ</div>
+              <div style="font-size: 15px; font-weight: bold; color: var(--term-warn);" id="workbench-level-text">УРОВЕНЬ 1 / 5</div>
+            </div>
+            <button id="btn-upgrade-workbench" onclick="doUpgradeWorkbench()" style="margin: 0; padding: 6px 12px; font-size: 11px; font-weight: bold; border-color: var(--term-warn); color: var(--term-warn); background: rgba(255,170,0,0.12); cursor: pointer;">
+              ⚡ УЛУЧШИТЬ (2500 Т.)
+            </button>
+          </div>
+          <div id="workbench-upgrade-hint" style="font-size: 10px; color: #aaa; margin-top: 5px;"></div>
         </div>
+        <div id="assembly-recipes-container"></div>
       </div>
       <div style="flex: 1; min-width: 260px;">
         <h3 style="color: var(--term-warn); border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;" data-i18n="craft_modding">= МОДИФИКАЦИЯ ОРУЖИЯ =</h3>
@@ -3308,50 +3316,240 @@ setInterval(() => {
   }
 }, 1000);
 
+function doUpgradeWorkbench() {
+  if (!clientMe) return;
+  let curLvl = clientMe.workbenchLevel || 1;
+  if (curLvl >= 5) return;
+  let cost = Math.floor(2500 * Math.pow(2, curLvl - 1));
+  if ((clientMe.talons || 0) < cost) {
+    let diff = cost - (clientMe.talons || 0);
+    let msg = (currentLang === 'en') ? `Need ${cost} talons (+${diff} more)!` : `Нужно ${cost} талонов (не хватает ${diff})!`;
+    let el = document.getElementById('map-error') || document.getElementById('hub-error');
+    if (el) { el.innerText = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); }
+    return;
+  }
+  socket.emit('upgradeWorkbench');
+  let btn = document.getElementById('btn-upgrade-workbench');
+  if (btn) {
+    btn.style.transform = 'scale(0.95)';
+    setTimeout(() => { btn.style.transform = 'none'; }, 200);
+  }
+}
+
 function renderAssemblyRecipes() {
   const container = document.getElementById('assembly-recipes-container');
   if (!container || !clientMe) return;
   const isEn = (currentLang === 'en');
+  const wbLvl = clientMe.workbenchLevel || 1;
+
+  // Обновление заголовка верстака
+  const wbLvlEl = document.getElementById('workbench-level-text');
+  const wbBtnEl = document.getElementById('btn-upgrade-workbench');
+  const wbHintEl = document.getElementById('workbench-upgrade-hint');
+
+  if (wbLvlEl) {
+    wbLvlEl.innerText = `${isEn ? 'LEVEL' : 'УРОВЕНЬ'} ${wbLvl} / 5`;
+  }
+  if (wbBtnEl) {
+    if (wbLvl >= 5) {
+      wbBtnEl.disabled = true;
+      wbBtnEl.innerText = isEn ? '★ MAX LEVEL' : '★ МАКС. УРОВЕНЬ';
+      wbBtnEl.style.opacity = '0.5';
+      wbBtnEl.style.cursor = 'default';
+      wbBtnEl.style.borderColor = '#888';
+      wbBtnEl.style.color = '#888';
+      if (wbHintEl) wbHintEl.innerText = isEn ? 'All recipes unlocked.' : 'Все чертежи верстака открыты.';
+    } else {
+      let cost = Math.floor(2500 * Math.pow(2, wbLvl - 1));
+      let canAfford = (clientMe.talons || 0) >= cost;
+      wbBtnEl.disabled = !canAfford;
+      wbBtnEl.innerText = `⚡ ${isEn ? 'UPGRADE' : 'УЛУЧШИТЬ'} (${cost} ${isEn ? 'T.' : 'Т.'})`;
+      wbBtnEl.style.opacity = canAfford ? '1' : '0.55';
+      wbBtnEl.style.cursor = canAfford ? 'pointer' : 'not-allowed';
+      wbBtnEl.style.borderColor = canAfford ? 'var(--term-warn)' : '#666';
+      wbBtnEl.style.color = canAfford ? 'var(--term-warn)' : '#888';
+
+      let nextUnlocks = {
+        1: isEn ? 'Next unlocks: Crowbar, Throwing Knife, Duffel Bag (+4 slots)' : 'След. ур.: Монтировка, Нож, Вещмешок (+4 слота)',
+        2: isEn ? 'Next unlocks: Fire Axe, Bio-Concentrate, Stalker Backpack (+8 slots)' : 'След. ур.: Пожарный топор, Биоконцентрат, Рюкзак сталкера (+8 слотов)',
+        3: isEn ? 'Next unlocks: KS-23 Shotgun, F-1 Grenade, Tactical Box (+12 slots)' : 'След. ур.: Дробовик КС-23, Граната Ф-1, Тактический короб (+12 слотов)',
+        4: isEn ? 'Next unlocks: Samosbor Flamethrower, Liquidator Armor' : 'След. ур.: Огнемет Самосбора, Броня Ликвидатора'
+      };
+      if (wbHintEl) {
+        let diff = cost - (clientMe.talons || 0);
+        let talonInfo = canAfford ? '' : ` — <span style="color:#ff6666;">${isEn ? 'need' : 'не хватает'} ${diff} ${isEn ? 'talons' : 'тал.'}</span>`;
+        wbHintEl.innerHTML = `${nextUnlocks[wbLvl] || ''}${talonInfo}`;
+      }
+    }
+  }
+
   const RECIPES_DEF = [
+    // УРОВЕНЬ 1 (Базовый)
     {
-      id: 'weapon_pipe',
+      id: 'weapon_pipe', reqLvl: 1,
       nameRu: 'Вентиль', nameEn: 'Pipe Valve',
       icon: 'weapon_pipe',
       badges: '<span class="item-stat-badge stat-dmg">⚔️ 8</span>',
       reqs: [
-        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap' },
-        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape' }
+        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap', count: 1 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
       ]
     },
     {
-      id: 'food_medkit',
+      id: 'food_medkit', reqLvl: 1,
       nameRu: 'Аптечка', nameEn: 'Medkit',
       icon: 'food_medkit',
       badges: '<span class="item-stat-badge stat-heal">❤️ +60 HP</span>',
       reqs: [
-        { id: 'mat_chem', nameRu: 'Химикаты', nameEn: 'Chemicals' },
-        { id: 'food_ration', nameRu: 'Брикет', nameEn: 'Ration' }
+        { id: 'mat_chem', nameRu: 'Химикаты', nameEn: 'Chemicals', count: 1 },
+        { id: 'food_ration', nameRu: 'Брикет', nameEn: 'Ration', count: 1 }
       ]
     },
     {
-      id: 'special_shocker',
+      id: 'special_shocker', reqLvl: 1,
       nameRu: 'Шокер', nameEn: 'Shocker',
       icon: 'special_shocker',
       badges: '<span class="item-stat-badge stat-dmg">⚡ 45</span>',
       reqs: [
-        { id: 'mat_electro', nameRu: 'Электроника', nameEn: 'Electronics' },
-        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap' }
+        { id: 'mat_electro', nameRu: 'Электроника', nameEn: 'Electronics', count: 1 },
+        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap', count: 1 }
       ]
     },
     {
-      id: 'tool_robot',
+      id: 'tool_robot', reqLvl: 1,
       nameRu: 'Сборщик', nameEn: 'Harvester',
       icon: 'tool_robot',
       badges: `<span class="item-stat-badge stat-cap">🤖 ${isEn ? 'AUTO' : 'АВТО'}</span>`,
       reqs: [
-        { id: 'mat_electro', nameRu: 'Электроника', nameEn: 'Electronics' },
-        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap' },
-        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape' }
+        { id: 'mat_electro', nameRu: 'Электроника', nameEn: 'Electronics', count: 1 },
+        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap', count: 1 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
+      ]
+    },
+
+    // УРОВЕНЬ 2 (2500 талонов)
+    {
+      id: 'weapon_crowbar', reqLvl: 2,
+      nameRu: 'Монтировка', nameEn: 'Crowbar',
+      icon: 'weapon_crowbar',
+      badges: '<span class="item-stat-badge stat-dmg">⚔️ 14</span>',
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл x2', nameEn: 'Scrap x2', count: 2 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
+      ]
+    },
+    {
+      id: 'special_knife', reqLvl: 2,
+      nameRu: 'Метательный нож', nameEn: 'Throwing Knife',
+      icon: 'special_knife',
+      badges: '<span class="item-stat-badge stat-dmg">🩸 20</span>',
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap', count: 1 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
+      ]
+    },
+    {
+      id: 'backpack_small', reqLvl: 2,
+      nameRu: 'Вещмешок', nameEn: 'Duffel Bag',
+      icon: 'backpack_small',
+      badges: `<span class="item-stat-badge stat-cap">🎒 +4 ${isEn ? 'SLOTS' : 'СЛОТА'}</span>`,
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл x2', nameEn: 'Scrap x2', count: 2 },
+        { id: 'mat_tape', nameRu: 'Изолента x2', nameEn: 'Tape x2', count: 2 }
+      ]
+    },
+
+    // УРОВЕНЬ 3 (5000 талонов)
+    {
+      id: 'weapon_axe', reqLvl: 3,
+      nameRu: 'Пожарный топор', nameEn: 'Fire Axe',
+      icon: 'weapon_axe',
+      badges: '<span class="item-stat-badge stat-dmg">⚔️ 28</span>',
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл x3', nameEn: 'Scrap x3', count: 3 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
+      ]
+    },
+    {
+      id: 'food_pure', reqLvl: 3,
+      nameRu: 'Биоконцентрат', nameEn: 'Bio-Concentrate',
+      icon: 'food_pure',
+      badges: '<span class="item-stat-badge stat-heal">❤️ +30 HP | 🧪 +50</span>',
+      reqs: [
+        { id: 'food_ration', nameRu: 'Брикет x2', nameEn: 'Ration x2', count: 2 },
+        { id: 'mat_chem', nameRu: 'Химикаты', nameEn: 'Chemicals', count: 1 }
+      ]
+    },
+    {
+      id: 'backpack_med', reqLvl: 3,
+      nameRu: 'Рюкзак сталкера', nameEn: 'Stalker Backpack',
+      icon: 'backpack_med',
+      badges: `<span class="item-stat-badge stat-cap">🎒 +8 ${isEn ? 'SLOTS' : 'СЛОТОВ'}</span>`,
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл x2', nameEn: 'Scrap x2', count: 2 },
+        { id: 'mat_chem', nameRu: 'Химикаты', nameEn: 'Chemicals', count: 1 },
+        { id: 'mat_tape', nameRu: 'Изолента x2', nameEn: 'Tape x2', count: 2 }
+      ]
+    },
+
+    // УРОВЕНЬ 4 (10000 талонов)
+    {
+      id: 'weapon_shotgun', reqLvl: 4,
+      nameRu: 'Дробовик КС-23', nameEn: 'KS-23 Shotgun',
+      icon: 'weapon_shotgun',
+      badges: '<span class="item-stat-badge stat-dmg">⚔️ 90</span>',
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл x2', nameEn: 'Scrap x2', count: 2 },
+        { id: 'mat_electro', nameRu: 'Электроника x2', nameEn: 'Electronics x2', count: 2 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
+      ]
+    },
+    {
+      id: 'special_grenade', reqLvl: 4,
+      nameRu: 'Граната Ф-1', nameEn: 'F-1 Grenade',
+      icon: 'special_grenade',
+      badges: '<span class="item-stat-badge stat-dmg">💥 90</span>',
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap', count: 1 },
+        { id: 'mat_chem', nameRu: 'Химикаты', nameEn: 'Chemicals', count: 1 },
+        { id: 'mat_electro', nameRu: 'Электроника', nameEn: 'Electronics', count: 1 }
+      ]
+    },
+    {
+      id: 'backpack_large', reqLvl: 4,
+      nameRu: 'Тактический короб', nameEn: 'Tactical Box',
+      icon: 'backpack_large',
+      badges: `<span class="item-stat-badge stat-cap">🎒 +12 ${isEn ? 'SLOTS' : 'СЛОТОВ'}</span>`,
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл x2', nameEn: 'Scrap x2', count: 2 },
+        { id: 'mat_electro', nameRu: 'Электроника x2', nameEn: 'Electronics x2', count: 2 },
+        { id: 'mat_tape', nameRu: 'Изолента x2', nameEn: 'Tape x2', count: 2 }
+      ]
+    },
+
+    // УРОВЕНЬ 5 (20000 талонов)
+    {
+      id: 'weapon_flamethrower', reqLvl: 5,
+      nameRu: 'Огнемет Самосбора', nameEn: 'Samosbor Flamethrower',
+      icon: 'weapon_flamethrower',
+      badges: '<span class="item-stat-badge stat-dmg">🔥 130</span>',
+      reqs: [
+        { id: 'mat_scrap', nameRu: 'Металл', nameEn: 'Scrap', count: 1 },
+        { id: 'mat_chem', nameRu: 'Химикаты x2', nameEn: 'Chemicals x2', count: 2 },
+        { id: 'mat_electro', nameRu: 'Электроника x2', nameEn: 'Electronics x2', count: 2 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
+      ]
+    },
+    {
+      id: 'clothes_liquidator', reqLvl: 5,
+      nameRu: 'Броня Ликвидатора', nameEn: 'Liquidator Armor',
+      icon: 'clothes_liquidator',
+      badges: `<span class="item-stat-badge stat-def">🛡️ 120 ${isEn ? 'DEF' : 'ЗАЩИТА'}</span>`,
+      reqs: [
+        { id: 'mat_chem', nameRu: 'Химикаты x2', nameEn: 'Chemicals x2', count: 2 },
+        { id: 'mat_scrap', nameRu: 'Металл x2', nameEn: 'Scrap x2', count: 2 },
+        { id: 'mat_electro', nameRu: 'Электроника', nameEn: 'Electronics', count: 1 },
+        { id: 'mat_tape', nameRu: 'Изолента', nameEn: 'Tape', count: 1 }
       ]
     }
   ];
@@ -3365,26 +3563,39 @@ function renderAssemblyRecipes() {
     let reqStrings = [];
 
     r.reqs.forEach(req => {
-      let idx = invCopy.indexOf(req.id);
+      let count = req.count || 1;
       let rName = isEn ? req.nameEn : req.nameRu;
-      if (idx !== -1) {
-        invCopy.splice(idx, 1);
+      let found = 0;
+      for (let c = 0; c < count; c++) {
+        let idx = invCopy.indexOf(req.id);
+        if (idx !== -1) {
+          invCopy.splice(idx, 1);
+          found++;
+        }
+      }
+      if (found >= count) {
         reqStrings.push(`<span style="color:#55ff77;">${rName} ✔</span>`);
       } else {
         hasAll = false;
-        reqStrings.push(`<span style="color:#ff6666;">${rName} ✘</span>`);
+        let diffStr = count > 1 ? ` (${found}/${count})` : '';
+        reqStrings.push(`<span style="color:#ff6666;">${rName}${diffStr} ✘</span>`);
       }
     });
 
+    let isLocked = (wbLvl < r.reqLvl);
     let craftBtn = '';
-    if (hasAll) {
-      craftBtn = `<button onclick="doCraftAssembly('${r.id}')" style="margin:0; padding:5px 10px; font-size:11px; border-color:var(--term-green); color:var(--term-green);">${isEn ? 'CRAFT' : 'СОБРАТЬ'}</button>`;
+    if (isLocked) {
+      craftBtn = `<button disabled style="margin:0; padding:5px 8px; font-size:10px; opacity:0.6; cursor:not-allowed; border-color:#ff5555; color:#ff5555; background:rgba(255,0,0,0.1);">🔒 ${isEn ? 'WB LVL' : 'ВЕРСТАК УР.'} ${r.reqLvl}</button>`;
+    } else if (hasAll) {
+      craftBtn = `<button onclick="doCraftAssembly('${r.id}')" style="margin:0; padding:5px 10px; font-size:11px; border-color:var(--term-green); color:var(--term-green); cursor:pointer;">${isEn ? 'CRAFT' : 'СОБРАТЬ'}</button>`;
     } else {
       craftBtn = `<button disabled style="margin:0; padding:5px 10px; font-size:11px; opacity:0.4; cursor:not-allowed; border-color:#666; color:#666;">${isEn ? 'NO ITEMS' : 'НЕТ РЕСУРСОВ'}</button>`;
     }
 
     let title = isEn ? r.nameEn : r.nameRu;
-    html += `<div class="shop-item" id="recipe-${r.id}"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${r.icon}.png" onerror="this.style.display='none'"><div><div><span style="font-weight:bold;">${title}</span> ${r.badges}</div><small style="font-size:11px;">[${reqStrings.join(' + ')}]</small></div></div>${craftBtn}</div>`;
+    let lockBadge = isLocked ? ` <span style="color:#ff6666; font-size:10px; font-weight:bold;">[🔒 УР. ${r.reqLvl}]</span>` : '';
+    let opacityStyle = isLocked ? 'opacity: 0.65; border-color: rgba(255, 80, 80, 0.3);' : '';
+    html += `<div class="shop-item" id="recipe-${r.id}" style="${opacityStyle}"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${r.icon}.png" onerror="this.style.display='none'"><div><div><span style="font-weight:bold;">${title}</span>${lockBadge} ${r.badges}</div><small style="font-size:11px;">[${reqStrings.join(' + ')}]</small></div></div>${craftBtn}</div>`;
   });
 
   container.innerHTML = html;
