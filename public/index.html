@@ -347,6 +347,102 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .feedback-card-badge.bug { background: rgba(255, 68, 68, 0.2); color: #ff6666; border: 1px solid #ff4444; }
 .feedback-card-badge.suggestion { background: rgba(255, 170, 0, 0.2); color: var(--term-warn); border: 1px solid var(--term-warn); }
 .feedback-card-text { color: #eee; line-height: 1.45; word-break: break-word; white-space: pre-wrap; font-family: inherit; }
+
+/* TUTORIAL / ONBOARDING MODAL */
+.tutorial-panel {
+  width: 760px;
+  max-width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(4, 12, 6, 0.98);
+  border: 2px solid var(--term-color);
+  box-shadow: 0 0 35px rgba(0, 255, 65, 0.25), inset 0 0 15px rgba(0, 255, 65, 0.08);
+  padding: 16px 20px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+.tutorial-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--term-dim);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+.tutorial-stepper {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.tutorial-dot {
+  background: rgba(0, 30, 10, 0.8);
+  border: 1px solid var(--term-dim);
+  color: var(--term-dim);
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: 0.15s;
+  user-select: none;
+}
+.tutorial-dot:hover {
+  border-color: var(--term-color);
+  color: #fff;
+}
+.tutorial-dot.active {
+  background: var(--term-color);
+  color: #000;
+  font-weight: bold;
+  border-color: #fff;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+}
+.tutorial-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px 16px;
+  background: rgba(0, 15, 5, 0.6);
+  border: 1px solid var(--term-dim);
+  border-radius: 3px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #d8f5d8;
+  margin-bottom: 14px;
+}
+.tutorial-body h3 {
+  margin: 0 0 10px 0;
+  color: var(--term-warn);
+  font-size: 15px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px dashed var(--term-dim);
+  padding-bottom: 6px;
+}
+.tutorial-body p {
+  margin: 0 0 10px 0;
+}
+.tutorial-highlight-box {
+  background: rgba(0, 40, 15, 0.45);
+  border-left: 3px solid var(--term-color);
+  padding: 8px 12px;
+  margin: 10px 0;
+  font-size: 12.5px;
+  color: #c0ffc0;
+  line-height: 1.5;
+}
+.tutorial-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+}
 </style>
 </head>
 <body class="crt-enabled">
@@ -474,6 +570,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 <div id="options-menu" class="options-menu">
   <button id="btn-opt-lang" class="audio-btn opt-btn" style="color: #00e5ff;" onclick="toggleLanguage()">🌐 Язык: РУССКИЙ (RU/EN)</button>
+  <button id="btn-opt-guide" class="audio-btn opt-btn" style="color: #33ff55; border-color: rgba(51,255,85,0.4); font-weight: bold;" onclick="startTutorial(true)" data-i18n="opt_guide">🎓 Обучение и Гайд</button>
   <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
@@ -648,6 +745,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <h2 data-i18n="guide_title">РУКОВОДСТВО ПО ВЫЖИВАНИЮ</h2>
       <button onclick="document.getElementById('info-modal').style.display='none'">[X]</button>
     </div>
+    <button onclick="document.getElementById('info-modal').style.display='none'; startTutorial(true);" style="width: 100%; margin-bottom: 14px; padding: 8px 12px; font-weight: bold; border-color: var(--term-color); color: var(--term-color); background: rgba(0,35,10,0.7); cursor: pointer; letter-spacing: 1px;" data-i18n="btn_start_interactive_tut">🎓 ЗАПУСТИТЬ ИНТЕРАКТИВНОЕ ОБУЧЕНИЕ (ГАЙД ПО КНОПКАМ)</button>
     <div id="guide-content">
     <h3>= 1. ВВЕДЕНИЕ И ЦЕЛЬ =</h3>
     <p>Вы — один из двадцати трёх заключённых, приговорённых Партией Светлых к «искуплению через труд». Во время спуска вглубь шахты оборвался трос — клеть рухнула на самое дно. Вы выжили и укрылись в первой попавшейся жилячейке.</p>
@@ -704,6 +802,31 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     &nbsp;&nbsp;🤝 <b>РЕЙД (Кооператив):</b> Отправить приглашение в совместную вылазку против усиленной элитной твари Тумана с ценным лутом. Оба игрока сражаются одновременно и наносят общий урон!<br>
     &nbsp;&nbsp;🩹 <b>ПОМОЧЬ:</b> Оказать товарищу полевую первую помощь (+15 HP).<br>
     • <b>Случайные события и NPC:</b> Во время вылазок в Туман (28% шанс) вы можете наткнуться на Барыгу с редким оружием, Сталкера Глеба с байками о Самосборе, раненого Ликвидатора или сумасшедшего Ученого с экспериментальной сывороткой, а также найти квестовые тайники с деталями лифта и ключами!</p>
+    </div>
+  </div>
+</div>
+
+<div id="tutorial-modal" class="modal-overlay" style="z-index: 105; display: none;">
+  <div class="tutorial-panel">
+    <div class="tutorial-header">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:18px;">🎓</span>
+        <h2 id="tut-title" style="margin:0; font-size:15px; letter-spacing:1.5px; color:var(--term-color);" data-i18n="tut_header">КУРС МОЛОДОГО ЗАКЛЮЧЕННОГО // ОБУЧЕНИЕ</h2>
+      </div>
+      <button onclick="closeTutorial()" style="padding:2px 8px; font-size:13px; border:1px solid var(--term-dim); color:var(--term-dim);">[X]</button>
+    </div>
+    
+    <div id="tut-stepper" class="tutorial-stepper"></div>
+
+    <div id="tut-body" class="tutorial-body"></div>
+
+    <div class="tutorial-footer">
+      <button id="tut-btn-prev" onclick="prevTutorialStep()" style="min-width: 95px; padding: 7px 14px; font-size: 12px;" data-i18n="btn_prev">◀ НАЗАД</button>
+      <div id="tut-step-counter" style="font-size: 11px; color: var(--term-dim); letter-spacing: 1px; font-weight: bold;">ШАГ 1 / 7</div>
+      <div style="display: flex; gap: 8px;">
+        <button id="tut-btn-skip" onclick="closeTutorial()" style="padding: 7px 12px; font-size: 12px; border-color: #555; color: #888;" data-i18n="btn_skip">ПРОПУСТИТЬ</button>
+        <button id="tut-btn-next" onclick="nextTutorialStep()" style="min-width: 105px; padding: 7px 16px; font-size: 12px; border-color: var(--term-color); color: var(--term-color); font-weight: bold;" data-i18n="btn_next">ДАЛЕЕ ▶</button>
+      </div>
     </div>
   </div>
 </div>
@@ -990,6 +1113,13 @@ const I18N = {
     btn_bestiary: "📖 БЕСТИАРИЙ",
     btn_info: "ℹ️ СПРАВКА",
     btn_options: "⚙️ ОПЦИИ",
+    opt_guide: "🎓 Обучение и Гайд",
+    tut_header: "КУРС МОЛОДОГО ЗАКЛЮЧЕННОГО // ОБУЧЕНИЕ",
+    btn_start_interactive_tut: "🎓 ЗАПУСТИТЬ ИНТЕРАКТИВНОЕ ОБУЧЕНИЕ (ГАЙД ПО КНОПКАМ)",
+    btn_prev: "◀ НАЗАД",
+    btn_next: "ДАЛЕЕ ▶",
+    btn_finish: "ЗАВЕРШИТЬ ✓",
+    btn_skip: "ПРОПУСТИТЬ",
     opt_feedback: "📝 Баг-репорт / Предложение [Shift+P]",
     opt_donate: "💎 Поддержать проект (VK)",
     opt_invite: "👥 Позвать друга (VK)",
@@ -1107,6 +1237,13 @@ const I18N = {
     btn_bestiary: "📖 BESTIARY",
     btn_info: "ℹ️ GUIDE",
     btn_options: "⚙️ OPTIONS",
+    opt_guide: "🎓 Tutorial & Guide",
+    tut_header: "INMATE ONBOARDING // SURVIVAL BRIEFING",
+    btn_start_interactive_tut: "🎓 LAUNCH INTERACTIVE TUTORIAL (BUTTON GUIDE)",
+    btn_prev: "◀ BACK",
+    btn_next: "NEXT ▶",
+    btn_finish: "FINISH ✓",
+    btn_skip: "SKIP",
     opt_feedback: "📝 Bug Report / Suggestion [Shift+P]",
     opt_donate: "💎 Support Project (VK)",
     opt_invite: "👥 Invite Friends (VK)",
@@ -1592,6 +1729,10 @@ function applyLanguage() {
   if (typeof renderShop === 'function' && typeof currentShopItems !== 'undefined' && currentShopItems && currentShopItems.length > 0) {
     renderShop();
   }
+  const tm = document.getElementById('tutorial-modal');
+  if (tm && tm.style.display === 'flex' && typeof renderTutorialStep === 'function') {
+    renderTutorialStep(currentTutorialStep);
+  }
 }
 
 function toggleLanguage() {
@@ -1599,6 +1740,345 @@ function toggleLanguage() {
   localStorage.setItem('samosbor_lang', currentLang);
   applyLanguage();
 }
+
+// ===== ОБУЧЕНИЕ ЗАКЛЮЧЕННОГО / TUTORIAL & ONBOARDING =====
+let currentTutorialStep = 0;
+
+const TUTORIAL_STEPS_RU = [
+  {
+    title: "1. ЖИЛЯЧЕЙКА И ЖИЗНЕННЫЕ ПОКАЗАТЕЛИ",
+    shortName: "1. База & Статусы",
+    content: `
+      <p><b>Жилячейка</b> — ваше единственное надёжное убежище от смертоносного Самосбора. Пока вы находитесь на базе, ваши раны исцеляются, а фильтр противогаза <b>бесплатно восстанавливается до 100%</b>.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>💚 <b>Здоровье (HP):</b> Если здоровье упадет до 0 в бою или от тумана — вы потеряете сознание, эвакуируетесь в Жилячейку и потеряете 50% талонов.</div>
+        <div style="margin-top:6px;">💨 <b>Фильтр противогаза:</b> Расходуется при каждой вылазке в туман. При уровне ниже 10% вылазки блокируются! В бою свежий фильтр даёт колоссальный бонус к скорости атаки.</div>
+        <div style="margin-top:6px;">🍗 <b>Голод (Сытость):</b> Постепенно падает со временем. На 0% вы начнете терять здоровье каждую минуту! Ешьте слизь или тушенку.</div>
+        <div style="margin-top:6px;">☣️ <b>Заражение (Токсичность):</b> Накапливается от ударов тварей тумана. При 100% сбрасывается и вызывает случайную необратимую <b>Мутацию</b>.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Совет: всегда возвращайтесь в жилячейку для передышки перед опасными спусками!</p>
+    `
+  },
+  {
+    title: "2. СУНДУК, ВЕЩМЕШОК И БЫСТРЫЕ СЛОТЫ",
+    shortName: "2. Склад & Пояс",
+    content: `
+      <p>Кнопка <b>[🎒 ИНВЕНТАРЬ / ДЕЛО]</b> (Сундук) открывает дело заключенного, склад и слоты экипировки.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🛡️ <b>Слоты экипировки:</b> Вы можете надеть <i>Противогаз</i> (защита от токсинов), <i>Броню</i> (снижение урона), <i>Оружие</i> (увеличение атаки) и <i>Рюкзак</i> (расширяет объем сундука с 12 до 24+ слотов).</div>
+        <div style="margin-top:6px;">⚠️ <b>Требования уровня (Красная рамка):</b> Предметы выше вашего текущего уровня обведены <span style="color:var(--term-danger); font-weight:bold;">красным цветом</span>. Их нельзя надеть, пока вы не прокачаете уровень в боях.</div>
+        <div style="margin-top:6px;">⚡ <b>Пояс быстрого доступа:</b> Нажмите «На пояс» на любой аптечке, пище или спецсредстве (электрошокер, метательный нож). Предметы с пояса активируются <b>мгновенно прямо во время боя</b>!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Совет: следите за вместимостью склада — когда он переполнен, новый лут подобрать не удастся!</p>
+    `
+  },
+  {
+    title: "3. ВЕРСТАК, СИНТЕЗ И МОДИФИКАЦИИ ОРУЖИЯ",
+    shortName: "3. Верстак & Крафт",
+    content: `
+      <p>Кнопка <b>[⚒️ ВЕРСТАК]</b> открывает терминал крафта расходников и стихийной модификации оружия.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🔧 <b>Сборка расходников:</b> Из найденного хлама создавайте <i>Военные аптечки</i> (+60 HP), <i>Тяжелые вентили</i>, <i>Электрошокеры</i> и <i>Автосборщиков</i>.</div>
+        <div style="margin-top:6px;">✨ <b>Стихийный синтез оружия:</b> Выберите оружие без модификаций и соедините его с реагентом в визуальных слотах верстака:</div>
+        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+          🔥 <b>+ Химикаты:</b> Стихия ОГНЯ (<b>+15% урона</b>)<br>
+          ⚡ <b>+ Электроника:</b> Стихия ЭЛЕКТРО (<b>+10% урона</b>)<br>
+          🩸 <b>+ Кусок металла:</b> КРОВОТЕЧЕНИЕ (<b>+5% урона</b>)
+        </div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Стихийный урон критически важен в сражениях против толстокожих рейд-боссов!</p>
+    `
+  },
+  {
+    title: "4. ДОБЫЧА СЛИЗИ И РОБОТ-СБОРЩИК",
+    shortName: "4. Добыча & Робот",
+    content: `
+      <p>Выживание в Гигахрущевке требует ресурсов и калорий. Вы можете добывать их вручную и автоматизировать сбор:</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>💧 <b>Фарм слизи:</b> Нажатие на кнопку <b>[ФАРМ СЛИЗИ]</b> на любой локации позволяет соскребать биомассу со стен. Слизь утоляет голод и используется в синтезе медикаментов.</div>
+        <div style="margin-top:6px;">⛏️ <b>Инструменты добычи:</b> Наличие в сундуке <i>Скребка</i> (+1), <i>Пневмонасоса</i> (+3) или <i>Экстрактора</i> (+7) многократно умножает выработку слизи за один клик.</div>
+        <div style="margin-top:6px;">🤖 <b>Автосборщик (Робот):</b> Скрафтите робота на верстаке или купите у торговца. Перейдите в любой сектор и нажмите <b>[УСТАНОВИТЬ]</b>. Робот будет пассивно копить талоны (до 250 шт.) даже пока вы офлайн!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Не забывайте регулярно обходить роботов и собирать накопленные талоны!</p>
+    `
+  },
+  {
+    title: "5. КАРТА ЭТАЖА И ВЗЛОМ ГЕРМОДВЕРЕЙ",
+    shortName: "5. Карта & Взлом",
+    content: `
+      <p>Кнопка <b>[🗺️ ВЫХОД В БЛОК]</b> открывает интерактивную карту этажа с секторами от <b>A0</b> до <b>E4</b>.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🚪 <b>Запертые гермодвери:</b> Проход во многие сектора преграждают системы блокировки Самосбора. Чтобы открыть дверь, решите мини-игру (подбор кода, фазы реле, калибровка частоты) либо используйте найденный сюжетный ключ (Болторез, Ключ-карту).</div>
+        <div style="margin-top:6px;">📖 <b>Дневник и Подсказки:</b> Кнопка <b>[📓 ДНЕВНИК]</b> хранит все найденные вами записки комендантов, памятки ликвидаторов и пароли от гермодверей.</div>
+        <div style="margin-top:6px;">📡 <b>Радар сектора:</b> В локациях вы можете встретить других выживших заключенных — доступно PvP, полевая помощь и кооперативные рейды!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Сектор E4 всегда подсвечен синим цветом — это ключевая цель каждого этажа.</p>
+    `
+  },
+  {
+    title: "6. ВЫХОД В ТУМАН И БОЕВАЯ СИСТЕМА",
+    shortName: "6. В туман & Бой",
+    content: `
+      <p>Красная кнопка <b>[ВЫЛАЗКА В ТУМАН]</b> отправляет вас на поиски тайников, где вы неизбежно столкнетесь с порождениями Самосбора.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🎯 <b>Прицельная атака (Крит):</b> Запустите шкалу прицеливания и нажмите кнопку в момент, когда курсор окажется в <span style="color:var(--term-green); font-weight:bold;">зелёной зоне</span> — вы нанесете гарантированный <b>ДВОЙНОЙ КРИТИЧЕСКИЙ УДАР</b>! Но при промахе враг контратакует.</div>
+        <div style="margin-top:6px;">💨 <b>Уклонение:</b> 75% шанс увернуться от атаки противника. В случае успеха ваш следующий удар гарантированно станет критическим.</div>
+        <div style="margin-top:6px;">💊 <b>Быстрые слоты пояса:</b> В пылу боя нажимайте ячейки быстрого доступа под вашим аватаром, чтобы мгновенно выпить лекарство или метнуть шокер во врага.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Следите за остатком фильтра противогаза — без него в тумане не выжить!</p>
+    `
+  },
+  {
+    title: "7. ГЛАВНАЯ ЦЕЛЬ: ЛИФТЁР В E4 И БОСС ЭТАЖА",
+    shortName: "7. Лифт E4 & Босс",
+    content: `
+      <p>Ваша глобальная цель — пробиться через все этажи Гигахрущевки к 30-му этажу (Чернобогу).</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>👴 <b>Слепой Лифтёр (Дед Макар):</b> Добравшись до сектора <b>E4</b>, поговорите со старым лифтёром. Он ждёт того, кто починит грузовой лифт. Для ремонта нужны 3 детали:</div>
+        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+          🧰 <b>Ремкомплект лифта</b><br>
+          🎛️ <b>Блок кнопок</b><br>
+          🔌 <b>Провод генератора</b>
+        </div>
+        <div style="margin-top:6px;">Ищите эти детали в тайниках тумана на текущем этаже и тащите лифтёру.</div>
+        <div style="margin-top:6px;">👹 <b>Рейд-Босс этажа:</b> При запуске лифта пробуждается ужасный страж этажа. Одолейте его и жмите кнопку перехода вниз!</div>
+      </div>
+      <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">Вы готовы к службе и выживанию, Заключенный. Партия верит в вас!</p>
+    `
+  }
+];
+
+const TUTORIAL_STEPS_EN = [
+  {
+    title: "1. LIVING CELL & VITAL STATS",
+    shortName: "1. Base & Stats",
+    content: `
+      <p><b>Living Cell</b> is your only safe haven from the horrors of Samosbor. Resting here heals your injuries and <b>restores your gas mask filter to 100% for free</b>.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>💚 <b>Health (HP):</b> If HP drops to 0 during combat or exploration, you collapse, get evacuated to your Living Cell, and lose 50% of your talons.</div>
+        <div style="margin-top:6px;">💨 <b>Gas Mask Filter:</b> Drained on every foray into the fog. If it falls below 10%, expeditions are blocked! In combat, a clean filter grants a major attack speed boost.</div>
+        <div style="margin-top:6px;">🍗 <b>Satiety (Hunger):</b> Slowly drops over time. At 0%, you start losing HP every minute! Eat slime briquettes or canned rations.</div>
+        <div style="margin-top:6px;">☣️ <b>Toxicity (Infection):</b> Accumulates from beast strikes. At 100%, it resets and triggers a permanent <b>Mutation</b>.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Always return to your cell to rest before undertaking dangerous descents!</p>
+    `
+  },
+  {
+    title: "2. CHEST, INVENTORY & QUICK BELT SLOTS",
+    shortName: "2. Storage & Belt",
+    content: `
+      <p>Click <b>[🎒 DOSSIER / INVENTORY]</b> (Chest) in your cell to manage gear, storage, and equipment.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🛡️ <b>Equipment Slots:</b> Equip <i>Gas Masks</i> (toxin defense), <i>Armor</i> (damage reduction), <i>Weapons</i> (attack bonus), and <i>Backpacks</i> (expands storage from 12 to 24+ slots).</div>
+        <div style="margin-top:6px;">⚠️ <b>Level Requirements (Red Outline):</b> Items above your current level are marked with a <span style="color:var(--term-danger); font-weight:bold;">red outline</span>. You can equip them once you level up in combat.</div>
+        <div style="margin-top:6px;">⚡ <b>Quick Belt:</b> Click "To Belt" on any medkit, ration, or combat utility (stunner, throwing knife). Belt items can be activated <b>instantly during combat</b>!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Keep an eye on storage capacity — when full, new loot cannot be stored!</p>
+    `
+  },
+  {
+    title: "3. WORKBENCH, SYNTHESIS & WEAPON MODS",
+    shortName: "3. Bench & Craft",
+    content: `
+      <p>Click <b>[⚒️ WORKBENCH]</b> to access crafting recipes and elemental weapon modifications.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🔧 <b>Item Assembly:</b> Craft <i>Military Medkits</i> (+60 HP), <i>Heavy Valves</i>, <i>Stunners</i>, and <i>Harvesters</i> from scrap metal, chemicals, and wires found in the fog.</div>
+        <div style="margin-top:6px;">✨ <b>Elemental Weapon Synthesis:</b> Place an unmodded weapon and a reagent into the workbench synthesis slots:</div>
+        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+          🔥 <b>+ Chemicals:</b> FIRE Element (<b>+15% damage</b>)<br>
+          ⚡ <b>+ Electronics:</b> SHOCK Element (<b>+10% damage</b>)<br>
+          🩸 <b>+ Scrap Metal:</b> BLEEDING (<b>+5% damage</b>)
+        </div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Elemental damage is critical for bringing down thick-skinned floor bosses!</p>
+    `
+  },
+  {
+    title: "4. SLIME HARVESTING & HARVESTER ROBOT",
+    shortName: "4. Harvest & Bot",
+    content: `
+      <p>Surviving in the Gigakhrushchyovka demands food and resources. Collect them manually or automate the process:</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>💧 <b>Harvest Slime:</b> Clicking <b>[HARVEST SLIME]</b> in any sector scrapes nutritious biomass from the walls. Slime restores hunger and is used in medicine crafting.</div>
+        <div style="margin-top:6px;">⛏️ <b>Harvesting Tools:</b> Carrying a <i>Scraper</i> (+1), <i>Pneumo Pump</i> (+3), or <i>Extractor</i> (+7) multiplies harvest yield per click.</div>
+        <div style="margin-top:6px;">🤖 <b>Harvester Robot:</b> Craft a bot on the workbench or purchase one from a vendor. Enter any sector and click <b>[INSTALL]</b>. It passively gathers supply talons (up to 250) even while you are offline!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Remember to check on your harvester robots regularly to collect gathered talons!</p>
+    `
+  },
+  {
+    title: "5. SECTOR MAP & AIRLOCK HACKING",
+    shortName: "5. Map & Hacking",
+    content: `
+      <p>Click <b>[🗺️ FLOOR MAP]</b> in your cell to view the sector grid ranging from <b>A0</b> to <b>E4</b>.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🚪 <b>Locked Airlocks:</b> Many passages are sealed by Samosbor emergency locks. Solve the cipher minigame (keypad codes, relay phases, frequency tuning) or apply a quest key (bolt cutters, keycards).</div>
+        <div style="margin-top:6px;">📖 <b>Diary & Hints:</b> Click <b>[📓 DIARY]</b> to view all collected notes from guards, liquidator manuals, and blast door passwords.</div>
+        <div style="margin-top:6px;">📡 <b>Sector Radar:</b> Detect other inmates in your sector — engage in PvP duels, provide first aid, or team up for co-op raids!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Sector E4 is highlighted in blue — it is the primary objective of each floor.</p>
+    `
+  },
+  {
+    title: "6. FORAY INTO FOG & COMBAT SYSTEM",
+    shortName: "6. Fog & Combat",
+    content: `
+      <p>Clicking the red <b>[EXPEDITION INTO FOG]</b> button sends you into the mist to find caches and fight Samosbor abominations.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🎯 <b>Aimed Attack (Crit):</b> Start the aim bar and hit the attack button right as the cursor enters the <span style="color:var(--term-green); font-weight:bold;">green sweet spot</span> to land a guaranteed <b>DOUBLE CRITICAL STRIKE</b>! Miss, and the enemy counters.</div>
+        <div style="margin-top:6px;">💨 <b>Dodge:</b> 75% chance to evade an incoming enemy blow. Successfully dodging guarantees your next strike will be critical.</div>
+        <div style="margin-top:6px;">💊 <b>Quick Belt Slots:</b> In battle, tap your belt slots next to your character avatar to instantly heal or shock your foe.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Monitor your filter gauge closely — without it, the fog is lethal!</p>
+    `
+  },
+  {
+    title: "7. PRIMARY OBJECTIVE: E4 LIFT & FLOOR BOSS",
+    shortName: "7. E4 Lift & Boss",
+    content: `
+      <p>Your ultimate goal is to navigate through all floors of the Gigakhrushchyovka down to floor 30 (Chernobog).</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>👴 <b>Blind Lift Operator (Ded Makar):</b> Head to sector <b>E4</b> and talk to old Ded Makar. He is waiting for someone to fix the elevator with 3 key parts:</div>
+        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+          🧰 <b>Lift Repair Kit</b><br>
+          🎛️ <b>Button Block</b><br>
+          🔌 <b>Generator Cable</b>
+        </div>
+        <div style="margin-top:6px;">Search fog caches across the current floor and bring the parts back to Makar.</div>
+        <div style="margin-top:6px;">👹 <b>Floor Raid Boss:</b> Activating the elevator awakens the giant floor guardian. Slay it, then descend to the next floor!</div>
+      </div>
+      <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">You are now briefed for duty and survival, Inmate. The Party is watching!</p>
+    `
+  }
+];
+
+function startTutorial(force = false) {
+  const optM = document.getElementById('options-menu');
+  if (optM) optM.style.display = 'none';
+  
+  const tutModal = document.getElementById('tutorial-modal');
+  if (!tutModal) return;
+  
+  currentTutorialStep = 0;
+  tutModal.style.display = 'flex';
+  playSound('click');
+  renderTutorialStep(currentTutorialStep);
+}
+
+function renderTutorialStep(stepIdx) {
+  const steps = (currentLang === 'en') ? TUTORIAL_STEPS_EN : TUTORIAL_STEPS_RU;
+  if (stepIdx < 0) stepIdx = 0;
+  if (stepIdx >= steps.length) stepIdx = steps.length - 1;
+  currentTutorialStep = stepIdx;
+  
+  const step = steps[stepIdx];
+  const bodyEl = document.getElementById('tut-body');
+  const counterEl = document.getElementById('tut-step-counter');
+  const btnPrev = document.getElementById('tut-btn-prev');
+  const btnNext = document.getElementById('tut-btn-next');
+  const stepperEl = document.getElementById('tut-stepper');
+  
+  if (bodyEl) {
+    bodyEl.innerHTML = `<h3>${step.title}</h3>${step.content}`;
+    bodyEl.scrollTop = 0;
+  }
+  
+  if (counterEl) {
+    const isEn = (currentLang === 'en');
+    counterEl.innerText = isEn ? `STEP ${stepIdx + 1} / ${steps.length}` : `ШАГ ${stepIdx + 1} / ${steps.length}`;
+  }
+  
+  if (btnPrev) {
+    btnPrev.disabled = (stepIdx === 0);
+    btnPrev.style.opacity = (stepIdx === 0) ? '0.4' : '1';
+    btnPrev.style.cursor = (stepIdx === 0) ? 'not-allowed' : 'pointer';
+  }
+  
+  if (btnNext) {
+    const isLast = (stepIdx === steps.length - 1);
+    const isEn = (currentLang === 'en');
+    btnNext.innerText = isLast ? (isEn ? "FINISH ✓" : "ЗАВЕРШИТЬ ✓") : (isEn ? "NEXT ▶" : "ДАЛЕЕ ▶");
+    btnNext.style.borderColor = isLast ? "var(--term-warn)" : "var(--term-color)";
+    btnNext.style.color = isLast ? "var(--term-warn)" : "var(--term-color)";
+  }
+  
+  if (stepperEl) {
+    stepperEl.innerHTML = '';
+    steps.forEach((s, idx) => {
+      const dot = document.createElement('div');
+      dot.className = 'tutorial-dot' + (idx === stepIdx ? ' active' : '');
+      dot.innerText = s.shortName || `${idx + 1}`;
+      dot.onclick = () => { playSound('click'); renderTutorialStep(idx); };
+      stepperEl.appendChild(dot);
+    });
+  }
+}
+
+function nextTutorialStep() {
+  const steps = (currentLang === 'en') ? TUTORIAL_STEPS_EN : TUTORIAL_STEPS_RU;
+  if (currentTutorialStep < steps.length - 1) {
+    playSound('click');
+    renderTutorialStep(currentTutorialStep + 1);
+  } else {
+    closeTutorial();
+  }
+}
+
+function prevTutorialStep() {
+  if (currentTutorialStep > 0) {
+    playSound('click');
+    renderTutorialStep(currentTutorialStep - 1);
+  }
+}
+
+function closeTutorial() {
+  const tutModal = document.getElementById('tutorial-modal');
+  if (tutModal) tutModal.style.display = 'none';
+  localStorage.setItem('samosbor_tutorial_completed', 'true');
+  playSound('click');
+}
+
+function checkAutoTutorial() {
+  if (!localStorage.getItem('samosbor_tutorial_completed')) {
+    setTimeout(() => {
+      let ls = document.getElementById('login-screen');
+      let ins = document.getElementById('intro-screen');
+      if ((!ls || !ls.classList.contains('active-screen')) && (!ins || !ins.classList.contains('active-screen'))) {
+        startTutorial(false);
+      }
+    }, 600);
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  const tutModal = document.getElementById('tutorial-modal');
+  if (tutModal && tutModal.style.display === 'flex') {
+    if (e.key === 'ArrowRight' || e.key === 'Enter') {
+      nextTutorialStep();
+      e.preventDefault();
+    } else if (e.key === 'ArrowLeft') {
+      prevTutorialStep();
+      e.preventDefault();
+    } else if (e.key === 'Escape') {
+      closeTutorial();
+      e.preventDefault();
+    }
+  }
+});
 
 const socket = io();
 
@@ -1849,7 +2329,10 @@ function trySkipIntro() {
   let is = document.getElementById('intro-screen');
   if (!is || !is.classList.contains('active-screen')) return false;
   if (isTyping) finishTyping();
-  else socket.emit('saveCharacter', { created: true });
+  else {
+    socket.emit('saveCharacter', { created: true });
+    checkAutoTutorial();
+  }
   return true;
 }
 document.addEventListener('keydown', (e) => { if (trySkipIntro()) e.preventDefault(); });
@@ -1858,8 +2341,8 @@ document.addEventListener('click', (e) => {
   if (is && is.classList.contains('active-screen') && e.target.closest('#intro-screen')) trySkipIntro();
 });
 
-socket.on('loginSuccess', (data) => { myUsername = data.username; if (data.showIntro) startBootSequence(); else { showScreen('hub-screen'); changeAmbient('hub'); } });
-socket.on('startGame', () => { document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); });
+socket.on('loginSuccess', (data) => { myUsername = data.username; if (data.showIntro) startBootSequence(); else { showScreen('hub-screen'); changeAmbient('hub'); checkAutoTutorial(); } });
+socket.on('startGame', () => { document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
 
 socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML = ''; h.forEach(m => b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`); b.scrollTop = b.scrollHeight; });
 socket.on('chatMessage', (m) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`; b.scrollTop = b.scrollHeight; });
