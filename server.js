@@ -220,7 +220,7 @@ const ELEMENTS = [
 ];
 
 let GAME_ITEMS = {
-    food_ration: { name: "Брикет слизи", type: "consumable", cost: 10, restoreFilter: 20, restoreHp: 10, restoreHunger: 40, color: '#fff', paperColor: '#222' },
+    food_ration: { name: "Брикет слизи", type: "consumable", cost: 10, restoreFilter: 0, restoreHp: 10, restoreHunger: 40, color: '#fff', paperColor: '#222' },
     food_pure: { name: "Биоконцентрат", type: "consumable", cost: 25, restoreFilter: 50, restoreHp: 30, restoreHunger: 100, color: '#fff', paperColor: '#222' },
     food_medkit: { name: "Военная аптечка", type: "consumable", cost: 60, restoreFilter: 0, restoreHp: 60, restoreHunger: 0, color: '#fff', paperColor: '#222' },
     food_energy: { name: "Энергетик", type: "consumable", cost: 40, restoreFilter: 80, restoreHp: 0, restoreHunger: 10, color: '#fff', paperColor: '#222' },
@@ -1251,7 +1251,7 @@ function broadcastGameState() {
         let playersInSector = [];
         for (let sId in onlinePlayers) {
             let u = onlinePlayers[sId];
-            if (db.players[u].location === p.location && (db.players[u].floor || 0) === floor) { playersInSector.push({ id: sId, username: u, hp: db.players[u].hp }); }
+            if (db.players[u] && db.players[u].location === p.location && (db.players[u].floor || 0) === floor) { playersInSector.push({ id: sId, username: u, hp: db.players[u].hp }); }
         }
         let locKey = `${floor}_${p.location}`;
         io.to(socketId).emit('gameState', {

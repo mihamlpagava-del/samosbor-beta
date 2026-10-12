@@ -177,21 +177,33 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .chest-panel { flex-grow: 1; display: flex; flex-direction: column; height: 100%; }
 .chest-panel h3 { margin-top: 0; font-size: 15px; color: var(--ink-color); }
 .chest-grid { flex-grow: 1; display: grid; grid-template-columns: repeat(2, 1fr); align-content: start; gap: 8px; overflow-y: auto; padding-right: 8px; }
-.chest-item { border: 1px solid rgba(0,0,0,0.35); background-color: rgba(255,255,255,0.4); padding: 8px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 155px; box-sizing: border-box; font-size: 12px; color: var(--ink-color); transition: 0.15s; position: relative; border-radius: 3px; word-break: break-word; }
+.chest-item { border: 1px solid rgba(0,0,0,0.35); background-color: rgba(255,255,255,0.4); padding: 8px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 145px; box-sizing: border-box; font-size: 12px; color: var(--ink-color); transition: 0.15s; position: relative; border-radius: 3px; word-break: break-word; cursor: pointer; overflow: hidden; user-select: none; }
 .chest-item.level-locked { border: 2px solid #b30000 !important; background-color: rgba(180, 0, 0, 0.10) !important; box-shadow: inset 0 0 8px rgba(180,0,0,0.22), 0 0 6px rgba(180,0,0,0.25) !important; }
-.chest-item:hover { background-color: rgba(255,255,255,0.65); border-color: var(--ink-color); }
-.chest-item-icon { width: 34px; height: 34px; max-width: 34px; max-height: 34px; object-fit: contain; margin: 0 auto 4px auto; flex-shrink: 0; display: block; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.25)); }
+.chest-item:hover { background-color: rgba(255,255,255,0.7); border-color: var(--ink-color); transform: translateY(-1px); }
+.chest-item.actions-open { border-color: var(--ink-color) !important; box-shadow: 0 2px 10px rgba(0,0,0,0.25) !important; }
+.chest-item-icon { width: 34px; height: 34px; max-width: 34px; max-height: 34px; object-fit: contain; margin: 0 auto 4px auto; flex-shrink: 0; display: block; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.25)); transition: transform 0.15s ease; }
+.chest-item:hover .chest-item-icon { transform: scale(1.08); }
 .chest-item-name { font-weight: bold; font-size: 12px; line-height: 1.25; margin-bottom: 2px; }
 .chest-item-warn { color: #b30000; font-size: 10px; font-weight: bold; margin-top: 3px; line-height: 1.2; letter-spacing: 0.3px; }
-.chest-item-buttons { margin-top: auto; padding-top: 6px; display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; width: 100%; }
 .item-type { font-size: 10px; color: var(--ink-dim); font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px; }
-.chest-item button { padding: 3px 6px !important; font-size: 10px !important; margin: 1px !important; letter-spacing: 0.5px; line-height: 1.2; }
-.chest-item button[data-action="belt"]  { color: var(--ink-accent); border-color: var(--ink-accent); }
-.chest-item button[data-action="use"]   { color: #003a77; border-color: #003a77; }
-.chest-item button[data-action="equip"] { color: #6a3a00; border-color: #6a3a00; }
-.chest-item button[data-action="drop"]  { color: var(--ink-danger); border-color: var(--ink-danger); }
-.chest-item button:hover { background: rgba(0,0,0,0.06); box-shadow: none; }
-.chest-item button:disabled { opacity: 0.45 !important; cursor: not-allowed !important; }
+
+/* Оверлей быстрых действий на карточке */
+.chest-item-actions-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(246, 240, 226, 0.98); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); display: flex; flex-direction: column; justify-content: center; align-items: stretch; padding: 8px 10px; gap: 5px; z-index: 10; box-sizing: border-box; border-radius: 3px; animation: chestOverlayIn 0.15s ease-out; }
+@keyframes chestOverlayIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.chest-overlay-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 4px; margin-bottom: 2px; }
+.chest-overlay-title { font-size: 11px; font-weight: bold; color: var(--ink-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%; text-align: left; }
+.chest-overlay-close { background: transparent !important; border: 1px solid rgba(0,0,0,0.3) !important; color: #777 !important; padding: 1px 5px !important; font-size: 10px !important; line-height: 1 !important; margin: 0 !important; cursor: pointer; border-radius: 2px; }
+.chest-overlay-close:hover { color: var(--ink-danger) !important; border-color: var(--ink-danger) !important; }
+.chest-act-btn { width: 100%; padding: 6px 4px !important; font-size: 11px !important; font-weight: bold !important; letter-spacing: 0.5px !important; margin: 1px 0 !important; border-radius: 3px !important; cursor: pointer; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: 0.1s; }
+.chest-act-btn[data-action="belt"]  { color: var(--ink-accent); border-color: var(--ink-accent); background: rgba(0,0,0,0.02); }
+.chest-act-btn[data-action="use"]   { color: #003a77; border-color: #003a77; background: rgba(0,0,0,0.02); }
+.chest-act-btn[data-action="equip"] { color: #6a3a00; border-color: #6a3a00; background: rgba(0,0,0,0.02); }
+.chest-act-btn[data-action="drop"]  { color: var(--ink-danger); border-color: var(--ink-danger); background: rgba(0,0,0,0.02); padding: 4px 4px !important; font-size: 10px !important; }
+.chest-act-btn:hover { background: rgba(0,0,0,0.08) !important; transform: scale(1.02); }
+.chest-act-btn:disabled { opacity: 0.45 !important; cursor: not-allowed !important; transform: none !important; }
+
+.chest-item-toggle-btn { margin-top: auto; padding: 3px 8px !important; font-size: 10px !important; font-weight: bold !important; border: 1px dashed rgba(0,0,0,0.35) !important; color: var(--ink-dim) !important; background: rgba(255,255,255,0.5) !important; cursor: pointer; border-radius: 3px; letter-spacing: 0.5px; transition: 0.15s; }
+.chest-item:hover .chest-item-toggle-btn { border-color: var(--ink-color) !important; color: var(--ink-color) !important; background: rgba(255,255,255,0.9) !important; }
 @keyframes craftPulseAnim {
   0% { transform: scale(1); box-shadow: 0 0 25px #00ff66; border-color: #00ff66; }
   50% { transform: scale(1.06); box-shadow: 0 0 35px #00ff66; border-color: #00ff66; }
@@ -2841,24 +2853,87 @@ function bindQuickSlotClicks() {
     el.addEventListener('click', h);
   });
 }
+let activeChestItemIndex = null;
+
+function closeAllChestItemActions() {
+  activeChestItemIndex = null;
+  document.querySelectorAll('#chest-container .chest-item.actions-open').forEach(el => {
+    el.classList.remove('actions-open');
+    let overlay = el.querySelector('.chest-item-actions-overlay');
+    if (overlay) overlay.style.display = 'none';
+  });
+}
+
+function toggleChestItemActions(card) {
+  let idx = parseInt(card.dataset.index);
+  if (isNaN(idx)) return;
+  if (activeChestItemIndex === idx) {
+    activeChestItemIndex = null;
+  } else {
+    activeChestItemIndex = idx;
+  }
+  document.querySelectorAll('#chest-container .chest-item').forEach(el => {
+    let elIdx = parseInt(el.dataset.index);
+    let overlay = el.querySelector('.chest-item-actions-overlay');
+    if (elIdx === activeChestItemIndex) {
+      el.classList.add('actions-open');
+      if (overlay) overlay.style.display = 'flex';
+    } else {
+      el.classList.remove('actions-open');
+      if (overlay) overlay.style.display = 'none';
+    }
+  });
+  if (typeof playSound === 'function') playSound('click');
+}
+
 function bindChestButtons() {
   const chest = document.getElementById('chest-container');
   if (!chest) return;
   if (chest._chestHandler) chest.removeEventListener('click', chest._chestHandler);
   let h = (e) => {
-    let btn = e.target.closest('button[data-action]');
-    if (!btn) return;
+    let actionBtn = e.target.closest('button[data-action]');
+    let itemCard = e.target.closest('.chest-item');
+    if (!itemCard) return;
+
+    let cardIndex = parseInt(itemCard.dataset.index);
+
+    if (actionBtn) {
+      e.stopPropagation();
+      let action = actionBtn.dataset.action;
+      let idx = parseInt(actionBtn.dataset.index !== undefined ? actionBtn.dataset.index : cardIndex);
+
+      if (action === 'toggle') {
+        toggleChestItemActions(itemCard);
+        return;
+      }
+      if (action === 'close') {
+        closeAllChestItemActions();
+        if (typeof playSound === 'function') playSound('click');
+        return;
+      }
+
+      closeAllChestItemActions();
+      if (action === 'belt') prepareQuickEquip(idx);
+      else if (action === 'use') socket.emit('useItem', idx);
+      else if (action === 'equip') socket.emit('equipItem', idx);
+      else if (action === 'drop') socket.emit('dropItem', idx);
+      return;
+    }
+
+    // Клик на саму карточку или иконку переключает меню действий
     e.stopPropagation();
-    let action = btn.dataset.action;
-    let idx = parseInt(btn.dataset.index);
-    if (action === 'belt') prepareQuickEquip(idx);
-    else if (action === 'use') socket.emit('useItem', idx);
-    else if (action === 'equip') socket.emit('equipItem', idx);
-    else if (action === 'drop') socket.emit('dropItem', idx);
+    toggleChestItemActions(itemCard);
   };
   chest._chestHandler = h;
   chest.addEventListener('click', h);
 }
+
+// Закрытие действий при клике вне карточки
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.chest-item')) {
+    closeAllChestItemActions();
+  }
+});
 
 function updateUI(me, sectorPlayers) {
   if (!me || !me.stats) return;
@@ -3062,27 +3137,52 @@ function updateUI(me, sectorPlayers) {
 
       if (chestC) {
         let isLocked = (item.reqLevel && me.level < item.reqLevel);
+        let isOpen = (activeChestItemIndex === index);
         let div = document.createElement('div');
-        div.className = 'chest-item' + (isLocked ? ' level-locked' : '');
+        div.className = 'chest-item' + (isLocked ? ' level-locked' : '') + (isOpen ? ' actions-open' : '');
+        div.dataset.index = index;
+        div.title = isEn ? 'Click to select action' : 'Нажмите для выбора действия';
         let typeLabel = getItemTypeLabel(item.type);
 
-        let btns = '';
+        let actionBtns = '';
         if (item.type === 'consumable' || item.type === 'special' || item.isCure)
-          btns += `<button data-action="belt" data-index="${index}">${isEn ? 'TO BELT' : 'НА ПОЯС'}</button>`;
+          actionBtns += `<button class="chest-act-btn" data-action="belt" data-index="${index}">⚡ ${isEn ? 'TO BELT' : 'НА ПОЯС'}</button>`;
         if (item.type === 'consumable' || item.isCure)
-          btns += `<button data-action="use" data-index="${index}">${isEn ? 'USE' : 'ИСПОЛЬЗ.'}</button>`;
+          actionBtns += `<button class="chest-act-btn" data-action="use" data-index="${index}">🧪 ${isEn ? 'USE' : 'ИСПОЛЬЗ.'}</button>`;
         if (item.type === 'weapon' || item.type === 'clothes' || item.type === 'mask' || item.type === 'backpack') {
           if (isLocked) {
-            btns += `<button disabled style="opacity:0.45; cursor:not-allowed; border-color:#990000; color:#990000;">${isEn ? 'LOCKED' : 'МАЛ УРОВЕНЬ'}</button>`;
+            actionBtns += `<button class="chest-act-btn" disabled style="opacity:0.45; cursor:not-allowed; border-color:#990000; color:#990000;">🔒 ${isEn ? 'LOCKED' : 'МАЛ УРОВЕНЬ'}</button>`;
           } else {
-            btns += `<button data-action="equip" data-index="${index}">${isEn ? 'EQUIP' : 'НАДЕТЬ'}</button>`;
+            actionBtns += `<button class="chest-act-btn" data-action="equip" data-index="${index}">🛡️ ${isEn ? 'EQUIP' : 'НАДЕТЬ'}</button>`;
           }
         }
-        btns += `<button data-action="drop" data-index="${index}">${isEn ? 'DROP' : 'ВЫБРОС'}</button>`;
+        actionBtns += `<button class="chest-act-btn" data-action="drop" data-index="${index}">🗑️ ${isEn ? 'DROP' : 'ВЫБРОСИТЬ'}</button>`;
 
         let lockNotice = isLocked ? `<div class="chest-item-warn">⚠️ ${isEn ? `REQ LV.${item.reqLevel} (YOURS: ${me.level})` : `ТРЕБУЕТСЯ УР. ${item.reqLevel} (ВАШ: ${me.level})`}</div>` : '';
 
-        div.innerHTML = `<img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div class="item-type">[${typeLabel}]</div><div class="chest-item-name">${dName}</div>${statBadges}${lockNotice}<div class="chest-item-buttons">${btns}</div>`;
+        let overlayHtml = `
+          <div class="chest-item-actions-overlay" style="display: ${isOpen ? 'flex' : 'none'};">
+            <div class="chest-overlay-header">
+              <span class="chest-overlay-title">${dName}</span>
+              <button class="chest-overlay-close" data-action="close" title="${isEn ? 'Close' : 'Закрыть'}">✕</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+              ${actionBtns}
+            </div>
+          </div>
+        `;
+
+        let toggleBtn = `<button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}">⚙️ ${isEn ? 'ACTIONS' : 'ДЕЙСТВИЯ'}</button>`;
+
+        div.innerHTML = `
+          <img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'">
+          <div class="item-type">[${typeLabel}]</div>
+          <div class="chest-item-name">${dName}</div>
+          ${statBadges}
+          ${lockNotice}
+          ${toggleBtn}
+          ${overlayHtml}
+        `;
         chestC.appendChild(div);
       }
 
@@ -3855,7 +3955,7 @@ function toggleInv() {
   let isOpening = (m.style.display !== 'flex');
   m.style.display = isOpening ? 'flex' : 'none';
   if (isOpening) { changeAmbient('chest'); bindQuickSlotClicks(); bindChestButtons(); }
-  else { restoreAmbient(); pendingEquipIndex = null; resetQuickSlotStyle(); }
+  else { restoreAmbient(); pendingEquipIndex = null; resetQuickSlotStyle(); closeAllChestItemActions(); }
   playSound('click');
 }
 
