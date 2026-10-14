@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ТЕРМИНАЛ: САМОСБОР</title>
+<link rel="icon" type="image/png" href="assets/icons/food_ration.png">
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 <script>
 if (typeof vkBridge === 'undefined') {
@@ -3169,8 +3170,8 @@ function playVideoIntro(onDone, force = false) {
   const soundBtn = document.getElementById('btn-video-sound');
   if (soundBtn) soundBtn.innerText = '🔊 ЗВУК';
 
-  if (currentMusic) {
-    try { currentMusic.pause(); } catch(e){}
+  if (typeof currentAmbient !== 'undefined' && currentAmbient && AMBIENTS[currentAmbient]) {
+    try { AMBIENTS[currentAmbient].pause(); } catch(e){}
   }
 
   let playPromise = player.play();
@@ -3210,8 +3211,8 @@ function finishVideoIntro() {
   isVideoPlaying = false;
   try { localStorage.setItem('samosbor_vk_intro_seen', '1'); } catch(e){}
 
-  if (musicEnabled && currentMusic && (!overlay || overlay.style.display === 'none')) {
-    try { currentMusic.play().catch(()=>{}); } catch(e){}
+  if (typeof musicEnabled !== 'undefined' && musicEnabled && typeof currentAmbient !== 'undefined' && currentAmbient && AMBIENTS[currentAmbient] && (!overlay || overlay.style.display === 'none')) {
+    try { AMBIENTS[currentAmbient].play().catch(()=>{}); } catch(e){}
   }
 
   const cb = videoIntroCallback;
