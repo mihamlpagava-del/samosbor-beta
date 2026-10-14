@@ -375,35 +375,38 @@ const MINIGAME_POOL = [
 
 const BASE_MONSTERS = [
     { id: "m_1", minFloor: 0, name: "Плесень-ползун", hp: 10, dmg: 2, reward: 1, xp: 5, img: "m_mold.png", lore: "Простейшая форма жизни." },
-    { id: "m_2", minFloor: 0, name: "Слизневик", hp: 15, dmg: 4, reward: 2, xp: 8, img: "m_slime.png", lore: "Сгусток слизи." },
-    { id: "m_3", minFloor: 1, name: "Ржавый паразит", hp: 20, dmg: 5, reward: 3, xp: 12, img: "m_parasite.png", lore: "Насекомое-переросток." },
-    { id: "m_4", minFloor: 2, name: "Трубный трупоед", hp: 30, dmg: 7, reward: 5, xp: 15, img: "m_corpse.png", lore: "Питается сталкерами." },
-    { id: "m_5", minFloor: 3, name: "Обезумевший жилец", hp: 45, dmg: 10, reward: 8, xp: 20, img: "m_madman.png", lore: "Разум уничтожен туманом." },
-    { id: "m_6", minFloor: 4, name: "Туманный утопленник", hp: 60, dmg: 12, reward: 10, xp: 25, img: "m_drowned.png", lore: "Пахнет хлоркой." },
-    { id: "m_7", minFloor: 5, name: "Безглазый конвоир", hp: 80, dmg: 15, reward: 12, xp: 35, img: "m_guard.png", lore: "Бывший сотрудник Партии." },
-    { id: "m_8", minFloor: 6, name: "Червеобразный нарост", hp: 90, dmg: 18, reward: 15, xp: 45, img: "m_worm.png", lore: "Пульсирующая биомасса." },
-    { id: "m_9", minFloor: 7, name: "Мясной культист", hp: 110, dmg: 22, reward: 18, xp: 55, img: "m_cultist.png", lore: "Поклоняется Самосбору." },
-    { id: "m_10", minFloor: 8, name: "Адепт Чернобога", hp: 130, dmg: 25, reward: 22, xp: 70, img: "m_adept.png", lore: "Общается с туманом." },
-    { id: "m_11", minFloor: 9, name: "Паук-арматурщик", hp: 150, dmg: 30, reward: 25, xp: 85, img: "m_spider.png", lore: "Из бетона и стали." },
-    { id: "m_12", minFloor: 10, name: "Гончая Тумана", hp: 180, dmg: 35, reward: 30, xp: 100, img: "m_hound.png", lore: "Быстрая тварь." },
-    { id: "m_13", minFloor: 11, name: "Мутировавший сварщик", hp: 210, dmg: 40, reward: 35, xp: 120, img: "m_welder.png", lore: "Баллон в спине." },
-    { id: "m_14", minFloor: 12, name: "Свинорыл", hp: 250, dmg: 45, reward: 40, xp: 140, img: "m_pig.png", lore: "Мутация повара." },
-    { id: "m_15", minFloor: 13, name: "Некро-сантехник", hp: 280, dmg: 50, reward: 45, xp: 160, img: "m_plumber.png", lore: "С разводным ключом." },
-    { id: "m_16", minFloor: 14, name: "Зараженный Ликвидатор", hp: 320, dmg: 55, reward: 55, xp: 180, img: "m_liquidator.png", lore: "Зачищал этажи." },
-    { id: "m_17", minFloor: 15, name: "Токсичный плевун", hp: 350, dmg: 60, reward: 65, xp: 210, img: "m_spitter.png", lore: "Плюется слизью." },
-    { id: "m_18", minFloor: 16, name: "Бронированный мясник", hp: 400, dmg: 65, reward: 75, xp: 240, img: "m_butcher.png", lore: "Панцирь из цемента." },
-    { id: "m_19", minFloor: 17, name: "Ходячий улей слизи", hp: 450, dmg: 70, reward: 85, xp: 280, img: "m_hive.png", lore: "Улей паразитов." },
-    { id: "m_20", minFloor: 18, name: "Проповедник Бетона", hp: 500, dmg: 80, reward: 100, xp: 320, img: "m_preacher.png", lore: "Читает мантры." },
-    { id: "m_21", minFloor: 19, name: "Искаженный дезертир", hp: 550, dmg: 90, reward: 115, xp: 360, img: "m_deserter.png", lore: "Заблудился." },
-    { id: "m_22", minFloor: 20, name: "Амальгама плоти", hp: 620, dmg: 100, reward: 130, xp: 400, img: "m_amalgam.png", lore: "Слияние тел." },
-    { id: "m_23", minFloor: 21, name: "Гигантская сколопендра", hp: 700, dmg: 110, reward: 150, xp: 450, img: "m_centipede.png", lore: "Обитатель шахт." },
-    { id: "m_24", minFloor: 22, name: "Биомеханический страж", hp: 800, dmg: 125, reward: 180, xp: 520, img: "m_biomech.png", lore: "Проект Партии." },
-    { id: "m_25", minFloor: 23, name: "Пожиратель фильтров", hp: 900, dmg: 140, reward: 210, xp: 600, img: "m_eater.png", lore: "Охотится за углем." },
-    { id: "m_26", minFloor: 24, name: "Тень Самосбора", hp: 1050, dmg: 160, reward: 250, xp: 700, img: "m_shadow.png", lore: "Поглощает свет." },
-    { id: "m_27", minFloor: 25, name: "Сросшиеся близнецы", hp: 1200, dmg: 180, reward: 300, xp: 850, img: "m_twins.png", lore: "Два тела — разум один." },
-    { id: "m_28", minFloor: 26, name: "Жрец Кровавого Цемента", hp: 1400, dmg: 210, reward: 350, xp: 1000, img: "m_priest.png", lore: "Шепот сводит с ума." },
-    { id: "m_29", minFloor: 27, name: "Архитектор плоти", hp: 1650, dmg: 250, reward: 420, xp: 1250, img: "m_architect.png", lore: "Лепит стены из останков." },
-    { id: "m_30", minFloor: 28, name: "Истинный обитатель Тумана", hp: 2000, dmg: 300, reward: 550, xp: 1600, img: "m_true.png", lore: "Абсолютный кошмар." }
+    { id: "m_2", minFloor: 0, name: "Слизневик", hp: 14, dmg: 3, reward: 2, xp: 8, img: "m_slime.png", lore: "Сгусток токсичной слизи." },
+    { id: "m_3", minFloor: 0, name: "Ржавый паразит", hp: 17, dmg: 4, reward: 3, xp: 12, img: "m_parasite.png", lore: "Насекомое-переросток из вентиляции." },
+    { id: "m_rat", minFloor: 0, name: "Чумная крыса", hp: 12, dmg: 3, reward: 2, xp: 7, img: "m_pig.png", lore: "Переносит туманную заразу в катакомбах." },
+    { id: "m_larva", minFloor: 0, name: "Личинка Самосбора", hp: 16, dmg: 4, reward: 3, xp: 10, img: "m_worm.png", lore: "Пульсирует в трещинах бетонных стен." },
+    { id: "m_4", minFloor: 0, name: "Трубный трупоед", hp: 22, dmg: 5, reward: 4, xp: 15, img: "m_corpse.png", lore: "Питается останками сталкеров." },
+    { id: "m_crazed", minFloor: 0, name: "Обезумевший жилец", hp: 26, dmg: 5, reward: 5, xp: 18, img: "m_madman.png", lore: "Разум уничтожен сыростью и туманом." },
+    { id: "m_5", minFloor: 1, name: "Обезумевший ликвидатор", hp: 45, dmg: 10, reward: 8, xp: 20, img: "m_madman.png", lore: "Бродит по коридорам." },
+    { id: "m_6", minFloor: 2, name: "Туманный утопленник", hp: 60, dmg: 12, reward: 10, xp: 25, img: "m_drowned.png", lore: "Пахнет хлоркой." },
+    { id: "m_7", minFloor: 3, name: "Безглазый конвоир", hp: 80, dmg: 15, reward: 12, xp: 35, img: "m_guard.png", lore: "Бывший сотрудник Партии." },
+    { id: "m_8", minFloor: 4, name: "Червеобразный нарост", hp: 90, dmg: 18, reward: 15, xp: 45, img: "m_worm.png", lore: "Пульсирующая биомасса." },
+    { id: "m_9", minFloor: 5, name: "Мясной культист", hp: 110, dmg: 22, reward: 18, xp: 55, img: "m_cultist.png", lore: "Поклоняется Самосбору." },
+    { id: "m_10", minFloor: 6, name: "Адепт Чернобога", hp: 130, dmg: 25, reward: 22, xp: 70, img: "m_adept.png", lore: "Общается с туманом." },
+    { id: "m_11", minFloor: 7, name: "Паук-арматурщик", hp: 150, dmg: 30, reward: 25, xp: 85, img: "m_spider.png", lore: "Из бетона и стали." },
+    { id: "m_12", minFloor: 8, name: "Гончая Тумана", hp: 180, dmg: 35, reward: 30, xp: 100, img: "m_hound.png", lore: "Быстрая тварь." },
+    { id: "m_13", minFloor: 9, name: "Мутировавший сварщик", hp: 210, dmg: 40, reward: 35, xp: 120, img: "m_welder.png", lore: "Баллон в спине." },
+    { id: "m_14", minFloor: 10, name: "Свинорыл", hp: 250, dmg: 45, reward: 40, xp: 140, img: "m_pig.png", lore: "Мутация повара." },
+    { id: "m_15", minFloor: 11, name: "Некро-сантехник", hp: 280, dmg: 50, reward: 45, xp: 160, img: "m_plumber.png", lore: "С разводным ключом." },
+    { id: "m_16", minFloor: 12, name: "Зараженный Ликвидатор", hp: 320, dmg: 55, reward: 55, xp: 180, img: "m_liquidator.png", lore: "Зачищал этажи." },
+    { id: "m_17", minFloor: 13, name: "Токсичный плевун", hp: 350, dmg: 60, reward: 65, xp: 210, img: "m_spitter.png", lore: "Плюется слизью." },
+    { id: "m_18", minFloor: 14, name: "Бронированный мясник", hp: 400, dmg: 65, reward: 75, xp: 240, img: "m_butcher.png", lore: "Панцирь из цемента." },
+    { id: "m_19", minFloor: 15, name: "Ходячий улей слизи", hp: 450, dmg: 70, reward: 85, xp: 280, img: "m_hive.png", lore: "Улей паразитов." },
+    { id: "m_20", minFloor: 16, name: "Проповедник Бетона", hp: 500, dmg: 80, reward: 100, xp: 320, img: "m_preacher.png", lore: "Читает мантры." },
+    { id: "m_21", minFloor: 17, name: "Искаженный дезертир", hp: 550, dmg: 90, reward: 115, xp: 360, img: "m_deserter.png", lore: "Заблудился." },
+    { id: "m_22", minFloor: 18, name: "Амальгама плоти", hp: 620, dmg: 100, reward: 130, xp: 400, img: "m_amalgam.png", lore: "Слияние тел." },
+    { id: "m_23", minFloor: 19, name: "Гигантская сколопендра", hp: 700, dmg: 110, reward: 150, xp: 450, img: "m_centipede.png", lore: "Обитатель шахт." },
+    { id: "m_24", minFloor: 20, name: "Биомеханический страж", hp: 800, dmg: 125, reward: 180, xp: 520, img: "m_biomech.png", lore: "Проект Партии." },
+    { id: "m_25", minFloor: 21, name: "Пожиратель фильтров", hp: 900, dmg: 140, reward: 210, xp: 600, img: "m_eater.png", lore: "Охотится за углем." },
+    { id: "m_26", minFloor: 22, name: "Тень Самосбора", hp: 1050, dmg: 160, reward: 250, xp: 700, img: "m_shadow.png", lore: "Поглощает свет." },
+    { id: "m_27", minFloor: 23, name: "Сросшиеся близнецы", hp: 1200, dmg: 180, reward: 300, xp: 850, img: "m_twins.png", lore: "Два тела — разум один." },
+    { id: "m_28", minFloor: 24, name: "Жрец Кровавого Цемента", hp: 1400, dmg: 210, reward: 350, xp: 1000, img: "m_priest.png", lore: "Шепот сводит с ума." },
+    { id: "m_29", minFloor: 25, name: "Архитектор плоти", hp: 1650, dmg: 250, reward: 420, xp: 1250, img: "m_architect.png", lore: "Лепит стены из останков." },
+    { id: "m_30", minFloor: 26, name: "Истинный обитатель Тумана", hp: 2000, dmg: 300, reward: 550, xp: 1600, img: "m_true.png", lore: "Абсолютный кошмар." }
 ];
 
 function generateShop() {
@@ -417,6 +420,7 @@ generateShop();
 
 function getBossForFloor(f) {
     const storyBosses = {
+        0: { name: "СТРАЖ ШАХТЫ ЛИФТА [БОСС]", hp: 70, dmg: 7, reward: 80, xp: 150, img: "m_guard.png", lore: "[ДНЕВНИК]: Страж шахты лифта повержен (70 HP). Доступ к подъёмнику открыт." },
         5: { name: "СМОТРИТЕЛЬ СЛИЗИ [РЕЙД-БОСС]", hp: 4500, dmg: 35, reward: 600, xp: 1600, img: "boss_slime.png", lore: "[ДНЕВНИК]: Смотритель пал." },
         10: { name: "АРХИВАРИУС [РЕЙД-БОСС]", hp: 9000, dmg: 65, reward: 1400, xp: 3000, img: "boss_arch.png", lore: "[ДНЕВНИК]: Самосбор — обновление здания." },
         15: { name: "ЖИВОЙ РЕАКТОР [РЕЙД-БОСС]", hp: 15000, dmg: 110, reward: 2400, xp: 6000, img: "boss_reactor.png", lore: "[ДНЕВНИК]: Ядро остыло." },
@@ -1257,6 +1261,7 @@ function broadcastGameState() {
         io.to(socketId).emit('gameState', {
             me: {
                 username: username, talons: p.talons, location: p.location, floor: floor,
+                maxFloor: Math.max(p.maxFloor || 0, floor),
                 stats: getPlayerStats(p), equipment: p.equipment, inventory: p.inventory, maxInv: getMaxInv(p),
                 hunger: p.hunger, tox: p.tox, mutations: p.mutations,
                 questItems: p.questItems, unlockedSectors: p.unlockedSectors[floor] || ['A0'], notebook: p.notebook,
@@ -1878,11 +1883,40 @@ io.on('connection', (socket) => {
         if (dir === 'down') {
             if (!p.bossDefeated || !p.bossDefeated[currentFloor]) { socket.emit('terminalError', 'ЛИФТ НЕ АКТИВИРОВАН.'); return; }
             if (currentFloor >= 30) { socket.emit('terminalError', 'ДНО ГИГАХРУЩЕВКИ.'); return; }
-            p.floor = currentFloor + 1; p.location = 'A0';
+            p.floor = currentFloor + 1;
+            p.maxFloor = Math.max(p.maxFloor || 0, p.floor);
+            p.location = 'A0';
             if (!p.unlockedSectors[p.floor]) p.unlockedSectors[p.floor] = ['A0'];
-            p.notebook.push(`[ЭТАЖ ${p.floor}]: Лифт опустился ниже.`);
+            p.notebook.push(`[ЭТАЖ ${p.floor}]: Лифт опустился на этаж ${p.floor}.`);
             generateFloor(p.floor); saveDB(); socket.emit('transition', {to: 'map', text: `СПУСК НА ЭТАЖ ${p.floor}...`}); broadcastGameState();
+        } else if (dir === 'up') {
+            if (currentFloor <= 0) { socket.emit('terminalError', 'ЭТО ВЕРХНИЙ ЭТАЖ.'); return; }
+            p.floor = currentFloor - 1;
+            p.location = 'E4';
+            if (!p.unlockedSectors[p.floor]) p.unlockedSectors[p.floor] = ['A0'];
+            generateFloor(p.floor); saveDB(); socket.emit('transition', {to: 'map', text: `ПОДЪЕМ НА ЭТАЖ ${p.floor}...`}); broadcastGameState();
         }
+    });
+
+    socket.on('selectFloor', (targetFloor) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        let tf = parseInt(targetFloor, 10);
+        let maxAllowed = Math.max(p.maxFloor || 0, p.floor || 0);
+        if (isNaN(tf) || tf < 0 || tf > maxAllowed) {
+            socket.emit('terminalError', 'ЭТАЖ ЗАБЛОКИРОВАН.');
+            return;
+        }
+        p.floor = tf;
+        p.maxFloor = Math.max(p.maxFloor || 0, tf);
+        if (!p.unlockedSectors[p.floor]) p.unlockedSectors[p.floor] = ['A0'];
+        if (p.location !== 'safe_room') {
+            p.location = 'A0';
+        }
+        generateFloor(p.floor);
+        saveDB();
+        socket.emit('transition', { to: 'map', text: `ПЕРЕХОД НА ЭТАЖ ${p.floor}...` });
+        broadcastGameState();
     });
 
     socket.on('buyItem', (itemId) => {

@@ -138,7 +138,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .floor-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 1px solid var(--term-dim); padding-bottom: 8px; margin-bottom: 8px; }
 .sector-radar { margin-top: 6px; border-top: 1px dashed var(--term-dim); padding-top: 5px; }
 .player-entry { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; border: 1px dashed #444; margin-bottom: 3px; font-size: 12.5px; }
-.modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.88); z-index: 50; display: none; justify-content: center; align-items: center; padding: 8px; box-sizing: border-box; overflow-y: auto; }
+.modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.88); z-index: 500 !important; display: none; justify-content: center; align-items: center; padding: 8px; box-sizing: border-box; overflow-y: auto; }
 .dossier { background: var(--paper-color); color: var(--ink-color); width: 960px; max-width: 96vw; height: clamp(480px, 86vh, 580px); padding: clamp(10px, 2vw, 20px); box-sizing: border-box; display: flex; flex-direction: column; font-weight: bold; border-radius: 2px 12px 12px 2px; }
 .dossier-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--ink-color); padding-bottom: 10px; margin-bottom: 15px; font-size: 22px; color: var(--ink-color); letter-spacing: 1px; }
 .close-dossier { background: transparent; border: none; color: var(--ink-danger); font-size: 22px; cursor: pointer; margin: 0; padding: 0; text-shadow: none; }
@@ -461,10 +461,22 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="bg-layer" style="background-image: url('assets/locations/bg_safe_room.png');"></div>
 <div id="transition-overlay"><div id="trans-ascii" class="door-ascii"></div><div id="trans-text" class="flicker">ЗАГРУЗКА...</div></div>
 
+<div id="video-intro-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: #000; justify-content: center; align-items: center; overflow: hidden;">
+  <video id="intro-video-player" playsinline webkit-playsinline preload="auto" style="width: 100%; height: 100%; object-fit: contain; background: #000;">
+    <source src="assets/video/intro.mp4" type="video/mp4">
+  </video>
+  <button id="btn-skip-video" onclick="finishVideoIntro()" style="position: absolute; top: 16px; right: 16px; z-index: 10001; background: rgba(0, 0, 0, 0.75); border: 1px solid var(--term-warn); color: var(--term-warn); padding: 8px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; cursor: pointer; letter-spacing: 1px; border-radius: 4px; backdrop-filter: blur(4px);">
+    ⏭ <span data-i18n="btn_skip_video">ПРОПУСТИТЬ [ESC]</span>
+  </button>
+  <button id="btn-video-sound" onclick="toggleVideoMute()" style="position: absolute; bottom: 16px; right: 16px; z-index: 10001; background: rgba(0, 0, 0, 0.75); border: 1px solid #888; color: #fff; padding: 6px 14px; font-family: 'Share Tech Mono', monospace; font-size: 12px; cursor: pointer; border-radius: 4px; backdrop-filter: blur(4px);">
+    🔊 ЗВУК
+  </button>
+</div>
+
 <div id="levelup-modal" class="modal-overlay" style="z-index: 90;">
   <div class="panel" style="width: 650px; max-width: 90%; border-color: var(--term-warn);">
-    <h2 style="color: var(--term-warn); margin-top: 0;">УРОВЕНЬ ПОВЫШЕН</h2>
-    <div style="margin-bottom: 15px;">ВЫБЕРИТЕ ПЕРК:</div>
+    <h2 style="color: var(--term-warn); margin-top: 0;" data-i18n="levelup_title">УРОВЕНЬ ПОВЫШЕН</h2>
+    <div style="margin-bottom: 15px;" data-i18n="levelup_choose">ВЫБЕРИТЕ ПЕРК:</div>
     <div id="levelup-choices"></div>
   </div>
 </div>
@@ -586,6 +598,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
+  <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
   <button id="btn-opt-donate" class="audio-btn opt-btn" style="color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
   <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
@@ -607,6 +620,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
       <button id="vk-login-btn" style="width: 100%; background: #2787f5; color: #fff; border: 1px solid #5aa5ff; font-size: 13px; padding: 9px; cursor: pointer; font-weight: bold; letter-spacing: 1px; font-family: inherit;" data-i18n="login_vk_btn">
         🔵 ВОЙТИ ЧЕРЕЗ VK
+      </button>
+      <button type="button" onclick="playVideoIntro(null, true)" style="margin-top: 8px; width: 100%; background: transparent; border: 1px solid rgba(255,170,0,0.45); color: var(--term-warn); font-size: 11px; padding: 6px; cursor: pointer; letter-spacing: 1px; font-family: inherit;" data-i18n="btn_watch_intro">
+        🎬 СМОТРЕТЬ ЗАСТАВКУ (14 сек)
       </button>
     </div>
 
@@ -680,24 +696,24 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <img id="battle-weapon" class="avatar-layer" style="z-index: 4;" src="" alt="">
       <div id="player-vfx-container" class="vfx-container"></div>
       <div class="combat-quick-slots">
-        <div id="combat-qslot-0" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 0)">[ПУСТО]</div>
-        <div id="combat-qslot-1" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 1)">[ПУСТО]</div>
+        <div id="combat-qslot-0" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 0)" data-i18n="slot_empty">[ПУСТО]</div>
+        <div id="combat-qslot-1" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 1)" data-i18n="slot_empty">[ПУСТО]</div>
       </div>
     </div>
     <div class="terminal-center">
       <div class="stats" id="main-stats-panel" style="position:relative;">
-        <h2 id="current-location-title" style="margin: 0 0 10px 0; font-size: 18px; border-bottom: 1px solid var(--term-dim); padding-bottom: 6px; letter-spacing: 2px;">ЛОКАЦИЯ</h2>
-        <div>УРОВЕНЬ: <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
-        <div style="margin-top: 6px;">ТАЛОНЫ: <span class="ui-score" style="color: var(--term-warn);">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
-        <div style="margin-top: 6px;">ФИЛЬТР: <span class="ui-filter">100</span>%</div>
+        <h2 id="current-location-title" style="margin: 0 0 10px 0; font-size: 18px; border-bottom: 1px solid var(--term-dim); padding-bottom: 6px; letter-spacing: 2px;" data-i18n="location_title">ЛОКАЦИЯ</h2>
+        <div><span data-i18n="lbl_level_exp">УРОВЕНЬ:</span> <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
+        <div style="margin-top: 6px;"><span data-i18n="lbl_talons_exp">ТАЛОНЫ:</span> <span class="ui-score" style="color: var(--term-warn);">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
+        <div style="margin-top: 6px;"><span data-i18n="lbl_filter_exp">ФИЛЬТР:</span> <span class="ui-filter">100</span>%</div>
         <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
-        <div style="margin-top: 6px; font-size: 14px;">ГОЛОД: <span class="ui-hunger">100</span>% | ЗАРАЖЕНИЕ: <span class="ui-tox">0</span>%</div>
+        <div style="margin-top: 6px; font-size: 14px;"><span data-i18n="lbl_hunger_exp">ГОЛОД:</span> <span class="ui-hunger">100</span>% | <span data-i18n="lbl_tox_exp">ЗАРАЖЕНИЕ:</span> <span class="ui-tox">0</span>%</div>
         <div style="margin-top: 6px; font-size: 13.5px;"><span data-i18n="lbl_loc_backpack">РЮКЗАК:</span> <span id="ui-loc-inv" style="color: var(--term-warn); font-weight: bold;">0/12</span> (<span id="ui-loc-inv-free" style="color: var(--term-green);">12 свободно</span>)</div>
         <div class="sector-radar">
-          <div style="color: var(--term-warn); margin-bottom:5px;">РАДАР:</div>
-          <div id="players-in-sector"><span style="color:#666;">Сканирование...</span></div>
+          <div style="color: var(--term-warn); margin-bottom:5px;" data-i18n="lbl_radar">РАДАР:</div>
+          <div id="players-in-sector"><span style="color:#666;" data-i18n="radar_scanning">Сканирование...</span></div>
         </div>
-        <div id="combat-log" style="margin-top: 10px; border-top: 1px dashed var(--term-dim); padding-top: 8px;"><span style="color:#666;">В секторе пока тихо...</span></div>
+        <div id="combat-log" style="margin-top: 10px; border-top: 1px dashed var(--term-dim); padding-top: 8px;"><span style="color:#666;" data-i18n="log_sector_quiet">В секторе пока тихо...</span></div>
       </div>
       <div id="robot-panel" style="text-align:left; background: rgba(0,20,0,0.8); border: 1px dashed var(--term-info); padding: 10px; box-sizing: border-box; display: none;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap: 8px; flex-wrap: wrap;">
@@ -857,7 +873,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <div class="panel event-dialogue-panel" style="width: 780px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 18px; border: 2px solid var(--term-color); background: rgba(8, 12, 10, 0.96); box-shadow: 0 0 30px rgba(0, 255, 65, 0.25);">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--term-color); padding-bottom: 8px; margin-bottom: 14px;">
       <h2 id="event-title" style="color: var(--term-warn); font-size: 18px; margin: 0; letter-spacing: 2px; text-transform: uppercase;" data-i18n="event_title">СОБЫТИЕ</h2>
-      <div id="event-floor-badge" style="font-size: 11px; color: var(--term-dim); border: 1px solid var(--term-dim); padding: 2px 8px; border-radius: 3px; font-family: monospace;">СЕКТОР ТУМАНА</div>
+      <div id="event-floor-badge" style="font-size: 11px; color: var(--term-dim); border: 1px solid var(--term-dim); padding: 2px 8px; border-radius: 3px; font-family: monospace;" data-i18n="event_badge_fog">СЕКТОР ТУМАНА</div>
     </div>
     
     <div id="event-body-container" style="display: flex; gap: 16px; flex: 1; min-height: 0; align-items: stretch; overflow: hidden;">
@@ -867,8 +883,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
           <img id="event-npc-img" src="" alt="NPC" style="width: 100%; height: 100%; object-fit: cover; object-position: center top; filter: contrast(1.1) brightness(0.95);">
           <div class="crt-scanline-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.06)); background-size: 100% 3px, 6px 100%;"></div>
         </div>
-        <div id="event-npc-name" style="margin-top: 8px; font-weight: bold; font-size: 13px; color: var(--term-warn); text-align: center; width: 100%; letter-spacing: 1px; text-transform: uppercase;">НЕИЗВЕСТНЫЙ</div>
-        <div id="event-npc-role" style="font-size: 11px; color: var(--term-dim); text-align: center; width: 100%;">[ОБИТАТЕЛЬ БЛОКА]</div>
+        <div id="event-npc-name" style="margin-top: 8px; font-weight: bold; font-size: 13px; color: var(--term-warn); text-align: center; width: 100%; letter-spacing: 1px; text-transform: uppercase;" data-i18n="npc_unknown">НЕИЗВЕСТНЫЙ</div>
+        <div id="event-npc-role" style="font-size: 11px; color: var(--term-dim); text-align: center; width: 100%;" data-i18n="npc_role_inhabitant">[ОБИТАТЕЛЬ БЛОКА]</div>
       </div>
 
       <!-- Dialogue / Event Content Column -->
@@ -995,31 +1011,31 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
         <!-- 3 ВИЗУАЛЬНЫХ СЛОТА ВЕРСТАКА (СИНТЕЗ) -->
         <div class="craft-slots-wrapper" style="margin: 10px 0 14px 0; background: rgba(0, 0, 0, 0.7); border: 1px dashed var(--term-dim); padding: 8px; border-radius: 4px;">
-          <div style="font-size: 11px; color: var(--term-warn); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">⚙️ Визуальный верстак:</div>
+          <div style="font-size: 11px; color: var(--term-warn); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;" data-i18n="craft_workbench_title">⚙️ Визуальный верстак:</div>
           <div style="display: flex; align-items: stretch; justify-content: space-between; gap: 6px;">
             <!-- СЛОТ 1: ОРУЖИЕ -->
             <div id="craft-slot-weapon" style="flex: 1; min-height: 95px; background: #050a05; border: 1px solid #1a3a1a; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; box-sizing: border-box; transition: 0.2s;">
-              <div style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;">[ СЛОТ 1: ОРУЖИЕ ]</div>
+              <div style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_1">[ СЛОТ 1: ОРУЖИЕ ]</div>
               <img id="slot-weapon-img" src="" style="width: 32px; height: 32px; object-fit: contain; display: none; margin-bottom: 3px;">
-              <div id="slot-weapon-text" style="font-size: 11px; color: #777;">-- пусто --</div>
+              <div id="slot-weapon-text" style="font-size: 11px; color: #777;" data-i18n="slot_empty_dash">-- пусто --</div>
             </div>
 
             <div style="font-size: 16px; color: var(--term-dim); font-weight: bold; flex-shrink: 0; display: flex; align-items: center;">+</div>
 
             <!-- СЛОТ 2: СТИХИЯ/МАТЕРИАЛ -->
             <div id="craft-slot-mat" style="flex: 1; min-height: 95px; background: #050a05; border: 1px solid #1a3a1a; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; box-sizing: border-box; transition: 0.2s;">
-              <div style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;">[ СЛОТ 2: СТИХИЯ ]</div>
+              <div style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_2">[ СЛОТ 2: СТИХИЯ ]</div>
               <img id="slot-mat-img" src="" style="width: 32px; height: 32px; object-fit: contain; display: none; margin-bottom: 3px;">
-              <div id="slot-mat-text" style="font-size: 11px; color: #777;">-- пусто --</div>
+              <div id="slot-mat-text" style="font-size: 11px; color: #777;" data-i18n="slot_empty_dash">-- пусто --</div>
             </div>
 
             <div style="font-size: 16px; color: var(--term-warn); font-weight: bold; flex-shrink: 0; display: flex; align-items: center;">➔</div>
 
             <!-- СЛОТ 3: ИТОГ -->
             <div id="craft-slot-result" style="flex: 1.15; min-height: 95px; background: #070d07; border: 1px solid var(--term-dim); border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; box-sizing: border-box; transition: 0.2s;">
-              <div style="font-size: 9px; color: var(--term-warn); margin-bottom: 3px; font-weight: bold;">[ СЛОТ 3: РЕЗУЛЬТАТ ]</div>
+              <div style="font-size: 9px; color: var(--term-warn); margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_3">[ СЛОТ 3: РЕЗУЛЬТАТ ]</div>
               <img id="slot-result-img" src="" style="width: 34px; height: 34px; object-fit: contain; display: none; margin-bottom: 3px;">
-              <div id="slot-result-text" style="font-size: 11px; color: #777;">-- ожидание --</div>
+              <div id="slot-result-text" style="font-size: 11px; color: #777;" data-i18n="slot_result_dash">-- ожидание --</div>
             </div>
           </div>
         </div>
@@ -1063,6 +1079,60 @@ const DEFAULT_NOTEBOOK = [
   "[ЦЕЛЬ]: Найти Главный Лифт (E4) и подняться наверх.",
   "[СОВЕТ]: Не забывай про фильтр. Туман здесь живой."
 ];
+
+const DEFAULT_NOTEBOOK_EN = [
+  "[BRIEFING]: Sentence executed. 23 inmates were loaded into the cage and sent down to floor zero, into the inferno of Samosbor.",
+  "[BRIEFING]: We almost reached the bottom when the cable snapped. The cage crashed down.",
+  "[BRIEFING]: I awoke among the wreckage. Beside me was a mauled guard.",
+  "[BRIEFING]: Snatched his gas mask and barricaded myself in the first living cell.",
+  "[OBJECTIVE]: Find the Main Elevator (E4) and ascend to the surface.",
+  "[TIP]: Don't forget your filter. The fog here is alive."
+];
+
+function getDisplayNotebookEntry(e) {
+  if (currentLang !== 'en' || !e) return e;
+  const directMap = {
+    "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, 23 заключённых, погрузили в клеть и отправили вниз, на нулевой этаж.":
+      "[BRIEFING]: Sentence executed. 23 inmates were loaded into the cage and sent down to floor zero.",
+    "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, двадцать три заключённых, погрузили в клеть и отправили вниз, на нулевой этаж, в самое пекло Самосбора.":
+      "[BRIEFING]: Sentence carried out. 23 inmates were sent down to floor zero, into the inferno of Samosbor.",
+    "[ВВОДНАЯ]: Мы почти достигли дна, когда лопнул трос. Клеть рухнула вниз.":
+      "[BRIEFING]: We almost reached the bottom when the cable snapped. The cage plummeted.",
+    "[ВВОДНАЯ]: Мы почти достигли дна, когда лопнул трос. Клеть рухнула.":
+      "[BRIEFING]: We almost reached the bottom when the cable snapped. The cage plummeted.",
+    "[ВВОДНАЯ]: Я очнулся среди обломков. Рядом — растерзанный конвоир.":
+      "[BRIEFING]: I awoke among the wreckage. Beside me was a mauled guard.",
+    "[ВВОДНАЯ]: Остальные выжившие разбежались кто куда. Я сорвал с конвоира противогаз и заперся в жилячейке.":
+      "[BRIEFING]: The other survivors fled. I snatched the gas mask off the guard and barricaded myself in the cell.",
+    "[ВВОДНАЯ]: Сорвал с него противогаз и заперся в первой жилячейке.":
+      "[BRIEFING]: Snatched his gas mask and locked myself in the first living cell.",
+    "[ЦЕЛЬ]: Найти Главный Лифт в секторе E4 и подняться наверх.":
+      "[OBJECTIVE]: Find the Main Elevator in sector E4 and ascend to the surface.",
+    "[ЦЕЛЬ]: Найти Главный Лифт (E4) и подняться наверх.":
+      "[OBJECTIVE]: Find the Main Elevator (E4) and ascend to the surface.",
+    "[СОВЕТ]: Не забывай про фильтр. Туман здесь живой.":
+      "[TIP]: Don't forget your filter. The fog here is alive.",
+    "[ВВОДНАЯ]: Я помню только лязг рвущегося троса...":
+      "[BRIEFING]: I only remember the shriek of the snapping cable..."
+  };
+  if (directMap[e.trim()]) return directMap[e.trim()];
+
+  let out = e;
+  out = out.replace(/^\[ВВОДНАЯ\]/i, '[BRIEFING]');
+  out = out.replace(/^\[ЦЕЛЬ\]/i, '[OBJECTIVE]');
+  out = out.replace(/^\[СОВЕТ\]/i, '[TIP]');
+  out = out.replace(/^\[ДНЕВНИК\]/i, '[DIARY]');
+  out = out.replace(/^\[ЭТАЖ\s*(\d+)\]/i, '[FLOOR $1]');
+  out = out.replace(/Взломал гермодверь в/g, 'Hacked blast door to');
+  out = out.replace(/Открыл сектор/g, 'Unlocked sector');
+  out = out.replace(/с помощью/g, 'using');
+  out = out.replace(/Лифт опустился на этаж/g, 'Elevator descended to floor');
+  out = out.replace(/Лифт опустился ниже/g, 'Elevator descended lower');
+  out = out.replace(/Страж шахты лифта повержен/g, 'Elevator shaft guardian defeated');
+  out = out.replace(/Доступ к подъёмнику открыт/g, 'Access to lift unlocked');
+  out = out.replace(/Путь на этаж (\d+) очищен/g, 'Path to floor $1 cleared');
+  return out;
+}
 
 let musicEnabled = true, sfxEnabled = true, crtEnabled = true;
 const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/sounds/ambient_explore.mp3') };
@@ -1141,6 +1211,9 @@ const I18N = {
     btn_finish: "ЗАВЕРШИТЬ ✓",
     btn_skip: "ПРОПУСТИТЬ",
     opt_feedback: "📝 Баг-репорт / Предложение [Shift+P]",
+    opt_intro_video: "🎬 Заставка Самосбора",
+    btn_skip_video: "ПРОПУСТИТЬ [ESC]",
+    btn_watch_intro: "🎬 СМОТРЕТЬ ЗАСТАВКУ (14 сек)",
     opt_donate: "💎 Поддержать проект (VK)",
     opt_invite: "👥 Позвать друга (VK)",
     opt_wall: "📢 На стену (VK)",
@@ -1238,7 +1311,28 @@ const I18N = {
     chat_ph: "Написать в радиоканал...",
     fb_ph: "Опишите найденный баг или вашу идею подробно...",
     ph_username: "Номер (Логин)",
-    ph_password: "Пароль"
+    ph_password: "Пароль",
+    lbl_level_exp: "УРОВЕНЬ:",
+    lbl_talons_exp: "ТАЛОНЫ:",
+    lbl_filter_exp: "ФИЛЬТР:",
+    lbl_hunger_exp: "ГОЛОД:",
+    lbl_tox_exp: "ЗАРАЖЕНИЕ:",
+    lbl_radar: "РАДАР:",
+    radar_scanning: "Сканирование...",
+    log_sector_quiet: "В секторе пока тихо...",
+    location_title: "ЛОКАЦИЯ",
+    event_badge_fog: "СЕКТОР ТУМАНА",
+    npc_unknown: "НЕИЗВЕСТНЫЙ",
+    npc_role_inhabitant: "[ОБИТАТЕЛЬ БЛОКА]",
+    slot_empty: "[ПУСТО]",
+    levelup_title: "УРОВЕНЬ ПОВЫШЕН",
+    levelup_choose: "ВЫБЕРИТЕ ПЕРК:",
+    craft_workbench_title: "⚙️ Визуальный верстак:",
+    craft_slot_1: "[ СЛОТ 1: ОРУЖИЕ ]",
+    craft_slot_2: "[ СЛОТ 2: СТИХИЯ ]",
+    craft_slot_3: "[ СЛОТ 3: РЕЗУЛЬТАТ ]",
+    slot_empty_dash: "-- пусто --",
+    slot_result_dash: "-- ожидание --"
   },
   en: {
     btn_donate: "💙 SUPPORT PROJECT",
@@ -1265,6 +1359,9 @@ const I18N = {
     btn_finish: "FINISH ✓",
     btn_skip: "SKIP",
     opt_feedback: "📝 Bug Report / Suggestion [Shift+P]",
+    opt_intro_video: "🎬 Samosbor Intro Video",
+    btn_skip_video: "SKIP [ESC]",
+    btn_watch_intro: "🎬 WATCH INTRO (14 sec)",
     opt_donate: "💎 Support Project (VK)",
     opt_invite: "👥 Invite Friends (VK)",
     opt_wall: "📢 Share on Wall (VK)",
@@ -1362,7 +1459,28 @@ const I18N = {
     chat_ph: "Type message in radio...",
     fb_ph: "Describe the bug or your idea in detail...",
     ph_username: "Inmate ID (Login)",
-    ph_password: "Password"
+    ph_password: "Password",
+    lbl_level_exp: "LEVEL:",
+    lbl_talons_exp: "TALONS:",
+    lbl_filter_exp: "FILTER:",
+    lbl_hunger_exp: "SATIETY:",
+    lbl_tox_exp: "TOXICITY:",
+    lbl_radar: "RADAR:",
+    radar_scanning: "Scanning...",
+    log_sector_quiet: "Sector is currently quiet...",
+    location_title: "LOCATION",
+    event_badge_fog: "FOG SECTOR",
+    npc_unknown: "UNKNOWN",
+    npc_role_inhabitant: "[BLOCK INHABITANT]",
+    slot_empty: "[EMPTY]",
+    levelup_title: "LEVEL UP",
+    levelup_choose: "CHOOSE A PERK:",
+    craft_workbench_title: "⚙️ Modular Workbench:",
+    craft_slot_1: "[ SLOT 1: WEAPON ]",
+    craft_slot_2: "[ SLOT 2: ELEMENT ]",
+    craft_slot_3: "[ SLOT 3: RESULT ]",
+    slot_empty_dash: "-- empty --",
+    slot_result_dash: "-- waiting --"
   }
 };
 
@@ -1569,8 +1687,12 @@ const MONSTERS_EN = {
   "Плесень-ползун": { name: "Crawler Mold", lore: "Simplest lifeform." },
   "Слизневик": { name: "Slime Spore", lore: "A cluster of pulsating slime." },
   "Ржавый паразит": { name: "Rust Parasite", lore: "An overgrown insect." },
+  "Чумная крыса": { name: "Plague Rat", lore: "Spreads fog disease through catacombs." },
+  "Личинка Самосбора": { name: "Samosbor Larva", lore: "Pulses inside cracks of concrete walls." },
   "Трубный трупоед": { name: "Pipe Scavenger", lore: "Feeds on fallen stalkers." },
   "Обезумевший жилец": { name: "Demented Tenant", lore: "Mind destroyed by the fog." },
+  "Обезумевший ликвидатор": { name: "Demented Liquidator", lore: "Roams corridors blindly." },
+  "СТРАЖ ШАХТЫ ЛИФТА [БОСС]": { name: "ELEVATOR SHAFT WARDEN [BOSS]", lore: "Mechanical monstrosity guarding the elevator pit." },
   "Туманный утопленник": { name: "Fog Drowned", lore: "Smells of bleach and rust." },
   "Безглазый конвоир": { name: "Eyeless Guard", lore: "Former Party guard." },
   "Червеобразный нарост": { name: "Vermiform Growth", lore: "Pulsating fleshy biomass." },
@@ -1677,17 +1799,648 @@ function getDisplayLocationName(name) {
 
 function getDisplayMonsterName(name) {
   if (currentLang !== 'en' || !name) return name || '';
-  if (MONSTERS_EN[name]) return MONSTERS_EN[name].name;
+  let prefix = '';
+  let work = name;
+  if (work.startsWith('[РЕЙД x2] ')) {
+    prefix = '[RAID x2] ';
+    work = work.replace('[РЕЙД x2] ', '');
+  }
+  let lvlSuffix = '';
+  const lvlMatch = work.match(/\s*\[Lvl\s*(\d+)\]$/i);
+  if (lvlMatch) {
+    lvlSuffix = ` [Lvl ${lvlMatch[1]}]`;
+    work = work.replace(/\s*\[Lvl\s*(\d+)\]$/i, '');
+  }
+  if (MONSTERS_EN[work]) return `${prefix}${MONSTERS_EN[work].name}${lvlSuffix}`;
   if (name.includes('АНОМАЛИЯ [РЕЙД ЭТ.')) {
     return name.replace('АНОМАЛИЯ [РЕЙД ЭТ.', 'ANOMALY [RAID FL.');
   }
-  return name;
+  for (let ruName in MONSTERS_EN) {
+    if (work.includes(ruName)) {
+      return prefix + work.replace(ruName, MONSTERS_EN[ruName].name) + lvlSuffix;
+    }
+  }
+  return prefix + work + lvlSuffix;
 }
 
 function getDisplayMonsterLore(name, fallback) {
   if (currentLang !== 'en') return fallback;
   if (MONSTERS_EN[name] && MONSTERS_EN[name].lore) return MONSTERS_EN[name].lore;
   return fallback;
+}
+
+const NPCS_EN = {
+  names: {
+    "Дед Макар": "Grandpa Makar",
+    "Сталкер Глеб": "Stalker Gleb",
+    "Ликвидатор Семен": "Liquidator Semyon",
+    "Проф. Шухов": "Prof. Shukhov",
+    "Майор Борисов": "Major Borisov",
+    "Брат Иона": "Brother Iona",
+    "Главный Архивист": "Chief Archivist",
+    "Барыга из тумана": "Fog Smuggler",
+    "Неизвестный": "Unknown",
+    "НЕИЗВЕСТНЫЙ": "UNKNOWN"
+  },
+  roles: {
+    "Слепой лифтёр шахты": "Blind Shaft Elevator Operator",
+    "Ветеран глубоких вылазок": "Deep Expedition Veteran",
+    "Штурмовая группа зачистки": "Cleansing Assault Unit",
+    "Сектор прикладной физики Тумана": "Applied Fog Physics Division",
+    "Комендатура ВОХР 7-го блока": "Block 7 VOKhR Command",
+    "Глас Мясного Святилища": "Voice of the Flesh Shrine",
+    "Хранитель грифа «Секретно»": "Keeper of the \"Classified\" Seal",
+    "Обитатель блока": "Block Inhabitant",
+    "ОБИТАТЕЛЬ БЛОКА": "BLOCK INHABITANT"
+  }
+};
+
+const EVENTS_EN = {
+  titles: {
+    "ВСТРЕЧА: СЛЕПОЙ ЛИФТЁР МАКАР": "ENCOUNTER: BLIND ELEVATOR OPERATOR MAKAR",
+    "МАКАР: ГДЕ ИСКАТЬ ЗАПЧАСТИ": "MAKAR: WHERE TO FIND PARTS",
+    "МАКАР: ОСМОТР ДЕТАЛЕЙ": "MAKAR: INSPECTING PARTS",
+    "МАКАР: ЛИФТ ЗАПУЩЕН!": "MAKAR: ELEVATOR RESTORED!",
+    "МАКАР: СУДЬБА В ШАХТЕ": "MAKAR: FATE IN THE SHAFT",
+    "ВСТРЕЧА: СТАЛКЕР ГЛЕБ": "ENCOUNTER: STALKER GLEB",
+    "ГЛЕБ: БАЙКИ О ТУМАНЕ": "GLEB: TALES OF THE FOG",
+    "ГЛЕБ: СОВЕТ ПО ЛИФТУ": "GLEB: ELEVATOR ADVICE",
+    "ГЛЕБ: ОБМЕН ХАБАРОМ": "GLEB: LOOT BARTER",
+    "ГЛЕБ: СДЕЛКА СОВЕРШЕНА": "GLEB: DEAL CONCLUDED",
+    "ВСТРЕЧА: РАНЕНЫЙ ЛИКВИДАТОР": "ENCOUNTER: WOUNDED LIQUIDATOR",
+    "ЛИКВИДАТОР: БЛАГОДАРНОСТЬ": "LIQUIDATOR: GRATITUDE",
+    "ЛИКВИДАТОР: ТАКТИКА БОЯ": "LIQUIDATOR: COMBAT TACTICS",
+    "ВСТРЕЧА: ПРОФЕССОР ШУХОВ": "ENCOUNTER: PROFESSOR SHUKHOV",
+    "ПРОФЕССОР: ТАЙНА ГИГАХРУЩЕВКИ": "PROFESSOR: MYSTERY OF THE GIGAKHRUSHCHYOVKA",
+    "ПРОФЕССОР: ЭКСПЕРИМЕНТ": "PROFESSOR: EXPERIMENT",
+    "ВСТРЕЧА: МАЙОР БОРИСОВ": "ENCOUNTER: MAJOR BORISOV",
+    "МАЙОР БОРИСОВ: ПРИКАЗ": "MAJOR BORISOV: ORDER",
+    "МАЙОР БОРИСОВ: ПРОПУСК": "MAJOR BORISOV: CLEARANCE PASS",
+    "ВСТРЕЧА: БРАТ ИОНА": "ENCOUNTER: BROTHER IONA",
+    "БРАТ ИОНА: ПРОРОЧЕСТВО": "BROTHER IONA: PROPHECY",
+    "БРАТ ИОНА: БЛАГОСЛОВЕНИЕ": "BROTHER IONA: BLESSING",
+    "БРАТ ИОНА: ЖИВОЙ КЛЮЧ": "BROTHER IONA: LIVING KEY",
+    "ВСТРЕЧА: ГЛАВНЫЙ АРХИВИСТ": "ENCOUNTER: CHIEF ARCHIVIST",
+    "АРХИВИСТ: СЕКРЕТНЫЙ РЕЕСТР": "ARCHIVIST: CLASSIFIED REGISTRY",
+    "АРХИВИСТ: ПРОПУСК ВЫДАН": "ARCHIVIST: PASS ISSUED",
+    "АРХИВИСТ: ДОКУМЕНТ ПРИНЯТ": "ARCHIVIST: DOCUMENT ACCEPTED",
+    "ВСТРЕЧА: БАРЫГА ИЗ ТУМАНА": "ENCOUNTER: FOG SMUGGLER",
+    "ЗАПАХ СЫРОГО МЯСА": "SMELL OF RAW MEAT",
+    "СВИСТЯЩИЙ ПАРОВОЙ КЛАПАН": "HISSING STEAM VALVE",
+    "ШЕПОТ ИЗ ТРЕЩИН БЕТОНА": "WHISPERS FROM CONCRETE CRACKS",
+
+    // Caches (Floors 0-29)
+    "НАХОДКА: РАЗБИТЫЙ ЯЩИК СЛЕСАРЯ": "FIND: SMASHED PLUMBER TOOLBOX",
+    "НАХОДКА: РАСПРЕДЕЛИТЕЛЬНЫЙ ЩИТ": "FIND: JUNCTION PANEL",
+    "НАХОДКА: ОСТАНКИ КОНВОИРА": "FIND: REMAINS OF A GUARD",
+    "НАХОДКА: ЗАПЧАСТИ ЛИФТА": "FIND: ELEVATOR PARTS",
+    "НАХОДКА: ПАНЕЛЬ УПРАВЛЕНИЯ": "FIND: CONTROL PANEL",
+    "НАХОДКА: СИЛОВОЙ КАБЕЛЬ": "FIND: POWER CABLE",
+    "НАХОДКА: СЛЕСАРНЫЙ СТЕЛЛАЖ": "FIND: WORKSHOP RACK",
+    "НАХОДКА: ГИДРАВЛИЧЕСКИЙ УЗЕЛ": "FIND: HYDRAULIC JUNCTION",
+    "НАХОДКА: ХИМИЧЕСКИЙ СКЛАД": "FIND: CHEMICAL STORAGE",
+    "НАХОДКА: АВАРИЙНЫЙ НАБОР": "FIND: EMERGENCY KIT",
+    "НАХОДКА: КОТЕЛЬНЫЙ ЩИТ": "FIND: BOILER SWITCHBOARD",
+    "НАХОДКА: МАГИСТРАЛЬНЫЙ ВЕНТИЛЬ": "FIND: MAIN VALVE",
+    "НАХОДКА: КОЛБА ИССЛЕДОВАТЕЛЯ": "FIND: RESEARCHER FLASK",
+    "НАХОДКА: ЛЕБЕДОЧНЫЙ РЕДУКТОР": "FIND: WINCH GEARBOX",
+    "НАХОДКА: СЕЙФ ПЕРФОКАРТ": "FIND: PUNCH CARD SAFE",
+    "НАХОДКА: ДЕШИФРАТОР НКВД": "FIND: CIPHER DECODER",
+    "НАХОДКА: СТОЛ КОМИССАРА": "FIND: COMMISSAR'S DESK",
+    "НАХОДКА: БОБИНА СПЕЦВЕЩАНИЯ": "FIND: BROADCAST TAPE REEL",
+    "НАХОДКА: КАРТА СПЕЦХРАНА": "FIND: ARCHIVE VAULT CARD",
+    "НАХОДКА: БУХТА СТАЛЬНОГО ТРОСА": "FIND: STEEL CABLE COIL",
+    "НАХОДКА: КАССЕТА ОХЛАДИТЕЛЯ": "FIND: COOLANT CANISTER",
+    "НАХОДКА: ВЫСОКОВОЛЬТНЫЙ ЩИТ": "FIND: HIGH-VOLTAGE PANEL",
+    "НАХОДКА: МЕДНЫЙ СТАТОР": "FIND: COPPER STATOR",
+    "НАХОДКА: СТОЙКА ЭЛЕКТРИКА": "FIND: ELECTRICIAN RACK",
+    "НАХОДКА: РАДИАЦИОННАЯ ЗАЩИТА": "FIND: RADIATION SHIELDING",
+    "НАХОДКА: ТЯГОВЫЙ ПРИВОД": "FIND: TRACTION DRIVE",
+    "НАХОДКА: ЖЕТОН СТАРШИНЫ": "FIND: SERGEANT DOG TAG",
+    "НАХОДКА: ПЛАНШЕТ ДЕЖУРНОГО": "FIND: DUTY OFFICER BAG",
+    "НАХОДКА: АРМЕЙСКИЙ ФИЛЬТР": "FIND: MILITARY FILTER",
+    "НАХОДКА: КЛЮЧИ НАДЗИРАТЕЛЯ": "FIND: GUARD KEYS",
+    "НАХОДКА: ПЛОМБА ШТАБА": "FIND: HQ SEAL",
+    "НАХОДКА: ГИДРАВЛИЧЕСКИЙ ПОРШЕНЬ": "FIND: HYDRAULIC PISTON",
+    "НАХОДКА: ОКАМЕНЕВШАЯ ПЛОТЬ": "FIND: PETRIFIED FLESH",
+    "НАХОДКА: РИТУАЛЬНЫЙ РЕЗЕЦ": "FIND: RITUAL CHISEL",
+    "НАХОДКА: ЧАША КРОВИ ТУМАНА": "FIND: FOG BLOOD CHALICE",
+    "НАХОДКА: КНИГА ПСАЛМОВ": "FIND: PSALTER BOOK",
+    "НАХОДКА: ЖИВОЙ КЛЮЧ-СИМБИОТ": "FIND: LIVING SYMBIOTE KEY",
+    "НАХОДКА: ОЧИСТИТЕЛЬНЫЙ ЗНАК": "FIND: PURIFICATION SEAL",
+    "НАХОДКА: СГУСТОК ВРЕМЕНИ": "FIND: TIME CLUSTER",
+    "НАХОДКА: ОБСИДИАНОВАЯ ПРИЗМА": "FIND: OBSIDIAN PRISM",
+    "НАХОДКА: ИСТИННЫЙ ЧЕРТЕЖ": "FIND: ARCHITECT BLUEPRINT",
+    "НАХОДКА: ЯКОРЬ РЕАЛЬНОСТИ": "FIND: REALITY ANCHOR",
+    "НАХОДКА: КЛЮЧ РАЗРЫВА ЦИКЛА": "FIND: CYCLE-BREAKER KEY",
+    "НАХОДКА: КЛЮЧ БЕЗДНЫ": "FIND: ABYSS KEY"
+  },
+  texts: {
+    // Ded Makar
+    "В полумраке шахты у разбитой клети сидит седой старик в засаленной телогрейке и поцарапанных сварочных очках. Он медленно поворачивает слепое лицо на звук ваших шагов:\n«Слышу поступь... Ты живой? Я уж думал, никто живой сюда больше не доберётся. Я старый слепой лифтёр Макар. Всю жизнь эти тросы смазывал, пока клеть не сорвалась. Лифт наш разбит вдребезги. Чтобы его починить и пустить клеть на нижние этажи, мне нужны три вещи: Ремкомплект лифта, Блок кнопок и Силовой провод генератора. Обыщи этаж, они где-то раскиданы в складах и щитках. Если подвернётся что-то похожее — тащи всё мне, я налажу клеть!»":
+      "In the dim elevator shaft by a wrecked hoist cage sits a gray-haired elder in a greasy padded work jacket and scratched welding goggles. He slowly turns his blind face toward the sound of your footsteps:\n\"I hear footsteps... Are you alive? I thought no one living would ever make it here again. I'm old blind lift operator Makar. Spent my whole life greasing these cables until the cage snapped. Our elevator is smashed to pieces. To repair it and lower the hoist to floors below, I need three things: an Elevator Repair Kit, a Button Panel, and a Generator Power Cable. Search the floor — they're scattered in warehouses and junction boxes. If you find anything like that, bring it all to me and I'll fix the cage!\"",
+
+    "Старик стучит сухим мозолистым пальцем по кожуху редуктора:\n«Слушай память слепого: Ремкомплект лифта обычно лежит в опечатанных ящиках аварийной службы на технических складах. Блок кнопок срывали с диспетчерских пультов в коридорах. А силовой провод генератора торчит прямо из распределительных щитов и дизельных установок этажа. Сделай вылазки в неизведанные сектора, обшарь тайники — если подвернётся что-то похожее, тащи мне!»":
+      "The elder taps a dry, calloused finger against the gearbox housing:\n\"Listen to a blind man's memory: the Elevator Repair Kit is usually in sealed emergency service crates in technical warehouses. The Button Panel was torn from dispatch consoles in the hallways. And the Generator Power Cable sticks right out of junction panels and diesel generators across the floor. Venture into uncharted sectors and scour the caches — if you find anything like that, bring it to me!\"",
+
+    "Дед Макар протягивает загрубевшие, перепачканные солидолом ладони:\n«Давай сюда, ощупаю... Нам нужны сразу три детали: Ремкомплект лифта, Блок кнопок и Провод генератора. Всё собрал, сынок?»":
+      "Grandpa Makar holds out rough, grease-stained palms:\n\"Hand them over, let me feel... We need all three parts: Elevator Repair Kit, Button Panel, and Generator Cable. Got everything, son?\"",
+
+    "Старик ловко на ощупь затягивает клеммы, спаивает кабели и со щелчком врубает рубильник. Стальные тросы со звоном натягиваются, в шахте вспыхивают желтые сигнальные огни подъемника!\n«Ай молодец, сынок! Слышишь этот ровный гул? Лебедка снова дышит! Теперь лифт готов к спуску. Но будь начеку: при пуске клети сюда сползутся твари из тумана, приготовь оружие!»":
+      "The old man deftly tightens terminals by touch, solders cables, and throws the circuit breaker with a heavy click. Steel cables snap taut with a metallic ring, and yellow amber warning lights flare inside the hoist shaft!\n\"Attaboy, son! Hear that steady hum? The winch breathes again! The elevator is ready for descent. But stay sharp: starting the hoist will draw beasts crawling from the fog — ready your weapons!\"",
+
+    "«Глаза мне выжгло кислотной гарью Самосбора ещё тридцать смен назад. Зато уши стали чуткими — я по скрипу бетона слышу, как твари крадутся по вентиляции за два пролёта. Здесь, у шахты, сквозняк правильный, туман не застаивается. Главное — гермошторку вовремя захлопнуть.»":
+      "\"My eyes were burned out by acid fumes from Samosbor thirty shifts ago. But my ears turned sharp — from the creak of concrete I can hear beasts creeping through vents two flights away. Here near the shaft, the draft flows right, fog never settles. The key is slamming the blast curtain shut in time.\"",
+
+    "«Ну что, сынок? Нашел детали? Ремкомплект лифта, блок кнопок и провод генератора — вот что нам нужно, чтобы запустить эту махину.»":
+      "\"Well, son? Found the parts? Elevator Repair Kit, Button Panel, and Generator Cable — that's what we need to get this behemoth moving.\"",
+
+    // Gleb
+    "У самодельной печурки греется сталкер в потертом кожаном плаще и противогазе ГП-5.\n«Здорово, заключенный. Подсаживайся к теплу, пока Самосбор не накрыл блок. О чем поговорить хочешь?»":
+      "A stalker in a worn leather coat and a GP-5 gas mask warms himself by an improvised stove.\n\"Greetings, inmate. Warm yourself by the fire before Samosbor sweeps the block. What's on your mind?\"",
+    "Глеб негромко хрипит через фильтр: «Гигахрущевка не имеет дна. Чем глубже спускаешься, тем меньше бетона и больше сырой плоти. На 10-м этаже архивы Партии, где директивы оживают. А на 15-м реактор пульсирует как сердце. Не суйся туда без тяжелой брони!»":
+      "Gleb rasps softly through his filter: \"The Gigakhrushchyovka has no bottom. The deeper you go, the less concrete and the more raw flesh. On Floor 10 are the Party archives where directives come alive. And on Floor 15, the reactor pulses like a living heart. Don't go there without heavy armor!\"",
+    "«Лифт на каждом этаже заклинило или опечатано. Ищи ключи и детали в технических нишах. А когда запустишь клеть — готовься к бою. Твари тумана чуют пуск лебедки со всего горизонта!»":
+      "\"The elevator on every floor is jammed or sealed. Search utility niches for keys and spare parts. And when you start the cage — prepare for battle. Fog beasts can sense the winch starting across the entire horizon!\"",
+    "«Могу отдать Предохранитель или Разводной ключ. Но даром в тумане ничего не бывает — гони 1 Брикет слизи или 50 талонов на фильтры».":
+      "\"I can part with a Fuse or a Heavy Pipe Wrench. But nothing in the fog is free — give me 1 Slime Briquette or 50 talons for filters.\"",
+    "«Держи железо. Пусть послужит. Не забывай менять угольные патроны вовремя!»":
+      "\"Take the hardware. Hope it serves you well. Don't forget to change charcoal canisters on time!\"",
+    "Глеб ворошит угли прутом: «Что еще тебя интересует, заключенный?»":
+      "Gleb pokes the embers with a rod: \"What else do you want to know, inmate?\"",
+
+    // Liquidator
+    "Тяжелый боец в освинцованной броне сидит у переборки. Стекло гермошлема покрыто гарью и трещинами, дыхание с тяжелым хрипом:\n«Брат... Нашу группу накрыло кислотным выбросом. Промывочный состав кончился. Помоги нейтрализовать ожог — я в долгу не останусь!»":
+      "A heavy trooper in lead-lined armor sits against a bulkhead. His helmet visor is covered in soot and cracks, his breathing labored and wheezing:\n\"Brother... Our squad was engulfed in an acid discharge. Decon solvent ran dry. Help me neutralize the chemical burn — I won't forget the favor!\"",
+    "Семен жадно вводит щелочной нейтрализатор через клапан шлема. Хрип утихает:\n«Уф-ф... Легче стало. Забирай мою Красную ключ-карту от армейских шлюзов, мне уже не до штурма. Держись подальше от открытого огня!»":
+      "Semyon eagerly injects the alkaline neutralizer through his helmet valve. The wheezing subsides:\n\"Phew... Much better. Take my Red Keycard to military airlocks, I'm in no condition to storm anything anymore. Stay away from open flames!\"",
+    "«Целься точно в сочленения плит и дыхала. Когда тварь замахивается — сразу уходи в сторону, контратака после уклонения бьет вдвое больнее! И держи фильтр полным, в тумане реакция падает вдвое».":
+      "\"Aim right for plate joints and breath spiracles. When the beast winds up — dodge immediately; a counterattack after dodging strikes twice as hard! And keep your filter clean; fog halves your reaction time.\"",
+
+    // Scientist
+    "Сутулый ученый в запятнанном халате и круглых очках над респиратором исступленно чертит мелом формулы прямо на стене:\n«Они думают, Самосбор случаен! Глупцы! Это гиперболическая геометрия пространства! Хочешь взглянуть на расчеты или испытать экспериментальную сыворотку?»":
+      "A stooped scientist in a stained lab coat and round spectacles over a respirator frenetically scrawls chalk equations across the wall:\n\"They think Samosbor is random! Fools! It is hyperbolic geometry of space! Care to look at my calculations or test an experimental serum?\"",
+    "«Стены не параллельны! Здание растет внутрь самого себя! Внизу, на тридцатом горизонте, находится точка абсолютной энтропии — Чернобог. Если откалибровать частоту подстанции на 80 или 120 ватт, гермозатворы подчиняются алгоритму!»":
+      "\"The walls are not parallel! The structure grows inside itself! Below, on the 30th horizon, lies the point of absolute entropy — Chernobog. If you calibrate the substation frequency to 80 or 120 watts, blast doors obey the algorithm!\"",
+    "«О-о, кремниевые чипы! Прекрасно! Вот, забирай Высоковольтное реле — с ним ты запитаешь распределительный щит лифта!»":
+      "\"Ooh, silicon chips! Magnificent! Here, take this High-Voltage Relay — with it, you can power the elevator switchboard!\"",
+    "Шухов поправляет запотевшие очки: «Ну что, готов проникнуть глубже в суть феномена?»":
+      "Shukhov adjusts fogged glasses: \"Well, ready to delve deeper into the nature of the phenomenon?\"",
+
+    // Borisov
+    "Офицер ВОХР с тяжелым шрамом на скуле держит руку на кобуре. Его фуражка со звездой запылена бетонной крошкой:\n«Стоять! Руки на виду! В блоке объявлен режим ЧП. Предъяви документы или докажи, что ты не заражен туманом!»":
+      "A VOKhR officer with a severe facial scar keeps his hand on his holster. His peaked star cap is dusted with concrete powder:\n\"Halt! Hands where I can see them! The block is under state of emergency. Present your papers or prove you are not infected by the fog!\"",
+    "«Ремонт лифта? Комендатура одобряет. Нижние сектора захвачены мутантами, связь со штабом потеряна. Вот тебе Блокнот с шифрами взвода. Используй его на кодовых терминалах, но упаси Партия разгласить секрет!»":
+      "\"Elevator repairs? Command approves. Lower sectors are overrun by mutants, headquarters comms are down. Take this Officer Cipher Logbook. Use it on code terminals, but may the Party forbid you leak the secret!\"",
+    "Майор пересчитывает талоны: «Держи жетон. С ним караульные пулеметы на блокпосту не откроют огонь на поражение. И не попадайся конвоирам на глаза».":
+      "The Major counts the talons: \"Take the dog tag. Sentry machine guns at checkpoints won't shoot to kill while you wear it. And stay out of guard sightlines.\"",
+
+    // Iona
+    "Человек в грубой мешковине, с маской из кости и горящими безумием глазами, монотонно раскачивается у стены, покрытой венами:\n«Ты слышишь зов?.. Плоть зовет плоть... Самосбор не убивает — он соединяет разорванный мир в единое целое... Принеси жертву Святилищу!»":
+      "A man in coarse burlap with a bone mask and eyes burning with madness sways monotonically by a vein-covered wall:\n\"Do you hear the call?.. Flesh summons flesh... Samosbor does not kill — it unites a shattered world into one whole... Bring an offering to the Shrine!\"",
+    "Иона шепчет, касаясь стены: «Чернобог — это Сердце Гигахрущевки. Он спит на тридцатом круге. Когда цикл замкнется, стены сожмутся, и все жильцы станут одним телом. Возьми Псалтырь Неизбежного Тумана, читай его, когда дрогнет дух!»":
+      "Iona whispers, touching the wall: \"Chernobog is the Heart of the Gigakhrushchyovka. He sleeps on the 30th circle. When the cycle closes, walls will collapse together, and all inmates will become one single body. Take the Psalter of the Inevitable Fog — read it when your spirit falters!\"",
+    "Сектант прижимает слизь к пульсирующей стене, и бетон жадно впитывает ее:\n«Святилище довольно! Прими Окаменевший мясной нарост — он откроет врата нижнего круга!»":
+      "The cultist presses the slime to the pulsating wall, and the concrete hungrily absorbs it:\n\"The Shrine is pleased! Accept this Petrified Flesh Relic — it shall unseal the gates of the lower circle!\"",
+    "«Он чувствует твою кровь... Не бойся, он не укусит, пока ты служишь Туману...»":
+      "\"It senses your blood... Do not fear, it won't bite as long as you serve the Fog...\"",
+    "«Святилище ждет твоих решений, странник...»":
+      "\"The Shrine awaits your decisions, wanderer...\"",
+
+    // Archivist
+    "Бледный человек с латунным моноклем и механическими пальцами перебирает сотни перфокарт:\n«Дело №7749... Приговорен к исправительным работам в подвалах... Чего вам, гражданин? Архив Партии закрыт на дезинфекцию!»":
+      "A pale man with a brass monocle and mechanical fingers rifles through hundreds of punch cards:\n\"Dossier #7749... Sentenced to penal labor in the basements... What do you want, citizen? Party Archive is closed for disinfection!\"",
+    "«Лифты контролируются перфокартами серии \"Х\". На шестом этаже шифрокабинет, на восьмом — фонотека. Держи Диск шифратора, без него кодовые замки не расшифровать!»":
+      "\"Elevators are controlled by series 'X' punch cards. Cipher room on Floor 6, audio archives on Floor 8. Take the Enigma-X Cipher Disc — code locks cannot be cracked without it!\"",
+    "«Штамп поставлен. Ключ-карта активирована. Соблюдайте тишину в читальном зале!»":
+      "\"Stamp approved. Keycard activated. Maintain strict silence in the reading hall!\"",
+    "«Ценные сведения. Взамен выдаю Секретную перфокарту с директивами спуска».":
+      "\"Valuable intelligence. In exchange, I grant you a Classified Punch Card with descent directives.\"",
+    "«Гражданин, регламент не терпит задержек. Что еще?»":
+      "\"Citizen, regulations tolerate no delays. What else?\"",
+
+    // Trader
+    "Незнакомец в потертом плаще сталкера светит фонариком: «Есть редкий хабар, заключенный. Показывай талоны, пока конвоиры не засекли».":
+      "A stranger in a tattered stalker cloak aims a flashlight: \"Got rare salvage, inmate. Show your talons before guards spot us.\"",
+
+    // Hazards
+    "Резкий запах озона бьет в нос. Из темноты коридора доносится влажное хлюпанье. Самосбор где-то рядом...":
+      "A sharp smell of ozone hits your nostrils. Wet squelching echoes from the dark corridor. Samosbor is close...",
+    "Труба лопнула прямо над головой. Белый раскаленный пар с запахом аммиака заливает проход!":
+      "A pipe ruptured directly overhead. White scalding steam smelling of ammonia floods the corridor!",
+    "Шероховатые плиты стен тихо вибрируют. Голоса десятков погибших жильцов шепчут в голове забытые имена и формулы...":
+      "Rough wall slabs vibrate softly. Voices of dozens of perished tenants whisper forgotten names and formulas in your mind...",
+
+    // Caches texts
+    "В технической нише валяется перевернутый ящик сантехников.": "An overturned plumber tool chest lies in a utility alcove.",
+    "В обугленном щитке автоматики блестит керамический корпус.": "A ceramic fuse casing glints inside a charred automatic switchbox.",
+    "У щитка лежат останки конвоира в разорванной шинели.": "Remains of a prison guard in a shredded greatcoat lie by the panel.",
+    "Опечатанный ящик со знаком службы главного лифта.": "Sealed crate bearing the emblem of Main Elevator Maintenance.",
+    "Сорванная панель диспетчера со связкой кнопок.": "Torn dispatch console with a bundle of buttons.",
+    "Из генератора торчит неповрежденный силовой кабель.": "An intact heavy power cable protrudes from the generator.",
+    "На верстаке аварийной бригады лежит тяжелый разводной ключ.": "A heavy pipe wrench lies on the emergency crew workbench.",
+    "В разобранной трубе закреплен латунный клапан сброса давления.": "A brass pressure relief valve is mounted in a disassembled pipe.",
+    "В герметичном контейнере сохранилась канистра реагента.": "A canister of reagent remains preserved inside a sealed container.",
+    "На полке лежит толстая свинцовая заплата для пробоин.": "A thick lead patch for ruptured pipes rests on the shelf.",
+    "Среди осколков уцелел манометр сверхвысокого давления.": "An ultra-high pressure manometer survived among the shattered debris.",
+    "На полу валяется чугунный штурвал задвижки.": "A cast-iron valve handwheel lies on the floor.",
+    "В сумке погибшего лаборанта лежит проба едкой слизи.": "A caustic slime sample rests inside a fallen lab technician's satchel.",
+    "В разобранной лебедке блестит массивная зубчатая шестерня.": "A massive toothed cogwheel glints inside a dismantled winch.",
+    "В стальном шкафу лежит секретная перфокарта с гербом.": "A classified punch card with a Party crest lies inside a steel locker.",
+    "В тайнике машинистки спрятан латунный диск шифратора.": "A brass cipher disc is hidden in a typist's secret drawer.",
+    "На массивном столе лежит тяжелая печать политотдела.": "A heavy political department stamp lies on the massive desk.",
+    "В радиоаппаратной найдена пленка с записями директив.": "Tape containing recorded Party directives found in the radio room.",
+    "В опечатанном кейсе лежит карта доступа высшего уровня.": "A top-level access security card rests inside a sealed briefcase.",
+    "В шахте лежит неповрежденный бронированный трос.": "An undamaged armored cable lies inside the shaft.",
+    "В защитном пенале светится стержень охладителя.": "A control rod glows faintly inside a protective canister.",
+    "Среди оплавленных проводов уцелело мощное реле.": "A powerful relay survived intact among melted wires.",
+    "В трансформаторе установлена массивная медная катушка.": "A massive copper coil is installed inside the transformer.",
+    "На полке лежит надежный керамический диэлектрический изолятор.": "A reliable ceramic dielectric insulator rests on the shelf.",
+    "Тяжелая свинцовая заслонка с маркировкой радиации.": "A heavy lead plate marked with radiation hazard warnings.",
+    "В технической нише лежит запасной электропривод клети.": "A spare elevator electric drive motor lies in a technical alcove.",
+    "На гильзах лежит стальной армейский личный жетон.": "A steel army dog tag lies among empty bullet casings.",
+    "В командирской сумке лежит блокнот с кодами постов.": "A notepad containing post access codes lies inside the officer bag.",
+    "В ящике химзащиты лежит мощный дегазационный фильтр.": "A powerful military decontamination filter lies inside a hazmat crate.",
+    "На поясе конвоира висит связка тяжелых латунных ключей.": "A ring of heavy brass keys hangs from a guard's belt.",
+    "Красная магнитная пломба с личной печатью Коменданта.": "A red magnetic seal bearing the Commandant's personal imprint.",
+    "В ремонтной нише лежит гидроцилиндр подъемника.": "An elevator hoist hydraulic cylinder lies in a repair bay.",
+    "Кусок биомассы, затвердевший до прочности базальта.": "A chunk of organic biomass hardened to the density of basalt.",
+    "Острое зубило, выточенное из бедренной кости мутанта.": "A razor-sharp chisel carved from the femur of a mutant.",
+    "Медный кубок, наполненный темной шипящей влагой.": "A copper chalice filled with dark, hissing fluid.",
+    "Переплетенный в сыромятную кожу псалтырь культа.": "A cult psalter bound in raw human skin.",
+    "Органический ключ с шевелящимися усиками на жале.": "An organic key with twitching feelers along its barb.",
+    "Свинцовая плита с вытравленной антибиотической руной.": "A lead slab etched with an antibiotic protective rune.",
+    "В эпицентре пространственной воронки застыл сгусток времени.": "A frozen cluster of time rests at the epicenter of a spatial vortex.",
+    "Осколок зеркала из черного стекла, поглощающий свет.": "A mirror shard of pitch-black glass that absorbs all light.",
+    "Первородный свиток плана Гигахрущевки.": "The primordial blueprint scroll of the Gigakhrushchyovka.",
+    "Латунный гироскоп, удерживающий границы материи.": "A brass gyroscope maintaining the boundary of matter.",
+    "Черный ключ, источающий темное пламя Самосбора.": "A black key radiating dark Samosbor flame.",
+    "Финальный ключ спуска в логово Чернобога на 30 этаж.": "The final key granting descent into Chernobog's Sanctum on Floor 30."
+  },
+  choices: {
+    // Makar
+    "1. «Где именно искать детали на этаже, дед?»": "1. \"Where exactly should I look for parts on this floor, grandpa?\"",
+    "2. «Я принёс запчасти! Почини клеть.»": "2. \"I brought the parts! Repair the hoist cage.\"",
+    "2. «Я принес запчасти! Почини клеть.»": "2. \"I brought the parts! Repair the hoist cage.\"",
+    "3. «Как ты выжил здесь в слепоте во время Самосбора?»": "3. \"How did you survive blind down here during Samosbor?\"",
+    "4. «Я пойду искать детали. Держись тут.»": "4. \"I'll go look for the parts. Hang in there.\"",
+    "1. «Напомни, где искать детали?»": "1. \"Remind me where to look for parts?\"",
+    "3. «Пока ищу. Бывай.»": "3. \"Still searching. Farewell.\"",
+    "«Понял, вернусь к разговору.»": "\"Understood, back to the conversation.\"",
+    "«Пошёл на поиски.»": "\"Off to search.\"",
+    "Сдать детали: Ремкомплект + Блок кнопок + Провод": "Turn in parts: Repair Kit + Button Panel + Cable",
+    "«У меня пока не всё собрано. Вернусь позже.»": "\"I don't have everything yet. I'll be back later.\"",
+    "«Спасибо, дед Макар! Я готов к спуску.»": "\"Thank you, Grandpa Makar! I am ready to descend.\"",
+    "«Удивительно... Вернемся к лифту.»": "\"Astonishing... Back to the elevator.\"",
+    "«Береги себя, дед.»": "\"Take care of yourself, grandpa.\"",
+
+    // Gleb
+    "1. «Расскажи, что творится на этих этажах»": "1. \"Tell me what is happening on these floors.\"",
+    "2. «Как пробиться через запертый лифт?»": "2. \"How do I get through the locked elevator?\"",
+    "3. «Нужен инструмент для дверей» (Обмен)": "3. \"I need door tools.\" (Barter)",
+    "4. «Бывай, Глеб. Мне пора дальше.»": "4. \"Farewell, Gleb. I must move on.\"",
+    "«Запишу это в блокнот. Что еще посоветуешь?»": "\"I'll note this down. What else can you advise?\"",
+    "«Спасибо за предупреждение. Мне пора.»": "\"Thanks for the warning. I have to go.\"",
+    "«Понятно. Вернемся к разговору.»": "\"Understood. Let's return to the conversation.\"",
+    "«Я готов к схватке. Бывай.»": "\"I'm ready for a fight. Farewell.\"",
+    "Отдать Брикет слизи -> получить Предохранитель": "Give Slime Briquette -> receive Fuse",
+    "Отдать 50 талонов -> получить Тяжелый ключ": "Give 50 talons -> receive Heavy Pipe Wrench",
+    "«Пока ничего не нужно.»": "\"Nothing for now.\"",
+    "«Еще пара вопросов...»": "\"A few more questions...\"",
+    "«Спасибо за помощь. До встречи.»": "\"Thanks for the help. See you around.\"",
+    "1. «Расскажи о нижних этажах»": "1. \"Tell me about the lower floors.\"",
+    "2. «Давай поторгуем»": "2. \"Let's trade.\"",
+    "3. «Пора в путь.»": "3. \"Time to hit the road.\"",
+
+    // Liquidator
+    "1. Отдать Химикаты для дегазации (нужны Химикаты)": "1. Give Chemicals for decontamination (Requires Chemicals)",
+    "2. «Как пробивать броню мутантов в нижних блоках?»": "2. \"How do you pierce mutant armor in lower blocks?\"",
+    "3. [РИСК] Обыскать карманы бойца": "3. [RISK] Loot the trooper's pockets",
+    "4. Оставить бойца": "4. Leave the trooper",
+    "«Расскажи о тактике зачистки»": "\"Tell me about cleansing combat tactics.\"",
+    "«Поправляйся, боец.»": "\"Get well, trooper.\"",
+    "«Понял. Буду начеку!»": "\"Understood. I'll stay sharp!\"",
+
+    // Scientist
+    "1. «Что значат эти формулы на стене?»": "1. \"What do these wall formulas mean?\"",
+    "2. [РИСК] Принять экспериментальную сыворотку": "2. [RISK] Ingest experimental serum",
+    "3. Предложить Электронику (нужна 1 Электроника)": "3. Offer Electronics (Requires 1 Electronics)",
+    "4. Пройти мимо сумасшедшего": "4. Pass by the mad scientist",
+    "«Записать частоты подстанции в блокнот.»": "\"Write down substation frequencies in diary.\"",
+    "«Звучит безумно. Я пошел.»": "\"Sounds insane. I'm leaving.\"",
+    "«Благодарю, профессор.»": "\"Thank you, professor.\"",
+    "Предложить Электронику": "Offer Electronics",
+    "«Мне пора идти.»": "\"I must go.\"",
+
+    // Borisov
+    "1. «Я выполняю работы по ремонту лифта блока.»": "1. \"I am carrying out repair work on the block elevator.\"",
+    "2. Выкупить Жетон старшины ВОХР (120 т.)": "2. Purchase VOKhR Sergeant Dog Tag (120 t.)",
+    "3. [РИСК] Попытаться разоружить майора": "3. [RISK] Attempt to disarm the Major",
+    "4. Медленно отступить в тень": "4. Slowly back away into the shadows",
+    "Принять Блокнот с шифрами взвода": "Accept Officer Cipher Logbook",
+    "«Служу народу Гигахрущевки!»": "\"I serve the people of the Gigakhrushchyovka!\"",
+    "«Благодарю за содействие.»": "\"Thank you for the cooperation.\"",
+
+    // Iona
+    "1. «Что ждет внизу, в Чертоге Чернобога?»": "1. \"What awaits below in Chernobog's Sanctum?\"",
+    "2. Пожертвовать Брикет слизи Святилищу": "2. Sacrifice a Slime Briquette to the Shrine",
+    "3. Выменять Живой ключ-симбиот (150 т.)": "3. Barter for Living Symbiote Key (150 t.)",
+    "4. Бежать прочь от сектанта": "4. Flee from the cultist",
+    "Забрать Псалтырь Тумана": "Take Psalter of the Fog",
+    "«Жуткая ересь. Я ухожу.»": "\"Creepy heresy. I'm leaving.\"",
+    "«Забираю и ухожу.»": "\"I'll take it and go.\"",
+    "«Главное, чтобы открывал гермозатвор.»": "\"As long as it opens the blast door.\"",
+    "Пожертвовать Брикет слизи": "Sacrifice Slime Briquette",
+    "«Хватит разговоров.»": "\"Enough talk.\"",
+
+    // Archivist
+    "1. «Где найти документы на запуск лифта?»": "1. \"Where are the clearance documents to start the elevator?\"",
+    "2. Выкупить Ключ-карту Архивариуса (100 т.)": "2. Purchase Archivist Keycard (100 t.)",
+    "3. Передать найденные формулы НИИ": "3. Hand over salvaged Research formulas",
+    "4. Не мешать работе бюрократа": "4. Do not disturb the bureaucrat",
+    "Взять Диск шифратора «Энигма-Х»": "Take Enigma-X Cipher Disc",
+    "«Спасибо за справку.»": "\"Thank you for the information.\"",
+    "«Понял.»": "\"Understood.\"",
+    "«Благодарю.»": "\"Thank you.\"",
+    "Выкупить Ключ-карту (100 т.)": "Purchase Keycard (100 t.)",
+    "«Я уже ухожу.»": "\"I'm leaving now.\"",
+
+    // Trader
+    "Купить Редкий пистолет (150 т.)": "Buy Rare Pistol (150 t.)",
+    "Купить Военную аптечку (50 т.)": "Buy Military Medkit (50 t)",
+    "Купить Военную аптечку (50 т.)": "Buy Military Medkit (50 t.)",
+    "Пройти мимо": "Walk away",
+
+    // Hazards
+    "[РИСК] Бежать обратно к шлюзу": "[RISK] Run back to the airlock",
+    "Затаиться в вентиляционной нише": "Hide in a ventilation alcove",
+    "[РИСК] Проскочить сквозь струю пара": "[RISK] Dash through the steam jet",
+    "Ползти по мокрому бетону у пола": "Crawl across the wet concrete floor",
+    "[РИСК] Вслушаться в голоса стен": "[RISK] Listen closely to the wall voices",
+    "Громко читать устав Партии": "Loudly recite Party regulations",
+
+    // Caches choices
+    "Забрать Болторез": "Take Bolt Cutter",
+    "Извлечь Предохранитель": "Extract Fuse",
+    "Осмотреть тело": "Examine body",
+    "Забрать Ремкомплект лифта": "Take Elevator Repair Kit",
+    "Снять Блок кнопок": "Take Button Panel",
+    "Срезать Провод генератора": "Cut Generator Cable",
+    "Взять Разводной ключ": "Take Pipe Wrench",
+    "Скрутить Клапан сброса давления": "Unscrew Pressure Valve",
+    "Забрать Канистру коагулянта": "Take Coagulant Canister",
+    "Забрать Свинцовую заплату": "Take Lead Patch",
+    "Снять Манометр давления": "Detach Pressure Manometer",
+    "Поднять Вентильную рукоять": "Pick up Valve Handle",
+    "Взять Пробу слизи": "Take Slime Sample",
+    "Извлечь Зубчатую шестерню лебедки": "Extract Winch Cogwheel",
+    "Забрать Секретную перфокарту": "Take Classified Punch Card",
+    "Взять Диск шифратора": "Take Cipher Disc",
+    "Забрать Печать комиссара": "Take Commissar's Stamp",
+    "Забрать Бобину спецвещания": "Take Broadcast Tape Reel",
+    "Забрать Ключ-карту Архивариуса": "Take Archivist Keycard",
+    "Срезать Бронированный трос": "Cut Armored Cable",
+    "Извлечь Стержень охладителя": "Extract Coolant Rod",
+    "Забрать Высоковольтное реле": "Take High-Voltage Relay",
+    "Снять Медную катушку": "Detach Copper Inductor Coil",
+    "Взять Диэлектрический изолятор": "Take Dielectric Insulator",
+    "Забрать Свинцовую заслонку": "Take Lead Radiation Shield",
+    "Погрузить Электропривод лифта": "Load Elevator Drive Motor",
+    "Забрать Жетон старшины ВОХР": "Take Sergeant Dog Tag",
+    "Взять Блокнот с шифрами взвода": "Take Officer Cipher Logbook",
+    "Забрать Дегазационный фильтр": "Take Decon Filter",
+    "Снять Связку латунных ключей": "Take Ring of Brass Keys",
+    "Забрать Магнитную пломбу": "Take Magnetic Seal",
+    "Забрать Гидроцилиндр клети": "Take Hoist Cylinder",
+    "Взять Окаменевший мясной нарост": "Take Petrified Flesh Relic",
+    "Взять Костяное зубило": "Take Bone Chisel",
+    "Взять Чашу крови тумана": "Take Fog Blood Chalice",
+    "Забрать Псалтырь Тумана": "Take Psalter of the Fog",
+    "Взять Живой ключ-симбиот": "Take Living Symbiote Key",
+    "Забрать Очистительный знак лифта": "Take Purification Seal",
+    "Забрать Сгусток времени": "Take Temporal Core",
+    "Взять Призму черного стекла": "Take Black Glass Prism",
+    "Забрать Истинный чертеж": "Take Master Blueprint",
+    "Забрать Якорь реальности": "Take Reality Anchor",
+    "Забрать Ключ разрыва цикла": "Take Cycle-Breaker Key",
+    "Принять Ключ Бездны": "Accept Abyss Key"
+  }
+};
+
+const MINIGAMES_EN = {
+  titles: {
+    "ШИФРОГРАММА ПАРТИИ": "PARTY CIPHERGRAM",
+    "АВАРИЙНЫЙ ШЛЮЗ ГАЗА": "EMERGENCY GAS AIRLOCK",
+    "АРХИВНЫЙ КОД НКВД": "NKVD ARCHIVE CODE",
+    "ЯДЕРНЫЙ БЛОКИРАТОР": "NUCLEAR INTERLOCK",
+    "ПАСПОРТНЫЙ СТОЛ": "PASSPORT OFFICE",
+    "ШИФР КУЛЬТИСТОВ ПЛОТИ": "FLESH CULTIST CIPHER",
+    "ТЕЛЕТАЙП СВЯЗИ": "COMMUNICATIONS TELETYPE",
+    "РЕАКТОРНЫЙ КОД": "REACTOR CODE",
+    "ТЕРМИНАЛ ВОХР": "VOKHR TERMINAL",
+    "ПЕЧАТЬ ЧЕРНОБОГА": "SEAL OF CHERNOBOG",
+    "ПОДСТАНЦИЯ: НИЗКИЙ ТОК": "SUBSTATION: LOW CURRENT",
+    "СЛАБОТОЧНЫЙ ЩИТОК": "LOW-VOLTAGE PANEL",
+    "ОСВЕЩЕНИЕ СЕКТОРА": "SECTOR LIGHTING",
+    "ТРАНСФОРМАТОР ТЕХБЛОКА": "UTILITY TRANSFORMER",
+    "СИЛОВАЯ МАГИСТРАЛЬ": "POWER MAIN",
+    "ВЗЛОМ": "HACKING"
+  },
+  texts: {
+    "На терминале надпись: «Год великой закладки фундамента Жилого Блока №7». Код в архиве: 1984.":
+      "Terminal display: \"Year of the foundation of Residential Block #7\". Archive code: 1984.",
+    "Шифр замка: номера букв в слове Г-А-З (Г=4, А=1, З=9). Введите 4-значный код с ведущим нулем.":
+      "Lock cipher: letters in G-A-S (G=4, A=1, S=9). Enter 4-digit code with leading zero (0419).",
+    "Инструкция: «Первая цифра 7, каждая последующая на 2 меньше предыдущей (7, 5, 3, 1)».":
+      "Instruction: \"First digit 7, each subsequent 2 less than previous (7, 5, 3, 1)\".",
+    "Умножьте 12 на 12 и прибавьте номер аварийного сектора (40). Введите 4-значный код (0184).":
+      "Multiply 12 by 12 and add emergency sector number (40). Enter 4-digit code (0184).",
+    "Штамп на стене: «Прогрессия кратна трем: 3, 6, 9, затем 2 (остаток цикла)».":
+      "Wall stamp: \"Progression multiples of 3: 3, 6, 9, then 2 (cycle remainder)\".",
+    "Надпись кровью: «Число очей у трех пауков тумана и двух крыс (3*8 + 2*2 = 28)». Введите 4 цифры (0028).":
+      "Blood inscription: \"Count of eyes of 3 fog spiders and 2 rats (3*8 + 2*2 = 28)\". Enter 4 digits (0028).",
+    "В формуле резонанса: половина от 1000 минус 80. Полученное четырехзначное число (0420).":
+      "Resonance formula: half of 1000 minus 80. Resulting 4-digit number (0420).",
+    "Шифр изотопа: 235 уран плюс номер этажа (15). Итоговое 4-значное число (0250).":
+      "Isotope code: 235 uranium plus floor number (15). Total 4-digit number (0250).",
+    "Пароль караула: сумма квадратов 3 и 4 (9+16=25), повторенная дважды (2525).":
+      "Guard password: sum of squares of 3 and 4 (9+16=25), repeated twice (2525).",
+    "Надпись на черном монолите: «Конец равен началу: 1, 0, 0, 1».":
+      "Black monolith inscription: \"End equals beginning: 1, 0, 0, 1\".",
+    "Откалибровать напряжение на 80W.":
+      "Calibrate voltage to 80W.",
+    "Откалибровать напряжение на 40W для запуска аварийного реле.":
+      "Calibrate voltage to 40W to engage emergency relay.",
+    "Откалибровать напряжение на 60W для включения прожекторов.":
+      "Calibrate voltage to 60W to turn on floodlights.",
+    "Откалибровать напряжение ровно на 100W.":
+      "Calibrate voltage to exactly 100W.",
+    "Откалибровать напряжение на 120W для открытия электрогермодвери.":
+      "Calibrate voltage to 120W to unseal the electric blast door."
+  }
+};
+
+function getDisplayEvent(ev) {
+  if (currentLang !== 'en' || !ev) return ev;
+  let copy = Object.assign({}, ev);
+  if (copy.title) {
+    copy.title = EVENTS_EN.titles[copy.title] || copy.title;
+  }
+  if (copy.npc) {
+    copy.npc = Object.assign({}, copy.npc);
+    if (copy.npc.name && NPCS_EN.names[copy.npc.name]) copy.npc.name = NPCS_EN.names[copy.npc.name];
+    if (copy.npc.role && NPCS_EN.roles[copy.npc.role]) copy.npc.role = NPCS_EN.roles[copy.npc.role];
+  }
+  if (copy.text) {
+    copy.text = EVENTS_EN.texts[copy.text] || copy.text;
+  }
+  if (copy.choices && Array.isArray(copy.choices)) {
+    copy.choices = copy.choices.map(c => {
+      let cc = Object.assign({}, c);
+      if (cc.text) {
+        cc.text = EVENTS_EN.choices[cc.text] || cc.text;
+      }
+      return cc;
+    });
+  }
+  return copy;
+}
+
+function getDisplayLogMessage(msg) {
+  if (currentLang !== 'en' || !msg || typeof msg !== 'string') return msg || '';
+  let out = msg;
+
+  const directLogs = {
+    "> Вы оставили слепого лифтёра у шахты.": "> You left the blind lift operator by the shaft.",
+    "> Вы отправились на поиски деталей для лифта.": "> You set out to find elevator parts.",
+    "> Лифт успешно отремонтирован дедом Макаром!": "> The elevator has been successfully repaired by Grandpa Makar!",
+    "> Вы попрощались с Макаром.": "> You said goodbye to Makar.",
+    "> Вы вернулись к осмотру сектора.": "> You returned to inspecting the sector.",
+    "> Вы разошлись в тумане.": "> You parted ways in the fog.",
+    "> Вы купили Редкий Пистолет Макарова.": "> You purchased a Rare Makarov Pistol.",
+    "> Вы купили Военную аптечку.": "> You purchased a Military Medkit.",
+    "> Вы скрылись в глубине коридора.": "> You vanished into the corridor.",
+    "> Вы получили Окаменевший мясной нарост.": "> You received a Petrified Flesh Relic.",
+    "> Вы получили Живой ключ-симбиот.": "> You received a Living Symbiote Key.",
+    "> Вы ушли.": "> You walked away.",
+    "> Вы покинули архив.": "> You left the archive.",
+    "> Вы записали указания архивиста.": "> You noted down the archivist's instructions.",
+    "> Получена Ключ-карта Архивариуса.": "> Received Archivist Keycard.",
+    "> Получена Секретная перфокарта.": "> Received Classified Punch Card.",
+    "> Вы помогли ликвидатору и получили ключ-карту.": "> You aided the liquidator and received a keycard.",
+    "> Вы усвоили армейскую тактику боя.": "> You mastered military combat tactics.",
+    "> Вы оставили ученого наедине с формулами.": "> You left the scientist alone with his formulas.",
+    "> Вы продолжили путь.": "> You continued on your path.",
+    "> Вы получили Высоковольтное реле.": "> You received a High-Voltage Relay.",
+    "> Вы покинули профессора.": "> You left the professor.",
+    "> Вы благополучно разошлись с патрулем.": "> You safely parted ways with the patrol.",
+    "> Получен Блокнот с шифрами взвода (+50 XP).": "> Received Officer Cipher Logbook (+50 XP).",
+    "> Вы получили доступ к армейским терминалам.": "> You gained access to military terminals.",
+    "> Вы получили Жетон старшины ВОХР.": "> You received a VOKhR Sergeant Dog Tag.",
+    "> Сделка со сталкером завершена.": "> Barter with the stalker concluded.",
+    "> Вы двинулись дальше.": "> You pressed forward.",
+    "> Новая запись в блокноте!": "> New diary entry recorded!",
+    "> КРИТИЧЕСКИЙ УРОН: ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ.": "> CRITICAL DAMAGE: EMERGENCY EVACUATION TO LIVING CELL.",
+    "> Добыча брошена: сундук переполнен!": "> Loot abandoned: chest is full!",
+    "> Успех.": "> Success.",
+    "> Провал.": "> Failed.",
+    "> Уклонение...": "> Dodging...",
+    "> КРИТ!": "> CRIT!",
+    "> ПРОМАХ! Враг уклонился.": "> MISS! Enemy dodged.",
+    "> УКЛОНЕНИЕ ОТ БОССА!": "> DODGED THE BOSS!",
+    "> УКЛОНЕНИЕ!": "> DODGE!",
+    "> Враг готовит рывок.": "> Enemy prepares a lunge.",
+    "> ЭВАКУАЦИЯ.": "> EVACUATION.",
+    "В секторе пока тихо...": "Sector is currently quiet...",
+    "ЛИФТ УЖЕ ЗАПУЩЕН.": "ELEVATOR ALREADY OPERATIONAL.",
+    "ВЫ В ЖИЛЯЧЕЙКЕ. ВЫЙДИТЕ В СЕКТОР ЧЕРЕЗ КАРТУ.": "YOU ARE IN THE LIVING CELL. EXIT VIA MAP.",
+    "КРИТИЧЕСКОЕ СОСТОЯНИЕ.": "CRITICAL CONDITION.",
+    "НЕДОСТАТОЧНО ФИЛЬТРА.": "INSUFFICIENT FILTER.",
+    "ПЕРЕЗАРЯДКА ЛЕЧЕНИЯ (1 сек).": "HEAL COOLDOWN (1 sec)."
+  };
+
+  if (directLogs[out.trim()]) return directLogs[out.trim()];
+
+  out = out.replace(/^>\s*Найден(а|о)?\s*(.*?)(!|\.)?$/im, (m, g1, itemName) => {
+    let trans = itemName.trim();
+    for (let k in ITEM_EN_MAP) {
+      if (GAME_ITEMS[k] && GAME_ITEMS[k].name === trans) { trans = ITEM_EN_MAP[k].name; break; }
+    }
+    return `> Found ${trans}!`;
+  });
+
+  out = out.replace(/^>\s*Применено:\s*(.*?)\.$/im, (m, itemName) => {
+    let trans = itemName.trim();
+    for (let k in ITEM_EN_MAP) {
+      if (GAME_ITEMS[k] && GAME_ITEMS[k].name === trans) { trans = ITEM_EN_MAP[k].name; break; }
+    }
+    return `> Used: ${trans}.`;
+  });
+
+  out = out.replace(/^>\s*Выстрел:\s*(.*?)!\s*Урон:\s*(\d+)\.$/im, (m, itemName, dmg) => {
+    let trans = itemName.trim();
+    for (let k in ITEM_EN_MAP) {
+      if (GAME_ITEMS[k] && GAME_ITEMS[k].name === trans) { trans = ITEM_EN_MAP[k].name; break; }
+    }
+    return `> Shot: ${trans}! Damage: ${dmg}.`;
+  });
+
+  out = out.replace(/^>\s*КРИТ!\s*(\d+)\s*урона\.$/im, '> CRIT! $1 damage.');
+  out = out.replace(/^>\s*Атака\.\s*(\d+)\s*урона\.$/im, '> Attack. $1 damage.');
+  out = out.replace(/^>\s*Атака босса\.\s*(\d+)\s*урона\.$/im, '> Boss attack. $1 damage.');
+  out = out.replace(/^>\s*БОСС ПОПАЛ!\s*-(\d+)\s*HP\.$/im, '> BOSS HIT! -$1 HP.');
+  out = out.replace(/^>\s*\[БОСС\] АТАКА!\s*-(\d+)\s*HP\.$/im, '> [BOSS] ATTACK! -$1 HP.');
+  out = out.replace(/^>\s*ВРАГ ПОПАЛ!\s*-(\d+)\s*HP\.$/im, '> ENEMY HIT! -$1 HP.');
+  out = out.replace(/^>\s*ВРАГ АТАКУЕТ!\s*-(\d+)\s*HP\.$/im, '> ENEMY ATTACKS! -$1 HP.');
+  out = out.replace(/^>\s*\+5 HP \(вампиризм\)\./im, '> +5 HP (vampirism).');
+  out = out.replace(/^>\s*ВРАГ ПОВЕРЖЕН!\s*\+(\d+)\s*талонов,\s*\+(\d+)\s*XP\./im, '> ENEMY DEFEATED! +$1 talons, +$2 XP.');
+  out = out.replace(/^>>>\s*УРОВЕНЬ\s*(\d+)!\s*<<</im, '>>> LEVEL $1! <<<');
+  out = out.replace(/^>>>\s*ПУТЬ ВНИЗ ОТКРЫТ!\s*<<</im, '>>> PATH DOWN IS OPEN! <<<');
+  out = out.replace(/^>>>\s*ЗАПИСЬ В БЛОКНОТ!\s*<<</im, '>>> NOTEBOOK ENTRY ADDED! <<<');
+  out = out.replace(/^>\s*БОСС\s*(.*?)\s*ПОВЕРЖЕН!\s*\+(\d+)\s*талонов,\s*\+(\d+)\s*XP\./im, (m, bName, t, xp) => {
+    return `> BOSS ${getDisplayMonsterName(bName)} DEFEATED! +${t} talons, +${xp} XP.`;
+  });
+  out = out.replace(/^>\s*НАЙДЕНО В РЕЙДЕ:\s*(.*?)\./im, (m, itemName) => {
+    let trans = itemName.trim();
+    for (let k in ITEM_EN_MAP) {
+      if (GAME_ITEMS[k] && GAME_ITEMS[k].name === trans) { trans = ITEM_EN_MAP[k].name; break; }
+    }
+    return `> FOUND IN RAID: ${trans}.`;
+  });
+  out = out.replace(/^>\s*НАЙДЕНО:\s*(.*?)\./im, (m, itemName) => {
+    let trans = itemName.trim();
+    for (let k in ITEM_EN_MAP) {
+      if (GAME_ITEMS[k] && GAME_ITEMS[k].name === trans) { trans = ITEM_EN_MAP[k].name; break; }
+    }
+    return `> FOUND: ${trans}.`;
+  });
+  out = out.replace(/^ЛИФТ НЕ АКТИВИРОВАН\.\s*Требуются:\s*(.*?)(\.)?$/im, 'ELEVATOR NOT ACTIVE. Required: $1.');
+  out = out.replace(/^НЕ ХВАТАЕТ ТАЛОНОВ\s*\((.*?)\)\.?/im, 'NOT ENOUGH TALONS ($1).');
+  out = out.replace(/^ТРЕБУЕТСЯ:\s*(.*?)$/im, 'REQUIRED: $1');
+  out = out.replace(/^НЕ ХВАТАЕТ ДЕТАЛЕЙ:\s*(.*?)$/im, 'MISSING PARTS: $1');
+  out = out.replace(/^ВХОД В ТУМАН\.\.\.$/im, 'ENTERING THE FOG...');
+  out = out.replace(/^ВХОД В ЗОНУ РЕЙДА\.\.\.$/im, 'ENTERING RAID ZONE...');
+  out = out.replace(/^ВОЗВРАТ В БОЙ\.\.\.$/im, 'RETURNING TO COMBAT...');
+  out = out.replace(/^ВОЗВРАТ В РЕЙД\.\.\.$/im, 'RETURNING TO RAID...');
+  out = out.replace(/^Переход в сектор\s*(.*?)\.\.\.$/im, 'Moving to sector $1...');
+  out = out.replace(/^СОВМЕСТНЫЙ РЕЙД С\s*(.*?)!$/im, 'CO-OP RAID WITH $1!');
+  out = out.replace(/^ВАС ПОДЛЕЧИЛ\s*(.*?):\s*\+15 HP\./im, 'HEALED BY $1: +15 HP.');
+  out = out.replace(/^ВЫ ПОДЛЕЧИЛИ\s*(.*?)\./im, 'YOU HEALED $1.');
+
+  return out;
+}
+
+function getDisplayMinigame(mgData) {
+  if (currentLang !== 'en' || !mgData) return mgData;
+  let copy = Object.assign({}, mgData);
+  if (copy.title) {
+    if (MINIGAMES_EN.titles[copy.title]) copy.title = MINIGAMES_EN.titles[copy.title];
+    else if (copy.title.startsWith('ЗАГАДКА')) copy.title = copy.title.replace('ЗАГАДКА', 'RIDDLE');
+  }
+  if (copy.text) {
+    if (MINIGAMES_EN.texts[copy.text]) copy.text = MINIGAMES_EN.texts[copy.text];
+  }
+  return copy;
 }
 
 function updateOptionsLabels() {
@@ -1701,13 +2454,13 @@ function updateOptionsLabels() {
     if (s) s.innerText = sfxEnabled ? "🔊 Sound FX (ON)" : "🔊 Sound FX (OFF)";
     if (c) c.innerText = crtEnabled ? "📺 CRT Effect (ON)" : "📺 CRT Effect (OFF)";
     if (l) l.innerText = "🌐 Language: ENGLISH (EN/RU)";
-    if (lt) lt.innerText = "🌐 RU";
+    if (lt) lt.innerText = "🌐 [EN]";
   } else {
     if (m) m.innerText = musicEnabled ? "🎵 Музыка (ВКЛ)" : "🎵 Музыка (ВЫКЛ)";
     if (s) s.innerText = sfxEnabled ? "🔊 Звуки (ВКЛ)" : "🔊 Звуки (ВЫКЛ)";
     if (c) c.innerText = crtEnabled ? "📺 CRT-эффект (ВКЛ)" : "📺 CRT-эффект (ВЫКЛ)";
     if (l) l.innerText = "🌐 Язык: РУССКИЙ (RU/EN)";
-    if (lt) lt.innerText = "🌐 EN";
+    if (lt) lt.innerText = "🌐 [RU]";
   }
 }
 
@@ -1733,6 +2486,17 @@ function applyLanguage() {
   const gc = document.getElementById('guide-content');
   if (gc) {
     gc.innerHTML = (currentLang === 'en') ? GUIDE_EN_HTML : (cachedGuideRu || gc.innerHTML);
+  }
+
+  const nbc = document.getElementById('notebook-content');
+  if (nbc) {
+    let defNb = (currentLang === 'en') ? DEFAULT_NOTEBOOK_EN : DEFAULT_NOTEBOOK;
+    let nb = (typeof clientMe !== 'undefined' && clientMe && clientMe.notebook && clientMe.notebook.length >= 3) ? clientMe.notebook : defNb;
+    nbc.innerHTML = '';
+    nb.slice().reverse().forEach(e => {
+      let txt = (typeof getDisplayNotebookEntry === 'function') ? getDisplayNotebookEntry(e) : e;
+      nbc.innerHTML += `<div class="notebook-entry">${txt}</div>`;
+    });
   }
 
   updateOptionsLabels();
@@ -2222,6 +2986,7 @@ function submitManualLogin() {
   const err = document.getElementById('auth-error');
   if (u && p) {
     if (err) err.innerHTML = '<span style="color:var(--term-warn);">Авторизация...</span>';
+    playVideoIntro();
     cachedLoginPayload = { type: 'manual', data: { username: u, password: p } };
     try { sessionStorage.setItem('samosbor_auth', JSON.stringify(cachedLoginPayload)); } catch(e){}
     socket.emit('login', { username: u, password: p });
@@ -2295,6 +3060,7 @@ function setupVkLoginUI(data) {
 const vkLoginBtn = document.getElementById('vk-login-btn');
 if (vkLoginBtn) {
   vkLoginBtn.onclick = () => {
+    playVideoIntro();
     const launchParams = window.location.search || window.location.hash.substring(1);
     let payload;
     if (vkUserData && vkUserData.id) {
@@ -2382,6 +3148,106 @@ function donateVkVotes(itemCode, votesCount, bonusTalons) {
   }
 }
 
+let isVideoPlaying = false;
+let pendingLoginSuccess = null;
+let videoIntroCallback = null;
+
+function playVideoIntro(onDone, force = false) {
+  const overlay = document.getElementById('video-intro-overlay');
+  const player = document.getElementById('intro-video-player');
+  if (!overlay || !player) {
+    if (onDone) onDone();
+    return;
+  }
+  isVideoPlaying = true;
+  videoIntroCallback = onDone || null;
+
+  overlay.style.display = 'flex';
+  player.currentTime = 0;
+  player.muted = false;
+
+  const soundBtn = document.getElementById('btn-video-sound');
+  if (soundBtn) soundBtn.innerText = '🔊 ЗВУК';
+
+  if (currentMusic) {
+    try { currentMusic.pause(); } catch(e){}
+  }
+
+  let playPromise = player.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      player.muted = true;
+      if (soundBtn) soundBtn.innerText = '🔇 ВКЛ. ЗВУК';
+      player.play().catch(e => {
+        console.warn('[Video] Play failed:', e);
+        finishVideoIntro();
+      });
+    });
+  }
+
+  player.onended = () => {
+    finishVideoIntro();
+  };
+}
+
+function toggleVideoMute() {
+  const player = document.getElementById('intro-video-player');
+  const btn = document.getElementById('btn-video-sound');
+  if (!player || !btn) return;
+  player.muted = !player.muted;
+  btn.innerText = player.muted ? '🔇 ВКЛ. ЗВУК' : '🔊 ЗВУК';
+}
+
+function finishVideoIntro() {
+  const overlay = document.getElementById('video-intro-overlay');
+  const player = document.getElementById('intro-video-player');
+  if (player) {
+    try { player.pause(); } catch(e){}
+  }
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+  isVideoPlaying = false;
+  try { localStorage.setItem('samosbor_vk_intro_seen', '1'); } catch(e){}
+
+  if (musicEnabled && currentMusic && (!overlay || overlay.style.display === 'none')) {
+    try { currentMusic.play().catch(()=>{}); } catch(e){}
+  }
+
+  const cb = videoIntroCallback;
+  videoIntroCallback = null;
+  if (cb) {
+    cb();
+  } else if (pendingLoginSuccess) {
+    const data = pendingLoginSuccess;
+    pendingLoginSuccess = null;
+    proceedAfterLogin(data);
+  }
+}
+
+function proceedAfterLogin(data) {
+  if (data.showIntro) {
+    startBootSequence();
+  } else {
+    const curScreen = document.querySelector('.screen.active-screen');
+    if (!curScreen || curScreen.id === 'login-screen' || curScreen.id === 'intro-screen') {
+      showScreen('hub-screen');
+      changeAmbient('hub');
+    }
+    checkAutoTutorial();
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  const overlay = document.getElementById('video-intro-overlay');
+  if (overlay && overlay.style.display === 'flex') {
+    if (e.key === 'Escape' || e.code === 'Space' || e.key === 'Enter') {
+      e.preventDefault();
+      finishVideoIntro();
+    }
+  }
+});
+
 function startBootSequence() {
   changeAmbient('hub'); showScreen('intro-screen');
   let itc = document.getElementById('intro-text-container');
@@ -2422,16 +3288,11 @@ document.addEventListener('click', (e) => {
 
 socket.on('loginSuccess', (data) => {
   myUsername = data.username;
-  if (data.showIntro) {
-    startBootSequence();
-  } else {
-    const curScreen = document.querySelector('.screen.active-screen');
-    if (!curScreen || curScreen.id === 'login-screen' || curScreen.id === 'intro-screen') {
-      showScreen('hub-screen');
-      changeAmbient('hub');
-    }
-    checkAutoTutorial();
+  if (isVideoPlaying) {
+    pendingLoginSuccess = data;
+    return;
   }
+  proceedAfterLogin(data);
 });
 socket.on('startGame', () => { document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
 
@@ -2496,9 +3357,16 @@ socket.on('gameState', (data) => {
 
   renderShop(); renderMap(); updateUI(data.me, data.sectorPlayers);
   if (data.me) {
-    let nb = (data.me.notebook && data.me.notebook.length >= 3) ? data.me.notebook : DEFAULT_NOTEBOOK;
+    let defNb = (currentLang === 'en') ? DEFAULT_NOTEBOOK_EN : DEFAULT_NOTEBOOK;
+    let nb = (data.me.notebook && data.me.notebook.length >= 3) ? data.me.notebook : defNb;
     const nbc = document.getElementById('notebook-content');
-    if(nbc) { nbc.innerHTML = ''; nb.slice().reverse().forEach(e => nbc.innerHTML += `<div class="notebook-entry">${e}</div>`); }
+    if(nbc) {
+      nbc.innerHTML = '';
+      nb.slice().reverse().forEach(e => {
+        let txt = (typeof getDisplayNotebookEntry === 'function') ? getDisplayNotebookEntry(e) : e;
+        nbc.innerHTML += `<div class="notebook-entry">${txt}</div>`;
+      });
+    }
   }
 });
 
@@ -2506,10 +3374,13 @@ socket.on('showLevelUp', (choices) => {
   const m = document.getElementById('levelup-modal'), c = document.getElementById('levelup-choices');
   if(!m || !c) return;
   c.innerHTML = '';
+  const isEn = (currentLang === 'en');
   choices.forEach(x => {
     let btn = document.createElement('button');
     btn.className = 'levelup-btn';
-    btn.innerHTML = `<span style="color:var(--term-warn); font-size:16px; letter-spacing:1px;">${x.name}</span><br><span style="font-size:12px; color:#aaa;">${x.desc}</span>`;
+    let pName = (isEn && PERKS_EN[x.id]) ? PERKS_EN[x.id].name : x.name;
+    let pDesc = (isEn && PERKS_EN[x.id]) ? PERKS_EN[x.id].desc : x.desc;
+    btn.innerHTML = `<span style="color:var(--term-warn); font-size:16px; letter-spacing:1px;">${pName}</span><br><span style="font-size:12px; color:#aaa;">${pDesc}</span>`;
     btn.onclick = () => { socket.emit('selectPerk', x.id); m.style.display = 'none'; playSound('victory'); };
     c.appendChild(btn);
   });
@@ -2521,7 +3392,7 @@ socket.on('transition', (data) => {
   const ab = document.getElementById('trans-ascii');
   const tt = document.getElementById('trans-text');
   if(!o) return;
-  tt.innerText = data.text || '...';
+  tt.innerText = getDisplayLogMessage(data.text || '...');
   o.style.display = 'flex'; playSound('equip');
   if (data.to && data.to !== 'safe_room' && data.to !== 'map') {
     showScreen('game-screen');
@@ -2533,7 +3404,7 @@ socket.on('transition', (data) => {
   setTimeout(() => { o.style.display = 'none'; updateActiveBackground(); }, 1500);
 });
 
-socket.on('vfxFarm', (amt) => { const c = document.getElementById('hub-stats-panel'); if(!c) return; const s = document.createElement('div'); s.className = 'slime-vfx'; s.innerText = `+${amt||1} СЛИЗЬ`; s.style.left = (Math.random()*80+10)+'%'; c.appendChild(s); setTimeout(()=>s.remove(),1000); });
+socket.on('vfxFarm', (amt) => { const c = document.getElementById('hub-stats-panel'); if(!c) return; const s = document.createElement('div'); s.className = 'slime-vfx'; s.innerText = `+${amt||1} ${currentLang === 'en' ? 'SLIME' : 'СЛИЗЬ'}`; s.style.left = (Math.random()*80+10)+'%'; c.appendChild(s); setTimeout(()=>s.remove(),1000); });
 socket.on('vfxHeal', () => applyVFX('player-vfx-container', 'vfx-heal'));
 
 socket.on('combatStart', (data) => {
@@ -2598,7 +3469,11 @@ socket.on('startCombatMinigame', (data) => {
 
 socket.on('combatTick', (data) => {
   let cl = document.getElementById('combat-log');
-  if (data.logs && data.logs.length > 0 && cl) { cl.innerHTML += data.logs.join('\n') + '\n'; cl.scrollTop = cl.scrollHeight; }
+  if (data.logs && data.logs.length > 0 && cl) {
+    let trLogs = data.logs.map(l => getDisplayLogMessage(l));
+    cl.innerHTML += trLogs.join('\n') + '\n';
+    cl.scrollTop = cl.scrollHeight;
+  }
   if (data.enemyHp !== undefined) { let e = document.getElementById('ui-enemy-hp'); if(e) e.innerText = data.enemyHp; }
   if (data.sounds) data.sounds.forEach(s => playSound(s));
   if (data.vfx) data.vfx.forEach(v => {
@@ -2614,7 +3489,11 @@ socket.on('combatTick', (data) => {
 socket.on('combatEnd', (data) => {
   restoreAmbient();
   let cl = document.getElementById('combat-log');
-  if(cl) { cl.innerHTML += (data.log || '') + '\n'; cl.scrollTop = cl.scrollHeight; }
+  if(cl) {
+    let endLog = data.log ? data.log.split('\n').map(l => getDisplayLogMessage(l)).join('\n') : '';
+    cl.innerHTML += endLog + '\n';
+    cl.scrollTop = cl.scrollHeight;
+  }
   playSound(data.win ? 'victory' : 'defeat');
   document.getElementById('combat-controls').style.display = 'none';
   document.getElementById('explore-controls').style.display = 'flex';
@@ -2686,13 +3565,14 @@ socket.on('coopRaidInvitePrompt', (data) => {
 socket.on('combatEventResult', (log) => {
   let cl = document.getElementById('combat-log');
   if (cl) {
-    cl.innerHTML += log + '\n';
+    cl.innerHTML += getDisplayLogMessage(log) + '\n';
     cl.scrollTop = cl.scrollHeight;
   }
 });
 
-socket.on('triggerEvent', (ev) => {
+socket.on('triggerEvent', (evRaw) => {
   const isEn = (currentLang === 'en');
+  const ev = getDisplayEvent(evRaw);
   document.getElementById('event-title').innerText = ev.title;
   
   const npcCol = document.getElementById('event-npc-col');
@@ -2720,7 +3600,7 @@ socket.on('triggerEvent', (ev) => {
     b.style.padding = '8px 12px';
     b.style.fontFamily = "'Share Tech Mono', monospace";
     b.style.lineHeight = '1.4';
-    if (x.text.includes('[РИСК]')) {
+    if (x.text.includes('[РИСК]') || x.text.includes('[RISK]')) {
       b.style.borderColor = 'var(--term-warn)';
       b.style.color = 'var(--term-warn)';
     }
@@ -2736,20 +3616,24 @@ socket.on('triggerEvent', (ev) => {
 });
 
 socket.on('startMinigame', (data) => {
-  currentGameLoc = data.locId; mgData = data.gameData;
+  currentGameLoc = data.locId;
+  mgData = getDisplayMinigame(data.gameData);
+  const isEn = (currentLang === 'en');
   const modal = document.getElementById('minigame-modal');
   const art = document.getElementById('mg-art');
   const ui = document.getElementById('mg-ui');
   document.getElementById('btn-mg-cancel').style.display = 'block';
-  document.getElementById('mg-title').innerText = mgData.title || 'ВЗЛОМ';
+  document.getElementById('mg-title').innerText = mgData.title || (isEn ? 'HACKING' : 'ВЗЛОМ');
   document.getElementById('mg-text').innerText = mgData.text || '';
   modal.style.display = 'flex';
   if (mgData.type === 'password') {
-    art.innerText = `\n  +-----------------+\n  |   КОД ДОСТУПА   |\n  +-----------------+`;
-    ui.innerHTML = `<input type="text" id="mg-pass-input" placeholder="Код / Ответ" maxlength="32" onkeydown="if(event.key==='Enter')checkPass()" style="text-align:center; font-size:18px; margin-bottom:10px; width:100%; box-sizing:border-box;"><button onclick="checkPass()" style="width:100%;">ВВОД</button>`;
+    art.innerText = isEn ? `\n  +-----------------+\n  |   ACCESS CODE   |\n  +-----------------+` : `\n  +-----------------+\n  |   КОД ДОСТУПА   |\n  +-----------------+`;
+    let ph = isEn ? "Code / Answer" : "Код / Ответ";
+    let btnSubmit = isEn ? "SUBMIT" : "ВВОД";
+    ui.innerHTML = `<input type="text" id="mg-pass-input" placeholder="${ph}" maxlength="32" onkeydown="if(event.key==='Enter')checkPass()" style="text-align:center; font-size:18px; margin-bottom:10px; width:100%; box-sizing:border-box;"><button onclick="checkPass()" style="width:100%;">${btnSubmit}</button>`;
     setTimeout(() => { const el = document.getElementById('mg-pass-input'); if(el) el.focus(); }, 100);
   } else if (mgData.type === 'choice') {
-    art.innerText = `\n  +-----------------+\n  | ВЫБОР ДЕЙСТВИЯ  |\n  +-----------------+`;
+    art.innerText = isEn ? `\n  +-----------------+\n  |  ACTION CHOICE  |\n  +-----------------+` : `\n  +-----------------+\n  | ВЫБОР ДЕЙСТВИЯ  |\n  +-----------------+`;
     let btns = (mgData.options || []).map((opt, idx) => {
       let isCorrect = (typeof opt === 'object' && opt.correct !== undefined) ? opt.correct : (idx === (mgData.correctIndex || 0));
       let text = (typeof opt === 'string' ? opt : opt.text).replace(/"/g, '&quot;');
@@ -2759,8 +3643,9 @@ socket.on('startMinigame', (data) => {
   } else if (mgData.type === 'voltage') {
     mgStep = 0; mgInput = [0]; updateVoltageUI();
   } else {
-    art.innerText = `\n  +-----------------+\n  |    ВЗЛОМ...     |\n  +-----------------+`;
-    ui.innerHTML = `<button onclick="socket.emit('minigameWon', '${data.locId}'); document.getElementById('minigame-modal').style.display='none';">ВЗЛОМАТЬ</button>`;
+    art.innerText = isEn ? `\n  +-----------------+\n  |   HACKING...    |\n  +-----------------+` : `\n  +-----------------+\n  |    ВЗЛОМ...     |\n  +-----------------+`;
+    let btnHack = isEn ? "BYPASS" : "ВЗЛОМАТЬ";
+    ui.innerHTML = `<button onclick="socket.emit('minigameWon', '${data.locId}'); document.getElementById('minigame-modal').style.display='none';">${btnHack}</button>`;
   }
 });
 
@@ -2779,8 +3664,9 @@ function checkPass() {
   } else {
     playSound('defeat');
     p.value = '';
-    p.placeholder = 'НЕВЕРНО! ПОПРОБУЙТЕ СНОВА';
-    setTimeout(() => { if (p) p.placeholder = 'Код / Ответ'; }, 1500);
+    const isEn = (currentLang === 'en');
+    p.placeholder = isEn ? 'INCORRECT! TRY AGAIN' : 'НЕВЕРНО! ПОПРОБУЙТЕ СНОВА';
+    setTimeout(() => { if (p) p.placeholder = isEn ? 'Code / Answer' : 'Код / Ответ'; }, 1500);
   }
 }
 
@@ -2795,18 +3681,52 @@ function handleChoice(isCorrect, btnEl) {
     if (btnEl) {
       btnEl.style.borderColor = 'var(--term-danger)';
       btnEl.style.color = 'var(--term-danger)';
-      if (!btnEl.innerText.startsWith('[ОТКАЗ]')) {
-        btnEl.innerText = '[ОТКАЗ] ' + btnEl.innerText;
+      let failTag = currentLang === 'en' ? '[FAILED]' : '[ОТКАЗ]';
+      if (!btnEl.innerText.startsWith(failTag)) {
+        btnEl.innerText = failTag + ' ' + btnEl.innerText;
       }
       btnEl.disabled = true;
     }
   }
 }
-function updateVoltageUI() { const art = document.getElementById('mg-art'), ui = document.getElementById('mg-ui'); if(!art || !ui) return; let w = mgInput[0].toString().padStart(3, '0'); art.innerText = `\n      ___\n     | + |\n     |---|\n     |${w}W|\n     |___|`; ui.innerHTML = `<div style="margin-bottom:10px;">Цель: ${mgData.target}W | Кликов: ${4 - mgStep}</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button onclick="addVolt(30)">+30</button><button onclick="addVolt(20)">+20</button><button onclick="addVolt(10)">+10</button><button onclick="addVolt(-10)">-10</button></div>`; }
-function addVolt(v) { mgInput[0] += v; mgStep++; if (mgStep >= 4) { if (mgInput[0] === mgData.target) { document.getElementById('minigame-modal').style.display = 'none'; let cc = document.getElementById('combat-controls'); if(cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true); else socket.emit('minigameWon', currentGameLoc); } else { playSound('defeat'); let cc = document.getElementById('combat-controls'); if(cc && cc.style.display === 'flex' && !currentGameLoc) { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('combatMinigameResult', false); } else { document.getElementById('mg-ui').innerHTML = `<div style="color:var(--term-danger); font-size:20px; margin-bottom:10px;">ПРОМАХ</div><button onclick="mgStep=0; mgInput=[0]; updateVoltageUI();" style="width:100%;">ПОВТОРИТЬ</button>`; } } } else updateVoltageUI(); }
+function updateVoltageUI() {
+  const art = document.getElementById('mg-art'), ui = document.getElementById('mg-ui');
+  if(!art || !ui) return;
+  let w = mgInput[0].toString().padStart(3, '0');
+  art.innerText = `\n      ___\n     | + |\n     |---|\n     |${w}W|\n     |___|`;
+  const isEn = (currentLang === 'en');
+  let targetLbl = isEn ? `Target: ${mgData.target}W | Clicks: ${4 - mgStep}` : `Цель: ${mgData.target}W | Кликов: ${4 - mgStep}`;
+  ui.innerHTML = `<div style="margin-bottom:10px;">${targetLbl}</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button onclick="addVolt(30)">+30</button><button onclick="addVolt(20)">+20</button><button onclick="addVolt(10)">+10</button><button onclick="addVolt(-10)">-10</button></div>`;
+}
+function addVolt(v) {
+  mgInput[0] += v;
+  mgStep++;
+  const isEn = (currentLang === 'en');
+  if (mgStep >= 4) {
+    if (mgInput[0] === mgData.target) {
+      document.getElementById('minigame-modal').style.display = 'none';
+      let cc = document.getElementById('combat-controls');
+      if(cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+      else socket.emit('minigameWon', currentGameLoc);
+    } else {
+      playSound('defeat');
+      let cc = document.getElementById('combat-controls');
+      if(cc && cc.style.display === 'flex' && !currentGameLoc) {
+        document.getElementById('minigame-modal').style.display = 'none';
+        socket.emit('combatMinigameResult', false);
+      } else {
+        let missText = isEn ? 'MISS' : 'ПРОМАХ';
+        let retryText = isEn ? 'RETRY' : 'ПОВТОРИТЬ';
+        document.getElementById('mg-ui').innerHTML = `<div style="color:var(--term-danger); font-size:20px; margin-bottom:10px;">${missText}</div><button onclick="mgStep=0; mgInput=[0]; updateVoltageUI();" style="width:100%;">${retryText}</button>`;
+      }
+    }
+  } else updateVoltageUI();
+}
 function cancelMinigame() { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('minigameCancel'); }
 
 socket.on('terminalError', (msg) => {
+  if (isVideoPlaying) finishVideoIntro();
+  msg = getDisplayLogMessage(msg);
   const el = document.getElementById('auth-error');
   const h = document.getElementById('hub-error');
   const me = document.getElementById('map-error');
@@ -2814,8 +3734,10 @@ socket.on('terminalError', (msg) => {
   const hs = document.getElementById('hub-screen');
   const ms = document.getElementById('map-screen');
   let cl = document.getElementById('combat-log');
+  const isEn = (currentLang === 'en');
+  const failTag = isEn ? '[FAILED]' : '[ОТКАЗ]';
   if (el && ls && ls.classList.contains('active-screen')) el.innerText = msg;
-  else if (me && ms && ms.classList.contains('active-screen')) { me.innerText = `[ОТКАЗ] ${msg}`; me.style.display = 'block'; setTimeout(() => { if(me) me.style.display = 'none'; }, 4000); }
+  else if (me && ms && ms.classList.contains('active-screen')) { me.innerText = `${failTag} ${msg}`; me.style.display = 'block'; setTimeout(() => { if(me) me.style.display = 'none'; }, 4000); }
   else if (h && hs && hs.classList.contains('active-screen')) { h.innerText = msg; setTimeout(() => h.innerText = "", 4000); }
   else if (cl) { cl.innerHTML += `> ${msg}\n`; cl.scrollTop = cl.scrollHeight; }
 });
@@ -2825,8 +3747,11 @@ function prepareQuickEquip(invIndex) {
   pendingEquipIndex = invIndex;
   let q0 = document.getElementById('inv-qslot-0');
   let q1 = document.getElementById('inv-qslot-1');
-  if(q0) { q0.style.borderColor = 'var(--term-danger)'; q0.style.background = 'rgba(255,50,50,0.15)'; q0.innerHTML = '<b style="color:var(--term-danger);">[СЮДА 1]</b>'; }
-  if(q1) { q1.style.borderColor = 'var(--term-danger)'; q1.style.background = 'rgba(255,50,50,0.15)'; q1.innerHTML = '<b style="color:var(--term-danger);">[СЮДА 2]</b>'; }
+  const isEn = (currentLang === 'en');
+  const s1 = isEn ? '[HERE 1]' : '[СЮДА 1]';
+  const s2 = isEn ? '[HERE 2]' : '[СЮДА 2]';
+  if(q0) { q0.style.borderColor = 'var(--term-danger)'; q0.style.background = 'rgba(255,50,50,0.15)'; q0.innerHTML = `<b style="color:var(--term-danger);">${s1}</b>`; }
+  if(q1) { q1.style.borderColor = 'var(--term-danger)'; q1.style.background = 'rgba(255,50,50,0.15)'; q1.innerHTML = `<b style="color:var(--term-danger);">${s2}</b>`; }
   playSound('click');
 }
 function resetQuickSlotStyle() {
@@ -3232,9 +4157,35 @@ function updateUI(me, sectorPlayers) {
     ec.innerHTML = `${lifterBtn}<div class="row-2"><button onclick="socket.emit('work');" style="color: var(--term-info); border-color: var(--term-info);">${farmTxt}</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">${noteTxt}</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='${enterLog}'; socket.emit('explore');" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">${mapTxt}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">${baseTxt}</button></div>`;
   }
   const bfd = document.getElementById('btn-floor-down');
+  const bfu = document.getElementById('btn-floor-up');
+  const maxF = (me.maxFloor !== undefined) ? me.maxFloor : (me.floor || 0);
+
   if (bfd) {
-    bfd.disabled = (me.location !== 'E4');
-    bfd.onclick = () => socket.emit('changeFloor', 'down');
+    if (me.location === 'E4' && me.bossDefeated && me.bossDefeated[me.floor]) {
+      bfd.disabled = false;
+      bfd.innerText = isEn ? '▼ DESCEND (LIFT E4)' : '▼ СПУСК (ЛИФТ E4)';
+      bfd.onclick = () => socket.emit('changeFloor', 'down');
+    } else if (me.floor > 0) {
+      bfd.disabled = false;
+      bfd.innerText = isEn ? `▼ FLOOR ${me.floor - 1}` : `▼ ЭТАЖ ${me.floor - 1}`;
+      bfd.onclick = () => socket.emit('selectFloor', me.floor - 1);
+    } else {
+      bfd.disabled = true;
+      bfd.innerText = isEn ? '▼ MIN FLOOR (0)' : '▼ НУЛЕВОЙ ЭТАЖ';
+      bfd.onclick = null;
+    }
+  }
+
+  if (bfu) {
+    if (maxF > (me.floor || 0)) {
+      bfu.disabled = false;
+      bfu.innerText = isEn ? `FLOOR ${me.floor + 1} ▲` : `ЭТАЖ ${me.floor + 1} ▲`;
+      bfu.onclick = () => socket.emit('selectFloor', me.floor + 1);
+    } else {
+      bfu.disabled = true;
+      bfu.innerText = isEn ? 'MAX REACHED ▲' : 'ВЕРХНИЙ ЭТАЖ ▲';
+      bfu.onclick = null;
+    }
   }
 
   let ls = document.getElementById('login-screen');
@@ -3693,7 +4644,7 @@ function renderAssemblyRecipes() {
     }
 
     let title = isEn ? r.nameEn : r.nameRu;
-    let lockBadge = isLocked ? ` <span style="color:#ff6666; font-size:10px; font-weight:bold;">[🔒 УР. ${r.reqLvl}]</span>` : '';
+    let lockBadge = isLocked ? ` <span style="color:#ff6666; font-size:10px; font-weight:bold;">[🔒 ${isEn ? 'LVL' : 'УР.'} ${r.reqLvl}]</span>` : '';
     let opacityStyle = isLocked ? 'opacity: 0.65; border-color: rgba(255, 80, 80, 0.3);' : '';
     html += `<div class="shop-item" id="recipe-${r.id}" style="${opacityStyle}"><div class="shop-item-left"><img class="shop-item-icon" src="assets/icons/${r.icon}.png" onerror="this.style.display='none'"><div><div><span style="font-weight:bold;">${title}</span>${lockBadge} ${r.badges}</div><small style="font-size:11px;">[${reqStrings.join(' + ')}]</small></div></div>${craftBtn}</div>`;
   });
@@ -4046,11 +4997,12 @@ if (fbTypeSugg) fbTypeSugg.onclick = () => setFeedbackType('suggestion');
 if (btnSubmitFb) {
   btnSubmitFb.onclick = () => {
     let text = fbInput ? fbInput.value.trim() : '';
+    const isEn = (currentLang === 'en');
     if (!text) {
-      if (fbStatus) fbStatus.innerHTML = '<span style="color:var(--term-danger);">Введите описание ошибки или предложения.</span>';
+      if (fbStatus) fbStatus.innerHTML = `<span style="color:var(--term-danger);">${isEn ? 'Please enter a bug description or suggestion.' : 'Введите описание ошибки или предложения.'}</span>`;
       return;
     }
-    if (fbStatus) fbStatus.innerHTML = '<span style="color:var(--term-info);">Отправка обращения в диспетчерскую...</span>';
+    if (fbStatus) fbStatus.innerHTML = `<span style="color:var(--term-info);">${isEn ? 'Dispatching report to control room...' : 'Отправка обращения в диспетчерскую...'}</span>`;
     btnSubmitFb.disabled = true;
     socket.emit('submitFeedback', { type: currentFeedbackType, text: text });
   };
@@ -4059,7 +5011,9 @@ if (btnSubmitFb) {
 socket.on('feedbackSentSuccess', (data) => {
   if (btnSubmitFb) btnSubmitFb.disabled = false;
   if (fbInput) fbInput.value = '';
-  if (fbStatus) fbStatus.innerHTML = `<span style="color:var(--term-green); font-weight:bold;">${data.message || 'Отправлено!'}</span>`;
+  const isEn = (currentLang === 'en');
+  let successMsg = isEn ? 'Report submitted successfully!' : (data.message || 'Отправлено!');
+  if (fbStatus) fbStatus.innerHTML = `<span style="color:var(--term-green); font-weight:bold;">${successMsg}</span>`;
   playSound('victory');
   setTimeout(() => {
     switchFeedbackTab('list');
@@ -4069,8 +5023,12 @@ socket.on('feedbackSentSuccess', (data) => {
 
 socket.on('feedbackList', (list) => {
   if (!fbListContainer) return;
+  const isEn = (currentLang === 'en');
   if (!Array.isArray(list) || list.length === 0) {
-    fbListContainer.innerHTML = '<div style="color:#888; text-align:center; padding:30px 10px; font-size:13px;">Журнал обращений пуст.<br>Вы можете отправить первое сообщение во вкладке «НАПИСАТЬ»!</div>';
+    let emptyMsg = isEn
+      ? 'Feedback log is empty.<br>You can submit the first report in the "SUBMIT" tab!'
+      : 'Журнал обращений пуст.<br>Вы можете отправить первое сообщение во вкладке «НАПИСАТЬ»!';
+    fbListContainer.innerHTML = `<div style="color:#888; text-align:center; padding:30px 10px; font-size:13px;">${emptyMsg}</div>`;
     return;
   }
   let html = '';
@@ -4078,10 +5036,10 @@ socket.on('feedbackList', (list) => {
   reversed.forEach(item => {
     const isBug = (item.type === 'БАГ-РЕПОРТ' || item.type === 'bug');
     const badgeCls = isBug ? 'bug' : 'suggestion';
-    const badgeText = isBug ? '🐛 БАГ-РЕПОРТ' : '💡 ПРЕДЛОЖЕНИЕ';
+    const badgeText = isBug ? (isEn ? '🐛 BUG REPORT' : '🐛 БАГ-РЕПОРТ') : (isEn ? '💡 SUGGESTION' : '💡 ПРЕДЛОЖЕНИЕ');
     const time = item.timeStr || (item.createdAt ? new Date(item.createdAt).toLocaleTimeString() : '');
-    const user = item.user || 'Аноним';
-    const loc = item.location ? `(Эт.${item.floor || 0}, ${item.location})` : '';
+    const user = item.user || (isEn ? 'Anonymous' : 'Аноним');
+    const loc = item.location ? `(${isEn ? 'Fl.' : 'Эт.'}${item.floor || 0}, ${item.location})` : '';
     const safeText = document.createElement('div');
     safeText.innerText = item.text || '';
     html += `
