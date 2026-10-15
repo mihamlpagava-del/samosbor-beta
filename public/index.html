@@ -288,7 +288,196 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   animation: enemyDissolve 1s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
   pointer-events: none;
 }
-@media (max-width: 768px) {
+
+/* ========================================================
+   EVENT & NPC DIALOGUE MODAL (RESPONSIVE FOR 9:16 & DESKTOP)
+   ======================================================== */
+.event-dialogue-panel {
+  width: 780px;
+  max-width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 18px;
+  border: 2px solid var(--term-color);
+  background: rgba(8, 12, 10, 0.96);
+  box-shadow: 0 0 30px rgba(0, 255, 65, 0.25);
+  box-sizing: border-box;
+}
+.event-dialogue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--term-color);
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+#event-title {
+  color: var(--term-warn);
+  font-size: 18px;
+  margin: 0;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+#event-floor-badge {
+  font-size: 11px;
+  color: var(--term-dim);
+  border: 1px solid var(--term-dim);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.event-body-container {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+.event-npc-col {
+  width: 250px;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.npc-portrait-frame {
+  width: 100%;
+  height: 260px;
+  position: relative;
+  border: 2px solid var(--term-color);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.3);
+}
+.npc-portrait-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: contrast(1.1) brightness(0.95);
+  display: block;
+}
+.crt-scanline-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+              linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.06));
+  background-size: 100% 3px, 6px 100%;
+}
+.event-npc-meta {
+  width: 100%;
+  text-align: center;
+  margin-top: 8px;
+}
+#event-npc-name {
+  font-weight: bold;
+  font-size: 13px;
+  color: var(--term-warn);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+#event-npc-role {
+  font-size: 11px;
+  color: var(--term-dim);
+  margin-top: 2px;
+}
+.event-content-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.event-speech-box {
+  background: rgba(0, 20, 10, 0.7);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+#event-text {
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: left;
+  color: #eee;
+  font-family: 'Share Tech Mono', monospace;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+.event-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 200px;
+  box-sizing: border-box;
+}
+.event-choices button {
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  font-family: 'Share Tech Mono', monospace;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* BESTIARY BASE */
+.bestiary-panel {
+  width: 1000px;
+  display: flex;
+  padding: 0;
+  border-color: #ff33aa;
+  height: 600px;
+}
+.bestiary-list-col {
+  width: 32%;
+  border-right: 1px dashed #ff33aa;
+  padding: 15px 0;
+  box-sizing: border-box;
+}
+.bestiary-details-col {
+  width: 68%;
+  padding: 20px;
+  position: relative;
+  box-sizing: border-box;
+}
+.close-bestiary-btn {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+  border: none;
+  color: #ff33aa;
+  font-size: 22px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (max-width: 768px), (orientation: portrait), (max-aspect-ratio: 1/1) {
   body { font-size: 13.5px; }
   .panel { padding: 12px; width: 96% !important; box-sizing: border-box; }
   .stats { padding: 8px 10px; font-size: 12px; }
@@ -324,6 +513,139 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   .donate-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .intro-ascii-side { font-size: 50px; }
   #intro-text-container { font-size: 13px; min-height: 200px; }
+
+  /* Event Dialogue Mobile / 9:16 Portrait Fix */
+  .event-dialogue-panel {
+    width: 96% !important;
+    max-width: 96% !important;
+    max-height: 94vh !important;
+    padding: 10px 12px !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .event-dialogue-header {
+    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+  }
+  #event-title {
+    font-size: 14px !important;
+    letter-spacing: 1px !important;
+  }
+  #event-floor-badge {
+    font-size: 10px !important;
+    padding: 1px 6px !important;
+  }
+  .event-body-container {
+    flex-direction: column !important;
+    gap: 8px !important;
+    overflow: visible !important;
+    flex: 0 1 auto !important;
+  }
+  .event-npc-col {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+    background: rgba(0, 25, 12, 0.75) !important;
+    border: 1px solid rgba(0, 255, 65, 0.28) !important;
+    border-radius: 4px !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
+    margin-bottom: 2px !important;
+  }
+  .npc-portrait-frame {
+    width: 68px !important;
+    height: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    border-width: 1px !important;
+  }
+  .event-npc-meta {
+    text-align: left !important;
+    margin-top: 0 !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+  #event-npc-name {
+    margin-top: 0 !important;
+    font-size: 13.5px !important;
+    letter-spacing: 0.5px !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  #event-npc-role {
+    font-size: 11px !important;
+    text-align: left !important;
+    margin-top: 2px !important;
+  }
+  .event-content-col {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    flex: 1 1 auto !important;
+  }
+  .event-speech-box {
+    width: 100% !important;
+    max-height: 170px !important;
+    padding: 10px 12px !important;
+    margin-bottom: 8px !important;
+    background: rgba(0, 20, 10, 0.85) !important;
+    box-sizing: border-box !important;
+  }
+  #event-text {
+    font-size: 13.5px !important;
+    line-height: 1.5 !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+  }
+  .event-choices {
+    width: 100% !important;
+    max-height: 240px !important;
+    gap: 6px !important;
+    box-sizing: border-box !important;
+  }
+  .event-choices button {
+    width: 100% !important;
+    padding: 10px 12px !important;
+    font-size: 12.5px !important;
+    line-height: 1.35 !important;
+    min-height: 38px !important;
+    box-sizing: border-box !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* Bestiary Mobile / 9:16 Portrait Fix */
+  .bestiary-panel {
+    flex-direction: column !important;
+    width: 96% !important;
+    height: 90vh !important;
+    max-height: 90vh !important;
+  }
+  .bestiary-list-col {
+    width: 100% !important;
+    max-height: 160px !important;
+    border-right: none !important;
+    border-bottom: 1px dashed #ff33aa !important;
+    overflow-y: auto !important;
+    padding: 8px 0 !important;
+    flex-shrink: 0 !important;
+  }
+  .bestiary-details-col {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 12px !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
+  }
 }
 
 .item-stat-badge {
@@ -756,13 +1078,13 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div id="bestiary-modal" class="modal-overlay" style="z-index: 96;">
-  <div class="info-panel" style="width: 1000px; display:flex; padding:0; border-color: #ff33aa; height: 600px;">
-    <div style="width: 32%; border-right: 1px dashed #ff33aa; padding: 15px 0;">
+  <div class="info-panel bestiary-panel">
+    <div class="bestiary-list-col">
       <h3 style="color: #ff33aa; text-align:center; margin:0 0 10px 0; border:none; letter-spacing: 2px;" data-i18n="bestiary_inhabitants">ОБИТАТЕЛИ</h3>
       <ul class="bestiary-list" id="bestiary-list-ui"></ul>
     </div>
-    <div style="width: 68%; padding: 20px; position:relative;">
-      <button onclick="document.getElementById('bestiary-modal').style.display='none'" style="position:absolute; right:15px; top:10px; border:none; color:#ff33aa; font-size: 22px; padding:0;">[X]</button>
+    <div class="bestiary-details-col">
+      <button onclick="document.getElementById('bestiary-modal').style.display='none'" class="close-bestiary-btn">[X]</button>
       <div id="bestiary-details"><h2 style="color:#555; text-align:center; margin-top:100px;" data-i18n="bestiary_prompt">ВЫБЕРИТЕ ОБЪЕКТ</h2></div>
     </div>
   </div>
@@ -871,30 +1193,32 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div id="event-modal" class="modal-overlay" style="z-index: 60;">
-  <div class="panel event-dialogue-panel" style="width: 780px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 18px; border: 2px solid var(--term-color); background: rgba(8, 12, 10, 0.96); box-shadow: 0 0 30px rgba(0, 255, 65, 0.25);">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--term-color); padding-bottom: 8px; margin-bottom: 14px;">
-      <h2 id="event-title" style="color: var(--term-warn); font-size: 18px; margin: 0; letter-spacing: 2px; text-transform: uppercase;" data-i18n="event_title">СОБЫТИЕ</h2>
-      <div id="event-floor-badge" style="font-size: 11px; color: var(--term-dim); border: 1px solid var(--term-dim); padding: 2px 8px; border-radius: 3px; font-family: monospace;" data-i18n="event_badge_fog">СЕКТОР ТУМАНА</div>
+  <div class="panel event-dialogue-panel">
+    <div class="event-dialogue-header">
+      <h2 id="event-title" data-i18n="event_title">СОБЫТИЕ</h2>
+      <div id="event-floor-badge" data-i18n="event_badge_fog">СЕКТОР ТУМАНА</div>
     </div>
     
-    <div id="event-body-container" style="display: flex; gap: 16px; flex: 1; min-height: 0; align-items: stretch; overflow: hidden;">
+    <div id="event-body-container" class="event-body-container">
       <!-- Foreground NPC Portrait Column -->
-      <div id="event-npc-col" style="display: none; width: 250px; min-width: 230px; flex-direction: column; align-items: center; position: relative;">
-        <div class="npc-portrait-frame" style="width: 100%; height: 260px; position: relative; border: 2px solid var(--term-color); border-radius: 4px; overflow: hidden; background: #000; box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.3);">
-          <img id="event-npc-img" src="" alt="NPC" style="width: 100%; height: 100%; object-fit: cover; object-position: center top; filter: contrast(1.1) brightness(0.95);">
-          <div class="crt-scanline-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.06)); background-size: 100% 3px, 6px 100%;"></div>
+      <div id="event-npc-col" class="event-npc-col" style="display: none;">
+        <div class="npc-portrait-frame">
+          <img id="event-npc-img" src="" alt="NPC">
+          <div class="crt-scanline-overlay"></div>
         </div>
-        <div id="event-npc-name" style="margin-top: 8px; font-weight: bold; font-size: 13px; color: var(--term-warn); text-align: center; width: 100%; letter-spacing: 1px; text-transform: uppercase;" data-i18n="npc_unknown">НЕИЗВЕСТНЫЙ</div>
-        <div id="event-npc-role" style="font-size: 11px; color: var(--term-dim); text-align: center; width: 100%;" data-i18n="npc_role_inhabitant">[ОБИТАТЕЛЬ БЛОКА]</div>
+        <div class="event-npc-meta">
+          <div id="event-npc-name" data-i18n="npc_unknown">НЕИЗВЕСТНЫЙ</div>
+          <div id="event-npc-role" data-i18n="npc_role_inhabitant">[ОБИТАТЕЛЬ БЛОКА]</div>
+        </div>
       </div>
 
       <!-- Dialogue / Event Content Column -->
-      <div id="event-content-col" style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
-        <div id="event-ascii-box" class="ascii-art flicker" style="font-size: 13px; color:#8f8; margin-bottom: 8px; display: none;"></div>
-        <div id="event-speech-box" style="background: rgba(0, 20, 10, 0.7); border: 1px solid rgba(0, 255, 65, 0.3); border-radius: 4px; padding: 12px; margin-bottom: 12px; max-height: 200px; overflow-y: auto;">
-          <div id="event-text" style="font-size: 14px; line-height: 1.6; text-align: left; color: #eee; font-family: 'Share Tech Mono', monospace; white-space: pre-wrap;"></div>
+      <div id="event-content-col" class="event-content-col">
+        <div id="event-ascii-box" class="ascii-art flicker" style="display: none;"></div>
+        <div id="event-speech-box" class="event-speech-box">
+          <div id="event-text"></div>
         </div>
-        <div id="event-choices" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 200px;"></div>
+        <div id="event-choices" class="event-choices"></div>
       </div>
     </div>
   </div>
@@ -3545,7 +3869,16 @@ socket.on('coopRaidInvitePrompt', (data) => {
   c.innerHTML = '';
   let btnAccept = document.createElement('button');
   btnAccept.innerText = isEn ? "ACCEPT (INTO BATTLE)" : "ПРИНЯТЬ ВЫЗОВ (В БОЙ)";
+  btnAccept.className = 'event-choice-btn';
   btnAccept.style.width = '100%';
+  btnAccept.style.textAlign = 'left';
+  btnAccept.style.padding = '10px 14px';
+  btnAccept.style.fontFamily = "'Share Tech Mono', monospace";
+  btnAccept.style.lineHeight = '1.4';
+  btnAccept.style.whiteSpace = 'normal';
+  btnAccept.style.wordBreak = 'normal';
+  btnAccept.style.overflowWrap = 'break-word';
+  btnAccept.style.boxSizing = 'border-box';
   btnAccept.style.borderColor = 'var(--term-warn)';
   btnAccept.style.color = 'var(--term-warn)';
   btnAccept.onclick = () => {
@@ -3554,7 +3887,16 @@ socket.on('coopRaidInvitePrompt', (data) => {
   };
   let btnDecline = document.createElement('button');
   btnDecline.innerText = isEn ? "DECLINE" : "ОТКАЗАТЬСЯ";
+  btnDecline.className = 'event-choice-btn';
   btnDecline.style.width = '100%';
+  btnDecline.style.textAlign = 'left';
+  btnDecline.style.padding = '10px 14px';
+  btnDecline.style.fontFamily = "'Share Tech Mono', monospace";
+  btnDecline.style.lineHeight = '1.4';
+  btnDecline.style.whiteSpace = 'normal';
+  btnDecline.style.wordBreak = 'normal';
+  btnDecline.style.overflowWrap = 'break-word';
+  btnDecline.style.boxSizing = 'border-box';
   btnDecline.onclick = () => {
     document.getElementById('event-modal').style.display = 'none';
   };
@@ -3596,11 +3938,16 @@ socket.on('triggerEvent', (evRaw) => {
   ev.choices.forEach(x => {
     let b = document.createElement('button');
     b.innerText = x.text;
+    b.className = 'event-choice-btn';
     b.style.width = '100%';
     b.style.textAlign = 'left';
-    b.style.padding = '8px 12px';
+    b.style.padding = '10px 14px';
     b.style.fontFamily = "'Share Tech Mono', monospace";
     b.style.lineHeight = '1.4';
+    b.style.whiteSpace = 'normal';
+    b.style.wordBreak = 'normal';
+    b.style.overflowWrap = 'break-word';
+    b.style.boxSizing = 'border-box';
     if (x.text.includes('[РИСК]') || x.text.includes('[RISK]')) {
       b.style.borderColor = 'var(--term-warn)';
       b.style.color = 'var(--term-warn)';
