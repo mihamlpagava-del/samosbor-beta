@@ -57,6 +57,15 @@ function writeLog(message) {
     fs.appendFile(LOG_FILE, logMsg, () => {});
 }
 
+process.on('uncaughtException', (err) => {
+    writeLog(`[КРИТИЧЕСКАЯ ОШИБКА uncaughtException]: ${err && (err.stack || err.message)}`);
+    console.error('[UNCAUGHT EXCEPTION]', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    writeLog(`[КРИТИЧЕСКАЯ ОШИБКА unhandledRejection]: ${reason}`);
+    console.error('[UNHANDLED REJECTION]', reason);
+});
+
 const DB_FILE = path.join(__dirname, 'database.json');
 let db = { players: {}, map: {} };
 let isDbDirty = false;
@@ -1236,13 +1245,28 @@ function broadcastGameState() {
     let activeSocketIds = Object.keys(onlinePlayers);
     if (activeSocketIds.length === 0) return;
 
-    let allPlayers = Object.values(db.players);
-    allPlayers.forEach(p => { p.rating = (p.xp || 0) + ((p.monstersKilled||0) * 10) + ((p.roomsCleared||0) * 5) + ((p.floor||0) * 100) + Math.floor((p.playtime||0) / 60); });
-    allPlayers.sort((a, b) => b.rating - a.rating);
-    let leaderboard = allPlayers.slice(0, 15).map((p, idx) => { return { rank: idx + 1, name: Object.keys(db.players).find(k => db.players[k] === p), level: p.level, floor: p.floor || 0, rating: p.rating, playtime: p.playtime || 0 }; });
+    let allPlayers = Object.values(db.players).filter(Boolean);
+    allPlayers.forEach(p => { 
+        if (!p) return;
+        p.rating = (p.xp || 0) + ((p.monstersKilled || 0) * 10) + ((p.roomsCleared || 0) * 5) + (((p.floor || 0)) * 100) + Math.floor((p.playtime || 0) / 60); 
+    });
+    allPlayers.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    let leaderboard = allPlayers.slice(0, 15).map((p, idx) => { 
+        return { 
+            rank: idx + 1, 
+            name: Object.keys(db.players).find(k => db.players[k] === p) || 'Неизвестный', 
+            level: p.level || 1, 
+            floor: p.floor || 0, 
+            rating: p.rating || 0, 
+            playtime: p.playtime || 0 
+        }; 
+    });
 
-    for (let socketId in onlinePlayers) {
-        let username = onlinePlayers[socketId]; let p = db.players[username];
+    for (let socketId of activeSocketIds) {
+        let username = onlinePlayers[socketId]; 
+        if (!username) continue;
+        let p = db.players[username];
+        if (!p) continue;
         if (!p.inventory) p.inventory = []; if (!p.questItems) p.questItems = []; if (!p.foundItems) p.foundItems = []; if (!p.quickSlots) p.quickSlots = [null, null];
         if (!p.perks) p.perks = []; if (!p.mutations) p.mutations = []; if (!p.unlockedSectors) p.unlockedSectors = { 0: ['A0'] }; if (Array.isArray(p.unlockedSectors)) p.unlockedSectors = { 0: p.unlockedSectors };
         if (!p.solvedGames) p.solvedGames = []; if (!p.bossDefeated) p.bossDefeated = {}; if (!p.robots) p.robots = {}; if (!p.playtime) p.playtime = 0;
@@ -1255,7 +1279,9 @@ function broadcastGameState() {
         let playersInSector = [];
         for (let sId in onlinePlayers) {
             let u = onlinePlayers[sId];
-            if (db.players[u] && db.players[u].location === p.location && (db.players[u].floor || 0) === floor) { playersInSector.push({ id: sId, username: u, hp: db.players[u].hp }); }
+            if (u && db.players[u] && db.players[u].location === p.location && (db.players[u].floor || 0) === floor) { 
+                playersInSector.push({ id: sId, username: u, hp: db.players[u].hp }); 
+            }
         }
         let locKey = `${floor}_${p.location}`;
         io.to(socketId).emit('gameState', {
@@ -1652,8 +1678,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('saveCharacter', () => {
-        if (onlinePlayers[socket.id]) {
-            let p = db.players[onlinePlayers[socket.id]];
+        let u = onlinePlayers[socket.id];
+        if (u && db.players[u]) {
+            let p = db.players[u];
             let randomSkinNum = Math.floor(Math.random() * 10) + 1;
             p.appearance = { skin: 'skin_' + randomSkinNum };
             saveDB(); socket.emit('startGame'); broadcastGameState();
@@ -2244,6 +2271,7 @@ io.on('connection', (socket) => {
 
         let pvpCombatAttacker = {
             isPvP: true,
+            floor: pa.floor || 0,
             opponent: defender,
             oppSocket: targetId,
             pTimer: 2.0 / getSpeedMult(pa.filter),
@@ -2255,6 +2283,7 @@ io.on('connection', (socket) => {
         };
         let pvpCombatDefender = {
             isPvP: true,
+            floor: pd.floor || 0,
             opponent: attacker,
             oppSocket: socket.id,
             pTimer: 2.0 / getSpeedMult(pd.filter),
@@ -2272,26 +2301,29 @@ io.on('connection', (socket) => {
         io.to(targetId).emit('transition', { to: 'combat', text: `НАПАДЕНИЕ: ВАС АТАКОВАЛ ${attacker}!` });
 
         setTimeout(() => {
+            let currentPa = db.players[attacker];
+            let currentPd = db.players[defender];
+            if (!currentPa || !currentPd) return;
             socket.emit('combatStart', {
                 enemy: {
                     name: `[ЗАКЛЮЧЕННЫЙ] ${defender}`,
-                    hp: pd.hp,
-                    maxHp: pd.maxHp,
-                    dmg: getPlayerStats(pd).dmg,
+                    hp: currentPd.hp,
+                    maxHp: currentPd.maxHp,
+                    dmg: getPlayerStats(currentPd).dmg,
                     isPlayer: true,
-                    skin: pd.appearance ? pd.appearance.skin : 'skin_1',
-                    equipment: pd.equipment || {}
+                    skin: currentPd.appearance ? currentPd.appearance.skin : 'skin_1',
+                    equipment: currentPd.equipment || {}
                 }
             });
             io.to(targetId).emit('combatStart', {
                 enemy: {
                     name: `[ЗАКЛЮЧЕННЫЙ] ${attacker}`,
-                    hp: pa.hp,
-                    maxHp: pa.maxHp,
-                    dmg: getPlayerStats(pa).dmg,
+                    hp: currentPa.hp,
+                    maxHp: currentPa.maxHp,
+                    dmg: getPlayerStats(currentPa).dmg,
                     isPlayer: true,
-                    skin: pa.appearance ? pa.appearance.skin : 'skin_1',
-                    equipment: pa.equipment || {}
+                    skin: currentPa.appearance ? currentPa.appearance.skin : 'skin_1',
+                    equipment: currentPa.equipment || {}
                 }
             });
             broadcastGameState();
@@ -2304,7 +2336,7 @@ io.on('connection', (socket) => {
         if (!inviter || !target || inviter === target) return;
         let pi = db.players[inviter];
         let pt = db.players[target];
-        if (!pi || !pt || pi.location !== pt.location) return;
+        if (!pi || !pt || pi.location !== pt.location || (pi.floor || 0) !== (pt.floor || 0)) return;
         if (activeCombats[inviter] || activeCombats[target]) { socket.emit('terminalError', 'КТО-ТО УЖЕ В БОЮ.'); return; }
         if (pi.filter < 10 || pt.filter < 10) { socket.emit('terminalError', 'НЕДОСТАТОЧНО ФИЛЬТРА ДЛЯ ВЫЛАЗКИ.'); return; }
 
@@ -2318,7 +2350,7 @@ io.on('connection', (socket) => {
         if (!accepter || !inviter) return;
         let pa = db.players[accepter];
         let pi = db.players[inviter];
-        if (!pa || !pi || pa.location !== pi.location) return;
+        if (!pa || !pi || pa.location !== pi.location || (pa.floor || 0) !== (pi.floor || 0)) return;
         if (activeCombats[accepter] || activeCombats[inviter]) return;
         if (pa.filter < 10 || pi.filter < 10) return;
 
@@ -2414,10 +2446,12 @@ io.on('connection', (socket) => {
     socket.on('coopHeal', (targetId) => {
         let healer = onlinePlayers[socket.id]; let target = onlinePlayers[targetId];
         if (!healer || !target) return;
+        let ph = db.players[healer];
+        let pt = db.players[target];
+        if (!ph || !pt || ph.location !== pt.location || (ph.floor || 0) !== (pt.floor || 0)) return;
         let now = Date.now();
         if (now - lastCoopTime < 1000) { socket.emit('terminalError', 'ПЕРЕЗАРЯДКА ЛЕЧЕНИЯ (1 сек).'); return; }
         lastCoopTime = now;
-        let pt = db.players[target]; if (!pt) return;
         pt.hp = Math.min(pt.maxHp, pt.hp + 15);
         let targetSocket = Object.keys(onlinePlayers).find(k => onlinePlayers[k] === target);
         if (targetSocket) io.to(targetSocket).emit('terminalError', `ВАС ПОДЛЕЧИЛ ${healer}: +15 HP.`);
@@ -2802,7 +2836,7 @@ io.on('connection', (socket) => {
         if (u) {
             if (activeCombats[u]) {
                 let c = activeCombats[u];
-                if (c.isPvP && c.opponent) {
+                if (c && c.isPvP && c.opponent) {
                     let opp = c.opponent;
                     let oppSocketId = Object.keys(onlinePlayers).find(key => onlinePlayers[key] === opp);
                     if (oppSocketId && activeCombats[opp]) {
@@ -2814,8 +2848,11 @@ io.on('connection', (socket) => {
                         delete activeCombats[opp];
                     }
                 }
-                if (c.isGlobal && globalBosses[`boss_${c.floor}`]) {
-                    globalBosses[`boss_${c.floor}`].participants.delete(u);
+                if (c && c.isGlobal) {
+                    let bossKey = (typeof c.floor === 'string' && c.floor.startsWith('coop_')) ? c.floor : `boss_${c.floor ?? 0}`;
+                    if (globalBosses[bossKey] && globalBosses[bossKey].participants) {
+                        globalBosses[bossKey].participants.delete(u);
+                    }
                 }
                 delete activeCombats[u];
             }
@@ -2918,7 +2955,7 @@ setInterval(() => {
                     p.talons += gb.reward; p.xp += gb.xp; p.monstersKilled = (p.monstersKilled || 0) + 1;
                     log += `> БОСС ${gb.name} ПОВЕРЖЕН! +${gb.reward} талонов, +${gb.xp} XP.\n`;
                     if (gb.isElevatorBoss) {
-                        if (!p.bossDefeated) p.bossDefeated = {}; p.bossDefeated[p.floor || 0] = true;
+                        if (!p.bossDefeated) p.bossDefeated = {}; p.bossDefeated[p?.floor ?? 0] = true;
                         log += `\n>>> ПУТЬ ВНИЗ ОТКРЫТ! <<<\n`;
                     }
                     if (gb.lore) { p.notebook.push(gb.lore); log += `>>> ЗАПИСЬ В БЛОКНОТ! <<<\n`; }
@@ -3115,7 +3152,8 @@ setInterval(() => {
             } else { p.hp = 0; p.talons = Math.floor(p.talons / 2); p.location = 'safe_room'; log += `> ЭВАКУАЦИЯ.`; }
             io.to(socketId).emit('combatEnd', { log: log, enemy: combat.enemy, win: p.hp > 0 }); delete activeCombats[username]; saveDB(); broadcastGameState();
         } else if (combat.logs.length > 0) {
-            io.to(socketId).emit('combatTick', { enemyHp: combat.enemy.hp, enemyMaxHp: combat.enemy.maxHp, logs: combat.logs, sounds: combat.sounds, vfx: combat.vfx }); broadcastGameState();
+            io.to(socketId).emit('combatTick', { enemyHp: combat.enemy.hp, enemyMaxHp: combat.enemy.maxHp, logs: combat.logs, sounds: combat.sounds, vfx: combat.vfx });
+            combat.logs = []; combat.sounds = []; combat.vfx = [];
         }
     }
 }, 250);
