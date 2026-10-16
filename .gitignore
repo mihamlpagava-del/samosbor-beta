@@ -4,3 +4,4 @@ database.json.bak
 server_logs.txt
 node_modules/
 *.tmp
+
