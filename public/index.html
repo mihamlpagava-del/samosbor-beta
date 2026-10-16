@@ -3199,14 +3199,23 @@ const socket = io(BACKEND_URL, {
 
 let cachedLoginPayload = null;
 try {
-  const saved = sessionStorage.getItem('samosbor_auth') || localStorage.getItem('samosbor_auth');
+  const saved = localStorage.getItem('samosbor_auth') || sessionStorage.getItem('samosbor_auth');
   if (saved) cachedLoginPayload = JSON.parse(saved);
 } catch(e){}
+
+function saveAuthSession(payload) {
+  cachedLoginPayload = payload;
+  try {
+    const str = JSON.stringify(payload);
+    localStorage.setItem('samosbor_auth', str);
+    sessionStorage.setItem('samosbor_auth', str);
+  } catch(e){}
+}
 
 function performAutoLogin() {
   if (!cachedLoginPayload) {
     try {
-      const saved = sessionStorage.getItem('samosbor_auth') || localStorage.getItem('samosbor_auth');
+      const saved = localStorage.getItem('samosbor_auth') || sessionStorage.getItem('samosbor_auth');
       if (saved) cachedLoginPayload = JSON.parse(saved);
     } catch(e){}
   }
@@ -3240,8 +3249,7 @@ socket.on('requireAuth', () => {
           firstName: (vkUserData && vkUserData.first_name) || 'Заключенный',
           photo: (vkUserData && vkUserData.photo_200) || null
         };
-        cachedLoginPayload = { type: 'vk', data: payload };
-        try { sessionStorage.setItem('samosbor_auth', JSON.stringify(cachedLoginPayload)); } catch(e){}
+        saveAuthSession({ type: 'vk', data: payload });
         socket.emit('vkLogin', payload);
         return;
       }
@@ -3312,9 +3320,13 @@ function submitManualLogin() {
   if (u && p) {
     if (err) err.innerHTML = '<span style="color:var(--term-warn);">Авторизация...</span>';
     playVideoIntro();
-    cachedLoginPayload = { type: 'manual', data: { username: u, password: p } };
-    try { sessionStorage.setItem('samosbor_auth', JSON.stringify(cachedLoginPayload)); } catch(e){}
-    socket.emit('login', { username: u, password: p });
+    const urlParams = new URLSearchParams(window.location.search);
+    const vkId = (vkUserData && vkUserData.id) || urlParams.get('vk_user_id') || null;
+    const loginPayload = { username: u, password: p };
+    if (vkId) loginPayload.vkUserId = vkId;
+    saveAuthSession({ type: 'manual', data: loginPayload });
+    try { localStorage.setItem('samosbor_last_username', u); } catch(e){}
+    socket.emit('login', loginPayload);
   } else {
     if (err) err.innerHTML = '<span style="color:var(--term-danger);">Введите номер и пароль заключенного.</span>';
   }
@@ -3328,6 +3340,16 @@ if (userInput) userInput.addEventListener('keydown', (e) => { if (e.key === 'Ent
 
 const passInput = document.getElementById('password');
 if (passInput) passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitManualLogin(); });
+
+// Автозаполнение сохраненных логина/пароля
+try {
+  const lastUser = localStorage.getItem('samosbor_last_username');
+  if (userInput && lastUser && !userInput.value) userInput.value = lastUser;
+  if (cachedLoginPayload && cachedLoginPayload.type === 'manual' && cachedLoginPayload.data) {
+    if (userInput && !userInput.value && cachedLoginPayload.data.username) userInput.value = cachedLoginPayload.data.username;
+    if (passInput && !passInput.value && cachedLoginPayload.data.password) passInput.value = cachedLoginPayload.data.password;
+  }
+} catch(e){}
 
 // ===== ИНТЕГРАЦИЯ VK.COM & VK MINI APPS (VK BRIDGE) =====
 let isVkEnvironment = false;
@@ -3400,8 +3422,7 @@ if (vkLoginBtn) {
       const fallbackId = urlParams.get('vk_user_id') || 'guest';
       payload = { search: launchParams, vkUserId: fallbackId, firstName: 'Заключенный' };
     }
-    cachedLoginPayload = { type: 'vk', data: payload };
-    try { sessionStorage.setItem('samosbor_auth', JSON.stringify(cachedLoginPayload)); } catch(e){}
+    saveAuthSession({ type: 'vk', data: payload });
     socket.emit('vkLogin', payload);
   };
 }
@@ -3613,6 +3634,7 @@ document.addEventListener('click', (e) => {
 
 socket.on('loginSuccess', (data) => {
   myUsername = data.username;
+  try { localStorage.setItem('samosbor_last_username', data.username); } catch(e){}
   if (isVideoPlaying) {
     pendingLoginSuccess = data;
     return;

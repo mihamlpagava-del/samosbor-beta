@@ -67,41 +67,84 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const DB_FILE = path.join(__dirname, 'database.json');
-let db = { players: {}, map: {} };
+const DB_BAK_FILE = path.join(__dirname, 'database.json.bak');
+let db = { players: {}, map: {}, vkMap: {}, feedback: [] };
 let isDbDirty = false;
 let isSavingDb = false;
+let lastSaveStartTime = 0;
 
 // Атомарная запись БД (защита от повреждения файла при сбоях/перезагрузке)
 function flushDBSync() {
     if (!isDbDirty) return;
+    const data = JSON.stringify(db, null, 2);
     const tempFile = DB_FILE + '.tmp';
     try {
-        fs.writeFileSync(tempFile, JSON.stringify(db, null, 2), 'utf8');
-        fs.renameSync(tempFile, DB_FILE);
+        fs.writeFileSync(tempFile, data, 'utf8');
+        try {
+            fs.renameSync(tempFile, DB_FILE);
+        } catch (renameErr) {
+            fs.writeFileSync(DB_FILE, data, 'utf8');
+            try { fs.unlinkSync(tempFile); } catch (e) {}
+        }
         isDbDirty = false;
+        if (db.players && Object.keys(db.players).length > 0) {
+            try { fs.writeFileSync(DB_BAK_FILE, data, 'utf8'); } catch (e) {}
+        }
     } catch (err) {
         writeLog(`Ошибка синхронной записи БД: ${err.message}`);
+        try {
+            fs.writeFileSync(DB_FILE, data, 'utf8');
+            isDbDirty = false;
+        } catch (fatalErr) {
+            writeLog(`КРИТИЧЕСКАЯ ОШИБКА записи БД: ${fatalErr.message}`);
+        }
     }
 }
 
 function flushDBAsync() {
+    // Сторожевой таймер: сброс зависшей асинхронной записи (>5 сек)
+    if (isSavingDb && Date.now() - lastSaveStartTime > 5000) {
+        writeLog('[БД ПРЕДУПРЕЖДЕНИЕ] Сброс зависшего флага isSavingDb');
+        isSavingDb = false;
+    }
     if (!isDbDirty || isSavingDb) return;
     isSavingDb = true;
+    lastSaveStartTime = Date.now();
     const tempFile = DB_FILE + '.tmp';
     try {
         const data = JSON.stringify(db, null, 2);
         fs.writeFile(tempFile, data, 'utf8', (err) => {
             if (err) {
                 isSavingDb = false;
-                writeLog(`Ошибка записи темп-файла БД: ${err.message}`);
+                writeLog(`Ошибка записи темп-файла БД: ${err.message}. Пробуем прямую запись...`);
+                try {
+                    fs.writeFileSync(DB_FILE, data, 'utf8');
+                    isDbDirty = false;
+                    if (db.players && Object.keys(db.players).length > 0) {
+                        try { fs.writeFileSync(DB_BAK_FILE, data, 'utf8'); } catch (e) {}
+                    }
+                } catch (e) {}
                 return;
             }
             fs.rename(tempFile, DB_FILE, (renameErr) => {
                 isSavingDb = false;
                 if (!renameErr) {
                     isDbDirty = false;
+                    if (db.players && Object.keys(db.players).length > 0) {
+                        try { fs.writeFileSync(DB_BAK_FILE, data, 'utf8'); } catch (e) {}
+                    }
                 } else {
-                    writeLog(`Ошибка переименования темп-файла БД: ${renameErr.message}`);
+                    writeLog(`Ошибка переименования темп-файла БД: ${renameErr.message}. Запись напрямую...`);
+                    try {
+                        fs.writeFileSync(DB_FILE, data, 'utf8');
+                        isDbDirty = false;
+                        try { fs.unlinkSync(tempFile); } catch (e) {}
+                        if (db.players && Object.keys(db.players).length > 0) {
+                            try { fs.writeFileSync(DB_BAK_FILE, data, 'utf8'); } catch (e) {}
+                        }
+                    } catch (e) {
+                        writeLog(`Ошибка прямой записи БД: ${e.message}`);
+                    }
                 }
             });
         });
@@ -127,17 +170,86 @@ process.on('exit', () => { flushDBSync(); });
 process.on('uncaughtException', (err) => { writeLog(`КРИТИЧЕСКАЯ ОШИБКА: ${err.message}\n${err.stack}`); flushDBSync(); });
 process.on('unhandledRejection', (reason) => { writeLog(`НЕОБРАБОТАННОЕ ОТКЛОНЕНИЕ: ${reason}`); });
 
-if (fs.existsSync(DB_FILE)) {
-    try {
-        let loadedData = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-        if (loadedData.players && loadedData.map) db = loadedData;
-        else { db.players = loadedData.players || loadedData || {}; db.map = loadedData.map || {}; saveDB(true); }
+// Инициализация и авто-восстановление базы данных
+function initDatabase() {
+    let loaded = null;
+    let source = '';
+
+    // Сначала пытаемся прочитать основной файл
+    if (fs.existsSync(DB_FILE)) {
+        try {
+            const raw = fs.readFileSync(DB_FILE, 'utf8').trim();
+            if (raw.length > 2) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') {
+                    const playerCount = parsed.players ? Object.keys(parsed.players).length : 0;
+                    if (playerCount > 0) {
+                        loaded = parsed;
+                        source = `${DB_FILE} (${playerCount} игроков)`;
+                    }
+                }
+            }
+        } catch (err) {
+            writeLog(`[БД ОШИБКА] Поврежден основной файл ${DB_FILE}: ${err.message}`);
+        }
+    }
+
+    // Если основной файл пуст или поврежден — проверяем резервную копию database.json.bak
+    if (!loaded && fs.existsSync(DB_BAK_FILE)) {
+        try {
+            const rawBak = fs.readFileSync(DB_BAK_FILE, 'utf8').trim();
+            if (rawBak.length > 2) {
+                const parsedBak = JSON.parse(rawBak);
+                if (parsedBak && typeof parsedBak === 'object') {
+                    const bakPlayerCount = parsedBak.players ? Object.keys(parsedBak.players).length : 0;
+                    if (bakPlayerCount > 0) {
+                        loaded = parsedBak;
+                        source = `РЕЗЕРВНАЯ КОПИЯ ${DB_BAK_FILE} (${bakPlayerCount} игроков)`;
+                        writeLog(`[БД ВОССТАНОВЛЕНИЕ] Основной файл базы отсутствовал или был пуст. Успешно восстановлены данные из ${DB_BAK_FILE}!`);
+                    }
+                }
+            }
+        } catch (bakErr) {
+            writeLog(`[БД ОШИБКА] Ошибка чтения резервной копии ${DB_BAK_FILE}: ${bakErr.message}`);
+        }
+    }
+
+    // Если в основном файле 0 игроков, а в .bak есть игроки — предотвращаем перезапись базы пустышкой!
+    if (loaded && fs.existsSync(DB_BAK_FILE)) {
+        const currentCount = loaded.players ? Object.keys(loaded.players).length : 0;
+        if (currentCount === 0) {
+            try {
+                const rawBak = fs.readFileSync(DB_BAK_FILE, 'utf8').trim();
+                const parsedBak = JSON.parse(rawBak);
+                const bakCount = (parsedBak && parsedBak.players) ? Object.keys(parsedBak.players).length : 0;
+                if (bakCount > 0) {
+                    writeLog(`[БД ВОССТАНОВЛЕНИЕ] Предотвращено обнуление базы! Восстановлено ${bakCount} игроков из ${DB_BAK_FILE}`);
+                    loaded = parsedBak;
+                    source = `РЕЗЕРВНАЯ КОПИЯ ${DB_BAK_FILE} (${bakCount} игроков)`;
+                }
+            } catch (e) {}
+        }
+    }
+
+    if (loaded) {
+        if (loaded.players && loaded.map) {
+            db = loaded;
+        } else {
+            db.players = loaded.players || loaded || {};
+            db.map = loaded.map || {};
+        }
+        if (!db.players) db.players = {};
+        if (!db.map) db.map = {};
+        if (!db.vkMap) db.vkMap = {};
         if (!Array.isArray(db.feedback)) db.feedback = [];
-    } catch (err) { writeLog(`Ошибка чтения БД: ${err.message}`); }
-} else { 
-    if (!Array.isArray(db.feedback)) db.feedback = [];
-    saveDB(true); 
+        writeLog(`[БД ЗАГРУЗКА] Успешно загружена база из ${source}`);
+        saveDB(true);
+    } else {
+        writeLog(`[БД] База данных не обнаружена. Инициализация чистой структуры.`);
+        db = { players: {}, map: {}, vkMap: {}, feedback: [] };
+    }
 }
+initDatabase();
 
 function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('hex');
@@ -1548,7 +1660,7 @@ io.on('connection', (socket) => {
 
     socket.on('login', (data) => {
         if (!data || !data.username) return;
-        const { username, password } = data;
+        const { username, password, vkUserId } = data;
         writeLog(`Вход: ${username}`);
         try {
             if (db.players[username]) {
@@ -1560,6 +1672,13 @@ io.on('connection', (socket) => {
                 if (typeof db.players[username].password === 'string' && !db.players[username].password.startsWith('scrypt:')) {
                     db.players[username].password = hashPassword(password);
                     saveDB();
+                }
+                // Если передан vkUserId — связываем аккаунт с профилем VK
+                if (vkUserId) {
+                    db.players[username].vkUserId = String(vkUserId);
+                    if (!db.vkMap) db.vkMap = {};
+                    db.vkMap[String(vkUserId)] = username;
+                    saveDB(true);
                 }
             } else if (!db.players[username]) {
                 writeLog(`Регистрация: ${username}`);
@@ -1577,6 +1696,11 @@ io.on('connection', (socket) => {
                     ],
                     equipment: { weapon: 'weapon_wood', clothes: 'clothes_robe', mask: 'mask_cloth', backpack: null }, inventory: ['food_ration']
                 };
+                if (vkUserId) {
+                    db.players[username].vkUserId = String(vkUserId);
+                    if (!db.vkMap) db.vkMap = {};
+                    db.vkMap[String(vkUserId)] = username;
+                }
                 saveDB(true);
             }
             onlinePlayers[socket.id] = username;
@@ -1625,15 +1749,45 @@ io.on('connection', (socket) => {
 
         if (!db.vkMap) db.vkMap = {};
 
+        // 1. Поиск в db.vkMap
         let username = db.vkMap[vkUserId];
+
+        // 2. Поиск по полю vkUserId среди существующих игроков
+        if (!username || !db.players[username]) {
+            const foundByVkId = Object.keys(db.players).find(k => {
+                const pl = db.players[k];
+                return pl && String(pl.vkUserId) === String(vkUserId);
+            });
+            if (foundByVkId) {
+                username = foundByVkId;
+                db.vkMap[vkUserId] = username;
+            }
+        }
+
+        // 3. Если игрок не привязан, но имя совпадает с cleanFirst (например PagavaMT или Pagava) — привязываем к существующему
+        if (!username || !db.players[username]) {
+            let cleanFirst = (data.firstName || '').trim().replace(/[^a-zA-Zа-яА-Я0-9_]/g, '');
+            if (cleanFirst && db.players[cleanFirst] && (!db.players[cleanFirst].vkUserId || String(db.players[cleanFirst].vkUserId) === String(vkUserId))) {
+                username = cleanFirst;
+                db.players[username].vkUserId = vkUserId;
+                if (data.photo && !db.players[username].vkPhoto) db.players[username].vkPhoto = data.photo;
+                db.vkMap[vkUserId] = username;
+                writeLog(`[VK] Существующий персонаж ${username} успешно привязан к VK ID ${vkUserId}`);
+                saveDB(true);
+            }
+        }
 
         try {
             if (!username || !db.players[username]) {
                 let cleanFirst = (data.firstName || '').trim().replace(/[^a-zA-Zа-яА-Я0-9_]/g, '');
                 let candidate = cleanFirst ? cleanFirst : `ЗК_${vkUserId.slice(-4)}`;
                 
-                if (db.players[candidate] && db.players[candidate].vkUserId !== vkUserId) {
+                // Никогда не затираем существующего игрока, если имя уже занято
+                if (db.players[candidate] && String(db.players[candidate].vkUserId) !== String(vkUserId)) {
                     candidate = `${candidate}_${vkUserId.slice(-4)}`;
+                }
+                while (db.players[candidate] && String(db.players[candidate].vkUserId) !== String(vkUserId)) {
+                    candidate = `${cleanFirst || 'ЗК'}_${Math.floor(Math.random() * 9000 + 1000)}`;
                 }
                 username = candidate;
 
@@ -1675,6 +1829,34 @@ io.on('connection', (socket) => {
             if (db.players[username].appearance !== null) socket.emit('startGame');
             broadcastGameState();
         } catch (err) { writeLog(`ОШИБКА VK LOGIN: ${err.message}`); }
+    });
+
+    socket.on('linkAccount', (data) => {
+        if (!data || !data.targetUsername || !data.password) return;
+        const { targetUsername, password } = data;
+        let currentU = onlinePlayers[socket.id];
+        let p = db.players[targetUsername];
+        if (!p) {
+            socket.emit('terminalError', 'АККАУНТ НЕ НАЙДЕН');
+            return;
+        }
+        if (!verifyPassword(password, p.password)) {
+            socket.emit('terminalError', 'НЕВЕРНЫЙ ПАРОЛЬ');
+            return;
+        }
+        let vkId = (currentU && db.players[currentU] && db.players[currentU].vkUserId) || (data.vkUserId ? String(data.vkUserId) : null);
+        if (vkId) {
+            p.vkUserId = vkId;
+            if (!db.vkMap) db.vkMap = {};
+            db.vkMap[vkId] = targetUsername;
+            saveDB(true);
+            writeLog(`[СВЯЗКА] Игрок ${targetUsername} успешно привязан к VK ID ${vkId}`);
+            onlinePlayers[socket.id] = targetUsername;
+            socket.emit('terminalError', `ПРОФИЛЬ УСПЕШНО ПРИВЯЗАН: ${targetUsername}`);
+            socket.emit('loginSuccess', { username: targetUsername, showIntro: false });
+            socket.emit('startGame');
+            broadcastGameState();
+        }
     });
 
     socket.on('saveCharacter', () => {
@@ -2834,6 +3016,8 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         let u = onlinePlayers[socket.id];
         if (u) {
+            writeLog(`[СЕССИЯ] Отключение сокета ${socket.id} (игрок: ${u}) - сохранение прогресса`);
+            saveDB(true);
             if (activeCombats[u]) {
                 let c = activeCombats[u];
                 if (c && c.isPvP && c.opponent) {
