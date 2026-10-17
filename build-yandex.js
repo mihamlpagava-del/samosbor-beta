@@ -43,9 +43,9 @@ copyDir(path.join(PUBLIC_DIR, 'assets'), path.join(BUILD_DIR, 'assets'));
 console.log('3. Адаптация index.html для платформы Яндекс Игры...');
 let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
 
-// А. Подключение актуального Yandex Games SDK в <head> по требованиям п. 1.1
+// А. Подключение официального Yandex Games SDK в <head> (строго относительный путь /sdk.js БЕЗ внешних S3-хранилищ)
 const vkHeadRegex = /<script src="https:\/\/unpkg\.com\/@vkontakte\/vk-bridge\/dist\/browser\.min\.js"><\/script>[\s\S]*?<\/script>\s*<script>[\s\S]*?<\/script>/;
-const yaHeadSdk = `<!-- Yandex Games SDK (п. 1.1 Требований платформы) -->
+const yaHeadSdk = `<!-- Yandex Games SDK (официальный путь платформы, без внешних хранилищ) -->
 <script>
 window.ysdk = null;
 window.yaPlayer = null;
@@ -79,7 +79,8 @@ function initYandexSDK() {
   });
 }
 </script>
-<script async src="/sdk.js" onload="initYandexSDK()" onerror="this.onerror=null;this.src='https://sdk.games.s3.yandex.net/sdk.js';this.onload=initYandexSDK;"></script>`;
+<script src="/sdk.js" onload="initYandexSDK()"></script>`;
+
 if (vkHeadRegex.test(html)) {
   html = html.replace(vkHeadRegex, yaHeadSdk);
 } else {
@@ -87,17 +88,31 @@ if (vkHeadRegex.test(html)) {
   html = html.replace(/<script src="https:\/\/unpkg\.com\/@vkontakte\/vk-bridge[\s\S]*?<\/script>/, yaHeadSdk);
 }
 
-// Б. Настройка подключения Socket.io к внешнему серверу игры
+// А1. Удаление внешней ссылки на Google Fonts (замена на надежные локальные моноширинные шрифты)
 html = html.replace(
-  /const socket = io\(\);/,
-  `// Подключение к серверу игры (локально или удаленный прод)
+  /<link href="https:\/\/fonts\.googleapis\.com\/css2\?family=PT\+Mono&display=swap" rel="stylesheet">/,
+  '<!-- Локальные системные шрифты (PT Mono / Consolas / monospace) -->'
+);
+
+// А2. Удаление внешнего CDN fallback для socket.io (assets/socket.io.min.js уже локально в архиве)
+html = html.replace(
+  /<script>\s*if\s*\(typeof io === 'undefined'\)\s*\{[\s\S]*?\}\s*<\/script>/,
+  '<!-- Socket.io загружен локально из assets/socket.io.min.js -->'
+);
+
+// Б. Настройка подключения Socket.io к серверу игры
+if (/const socket = io\(\);/.test(html)) {
+  html = html.replace(
+    /const socket = io\(\);/,
+    `// Подключение к серверу игры (локально или удаленный прод)
 const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? ''
   : 'https://195-19-219-215.sslip.io';
 const socket = io(BACKEND_URL, {
   transports: ['websocket', 'polling']
 });`
-);
+  );
+}
 
 // В. Замена кнопки и модалки "Поддержать проект (VK)" на систему бонусов Яндекс Игр
 html = html.replace(
@@ -160,7 +175,7 @@ const yaLoginBox = `<!-- Панель входа через Яндекс Игр�
 html = html.replace(vkLoginBoxRegex, yaLoginBox);
 
 // Ж. Замена JS интеграции VK Bridge на Яндекс SDK методы
-const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?(?=\s*function startBootSequence)/;
+const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?(?=\s*let isVideoPlaying = false;)/;
 const yaJsCode = `// ===== ИНТЕГРАЦИЯ ЯНДЕКС ИГР (YANDEX GAMES SDK v2) =====
 function reportGameplayStart() {
   try {
@@ -349,15 +364,39 @@ if (window.ysdk) {
 
 html = html.replace(vkJsRegex, yaJsCode);
 
-// Очистка упоминаний VK в текстах интерфейса
+// Очистка упоминаний VK и внешних скриптов в текстах интерфейса
 html = html.replace(/ВКонтакте/g, 'Яндекс Играх');
 html = html.replace(/VK/g, 'Яндекс');
+html = html.replace(/https:\/\/unpkg\.com\/[^\s"']+/g, '');
+
+// Проверка на отсутствие запрещенных ссылок на сервисные хранилища платформы (требования модерации)
+console.log('4. Валидация: проверка на отсутствие запрещенных ссылок на сервисные хранилища...');
+const forbiddenStoragePatterns = [
+  { name: 'S3 / Yandex Cloud Storage', regex: /(s3\.yandex|storage\.yandexcloud|avatars\.mds\.yandex|get-games|\.s3\.|\.s3-)/i },
+  { name: 'VK Play / Platform Storage', regex: /(storage\.vkplay|vkplay\.ru\/storage)/i },
+  { name: 'Внешние скрипты / шрифты (CDN)', regex: /<(script|link)[^>]*(src|href)=["']https?:\/\/(?!195-19-219-215)[^"']*["']/i }
+];
+
+let hasStorageErrors = false;
+for (const p of forbiddenStoragePatterns) {
+  const m = html.match(p.regex);
+  if (m) {
+    console.error(`❌ ОШИБКА ВАЛИДАЦИИ: Обнаружен запрещенный адрес (${p.name}): "${m[0]}"`);
+    hasStorageErrors = true;
+  }
+}
+
+if (hasStorageErrors) {
+  console.error('\n❌ Сборка остановлена: в файлах обнаружены запрещенные ссылки на хранилища.');
+  process.exit(1);
+}
+console.log('✅ Валидация пройдена: ни одной ссылки на внешние или сервисные хранилища не найдено.');
 
 fs.writeFileSync(path.join(BUILD_DIR, 'index.html'), html, 'utf8');
 console.log('Готово: yandex-build/index.html создан.');
 
-// 4. Упаковка в ZIP архив
-console.log('4. Создание zip-архива samosbor-yandex-games.zip с POSIX путями...');
+// 5. Упаковка в ZIP архив
+console.log('5. Создание zip-архива samosbor-yandex-games.zip с POSIX путями...');
 if (fs.existsSync(ZIP_OUTPUT)) {
   fs.unlinkSync(ZIP_OUTPUT);
 }
