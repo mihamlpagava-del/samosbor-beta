@@ -6,7 +6,7 @@
 <title>ТЕРМИНАЛ: САМОСБОР</title>
 <link rel="icon" type="image/png" href="assets/icons/food_ration.png">
 <!-- Pikabu Games SDK -->
-<script async src="https://games.pikabu.ru/sdk/sdk.js" onload="if(typeof initPkbSDK==='function')initPkbSDK()"></script>
+<script async src="https://games.pikabu.ru/sdk/sdk.js" onload="if(typeof isPikabuEnvironment!=='undefined'&&isPikabuEnvironment&&typeof initPkbSDK==='function')initPkbSDK()"></script>
 <!-- VK Bridge SDK (активируется строго в среде VK) -->
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 <script>
@@ -19,7 +19,7 @@ try {
   const _s = window.location.search || '';
   const _r = document.referrer || '';
   const _isPkb = (window.location.hostname.includes('pikabu.ru') || _r.includes('pikabu.ru') || _s.includes('platform=pikabu') || _s.includes('pkb_'));
-  const _isVk = !_isPkb && (_s.includes('vk_user_id') || _s.includes('vk_app_id') || window.location.hostname.includes('vk-apps.ru') || _r.includes('vk.com') || _r.includes('vk-apps.ru'));
+  const _isVk = !_isPkb && (_s.includes('vk_user_id') || _s.includes('vk_app_id') || window.location.hostname.includes('vk-apps.ru') || _r.includes('vk.com') || _r.includes('vk-apps.ru') || (window.parent && window.parent !== window));
   if (_isVk && window.vkBridge) {
     vkBridge.send('VKWebAppInit').catch(function(){});
     vkBridge.send('VKWebAppResizeWindow', { width: 1000, height: 750 }).catch(function(){});
@@ -867,7 +867,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div class="support-controls">
   <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
-  <button id="btn-donate" class="support-btn" style="display:none;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
+  <button id="btn-donate" class="support-btn" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
     💙 ПОДДЕРЖАТЬ ПРОЕКТ
   </button>
 </div>
@@ -930,7 +930,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
-  <button id="btn-opt-donate" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
+  <button id="btn-opt-donate" class="audio-btn opt-btn" style="color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
   <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
   <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
   <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()" data-i18n="opt_wall">📢 На стену (VK)</button>
@@ -942,7 +942,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <h2 style="font-size: 20px; margin-bottom: 20px; letter-spacing: 2px;" data-i18n="login_title">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
     
     <!-- Панель входа через VK -->
-    <div id="vk-login-box" style="display: none; margin-bottom: 18px; padding: 12px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.1); border-radius: 4px;">
+    <div id="vk-login-box" style="margin-bottom: 18px; padding: 12px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.1); border-radius: 4px;">
       <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
         <img id="vk-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #2787f5; display: none;" src="" alt="">
         <div style="font-size: 13px; color: #fff;">
@@ -973,7 +973,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </button>
     </div>
 
-    <div id="login-divider" style="display: none; margin-bottom: 15px; color: #777; font-size: 11px;" data-i18n="login_divider">— ИЛИ ВХОД ПО ПАРОЛЮ —</div>
+    <div id="login-divider" style="margin-bottom: 15px; color: #777; font-size: 11px;" data-i18n="login_divider">— ИЛИ ВХОД ПО ПАРОЛЮ —</div>
 
     <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО" data-i18n-ph="ph_username">
     <input type="password" id="password" placeholder="ПАРОЛЬ" data-i18n-ph="ph_password">
@@ -3409,50 +3409,52 @@ function detectPikabuPlatform() {
         if (window.location.ancestorOrigins[i].includes('pikabu.ru')) return true;
       }
     }
-    if (typeof PkbSDK !== 'undefined') return true;
   } catch(e) {}
   return false;
 }
 
 isPikabuEnvironment = detectPikabuPlatform();
 
-// Определение VK (активируется ТОЛЬКО вне Пикабу и ТОЛЬКО при наличии явных параметров VK)
+// Определение VK (активно всегда, кроме платформы Пикабу)
 try {
   const urlParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   const r = document.referrer || '';
-  if (!isPikabuEnvironment && (
-    urlParams.has('vk_user_id') ||
-    urlParams.has('vk_app_id') ||
-    hashParams.has('vk_user_id') ||
-    window.location.hostname.includes('vk-apps.ru') ||
-    r.includes('vk.com') ||
-    r.includes('vk-apps.ru')
-  )) {
-    isVkEnvironment = true;
+  if (!isPikabuEnvironment) {
+    if (
+      urlParams.has('vk_user_id') ||
+      urlParams.has('vk_app_id') ||
+      hashParams.has('vk_user_id') ||
+      window.location.hostname.includes('vk-apps.ru') ||
+      r.includes('vk.com') ||
+      r.includes('vk-apps.ru') ||
+      typeof vkBridge !== 'undefined' ||
+      (window.parent && window.parent !== window)
+    ) {
+      isVkEnvironment = true;
+    }
   }
 } catch(e) {
   isVkEnvironment = false;
 }
 
-// ===== PIKABU GAMES SDK =====
+// ===== PIKABU GAMES SDK (АКТИВИРУЕТСЯ СТРОГО НА ПИКАБУ) =====
 async function initPkbSDK() {
-  if (typeof PkbSDK === 'undefined') return;
+  if (!isPikabuEnvironment || typeof PkbSDK === 'undefined') return;
   try {
     pkbSdk = await PkbSDK.init();
-    isPikabuEnvironment = true;
     isVkEnvironment = false; // Исключаем любые вызовы VK на Пикабу
     console.log('[Pikabu SDK] Инициализирован:', pkbSdk);
 
     // Скрываем все элементы сторонней авторизации и платежей
     const vkBox = document.getElementById('vk-login-box');
     if (vkBox) vkBox.style.display = 'none';
-    const vkDiv = document.getElementById('login-divider');
-    if (vkDiv) vkDiv.style.display = 'none';
     const dBtn = document.getElementById('btn-donate');
     if (dBtn) dBtn.style.display = 'none';
     const optDBtn = document.getElementById('btn-opt-donate');
     if (optDBtn) optDBtn.style.display = 'none';
+    const dModal = document.getElementById('donate-modal');
+    if (dModal) dModal.style.display = 'none';
     document.querySelectorAll('#btn-vk-invite, #btn-vk-wall, #btn-vk-fav').forEach(b => b.style.display = 'none');
 
     // Настраиваем профиль игрока Пикабу
@@ -3536,7 +3538,7 @@ async function loginWithPikabu(auto = false) {
 }
 
 function notifyPikabuGameStarted() {
-  if (pkbSdk && typeof pkbSdk.gameStarted === 'function' && !pkbGameStartedNotified) {
+  if (isPikabuEnvironment && pkbSdk && typeof pkbSdk.gameStarted === 'function' && !pkbGameStartedNotified) {
     try {
       pkbSdk.gameStarted();
       pkbGameStartedNotified = true;
@@ -3586,21 +3588,24 @@ async function watchPikabuRewardedAd() {
   }
 }
 
-if (typeof PkbSDK !== 'undefined') {
-  initPkbSDK();
-} else {
-  window.addEventListener('load', () => {
-    if (typeof PkbSDK !== 'undefined') initPkbSDK();
-  });
+if (isPikabuEnvironment) {
+  if (typeof PkbSDK !== 'undefined') {
+    initPkbSDK();
+  } else {
+    window.addEventListener('load', () => {
+      if (typeof PkbSDK !== 'undefined') initPkbSDK();
+    });
+  }
 }
 
-// ===== VK BRIDGE =====
+// ===== ИНТЕГРАЦИЯ VK.COM & VK MINI APPS (VK BRIDGE) =====
 function initVkBridgeIfAvailable() {
-  if (isPikabuEnvironment || !isVkEnvironment || typeof vkBridge === 'undefined') return;
+  if (isPikabuEnvironment || typeof vkBridge === 'undefined') return;
   try {
     vkBridge.send('VKWebAppInit')
       .then(() => {
         console.log('[VK Bridge] Успешно инициализирован (VKWebAppInit OK)');
+        isVkEnvironment = true;
         vkBridge.send('VKWebAppResizeWindow', { width: 1000, height: 750 }).catch(() => {});
         document.querySelectorAll('#btn-vk-invite, #btn-vk-wall, #btn-vk-fav').forEach(b => b.style.display = 'block');
         const dBtn = document.getElementById('btn-donate');
@@ -3662,14 +3667,16 @@ if (vkLoginBtn) {
   };
 }
 
-if (isVkEnvironment && typeof vkBridge !== 'undefined') {
-  initVkBridgeIfAvailable();
-} else if (isVkEnvironment) {
-  window.addEventListener('load', initVkBridgeIfAvailable);
+if (!isPikabuEnvironment) {
+  if (typeof vkBridge !== 'undefined') {
+    initVkBridgeIfAvailable();
+  } else {
+    window.addEventListener('load', initVkBridgeIfAvailable);
+  }
 }
 
 function vkShareOnWall() {
-  if (typeof vkBridge === 'undefined' || !isVkEnvironment) return;
+  if (typeof vkBridge === 'undefined' || isPikabuEnvironment) return;
   vkBridge.send('VKWebAppShowWallPostBox', {
     message: 'Я выживаю на нижних этажах Самосбора в игре «Самосбор: Жилячейка 7749». Присоединяйся к рейдам в Туман!',
     attachments: window.location.href
@@ -3677,17 +3684,17 @@ function vkShareOnWall() {
 }
 
 function vkInviteFriends() {
-  if (typeof vkBridge === 'undefined' || !isVkEnvironment) return;
+  if (typeof vkBridge === 'undefined' || isPikabuEnvironment) return;
   vkBridge.send('VKWebAppShowInviteBox').catch(() => {});
 }
 
 function vkAddToFavorites() {
-  if (typeof vkBridge === 'undefined' || !isVkEnvironment) return;
+  if (typeof vkBridge === 'undefined' || isPikabuEnvironment) return;
   vkBridge.send('VKWebAppAddToFavorites').catch(() => {});
 }
 
 function donateVkVotes(itemCode, votesCount, bonusTalons) {
-  if (!isVkEnvironment) return;
+  if (isPikabuEnvironment) return;
   const statusEl = document.getElementById('donate-status');
   if (statusEl) {
     statusEl.style.color = '#aaa';

@@ -68,7 +68,10 @@ html = html.replace(/https:\/\/unpkg\.com\/[^\s"']+/g, '');
 
 // Д. Удаление окна доната VK и кнопок VK из разметки
 html = html.replace(/<div id="donate-modal"[\s\S]*?<!-- \/donate-modal -->|<div id="donate-modal"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/, '<!-- Окно доната VK удалено для Пикабу Игр -->');
-html = html.replace(/<div id="vk-login-box"[\s\S]*?<\/div>/, '<!-- VK логин блок удален -->');
+html = html.replace(/<div id="vk-login-box"[\s\S]*?<\/div>\s*<\/div>/, '<!-- VK логин блок удален -->');
+html = html.replace(/<button id="btn-donate"[\s\S]*?<\/button>/, '');
+html = html.replace(/<button id="btn-opt-donate"[\s\S]*?<\/button>/, '');
+html = html.replace(/<button id="btn-vk-[^"]*"[\s\S]*?<\/button>/g, '');
 
 // Е. Гарантированное отображение блока логина Пикабу
 html = html.replace(/<div id="pkb-login-box" style="display:\s*none;/, '<div id="pkb-login-box" style="display: block;');
@@ -107,3 +110,4 @@ try {
   console.error('Ошибка при создании zip-архива:', err);
   process.exit(1);
 }
+
