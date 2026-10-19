@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ТЕРМИНАЛ: САМОСБОР</title>
 <link rel="icon" type="image/png" href="assets/icons/food_ration.png">
+<!-- Pikabu Games SDK -->
+<script async src="https://games.pikabu.ru/sdk/sdk.js" onload="if(typeof initPkbSDK==='function')initPkbSDK()"></script>
+<!-- VK Bridge SDK (активируется строго в среде VK) -->
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 <script>
 if (typeof vkBridge === 'undefined') {
@@ -13,7 +16,11 @@ if (typeof vkBridge === 'undefined') {
 </script>
 <script>
 try {
-  if (window.vkBridge) {
+  const _s = window.location.search || '';
+  const _r = document.referrer || '';
+  const _isPkb = (window.location.hostname.includes('pikabu.ru') || _r.includes('pikabu.ru') || _s.includes('platform=pikabu') || _s.includes('pkb_'));
+  const _isVk = !_isPkb && (_s.includes('vk_user_id') || _s.includes('vk_app_id') || window.location.hostname.includes('vk-apps.ru') || _r.includes('vk.com') || _r.includes('vk-apps.ru'));
+  if (_isVk && window.vkBridge) {
     vkBridge.send('VKWebAppInit').catch(function(){});
     vkBridge.send('VKWebAppResizeWindow', { width: 1000, height: 750 }).catch(function(){});
   }
@@ -860,7 +867,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div class="support-controls">
   <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
-  <button id="btn-donate" class="support-btn" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
+  <button id="btn-donate" class="support-btn" style="display:none;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
     💙 ПОДДЕРЖАТЬ ПРОЕКТ
   </button>
 </div>
@@ -923,7 +930,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
-  <button id="btn-opt-donate" class="audio-btn opt-btn" style="color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
+  <button id="btn-opt-donate" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
+  <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
   <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
   <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()" data-i18n="opt_wall">📢 На стену (VK)</button>
   <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()" data-i18n="opt_fav">⭐ В закладки (VK)</button>
@@ -943,6 +951,22 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
       <button id="vk-login-btn" style="width: 100%; background: #2787f5; color: #fff; border: 1px solid #5aa5ff; font-size: 13px; padding: 9px; cursor: pointer; font-weight: bold; letter-spacing: 1px; font-family: inherit;" data-i18n="login_vk_btn">
         🔵 ВОЙТИ ЧЕРЕЗ VK
+      </button>
+      <button type="button" onclick="playVideoIntro(null, true)" style="margin-top: 8px; width: 100%; background: transparent; border: 1px solid rgba(255,170,0,0.45); color: var(--term-warn); font-size: 11px; padding: 6px; cursor: pointer; letter-spacing: 1px; font-family: inherit;" data-i18n="btn_watch_intro">
+        🎬 СМОТРЕТЬ ЗАСТАВКУ (14 сек)
+      </button>
+    </div>
+
+    <!-- Панель входа через Пикабу Игры -->
+    <div id="pkb-login-box" style="display: none; margin-bottom: 18px; padding: 12px; border: 1px solid #73b926; background: rgba(115, 185, 38, 0.12); border-radius: 4px;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+        <img id="pkb-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #73b926; display: none;" src="" alt="">
+        <div style="font-size: 13px; color: #fff;">
+          <span data-i18n="login_inmate_label">Заключенный:</span> <span id="pkb-user-name" style="color: #8ae035; font-weight: bold;">Пикабушник</span>
+        </div>
+      </div>
+      <button id="pkb-login-btn" type="button" onclick="loginWithPikabu()" style="width: 100%; background: #528c1b; color: #fff; border: 1px solid #73b926; font-size: 13px; padding: 9px; cursor: pointer; font-weight: bold; letter-spacing: 1px; font-family: inherit;">
+        🟢 ВОЙТИ ЧЕРЕЗ ПИКАБУ
       </button>
       <button type="button" onclick="playVideoIntro(null, true)" style="margin-top: 8px; width: 100%; background: transparent; border: 1px solid rgba(255,170,0,0.45); color: var(--term-warn); font-size: 11px; padding: 6px; cursor: pointer; letter-spacing: 1px; font-family: inherit;" data-i18n="btn_watch_intro">
         🎬 СМОТРЕТЬ ЗАСТАВКУ (14 сек)
@@ -3222,6 +3246,7 @@ function performAutoLogin() {
   if (cachedLoginPayload && socket && socket.connected) {
     console.log('[Socket] Повторная авторизация сессии:', cachedLoginPayload.type);
     if (cachedLoginPayload.type === 'vk') socket.emit('vkLogin', cachedLoginPayload.data);
+    else if (cachedLoginPayload.type === 'pkb') socket.emit('pkbLogin', cachedLoginPayload.data);
     else if (cachedLoginPayload.type === 'manual') socket.emit('login', cachedLoginPayload.data);
     return true;
   }
@@ -3238,6 +3263,17 @@ socket.on('connect', () => {
 socket.on('requireAuth', () => {
   console.warn('[Socket] Сервер запросил авторизацию');
   if (!performAutoLogin()) {
+    if (typeof isPikabuEnvironment !== 'undefined' && isPikabuEnvironment) {
+      if (typeof pkbSdk !== 'undefined' && pkbSdk && pkbSdk.player && pkbSdk.player.isAuthorized) {
+        loginWithPikabu(true);
+        return;
+      }
+      showScreen('login-screen');
+      if (typeof setupPikabuUI === 'function' && typeof pkbSdk !== 'undefined' && pkbSdk && pkbSdk.player) {
+        setupPikabuUI(pkbSdk.player);
+      }
+      return;
+    }
     if (isVkEnvironment) {
       const launchParams = window.location.search || window.location.hash.substring(1);
       const urlParams = new URLSearchParams(window.location.search);
@@ -3351,28 +3387,226 @@ try {
   }
 } catch(e){}
 
-// ===== ИНТЕГРАЦИЯ VK.COM & VK MINI APPS (VK BRIDGE) =====
+// ===== ПЛАТФОРМЕННАЯ ИНТЕГРАЦИЯ: PIKABU GAMES & VKONTAKTE =====
+let isPikabuEnvironment = false;
+let pkbSdk = null;
+let pkbUserData = null;
+let pkbGameStartedNotified = false;
+
 let isVkEnvironment = false;
 let vkUserData = null;
 
+function detectPikabuPlatform() {
+  try {
+    const s = window.location.search || '';
+    const r = document.referrer || '';
+    const h = window.location.hostname || '';
+    if (h.includes('pikabu.ru') || r.includes('pikabu.ru') || s.includes('platform=pikabu') || s.includes('pkb_')) {
+      return true;
+    }
+    if (window.location.ancestorOrigins && window.location.ancestorOrigins.length) {
+      for (let i = 0; i < window.location.ancestorOrigins.length; i++) {
+        if (window.location.ancestorOrigins[i].includes('pikabu.ru')) return true;
+      }
+    }
+    if (typeof PkbSDK !== 'undefined') return true;
+  } catch(e) {}
+  return false;
+}
+
+isPikabuEnvironment = detectPikabuPlatform();
+
+// Определение VK (активируется ТОЛЬКО вне Пикабу и ТОЛЬКО при наличии явных параметров VK)
 try {
   const urlParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  if (urlParams.get('vk_user_id') || urlParams.get('vk_app_id') || hashParams.get('vk_user_id') || window.location.hostname.includes('vk-apps.ru') || (window.parent && window.parent !== window)) {
+  const r = document.referrer || '';
+  if (!isPikabuEnvironment && (
+    urlParams.has('vk_user_id') ||
+    urlParams.has('vk_app_id') ||
+    hashParams.has('vk_user_id') ||
+    window.location.hostname.includes('vk-apps.ru') ||
+    r.includes('vk.com') ||
+    r.includes('vk-apps.ru')
+  )) {
     isVkEnvironment = true;
   }
 } catch(e) {
   isVkEnvironment = false;
 }
 
+// ===== PIKABU GAMES SDK =====
+async function initPkbSDK() {
+  if (typeof PkbSDK === 'undefined') return;
+  try {
+    pkbSdk = await PkbSDK.init();
+    isPikabuEnvironment = true;
+    isVkEnvironment = false; // Исключаем любые вызовы VK на Пикабу
+    console.log('[Pikabu SDK] Инициализирован:', pkbSdk);
+
+    // Скрываем все элементы сторонней авторизации и платежей
+    const vkBox = document.getElementById('vk-login-box');
+    if (vkBox) vkBox.style.display = 'none';
+    const vkDiv = document.getElementById('login-divider');
+    if (vkDiv) vkDiv.style.display = 'none';
+    const dBtn = document.getElementById('btn-donate');
+    if (dBtn) dBtn.style.display = 'none';
+    const optDBtn = document.getElementById('btn-opt-donate');
+    if (optDBtn) optDBtn.style.display = 'none';
+    document.querySelectorAll('#btn-vk-invite, #btn-vk-wall, #btn-vk-fav').forEach(b => b.style.display = 'none');
+
+    // Настраиваем профиль игрока Пикабу
+    if (pkbSdk.player) {
+      pkbUserData = pkbSdk.player;
+      setupPikabuUI(pkbUserData);
+    }
+
+    if (typeof pkbSdk.on === 'function') {
+      pkbSdk.on('userAuthorized', () => {
+        if (pkbSdk.player) {
+          pkbUserData = pkbSdk.player;
+          setupPikabuUI(pkbUserData);
+          loginWithPikabu(true);
+        }
+      });
+    }
+
+    setupPikabuAdsUI();
+  } catch(err) {
+    console.warn('[Pikabu SDK] Ошибка инициализации:', err);
+  }
+}
+
+function setupPikabuUI(player) {
+  if (!player) return;
+  const pkbBox = document.getElementById('pkb-login-box');
+  const pkbName = document.getElementById('pkb-user-name');
+  const pkbAvatar = document.getElementById('pkb-user-avatar');
+  const pkbBtn = document.getElementById('pkb-login-btn');
+  const loginDiv = document.getElementById('login-divider');
+  if (pkbBox) pkbBox.style.display = 'block';
+  if (loginDiv) loginDiv.style.display = 'block';
+  if (pkbName) pkbName.innerText = player.name || ('Пикабушник #' + String(player.id || '').slice(-4));
+  if (pkbAvatar) {
+    if (player.avatar) {
+      pkbAvatar.src = player.avatar;
+      pkbAvatar.style.display = 'block';
+    } else {
+      pkbAvatar.style.display = 'none';
+    }
+  }
+  if (pkbBtn) {
+    if (player.isAuthorized) {
+      pkbBtn.innerText = '🟢 ИГРАТЬ КАК ' + (player.name || 'ПИКАБУШНИК').toUpperCase();
+    } else {
+      pkbBtn.innerText = '🟢 ВОЙТИ ЧЕРЕЗ ПИКАБУ';
+    }
+  }
+}
+
+async function loginWithPikabu(auto = false) {
+  if (!pkbSdk) {
+    if (!auto) submitManualLogin();
+    return;
+  }
+  try {
+    if (!pkbSdk.player || !pkbSdk.player.isAuthorized) {
+      if (!auto && pkbSdk.auth && typeof pkbSdk.auth.openAuthDialog === 'function') {
+        await pkbSdk.auth.openAuthDialog();
+      }
+    }
+    const player = pkbSdk.player;
+    const pkbId = (player && player.id) ? String(player.id) : ('pkb_guest_' + (socket.id || Math.floor(Math.random()*100000)));
+    const pkbName = (player && player.name) ? player.name : ('ЗК_' + pkbId.slice(-4));
+    const pkbAvatar = (player && player.avatar) ? player.avatar : null;
+
+    const payload = {
+      pkbUserId: pkbId,
+      name: pkbName,
+      avatar: pkbAvatar,
+      isAuthorized: !!(player && player.isAuthorized)
+    };
+
+    playVideoIntro();
+    saveAuthSession({ type: 'pkb', data: payload });
+    socket.emit('pkbLogin', payload);
+  } catch(e) {
+    console.error('[Pikabu SDK] Ошибка логина:', e);
+  }
+}
+
+function notifyPikabuGameStarted() {
+  if (pkbSdk && typeof pkbSdk.gameStarted === 'function' && !pkbGameStartedNotified) {
+    try {
+      pkbSdk.gameStarted();
+      pkbGameStartedNotified = true;
+      console.log('[Pikabu SDK] gameStarted() успешно выполнен');
+    } catch(e) {
+      console.warn('[Pikabu SDK] gameStarted exception:', e);
+    }
+  }
+}
+
+async function setupPikabuAdsUI() {
+  const btn = document.getElementById('btn-pkb-rewarded');
+  if (!btn || !pkbSdk || !pkbSdk.ads || !pkbSdk.ads.rewarded) return;
+  try {
+    if (pkbSdk.ads.rewarded.isSupported) {
+      btn.style.display = 'block';
+    }
+  } catch(e) {}
+}
+
+async function watchPikabuRewardedAd() {
+  if (!pkbSdk || !pkbSdk.ads || !pkbSdk.ads.rewarded) {
+    alert('Реклама доступна только на платформе Пикабу Игры.');
+    return;
+  }
+  try {
+    const can = await pkbSdk.ads.rewarded.canShow();
+    if (!can) {
+      alert('Реклама сейчас недоступна. Попробуйте чуть позже.');
+      return;
+    }
+    if (typeof currentAmbient !== 'undefined' && currentAmbient && AMBIENTS[currentAmbient]) {
+      try { AMBIENTS[currentAmbient].pause(); } catch(e){}
+    }
+    const result = await pkbSdk.ads.rewarded.show();
+    if (typeof currentAmbient !== 'undefined' && currentAmbient && AMBIENTS[currentAmbient]) {
+      try { AMBIENTS[currentAmbient].play().catch(()=>{}); } catch(e){}
+    }
+    if (result && result.reward) {
+      socket.emit('rewardAdWatched');
+    }
+  } catch(err) {
+    console.warn('[Pikabu SDK] Rewarded ad error:', err);
+    if (typeof currentAmbient !== 'undefined' && currentAmbient && AMBIENTS[currentAmbient]) {
+      try { AMBIENTS[currentAmbient].play().catch(()=>{}); } catch(e){}
+    }
+  }
+}
+
+if (typeof PkbSDK !== 'undefined') {
+  initPkbSDK();
+} else {
+  window.addEventListener('load', () => {
+    if (typeof PkbSDK !== 'undefined') initPkbSDK();
+  });
+}
+
+// ===== VK BRIDGE =====
 function initVkBridgeIfAvailable() {
-  if (typeof vkBridge === 'undefined') return;
+  if (isPikabuEnvironment || !isVkEnvironment || typeof vkBridge === 'undefined') return;
   try {
     vkBridge.send('VKWebAppInit')
       .then(() => {
         console.log('[VK Bridge] Успешно инициализирован (VKWebAppInit OK)');
         vkBridge.send('VKWebAppResizeWindow', { width: 1000, height: 750 }).catch(() => {});
         document.querySelectorAll('#btn-vk-invite, #btn-vk-wall, #btn-vk-fav').forEach(b => b.style.display = 'block');
+        const dBtn = document.getElementById('btn-donate');
+        if (dBtn) dBtn.style.display = 'block';
+        const optDBtn = document.getElementById('btn-opt-donate');
+        if (optDBtn) optDBtn.style.display = 'block';
         vkBridge.send('VKWebAppGetUserInfo')
           .then(data => {
             vkUserData = data;
@@ -3391,6 +3625,7 @@ function initVkBridgeIfAvailable() {
 }
 
 function setupVkLoginUI(data) {
+  if (isPikabuEnvironment) return;
   const vkBox = document.getElementById('vk-login-box');
   const vkDiv = document.getElementById('login-divider');
   const vkName = document.getElementById('vk-user-name');
@@ -3427,10 +3662,9 @@ if (vkLoginBtn) {
   };
 }
 
-// Запускаем VK Bridge всегда при наличии объекта
-if (typeof vkBridge !== 'undefined') {
+if (isVkEnvironment && typeof vkBridge !== 'undefined') {
   initVkBridgeIfAvailable();
-} else {
+} else if (isVkEnvironment) {
   window.addEventListener('load', initVkBridgeIfAvailable);
 }
 
@@ -3453,6 +3687,7 @@ function vkAddToFavorites() {
 }
 
 function donateVkVotes(itemCode, votesCount, bonusTalons) {
+  if (!isVkEnvironment) return;
   const statusEl = document.getElementById('donate-status');
   if (statusEl) {
     statusEl.style.color = '#aaa';
@@ -3572,6 +3807,7 @@ function finishVideoIntro() {
 }
 
 function proceedAfterLogin(data) {
+  notifyPikabuGameStarted();
   if (data.showIntro) {
     startBootSequence();
   } else {
@@ -3641,7 +3877,7 @@ socket.on('loginSuccess', (data) => {
   }
   proceedAfterLogin(data);
 });
-socket.on('startGame', () => { document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
+socket.on('startGame', () => { notifyPikabuGameStarted(); document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
 
 socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML = ''; h.forEach(m => b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`); b.scrollTop = b.scrollHeight; });
 socket.on('chatMessage', (m) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`; b.scrollTop = b.scrollHeight; });

@@ -1831,6 +1831,95 @@ io.on('connection', (socket) => {
         } catch (err) { writeLog(`ОШИБКА VK LOGIN: ${err.message}`); }
     });
 
+    socket.on('pkbLogin', (data) => {
+        if (!data || !data.pkbUserId) return;
+        try {
+            let pkbUserId = String(data.pkbUserId).trim();
+            if (!db.pkbMap) db.pkbMap = {};
+
+            // 1. Поиск в db.pkbMap
+            let username = db.pkbMap[pkbUserId];
+
+            // 2. Поиск по полю pkbUserId среди существующих игроков
+            if (!username || !db.players[username]) {
+                const foundByPkbId = Object.keys(db.players).find(k => {
+                    const pl = db.players[k];
+                    return pl && String(pl.pkbUserId) === String(pkbUserId);
+                });
+                if (foundByPkbId) {
+                    username = foundByPkbId;
+                    db.pkbMap[pkbUserId] = username;
+                }
+            }
+
+            // 3. Поиск по чистому имени игрока (если еще не привязан)
+            if (!username || !db.players[username]) {
+                let cleanName = (data.name || '').trim().replace(/[^a-zA-Zа-яА-Я0-9_]/g, '');
+                if (cleanName && db.players[cleanName] && (!db.players[cleanName].pkbUserId || String(db.players[cleanName].pkbUserId) === String(pkbUserId))) {
+                    username = cleanName;
+                    db.players[username].pkbUserId = pkbUserId;
+                    if (data.avatar && !db.players[username].avatar) db.players[username].avatar = data.avatar;
+                    db.pkbMap[pkbUserId] = username;
+                    writeLog(`[Pikabu] Существующий персонаж ${username} привязан к Пикабу ID ${pkbUserId}`);
+                    saveDB(true);
+                }
+            }
+
+            // 4. Регистрация нового игрока Пикабу
+            if (!username || !db.players[username]) {
+                let cleanName = (data.name || '').trim().replace(/[^a-zA-Zа-яА-Я0-9_]/g, '');
+                let candidate = cleanName ? cleanName : `Пикабушник_${pkbUserId.slice(-4)}`;
+                if (db.players[candidate] && String(db.players[candidate].pkbUserId) !== String(pkbUserId)) {
+                    candidate = `${candidate}_${pkbUserId.slice(-4)}`;
+                }
+                while (db.players[candidate] && String(db.players[candidate].pkbUserId) !== String(pkbUserId)) {
+                    candidate = `${cleanName || 'Пикабушник'}_${Math.floor(Math.random() * 9000 + 1000)}`;
+                }
+                username = candidate;
+
+                writeLog(`Регистрация через Пикабу Игры: ${username} (ID: ${pkbUserId})`);
+                db.players[username] = {
+                    password: 'pkb_auth_' + pkbUserId,
+                    pkbUserId: pkbUserId,
+                    avatar: data.avatar || null,
+                    talons: 0, hp: 100, maxHp: 100, filter: 100, hunger: 100, tox: 0, level: 1, xp: 0, monstersKilled: 0, roomsCleared: 0, rating: 0, playtime: 0,
+                    appearance: null, location: 'safe_room', floor: 0, activeEvent: null, workbenchLevel: 1,
+                    unlockedSectors: { 0: ['A0'] }, questItems: [], foundItems: [], quickSlots: [null, null], solvedGames: [], bossDefeated: {}, perks: [], mutations: [], robots: {},
+                    notebook: [
+                        "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, двадцать три заключённых, погрузили в клеть и отправили вниз, на нулевой этаж, в самое пекло Самосбора.",
+                        "[ВВОДНАЯ]: Мы почти достигли дна, когда лопнул трос. Клеть рухнула вниз.",
+                        "[ВВОДНАЯ]: Я очнулся среди обломков. Рядом — растерзанный конвоир.",
+                        "[ВВОДНАЯ]: Остальные выжившие разбежались кто куда. Я сорвал с конвоира противогаз и заперся в жилячейке.",
+                        "[ЦЕЛЬ]: Найти Главный Лифт в секторе E4 и подняться наверх.",
+                        "[СОВЕТ]: Не забывай про фильтр. Туман здесь живой."
+                    ],
+                    equipment: { weapon: 'weapon_wood', clothes: 'clothes_robe', mask: 'mask_cloth', backpack: null }, inventory: ['food_ration']
+                };
+                db.pkbMap[pkbUserId] = username;
+                saveDB(true);
+            } else {
+                writeLog(`Вход через Пикабу Игры: ${username} (ID: ${pkbUserId})`);
+            }
+
+            onlinePlayers[socket.id] = username;
+            if (activeCombats[username]) {
+                let c = activeCombats[username];
+                if (!c.isGlobal || !c.enemy || c.enemy.hp <= 0 || db.players[username].hp <= 0) {
+                    delete activeCombats[username];
+                }
+            }
+            if (db.players[username].hp <= 0) {
+                db.players[username].hp = db.players[username].maxHp || 100;
+                db.players[username].location = 'safe_room';
+            }
+            socket.emit('loginSuccess', { username, showIntro: db.players[username].appearance === null });
+            if (db.players[username].appearance !== null) socket.emit('startGame');
+            broadcastGameState();
+        } catch (err) {
+            writeLog(`ОШИБКА PKB LOGIN: ${err.message}`);
+        }
+    });
+
     socket.on('linkAccount', (data) => {
         if (!data || !data.targetUsername || !data.password) return;
         const { targetUsername, password } = data;
