@@ -867,7 +867,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div class="support-controls">
   <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
-  <button id="btn-donate" class="support-btn" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
+  <button id="btn-donate" class="support-btn" style="display: none;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
     💙 ПОДДЕРЖАТЬ ПРОЕКТ
   </button>
 </div>
@@ -930,7 +930,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
-  <button id="btn-opt-donate" class="audio-btn opt-btn" style="color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
+  <button id="btn-opt-donate" class="audio-btn opt-btn" style="display: none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
   <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
   <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
   <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()" data-i18n="opt_wall">📢 На стену (VK)</button>
@@ -942,7 +942,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <h2 style="font-size: 20px; margin-bottom: 20px; letter-spacing: 2px;" data-i18n="login_title">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
     
     <!-- Панель входа через VK -->
-    <div id="vk-login-box" style="margin-bottom: 18px; padding: 12px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.1); border-radius: 4px;">
+    <div id="vk-login-box" style="display: none; margin-bottom: 18px; padding: 12px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.1); border-radius: 4px;">
       <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
         <img id="vk-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #2787f5; display: none;" src="" alt="">
         <div style="font-size: 13px; color: #fff;">
@@ -973,7 +973,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </button>
     </div>
 
-    <div id="login-divider" style="margin-bottom: 15px; color: #777; font-size: 11px;" data-i18n="login_divider">— ИЛИ ВХОД ПО ПАРОЛЮ —</div>
+    <div id="login-divider" style="display: none; margin-bottom: 15px; color: #777; font-size: 11px;" data-i18n="login_divider">— ИЛИ ВХОД ПО ПАРОЛЮ —</div>
 
     <input type="text" id="username" placeholder="НОМЕР ЗАКЛЮЧЕННОГО" data-i18n-ph="ph_username">
     <input type="password" id="password" placeholder="ПАРОЛЬ" data-i18n-ph="ph_password">
@@ -3245,8 +3245,22 @@ function performAutoLogin() {
   }
   if (cachedLoginPayload && socket && socket.connected) {
     console.log('[Socket] Повторная авторизация сессии:', cachedLoginPayload.type);
-    if (cachedLoginPayload.type === 'vk') socket.emit('vkLogin', cachedLoginPayload.data);
-    else if (cachedLoginPayload.type === 'pkb') socket.emit('pkbLogin', cachedLoginPayload.data);
+    if (cachedLoginPayload.type === 'vk') {
+      if (!isVkEnvironment) {
+        cachedLoginPayload = null;
+        try { localStorage.removeItem('samosbor_auth'); sessionStorage.removeItem('samosbor_auth'); } catch(e){}
+        return false;
+      }
+      socket.emit('vkLogin', cachedLoginPayload.data);
+    }
+    else if (cachedLoginPayload.type === 'pkb') {
+      if (!isPikabuEnvironment) {
+        cachedLoginPayload = null;
+        try { localStorage.removeItem('samosbor_auth'); sessionStorage.removeItem('samosbor_auth'); } catch(e){}
+        return false;
+      }
+      socket.emit('pkbLogin', cachedLoginPayload.data);
+    }
     else if (cachedLoginPayload.type === 'manual') socket.emit('login', cachedLoginPayload.data);
     return true;
   }
@@ -3425,11 +3439,12 @@ try {
       urlParams.has('vk_user_id') ||
       urlParams.has('vk_app_id') ||
       hashParams.has('vk_user_id') ||
+      hashParams.has('vk_app_id') ||
       window.location.hostname.includes('vk-apps.ru') ||
       r.includes('vk.com') ||
-      r.includes('vk-apps.ru') ||
-      typeof vkBridge !== 'undefined' ||
-      (window.parent && window.parent !== window)
+      r.includes('vk-apps.ru')
+
+
     ) {
       isVkEnvironment = true;
     }
@@ -3600,7 +3615,7 @@ if (isPikabuEnvironment) {
 
 // ===== ИНТЕГРАЦИЯ VK.COM & VK MINI APPS (VK BRIDGE) =====
 function initVkBridgeIfAvailable() {
-  if (isPikabuEnvironment || typeof vkBridge === 'undefined') return;
+  if (!isVkEnvironment || typeof vkBridge === 'undefined') return;
   try {
     vkBridge.send('VKWebAppInit')
       .then(() => {
@@ -3667,7 +3682,7 @@ if (vkLoginBtn) {
   };
 }
 
-if (!isPikabuEnvironment) {
+if (isVkEnvironment) {
   if (typeof vkBridge !== 'undefined') {
     initVkBridgeIfAvailable();
   } else {
