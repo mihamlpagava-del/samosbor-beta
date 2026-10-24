@@ -43,8 +43,12 @@ copyDir(path.join(PUBLIC_DIR, 'assets'), path.join(BUILD_DIR, 'assets'));
 console.log('3. Адаптация index.html для платформы Яндекс Игры...');
 let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
 
+// А0. Удаление Pikabu SDK из <head>
+html = html.replace(/<!-- Pikabu Games SDK -->\s*<script async src="https:\/\/games\.pikabu\.ru\/sdk\/sdk\.js"[\s\S]*?<\/script>/g, '');
+html = html.replace(/<script async src="https:\/\/games\.pikabu\.ru\/sdk\/sdk\.js"[\s\S]*?<\/script>/g, '');
+
 // А. Подключение официального Yandex Games SDK в <head> (строго относительный путь /sdk.js БЕЗ внешних S3-хранилищ)
-const vkHeadRegex = /<script src="https:\/\/unpkg\.com\/@vkontakte\/vk-bridge\/dist\/browser\.min\.js"><\/script>[\s\S]*?<\/script>\s*<script>[\s\S]*?<\/script>/;
+const vkHeadRegex = /<!-- VK Bridge SDK[\s\S]*?<\/script>\s*<script>[\s\S]*?<\/script>\s*<script>[\s\S]*?<\/script>/;
 const yaHeadSdk = `<!-- Yandex Games SDK (официальный путь платформы, без внешних хранилищ) -->
 <script>
 window.ysdk = null;
@@ -157,8 +161,8 @@ html = html.replace(
   <button id="btn-ya-review" class="audio-btn opt-btn" style="color: var(--term-info);" onclick="requestYandexReview()">⭐ Оценить игру</button>`
 );
 
-// Е. Замена VK блока на экране входа (login-screen)
-const vkLoginBoxRegex = /<!-- Панель входа через VK -->[\s\S]*?<\/div>\s*<\/div>/;
+// Е. Замена панелей входа (VK / Пикабу) на панель Яндекс Игр
+const loginPanelsRegex = /<!-- Панель входа через VK -->[\s\S]*?(?=<div id="login-divider")/i;
 const yaLoginBox = `<!-- Панель входа через Яндекс Игры -->
     <div id="ya-login-box" style="margin-bottom: 18px; padding: 12px; border: 1px solid #ffcc00; background: rgba(255, 204, 0, 0.08); border-radius: 4px;">
       <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
@@ -170,9 +174,10 @@ const yaLoginBox = `<!-- Панель входа через Яндекс Игр�
       <button id="ya-login-btn" type="button" style="width: 100%; background: #fc3f1d; color: #fff; border: 1px solid #ff7253; font-size: 13px; padding: 9px; cursor: pointer; font-weight: bold; letter-spacing: 1px; font-family: inherit;">
         🟡 БЫСТРЫЙ ВХОД (ЯНДЕКС ID)
       </button>
-    </div>`;
+    </div>\n\n    `;
 
-html = html.replace(vkLoginBoxRegex, yaLoginBox);
+html = html.replace(loginPanelsRegex, yaLoginBox);
+html = html.replace(/<button id="btn-pkb-rewarded"[\s\S]*?<\/button>/g, '');
 
 // Ж. Замена JS интеграции VK Bridge на Яндекс SDK методы
 const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?(?=\s*let isVideoPlaying = false;)/;
@@ -201,9 +206,11 @@ function initYandexPlayer() {
     let pPhoto = window.yaPlayer.getPhoto('medium') || '';
 
     let yaBox = document.getElementById('ya-login-box');
+    let yaDiv = document.getElementById('login-divider');
     let yaName = document.getElementById('ya-user-name');
     let yaAvatar = document.getElementById('ya-user-avatar');
     if (yaBox) yaBox.style.display = 'block';
+    if (yaDiv) yaDiv.style.display = 'block';
     if (yaName) yaName.innerText = pName;
     if (yaAvatar && pPhoto) {
       yaAvatar.src = pPhoto;
@@ -216,6 +223,10 @@ function initYandexPlayer() {
     if (pInput && !pInput.value) pInput.value = 'ya_' + window.yaPlayer.getUniqueID().slice(-8);
   }).catch(err => {
     console.log('[Yandex] Гостевой режим:', err);
+    let yaBox = document.getElementById('ya-login-box');
+    let yaDiv = document.getElementById('login-divider');
+    if (yaBox) yaBox.style.display = 'block';
+    if (yaDiv) yaDiv.style.display = 'block';
     let uInput = document.getElementById('username');
     let pInput = document.getElementById('password');
     let guestId = localStorage.getItem('samosbor_ya_guest_id');
@@ -363,6 +374,11 @@ if (window.ysdk) {
 `;
 
 html = html.replace(vkJsRegex, yaJsCode);
+
+// Очистка упоминаний Pikabu SDK в коде
+html = html.replace(/\/\/ ===== PIKABU GAMES SDK[\s\S]*?(?=\/\/ ===== ИНТЕГРАЦИЯ ЯНДЕКС|\/\/ ===== ИНТЕГРАЦИЯ VK|\/\/ =====)/g, '');
+html = html.replace(/if\s*\(isPikabuEnvironment\)[\s\S]*?\}\s*\}\s*\}/g, '');
+html = html.replace(/isPikabuEnvironment = detectPikabuPlatform\(\);/g, 'isPikabuEnvironment = false;');
 
 // Очистка упоминаний VK и внешних скриптов в текстах интерфейса
 html = html.replace(/ВКонтакте/g, 'Яндекс Играх');
