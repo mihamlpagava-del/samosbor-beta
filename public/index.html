@@ -3368,8 +3368,8 @@ function submitManualLogin() {
   const p = document.getElementById('password').value.trim();
   const err = document.getElementById('auth-error');
   if (u && p) {
-    if (err) err.innerHTML = '<span style="color:var(--term-warn);">Авторизация...</span>';
-    playVideoIntro();
+    if (err) err.innerHTML = '<span style="color:var(--term-warn);">' + (currentLang === 'en' ? 'Authenticating...' : 'Авторизация...') + '</span>';
+
     const urlParams = new URLSearchParams(window.location.search);
     const vkId = (vkUserData && vkUserData.id) || urlParams.get('vk_user_id') || null;
     const loginPayload = { username: u, password: p };
@@ -3544,7 +3544,7 @@ async function loginWithPikabu(auto = false) {
       isAuthorized: !!(player && player.isAuthorized)
     };
 
-    playVideoIntro();
+
     saveAuthSession({ type: 'pkb', data: payload });
     socket.emit('pkbLogin', payload);
   } catch(e) {
@@ -3662,7 +3662,7 @@ function setupVkLoginUI(data) {
 const vkLoginBtn = document.getElementById('vk-login-btn');
 if (vkLoginBtn) {
   vkLoginBtn.onclick = () => {
-    playVideoIntro();
+
     const launchParams = window.location.search || window.location.hash.substring(1);
     let payload;
     if (vkUserData && vkUserData.id) {
@@ -3829,7 +3829,7 @@ function finishVideoIntro() {
 }
 
 function proceedAfterLogin(data) {
-  notifyPikabuGameStarted();
+  if (typeof notifyPikabuGameStarted === 'function') notifyPikabuGameStarted();
   if (data.showIntro) {
     startBootSequence();
   } else {
@@ -3899,7 +3899,7 @@ socket.on('loginSuccess', (data) => {
   }
   proceedAfterLogin(data);
 });
-socket.on('startGame', () => { notifyPikabuGameStarted(); document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
+socket.on('startGame', () => { if (typeof notifyPikabuGameStarted === 'function') notifyPikabuGameStarted(); document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
 
 socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML = ''; h.forEach(m => b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`); b.scrollTop = b.scrollHeight; });
 socket.on('chatMessage', (m) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`; b.scrollTop = b.scrollHeight; });

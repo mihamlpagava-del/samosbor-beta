@@ -3,7 +3,7 @@ const path = require('path');
 const sharp = require('sharp');
 const { execSync } = require('child_process');
 
-console.log('=== СБОРКА АРХИВА ДЛЯ NEWGROUNDS (HTML5 ZIP) ===\n');
+console.log('=== СБОРКА АРХИВА ДЛЯ NEWGROUNDS (HTML5 ZIP + NEWGROUNDS.IO SDK) ===\n');
 
 const ROOT_DIR = path.resolve(__dirname);
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -68,13 +68,14 @@ async function copyAndCompressAssets(srcDir, destDir) {
   html = html.replace(/<html lang="ru">/, '<html lang="en">');
   html = html.replace(/<title>ТЕРМИНАЛ: САМОСБОР<\/title>/, '<title>SAMOSBOR: Living Cell 7749</title>');
 
-  // Б. Удаление Pikabu SDK и VK Bridge SDK из <head>
+  // Б. Удаление Pikabu SDK и VK Bridge SDK из <head>, подключение Newgrounds.io SDK
   html = html.replace(/<!-- Pikabu Games SDK -->\s*<script async src="https:\/\/games\.pikabu\.ru\/sdk\/sdk\.js"[\s\S]*?<\/script>/g, '');
   html = html.replace(/<script async src="https:\/\/games\.pikabu\.ru\/sdk\/sdk\.js"[\s\S]*?<\/script>/g, '');
 
   const vkHeadRegex = /<!-- VK Bridge SDK[\s\S]*?<\/script>\s*<script>[\s\S]*?<\/script>\s*<script>[\s\S]*?<\/script>/;
-  const ngHeadMeta = `<!-- Newgrounds HTML5 Build -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">`;
+  const ngHeadMeta = `<!-- Newgrounds HTML5 & Official Newgrounds.io SDK -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script src="assets/newgroundsio.min.js"></script>`;
   if (vkHeadRegex.test(html)) {
     html = html.replace(vkHeadRegex, ngHeadMeta);
   } else {
@@ -186,6 +187,28 @@ const socket = io(BACKEND_URL, {
   // Л. Замена VK Bridge JS и Pikabu логики на интеграцию Newgrounds
   const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?(?=\s*let isVideoPlaying = false;)/;
   const ngJsCode = `// ===== ИНТЕГРАЦИЯ NEWGROUNDS & ВЕБ-ПЛАТФОРМ =====
+window.ngio = null;
+
+function initNewgroundsSDK(appId, aesKey) {
+  if (typeof Newgrounds === 'undefined' || !Newgrounds.io) return;
+  if (!appId) {
+    console.log('[Newgrounds.io] SDK готов к подключению (ожидает App ID)');
+    return;
+  }
+  try {
+    window.ngio = new Newgrounds.io.core(appId, aesKey || "");
+    window.ngio.getValidSession(function() {
+      if (window.ngio.user) {
+        console.log('[Newgrounds.io] Пользователь подключен:', window.ngio.user.name);
+        let uInput = document.getElementById('username');
+        if (uInput && !uInput.value) uInput.value = window.ngio.user.name;
+      }
+    });
+  } catch(e) {
+    console.warn('[Newgrounds.io] Ошибка инициализации:', e);
+  }
+}
+
 function quickStartNewgrounds() {
   let uInput = document.getElementById('username');
   let pInput = document.getElementById('password');
@@ -197,9 +220,10 @@ function quickStartNewgrounds() {
   }
   let u = (uInput && uInput.value.trim()) ? uInput.value.trim() : guestId;
   let p = (pInput && pInput.value.trim()) ? pInput.value.trim() : 'ng_pass_7749';
-  if (uInput && !uInput.value) uInput.value = u;
-  if (pInput && !pInput.value) pInput.value = p;
+  if (uInput) uInput.value = u;
+  if (pInput) pInput.value = p;
   if (err) err.innerHTML = '<span style="color:var(--term-warn);">' + (currentLang === 'en' ? 'Authenticating...' : 'Авторизация...') + '</span>';
+  saveAuthSession({ type: 'manual', data: { username: u, password: p } });
   socket.emit('login', { username: u, password: p });
 }
 
@@ -223,17 +247,19 @@ window.addEventListener('load', () => {
     if (uInput && !uInput.value) uInput.value = guestId;
     if (pInput && !pInput.value) pInput.value = 'ng_pass_7749';
   }
+  initNewgroundsSDK();
 });
 `;
 
   html = html.replace(vkJsRegex, ngJsCode);
 
-  // Очистка упоминаний Pikabu SDK
+  // М. Устранение вызовов Pikabu функций и видео-блокировок логина
+  html = html.replace(/notifyPikabuGameStarted\(\);?/g, '/* notifyPikabuGameStarted */');
   html = html.replace(/\/\/ ===== PIKABU GAMES SDK[\s\S]*?(?=\/\/ ===== ИНТЕГРАЦИЯ NEWGROUNDS|\/\/ =====)/g, '');
   html = html.replace(/if\s*\(isPikabuEnvironment\)[\s\S]*?\}\s*\}\s*\}/g, '');
   html = html.replace(/isPikabuEnvironment = detectPikabuPlatform\(\);/g, 'isPikabuEnvironment = false;');
 
-  // Очистка упоминаний VK в текстах интерфейса
+  // Н. Очистка упоминаний VK в текстах интерфейса
   html = html.replace(/ВКонтакте/g, 'Newgrounds');
   html = html.replace(/VK/g, 'Newgrounds');
   html = html.replace(/https:\/\/unpkg\.com\/[^\s"']+/g, '');
@@ -256,6 +282,7 @@ window.addEventListener('load', () => {
     console.log(`- Файл: ${ZIP_OUTPUT}`);
     console.log(`- Размер архива: ${(zipStat.size / (1024 * 1024)).toFixed(2)} MB`);
     console.log(`- index.html и папка assets/ упакованы в корень с правильными Unix-путями (assets/...).`);
+    console.log(`- Официальный Newgrounds.io SDK (newgroundsio.min.js) включен локально в assets/.`);
   } catch (err) {
     console.error('Ошибка при создании zip-архива:', err);
     process.exit(1);
