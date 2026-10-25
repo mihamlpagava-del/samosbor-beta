@@ -184,9 +184,15 @@ const socket = io(BACKEND_URL, {
     '<div id="login-divider" style="display: block;'
   );
 
-  // Л. Замена VK Bridge JS и Pikabu логики на интеграцию Newgrounds
-  const vkJsRegex = /\/\/ ===== ИНТЕГРАЦИЯ VK\.COM & VK MINI APPS \(VK BRIDGE\) =====[\s\S]*?(?=\s*let isVideoPlaying = false;)/;
+  // Л. Замена всей платформенной логики (VK & Pikabu) на интеграцию Newgrounds
+  const platformJsRegex = /\/\/ ===== ПЛАТФОРМЕННАЯ ИНТЕГРАЦИЯ: PIKABU GAMES & VKONTAKTE =====[\s\S]*?(?=\s*let isVideoPlaying = false;)/;
   const ngJsCode = `// ===== ИНТЕГРАЦИЯ NEWGROUNDS & ВЕБ-ПЛАТФОРМ =====
+let isPikabuEnvironment = false;
+let isVkEnvironment = false;
+let vkUserData = null;
+let pkbSdk = null;
+window.notifyPikabuGameStarted = function() {};
+
 window.ngio = null;
 
 function initNewgroundsSDK(appId, aesKey) {
@@ -224,6 +230,15 @@ function quickStartNewgrounds() {
   if (pInput) pInput.value = p;
   if (err) err.innerHTML = '<span style="color:var(--term-warn);">' + (currentLang === 'en' ? 'Authenticating...' : 'Авторизация...') + '</span>';
   saveAuthSession({ type: 'manual', data: { username: u, password: p } });
+  
+  if (!socket || !socket.connected) {
+    if (err) err.innerHTML = '<span style="color:var(--term-warn);">' + (currentLang === 'en' ? 'Connecting to server...' : 'Подключение к серверу...') + '</span>';
+    socket.once('connect', () => {
+      if (err) err.innerHTML = '<span style="color:var(--term-warn);">' + (currentLang === 'en' ? 'Authenticating...' : 'Авторизация...') + '</span>';
+      socket.emit('login', { username: u, password: p });
+    });
+    return;
+  }
   socket.emit('login', { username: u, password: p });
 }
 
@@ -251,13 +266,11 @@ window.addEventListener('load', () => {
 });
 `;
 
-  html = html.replace(vkJsRegex, ngJsCode);
+  html = html.replace(platformJsRegex, ngJsCode);
 
-  // М. Устранение вызовов Pikabu функций и видео-блокировок логина
-  html = html.replace(/notifyPikabuGameStarted\(\);?/g, '/* notifyPikabuGameStarted */');
-  html = html.replace(/\/\/ ===== PIKABU GAMES SDK[\s\S]*?(?=\/\/ ===== ИНТЕГРАЦИЯ NEWGROUNDS|\/\/ =====)/g, '');
-  html = html.replace(/if\s*\(isPikabuEnvironment\)[\s\S]*?\}\s*\}\s*\}/g, '');
-  html = html.replace(/isPikabuEnvironment = detectPikabuPlatform\(\);/g, 'isPikabuEnvironment = false;');
+  // М. Устранение вызовов Pikabu функций
+  html = html.replace(/if\s*\(\s*typeof notifyPikabuGameStarted === 'function'\s*\)\s*notifyPikabuGameStarted\(\);?/g, '');
+  html = html.replace(/notifyPikabuGameStarted\(\);?/g, '');
 
   // Н. Очистка упоминаний VK в текстах интерфейса
   html = html.replace(/ВКонтакте/g, 'Newgrounds');
