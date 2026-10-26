@@ -4716,6 +4716,9 @@ function bindChestButtons() {
       else if (action === 'use') socket.emit('useItem', idx);
       else if (action === 'equip') socket.emit('equipItem', idx);
       else if (action === 'drop') socket.emit('dropItem', idx);
+      else if (action === 'to-storage') socket.emit('moveToStorage', idx);
+      else if (action === 'from-storage') socket.emit('moveFromStorage', idx);
+      else if (action === 'drop-storage') socket.emit('dropStorageItem', idx);
       return;
     }
 
@@ -4908,8 +4911,17 @@ function updateUI(me, sectorPlayers) {
 
   const sellC = document.getElementById('shop-sell-container');
   const chestC = document.getElementById('chest-container');
+  const isSafeRoom = (me && me.location === 'safe_room');
   const capEl = document.getElementById('inv-capacity');
-  if(capEl) capEl.innerText = `${me.inventory.length}/${me.maxInv}`;
+  if(capEl) capEl.innerText = `${(me.inventory || []).length}/${me.maxInv || 12}`;
+  const storeCapEl = document.getElementById('storage-capacity');
+  if(storeCapEl) storeCapEl.innerText = `${(me.storage || []).length}/40`;
+
+  const tabBp = document.getElementById('tab-inv-backpack');
+  const tabSt = document.getElementById('tab-inv-storage');
+  if (tabBp) tabBp.classList.toggle('active', currentChestTab === 'backpack');
+  if (tabSt) tabSt.classList.toggle('active', currentChestTab === 'storage');
+
   if (sellC) sellC.innerHTML = '';
   if (chestC) chestC.innerHTML = '';
 
@@ -4955,6 +4967,9 @@ function updateUI(me, sectorPlayers) {
             actionBtns += `<button class="chest-act-btn" data-action="equip" data-index="${index}">🛡️ ${isEn ? 'EQUIP' : 'НАДЕТЬ'}</button>`;
           }
         }
+        if (isSafeRoom) {
+          actionBtns += `<button class="chest-act-btn" data-action="to-storage" data-index="${index}" style="color:var(--term-warn); border-color:var(--term-warn); font-weight:bold;">📦 ${isEn ? 'TO STASH' : 'В СУНДУК (СКЛАД)'}</button>`;
+        }
         actionBtns += `<button class="chest-act-btn" data-action="drop" data-index="${index}">🗑️ ${isEn ? 'DROP' : 'ВЫБРОСИТЬ'}</button>`;
 
         let lockNotice = isLocked ? `<div class="chest-item-warn">⚠️ ${isEn ? `REQ LV.${item.reqLevel} (YOURS: ${me.level})` : `ТРЕБУЕТСЯ УР. ${item.reqLevel} (ВАШ: ${me.level})`}</div>` : '';
@@ -4971,7 +4986,8 @@ function updateUI(me, sectorPlayers) {
           </div>
         `;
 
-        let toggleBtn = `<button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}">⚙️ ${isEn ? 'ACTIONS' : 'ДЕЙСТВИЯ'}</button>`;
+        let directStashBtn = isSafeRoom ? `<button class="chest-act-btn" data-action="to-storage" data-index="${index}" style="margin:0; padding:3px 6px; font-size:11px; color:var(--term-warn); border-color:var(--term-warn); background:rgba(255,170,0,0.12); font-weight:bold;" title="${isEn ? 'Transfer to Stash' : 'Сложить в сундук базы'}">📦 ${isEn ? 'TO STASH' : 'В СУНДУК'}</button>` : '';
+        let toggleBtn = `<div style="display:flex; gap:4px; width:100%; margin-top:4px;"><button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}" style="flex:1;">⚙️ ${isEn ? 'ACT' : 'ДЕЙСТВИЯ'}</button>${directStashBtn}</div>`;
 
         div.innerHTML = `
           <img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'">
@@ -4982,7 +4998,9 @@ function updateUI(me, sectorPlayers) {
           ${toggleBtn}
           ${overlayHtml}
         `;
-        chestC.appendChild(div);
+        if (currentChestTab === 'backpack') {
+          chestC.appendChild(div);
+        }
       }
 
       if (sellC && item.type !== 'quest') {
@@ -5039,7 +5057,7 @@ function updateUI(me, sectorPlayers) {
             <div class="item-type">[${typeLabel}]</div>
             <div class="chest-item-name">${dName}</div>
             ${statBadges}
-            <button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}">⚙️ ${isEn ? 'ACTIONS' : 'ДЕЙСТВИЯ'}</button>
+            <div style="display:flex; gap:4px; width:100%; margin-top:4px;"><button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}" style="flex:1;">⚙️ ${isEn ? 'ACT' : 'ДЕЙСТВИЯ'}</button><button class="chest-act-btn" data-action="from-storage" data-index="${index}" style="margin:0; padding:3px 6px; font-size:11px; color:var(--term-green); border-color:var(--term-green); background:rgba(0,255,65,0.12); font-weight:bold;" title="${isEn ? 'Take to Backpack' : 'Забрать в рюкзак'}">🎒 ${isEn ? 'BACKPACK' : 'В РЮКЗАК'}</button></div>
             ${overlayHtml}
           `;
           chestC.appendChild(div);
@@ -5901,7 +5919,15 @@ function switchFeedbackTab(tab) {
 let currentChestTab = 'backpack';
 function switchChestTab(tab) {
   currentChestTab = tab;
-  renderInventory();
+  activeChestItemIndex = null;
+  const tabBp = document.getElementById('tab-inv-backpack');
+  const tabSt = document.getElementById('tab-inv-storage');
+  if (tabBp) tabBp.classList.toggle('active', tab === 'backpack');
+  if (tabSt) tabSt.classList.toggle('active', tab === 'storage');
+  if (clientMe) updateUI(clientMe, window.sectorPlayers || []);
+}
+function renderInventory() {
+  switchChestTab(currentChestTab);
 }
 
 let devCodeMemory = null;
