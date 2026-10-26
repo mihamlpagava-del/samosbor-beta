@@ -1400,7 +1400,7 @@ function broadcastGameState() {
             me: {
                 username: username, talons: p.talons, location: p.location, floor: floor,
                 maxFloor: Math.max(p.maxFloor || 0, floor),
-                stats: getPlayerStats(p), equipment: p.equipment, inventory: p.inventory, maxInv: getMaxInv(p),
+                stats: getPlayerStats(p), equipment: p.equipment, inventory: p.inventory, storage: p.storage || [], maxInv: getMaxInv(p), maxStorage: 40,
                 hunger: p.hunger, tox: p.tox, mutations: p.mutations,
                 questItems: p.questItems, unlockedSectors: p.unlockedSectors[floor] || ['A0'], notebook: p.notebook,
                 quickSlots: p.quickSlots, perks: p.perks, level: p.level, xp: p.xp, monstersKilled: p.monstersKilled, roomsCleared: p.roomsCleared,
@@ -2009,6 +2009,28 @@ io.on('connection', (socket) => {
         socket.emit('feedbackList', db.feedback || []);
     });
 
+    socket.on('deleteFeedback', (data) => {
+        if (!data || data.devCode !== '2847') {
+            socket.emit('terminalError', 'ОШИБКА: Неверный код разработчика.');
+            return;
+        }
+        if (!Array.isArray(db.feedback)) db.feedback = [];
+        if (data.id === 'ALL') {
+            db.feedback = [];
+            saveDB();
+            io.emit('feedbackList', db.feedback);
+            socket.emit('terminalError', 'Журнал обращений полностью очищен.');
+            return;
+        }
+        let beforeLen = db.feedback.length;
+        db.feedback = db.feedback.filter(item => item.id !== data.id);
+        if (db.feedback.length !== beforeLen) {
+            saveDB();
+            io.emit('feedbackList', db.feedback);
+            socket.emit('terminalError', 'Обращение удалено из журнала.');
+        }
+    });
+
     socket.on('selectPerk', (perkId) => {
         let auth = getAuthPlayer(); if (!auth) return;
         let { p } = auth;
@@ -2232,15 +2254,18 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ===== ПРОДАЖА (было пропущено) =====
+    // ===== ПРОДАЖА (материалы, экипировка, припасы) =====
     socket.on('sellItem', (invIndex) => {
         let auth = getAuthPlayer(); if (!auth) return;
         let { p } = auth;
         if (!p.inventory[invIndex]) return;
         let itemId = p.inventory[invIndex]; let itemData = GAME_ITEMS[itemId]; if (!itemData) return;
-        if (itemData.type === 'material' || itemData.type === 'tool') { socket.emit('terminalError', 'ЭТО НЕЛЬЗЯ СДАТЬ.'); return; }
-        let price = Math.min(35, Math.max(3, Math.floor((itemData.cost || 5) * 0.4)));
-        p.inventory.splice(invIndex, 1); p.talons += price;
+        if (itemData.type === 'quest') { socket.emit('terminalError', 'КВЕСТОВЫЙ ПРЕДМЕТ НЕЛЬЗЯ СДАТЬ.'); return; }
+        let price = Math.max(1, Math.floor((itemData.cost || 5) * 0.4));
+        if (itemData.type === 'material') {
+            price = Math.max(2, Math.floor((itemData.cost || 5) * 0.5));
+        }
+        p.inventory.splice(invIndex, 1); p.talons = (p.talons || 0) + price;
         socket.emit('playSound', 'buy'); socket.emit('terminalError', `СДАНО: ${itemData.name} (+${price} т.)`);
         saveDB(); broadcastGameState();
     });
@@ -2250,6 +2275,44 @@ io.on('connection', (socket) => {
         let { p } = auth;
         if (!p.inventory[invIndex]) return;
         p.inventory.splice(invIndex, 1); socket.emit('playSound', 'equip'); saveDB(); broadcastGameState();
+    });
+
+    // ===== СКЛАД БАЗЫ (ЖИЛЯЧЕЙКА) =====
+    socket.on('moveToStorage', (invIndex) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (p.location !== 'safe_room') { socket.emit('terminalError', 'СКЛАД ДОСТУПЕН ТОЛЬКО В ЖИЛЯЧЕЙКЕ.'); return; }
+        if (!p.inventory[invIndex]) return;
+        p.storage = p.storage || [];
+        if (p.storage.length >= 40) { socket.emit('terminalError', 'СКЛАД БАЗЫ ПОЛОН (МАКС. 40).'); return; }
+        let item = p.inventory.splice(invIndex, 1)[0];
+        p.storage.push(item);
+        socket.emit('playSound', 'equip');
+        saveDB(); broadcastGameState();
+    });
+
+    socket.on('moveFromStorage', (storageIndex) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (p.location !== 'safe_room') { socket.emit('terminalError', 'СКЛАД ДОСТУПЕН ТОЛЬКО В ЖИЛЯЧЕЙКЕ.'); return; }
+        p.storage = p.storage || [];
+        if (!p.storage[storageIndex]) return;
+        if (p.inventory.length >= getMaxInv(p)) { socket.emit('terminalError', 'РЮКЗАК ПОЛОН!'); return; }
+        let item = p.storage.splice(storageIndex, 1)[0];
+        p.inventory.push(item);
+        socket.emit('playSound', 'equip');
+        saveDB(); broadcastGameState();
+    });
+
+    socket.on('dropStorageItem', (storageIndex) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (p.location !== 'safe_room') return;
+        p.storage = p.storage || [];
+        if (!p.storage[storageIndex]) return;
+        p.storage.splice(storageIndex, 1);
+        socket.emit('playSound', 'equip');
+        saveDB(); broadcastGameState();
     });
 
     socket.on('equipItem', (invIndex) => {
@@ -2451,22 +2514,39 @@ io.on('connection', (socket) => {
             return;
         }
         let tempInv = [...p.inventory];
+        let tempStorage = [...(p.storage || [])];
+        let takeFromInv = [];
+        let takeFromStorage = [];
+
         for (let ing of recipe.reqs) {
-            let idx = tempInv.indexOf(ing);
-            if (idx === -1) {
-                let name = GAME_ITEMS[ing] ? GAME_ITEMS[ing].name : ing;
-                socket.emit('terminalError', `НУЖНО: ${name}`);
-                return;
+            let idxInv = tempInv.indexOf(ing);
+            if (idxInv !== -1) {
+                tempInv.splice(idxInv, 1);
+                takeFromInv.push(ing);
+            } else {
+                let idxStorage = tempStorage.indexOf(ing);
+                if (idxStorage !== -1) {
+                    tempStorage.splice(idxStorage, 1);
+                    takeFromStorage.push(ing);
+                } else {
+                    let name = GAME_ITEMS[ing] ? GAME_ITEMS[ing].name : ing;
+                    socket.emit('terminalError', `НУЖНО: ${name}`);
+                    return;
+                }
             }
-            tempInv.splice(idx, 1);
         }
-        if (p.inventory.length - recipe.reqs.length + 1 > getMaxInv(p)) {
-            socket.emit('terminalError', 'СУНДУК ПЕРЕПОЛНЕН.');
+        if (p.inventory.length - takeFromInv.length + 1 > getMaxInv(p)) {
+            socket.emit('terminalError', 'РЮКЗАК ПЕРЕПОЛНЕН.');
             return;
         }
-        for (let ing of recipe.reqs) {
+        for (let ing of takeFromInv) {
             let idx = p.inventory.indexOf(ing);
             if (idx !== -1) p.inventory.splice(idx, 1);
+        }
+        for (let ing of takeFromStorage) {
+            p.storage = p.storage || [];
+            let idx = p.storage.indexOf(ing);
+            if (idx !== -1) p.storage.splice(idx, 1);
         }
         p.inventory.push(itemId);
         socket.emit('playSound', 'equip');
@@ -2517,9 +2597,19 @@ io.on('connection', (socket) => {
         if (p.robots[locKey] === undefined) return;
         let amount = p.robots[locKey];
         if (amount <= 0) { socket.emit('terminalError', 'РОБОТ ПУСТ.'); return; }
-        if (p.inventory.length + 1 > getMaxInv(p)) { socket.emit('terminalError', 'СУНДУК ПОЛОН!'); return; }
-        p.robots[locKey] = 0; p.inventory.push('food_ration');
-        socket.emit('playSound', 'farm'); socket.emit('terminalError', `СОБРАНО: +${amount} СЛИЗЬ`);
+        p.robots[locKey] = 0;
+        p.talons = (p.talons || 0) + amount;
+        let addedSlime = false;
+        if (p.inventory.length < getMaxInv(p)) {
+            p.inventory.push('food_ration');
+            addedSlime = true;
+        }
+        socket.emit('playSound', 'buy');
+        if (addedSlime) {
+            socket.emit('terminalError', `СОБРАНО: +${amount} ТАЛОНОВ, +1 СЛИЗЬ`);
+        } else {
+            socket.emit('terminalError', `СОБРАНО: +${amount} ТАЛОНОВ`);
+        }
         saveDB(); broadcastGameState();
     });
 

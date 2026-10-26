@@ -675,6 +675,11 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .item-stat-badge.stat-filter { background: rgba(140, 80, 0, 0.88); color: #ffcc55; border: 1px solid #ffaa00; text-shadow: 0 0 2px #000; }
 .item-stat-badge.stat-cap { background: rgba(90, 40, 140, 0.88); color: #ddb8ff; border: 1px solid #bb77ff; text-shadow: 0 0 2px #000; }
 
+.chest-tab-btn { background: transparent; border: 1px solid var(--term-dim); color: #888; padding: 4px 10px; font-family: inherit; font-size: 12px; cursor: pointer; border-radius: 2px; transition: 0.15s; }
+.chest-tab-btn.active { border-color: var(--term-warn); color: var(--term-warn); background: rgba(255, 170, 0, 0.12); font-weight: bold; }
+.feedback-del-btn { background: transparent; border: 1px solid #555; color: #888; font-size: 11px; padding: 1px 6px; cursor: pointer; border-radius: 2px; transition: 0.15s; }
+.feedback-del-btn:hover { border-color: #ff4444; color: #ff6666; background: rgba(255,68,68,0.15); }
+
 .feedback-tab-btn { flex: 1; padding: 8px 12px; font-family: inherit; font-size: 13px; font-weight: bold; cursor: pointer; background: transparent; border: 1px solid var(--term-dim); border-bottom: none; color: #888; transition: 0.15s; }
 .feedback-tab-btn.active { color: var(--term-warn); border-color: var(--term-warn); background: rgba(255, 170, 0, 0.12); }
 .feedback-type-btn { flex: 1; padding: 8px; font-size: 12px; cursor: pointer; background: transparent; border: 1px solid var(--term-dim); color: #aaa; font-family: inherit; transition: 0.15s; }
@@ -856,7 +861,10 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <div id="fb-view-list" style="display: none; flex-direction: column; flex-grow: 1; overflow: hidden; min-height: 300px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <div style="font-size: 13px; color: #aaa; text-align: left;" data-i18n="fb_list_desc">Все зарегистрированные баги и предложения:</div>
-        <button id="fb-btn-refresh" type="button" style="margin:0; padding:4px 10px; font-size:11px;" data-i18n="fb_btn_refresh">🔄 ОБНОВИТЬ</button>
+        <div style="display: flex; gap: 6px;">
+          <button id="fb-btn-clear-all" type="button" onclick="clearAllFeedbackDev()" style="margin:0; padding:4px 10px; font-size:11px; border-color: #882222; color: #ff6666; cursor:pointer;" title="Код разработчика: 2847">🗑️ ОЧИСТИТЬ ВСЕ [2847]</button>
+          <button id="fb-btn-refresh" type="button" style="margin:0; padding:4px 10px; font-size:11px;" data-i18n="fb_btn_refresh">🔄 ОБНОВИТЬ</button>
+        </div>
       </div>
       <div id="fb-list-container" style="overflow-y: auto; flex-grow: 1; max-height: 50vh; padding-right: 6px;">
         <div style="color: #666; font-size: 13px; padding: 20px 0;" data-i18n="fb_loading">Загрузка обращений...</div>
@@ -1325,7 +1333,13 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         </div>
       </div>
       <div class="chest-panel">
-        <h3><span data-i18n="chest_title">СУНДУК</span> [<span id="inv-capacity">0/12</span>]:</h3>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+          <div style="display: flex; gap: 6px;">
+            <button id="tab-inv-backpack" class="chest-tab-btn active" type="button" onclick="switchChestTab('backpack')">🎒 <span data-i18n="lbl_backpack_tab">РЮКЗАК</span> [<span id="inv-capacity">0/12</span>]</button>
+            <button id="tab-inv-storage" class="chest-tab-btn" type="button" onclick="switchChestTab('storage')">📦 <span data-i18n="lbl_storage_tab">СКЛАД БАЗЫ</span> [<span id="storage-capacity">0/40</span>]</button>
+          </div>
+          <div id="storage-hint" style="font-size: 11px; color: #888;"></div>
+        </div>
         <div class="chest-grid" id="chest-container"></div>
       </div>
     </div>
@@ -2709,6 +2723,18 @@ function getDisplayLogMessage(msg) {
   };
 
   if (directLogs[out.trim()]) return directLogs[out.trim()];
+
+  out = out.replace(/^СОБРАНО:\s*\+(\d+)\s*ТАЛОНОВ,?\s*(\+1 СЛИЗЬ)?/im, (m, talons, slime) => {
+    return `COLLECTED: +${talons} TALONS${slime ? ', +1 SLIME' : ''}`;
+  });
+  out = out.replace(/^РОБОТ ПУСТ\./im, 'HARVESTER IS EMPTY.');
+  out = out.replace(/^АВТОСБОРЩИК УСТАНОВЛЕН\./im, 'HARVESTER INSTALLED.');
+  out = out.replace(/^НЕТ АВТОСБОРЩИКА В СУНДУКЕ\./im, 'NO HARVESTER IN CHEST.');
+  out = out.replace(/^СДАНО:\s*(.*?)\s*\(\+(\d+)\s*т\.\)/im, '> Sold: $1 (+$2 t.)');
+  out = out.replace(/^СКЛАД БАЗЫ ПОЛОН/im, 'BASE STASH IS FULL');
+  out = out.replace(/^СКЛАД ДОСТУПЕН ТОЛЬКО В ЖИЛЯЧЕЙКЕ\./im, 'STASH IS ACCESSIBLE ONLY IN LIVING CELL.');
+  out = out.replace(/^РЮКЗАК ПОЛОН!/im, 'BACKPACK IS FULL!');
+  out = out.replace(/^РЮКЗАК ПЕРЕПОЛНЕН\./im, 'BACKPACK IS FULL.');
 
   out = out.replace(/^>\s*Найден(а|о)?\s*(.*?)(!|\.)?$/im, (m, g1, itemName) => {
     let trans = itemName.trim();
@@ -4739,14 +4765,69 @@ function updateUI(me, sectorPlayers) {
         chestC.appendChild(div);
       }
 
-      if (sellC && item.type !== 'material' && item.type !== 'tool') {
-        let price = Math.min(35, Math.max(3, Math.floor((item.cost || 5) * 0.4)));
+      if (sellC && item.type !== 'quest') {
+        let price = (item.type === 'material') ? Math.max(2, Math.floor((item.cost || 5) * 0.5)) : Math.max(1, Math.floor((item.cost || 5) * 0.4));
         let tUnit = isEn ? 't.' : 'т.';
         let sellBtnTxt = isEn ? 'SELL' : 'СДАТЬ';
         sellC.innerHTML += `<div class="shop-item"><div class="shop-item-left"><img class="shop-item-icon" src="${iconPath}" onerror="this.style.display='none'"><div><div style="font-size: 13px;">${dName}</div>${statBadges}</div></div><div><span style="color:var(--term-warn); font-size: 13px;">+${price} ${tUnit}</span> <button onclick="socket.emit('sellItem', ${index})" style="border-color:var(--term-danger); color:var(--term-danger); margin-left:6px; padding:3px 8px; font-size:11px;">${sellBtnTxt}</button></div></div>`;
       }
     });
   }
+
+  // Рендеринг предметов со склада базы при активной вкладке
+  if (currentChestTab === 'storage' && chestC) {
+    chestC.innerHTML = '';
+    if (!isSafeRoom) {
+      chestC.innerHTML = `<div style="grid-column: 1/-1; color: var(--term-warn); text-align: center; padding: 30px; font-size:13px; border:1px dashed var(--term-warn); background:rgba(255,170,0,0.05);">${isEn ? '⚠️ Base stash is only accessible when you are inside your Living Cell.' : '⚠️ Склад базы доступен только когда вы находитесь в Жилячейке.'}</div>`;
+    } else {
+      const storageList = me.storage || [];
+      if (storageList.length === 0) {
+        chestC.innerHTML = `<div style="grid-column: 1/-1; color: #888; text-align: center; padding: 30px; font-size:13px;">${isEn ? 'Stash is empty. Transfer items from backpack using [TO STASH].' : 'Склад пуст. Перемещайте предметы из рюкзака кнопкой [НА СКЛАД].'}</div>`;
+      } else {
+        storageList.forEach((itemId, index) => {
+          const item = GAME_ITEMS[itemId];
+          if (!item) return;
+          let dName = getItemDisplayName(item, itemId);
+          const iconName = item.iconId || itemId;
+          const iconPath = `assets/icons/${iconName}.png`;
+          let statBadges = getItemStatBadges(item);
+          let typeLabel = getItemTypeLabel(item.type);
+          let isOpen = (activeChestItemIndex === ('s_' + index));
+          let div = document.createElement('div');
+          div.className = 'chest-item' + (isOpen ? ' actions-open' : '');
+          div.dataset.index = index;
+
+          let actionBtns = `
+            <button class="chest-act-btn" data-action="from-storage" data-index="${index}" style="color:var(--term-green); border-color:var(--term-green);">🎒 ${isEn ? 'TO BACKPACK' : 'В РЮКЗАК'}</button>
+            <button class="chest-act-btn" data-action="drop-storage" data-index="${index}">🗑️ ${isEn ? 'DROP' : 'ВЫБРОСИТЬ'}</button>
+          `;
+
+          let overlayHtml = `
+            <div class="chest-item-actions-overlay" style="display: ${isOpen ? 'flex' : 'none'};">
+              <div class="chest-overlay-header">
+                <span class="chest-overlay-title">${dName}</span>
+                <button class="chest-overlay-close" data-action="close" title="${isEn ? 'Close' : 'Закрыть'}">✕</button>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                ${actionBtns}
+              </div>
+            </div>
+          `;
+
+          div.innerHTML = `
+            <img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'">
+            <div class="item-type">[${typeLabel}]</div>
+            <div class="chest-item-name">${dName}</div>
+            ${statBadges}
+            <button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}">⚙️ ${isEn ? 'ACTIONS' : 'ДЕЙСТВИЯ'}</button>
+            ${overlayHtml}
+          `;
+          chestC.appendChild(div);
+        });
+      }
+    }
+  }
+
   if (wSel && curWVal) wSel.value = curWVal;
   if (mSel && curMVal) mSel.value = curMVal;
   updateModPreview();
@@ -5595,6 +5676,40 @@ function switchFeedbackTab(tab) {
   }
 }
 
+
+let currentChestTab = 'backpack';
+function switchChestTab(tab) {
+  currentChestTab = tab;
+  renderInventory();
+}
+
+let devCodeMemory = null;
+function deleteFeedbackItem(id) {
+  const isEn = (currentLang === 'en');
+  let code = devCodeMemory;
+  if (!code) {
+    code = prompt(isEn ? 'Enter developer code (2847) to delete report:' : 'Введите код разработчика (2847) для удаления обращения:');
+    if (!code) return;
+    if (code.trim() === '2847') devCodeMemory = '2847';
+    else { alert(isEn ? 'Invalid developer code!' : 'Неверный код разработчика!'); return; }
+  }
+  socket.emit('deleteFeedback', { id: id, devCode: code.trim() });
+}
+
+function clearAllFeedbackDev() {
+  const isEn = (currentLang === 'en');
+  let code = devCodeMemory;
+  if (!code) {
+    code = prompt(isEn ? 'Enter developer code (2847) to clear feedback log:' : 'Введите код разработчика (2847) для очистки всего журнала:');
+    if (!code) return;
+    if (code.trim() === '2847') devCodeMemory = '2847';
+    else { alert(isEn ? 'Invalid developer code!' : 'Неверный код разработчика!'); return; }
+  }
+  if (confirm(isEn ? 'Are you sure you want to delete ALL feedback reports?' : 'Вы уверены, что хотите удалить ВСЕ обращения из журнала?')) {
+    socket.emit('deleteFeedback', { id: 'ALL', devCode: code.trim() });
+  }
+}
+
 function openFeedbackModal(type, tab) {
   if (type) setFeedbackType(type);
   if (fbStatus) fbStatus.innerHTML = '';
@@ -5673,8 +5788,11 @@ socket.on('feedbackList', (list) => {
     html += `
       <div class="feedback-card ${badgeCls}">
         <div class="feedback-card-header">
-          <span class="feedback-card-badge ${badgeCls}">${badgeText}</span>
-          <span style="color:var(--term-dim); font-size:11px;">#${user} ${loc} &bull; ${time}</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="feedback-card-badge ${badgeCls}">${badgeText}</span>
+            <span style="color:var(--term-dim); font-size:11px;">#${user} ${loc} &bull; ${time}</span>
+          </div>
+          <button class="feedback-del-btn" type="button" onclick="deleteFeedbackItem('${item.id}')" title="${isEn ? 'Delete (Dev Code: 2847)' : 'Удалить (Код разработчика: 2847)'}">🗑️</button>
         </div>
         <div class="feedback-card-text">${safeText.innerHTML}</div>
       </div>
