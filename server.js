@@ -2031,6 +2031,32 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('replyFeedback', (data) => {
+        if (!data || data.devCode !== '2847') {
+            socket.emit('terminalError', 'ОШИБКА: Неверный код разработчика.');
+            return;
+        }
+        let text = (typeof data.replyText === 'string' ? data.replyText.trim() : '').substring(0, 500);
+        if (!text) {
+            socket.emit('terminalError', 'ОТВЕТ: Текст не может быть пустым.');
+            return;
+        }
+        if (!Array.isArray(db.feedback)) db.feedback = [];
+        let report = db.feedback.find(item => item.id === data.id);
+        if (!report) {
+            socket.emit('terminalError', 'ОШИБКА: Обращение не найдено.');
+            return;
+        }
+        report.reply = {
+            text: text,
+            author: (data.author && typeof data.author === 'string') ? data.author.trim() : 'Диспетчер',
+            timeStr: new Date().toLocaleString('ru-RU')
+        };
+        saveDB();
+        io.emit('feedbackList', db.feedback);
+        socket.emit('terminalError', 'Ответ опубликован в журнале.');
+    });
+
     socket.on('selectPerk', (perkId) => {
         let auth = getAuthPlayer(); if (!auth) return;
         let { p } = auth;

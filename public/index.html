@@ -677,6 +677,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 .chest-tab-btn { background: transparent; border: 1px solid var(--term-dim); color: #888; padding: 4px 10px; font-family: inherit; font-size: 12px; cursor: pointer; border-radius: 2px; transition: 0.15s; }
 .chest-tab-btn.active { border-color: var(--term-warn); color: var(--term-warn); background: rgba(255, 170, 0, 0.12); font-weight: bold; }
+.feedback-reply-btn { background: transparent; border: 1px solid var(--term-dim); color: var(--term-info); font-size: 11px; padding: 2px 8px; cursor: pointer; border-radius: 2px; transition: 0.15s; font-family: inherit; }
+.feedback-reply-btn:hover { border-color: var(--term-info); background: rgba(0,229,255,0.15); color: #fff; }
 .feedback-del-btn { background: transparent; border: 1px solid #555; color: #888; font-size: 11px; padding: 1px 6px; cursor: pointer; border-radius: 2px; transition: 0.15s; }
 .feedback-del-btn:hover { border-color: #ff4444; color: #ff6666; background: rgba(255,68,68,0.15); }
 
@@ -862,7 +864,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <div style="font-size: 13px; color: #aaa; text-align: left;" data-i18n="fb_list_desc">Все зарегистрированные баги и предложения:</div>
         <div style="display: flex; gap: 6px;">
-          <button id="fb-btn-clear-all" type="button" onclick="clearAllFeedbackDev()" style="margin:0; padding:4px 10px; font-size:11px; border-color: #882222; color: #ff6666; cursor:pointer;" title="Код разработчика: 2847">🗑️ ОЧИСТИТЬ ВСЕ [2847]</button>
+          <button id="fb-btn-clear-all" type="button" onclick="clearAllFeedbackDev()" style="margin:0; padding:4px 10px; font-size:11px; border-color: #882222; color: #ff6666; cursor:pointer;" title="Очистить весь журнал (для разработчика)">🗑️ ОЧИСТИТЬ ВСЕ</button>
           <button id="fb-btn-refresh" type="button" style="margin:0; padding:4px 10px; font-size:11px;" data-i18n="fb_btn_refresh">🔄 ОБНОВИТЬ</button>
         </div>
       </div>
@@ -5785,6 +5787,23 @@ socket.on('feedbackList', (list) => {
     const loc = item.location ? `(${isEn ? 'Fl.' : 'Эт.'}${item.floor || 0}, ${item.location})` : '';
     const safeText = document.createElement('div');
     safeText.innerText = item.text || '';
+
+    let replyHtml = '';
+    if (item.reply) {
+      const repObj = (typeof item.reply === 'object') ? item.reply : { text: item.reply, author: (isEn ? 'Control Room' : 'Диспетчер') };
+      const safeRepText = document.createElement('div');
+      safeRepText.innerText = repObj.text || '';
+      const repAuthor = repObj.author || (isEn ? 'Control Room' : 'Диспетчер');
+      const repTime = repObj.timeStr ? ` &bull; <span style="font-weight:normal; color:#888;">${repObj.timeStr}</span>` : '';
+      replyHtml = `
+        <div class="feedback-reply-box" style="margin-top: 8px; padding: 8px 10px; background: rgba(0, 229, 255, 0.08); border-left: 2px solid var(--term-info); border-radius: 2px; font-size: 12px; text-align: left;">
+          <div style="color: var(--term-info); font-weight: bold; margin-bottom: 4px; font-size: 11px; display:flex; align-items:center; gap:4px;">
+            🛡️ ${repAuthor}${repTime}
+          </div>
+          <div style="color: #ddd; white-space: pre-wrap; font-family: inherit; line-height: 1.4;">${safeRepText.innerHTML}</div>
+        </div>
+      `;
+    }
     html += `
       <div class="feedback-card ${badgeCls}">
         <div class="feedback-card-header">
@@ -5792,9 +5811,12 @@ socket.on('feedbackList', (list) => {
             <span class="feedback-card-badge ${badgeCls}">${badgeText}</span>
             <span style="color:var(--term-dim); font-size:11px;">#${user} ${loc} &bull; ${time}</span>
           </div>
-          <button class="feedback-del-btn" type="button" onclick="deleteFeedbackItem('${item.id}')" title="${isEn ? 'Delete (Dev Code: 2847)' : 'Удалить (Код разработчика: 2847)'}">🗑️</button>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="feedback-reply-btn" type="button" onclick="replyFeedbackItem('${item.id}')" title="${isEn ? 'Reply (Dev Code required)' : 'Оставить ответ (требуется код)'}">💬 ${isEn ? 'REPLY' : 'ОТВЕТИТЬ'}</button>
+            <button class="feedback-del-btn" type="button" onclick="deleteFeedbackItem('${item.id}')" title="${isEn ? 'Delete' : 'Удалить'}">🗑️</button>
+          </div>
         </div>
-        <div class="feedback-card-text">${safeText.innerHTML}</div>
+        <div class="feedback-card-text">${safeText.innerHTML}</div>${replyHtml}
       </div>
     `;
   });
