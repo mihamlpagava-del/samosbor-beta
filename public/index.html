@@ -4968,7 +4968,7 @@ function updateUI(me, sectorPlayers) {
           }
         }
         if (isSafeRoom) {
-          actionBtns += `<button class="chest-act-btn" data-action="to-storage" data-index="${index}" style="color:var(--term-warn); border-color:var(--term-warn); font-weight:bold;">📦 ${isEn ? 'TO STASH' : 'В СУНДУК (СКЛАД)'}</button>`;
+          actionBtns += `<button class="chest-act-btn" data-action="to-storage" data-index="${index}" style="color:var(--term-warn); border-color:var(--term-warn); font-weight:bold;">📦 ${isEn ? 'TO STASH' : 'В СУНДУК'}</button>`;
         }
         actionBtns += `<button class="chest-act-btn" data-action="drop" data-index="${index}">🗑️ ${isEn ? 'DROP' : 'ВЫБРОСИТЬ'}</button>`;
 
@@ -4986,8 +4986,7 @@ function updateUI(me, sectorPlayers) {
           </div>
         `;
 
-        let directStashBtn = isSafeRoom ? `<button class="chest-act-btn" data-action="to-storage" data-index="${index}" style="margin:0; padding:3px 6px; font-size:11px; color:var(--term-warn); border-color:var(--term-warn); background:rgba(255,170,0,0.12); font-weight:bold;" title="${isEn ? 'Transfer to Stash' : 'Сложить в сундук базы'}">📦 ${isEn ? 'TO STASH' : 'В СУНДУК'}</button>` : '';
-        let toggleBtn = `<div style="display:flex; gap:4px; width:100%; margin-top:4px;"><button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}" style="flex:1;">⚙️ ${isEn ? 'ACT' : 'ДЕЙСТВИЯ'}</button>${directStashBtn}</div>`;
+        let toggleBtn = `<button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}">⚙️ ${isEn ? 'ACTIONS' : 'ДЕЙСТВИЯ'}</button>`;
 
         div.innerHTML = `
           <img class="chest-item-icon" src="${iconPath}" onerror="this.style.display='none'">
@@ -5057,7 +5056,7 @@ function updateUI(me, sectorPlayers) {
             <div class="item-type">[${typeLabel}]</div>
             <div class="chest-item-name">${dName}</div>
             ${statBadges}
-            <div style="display:flex; gap:4px; width:100%; margin-top:4px;"><button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}" style="flex:1;">⚙️ ${isEn ? 'ACT' : 'ДЕЙСТВИЯ'}</button><button class="chest-act-btn" data-action="from-storage" data-index="${index}" style="margin:0; padding:3px 6px; font-size:11px; color:var(--term-green); border-color:var(--term-green); background:rgba(0,255,65,0.12); font-weight:bold;" title="${isEn ? 'Take to Backpack' : 'Забрать в рюкзак'}">🎒 ${isEn ? 'BACKPACK' : 'В РЮКЗАК'}</button></div>
+            <button class="chest-item-toggle-btn" data-action="toggle" data-index="${index}">⚙️ ${isEn ? 'ACTIONS' : 'ДЕЙСТВИЯ'}</button>
             ${overlayHtml}
           `;
           chestC.appendChild(div);
