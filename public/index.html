@@ -5905,6 +5905,60 @@ function switchChestTab(tab) {
 }
 
 let devCodeMemory = null;
+
+function toggleFeedbackReply(id) {
+  const form = document.getElementById('fb-reply-form-' + id);
+  if (!form) return;
+  const isHidden = (form.style.display === 'none' || form.style.display === '');
+  document.querySelectorAll('.feedback-reply-form').forEach(f => f.style.display = 'none');
+  if (isHidden) {
+    form.style.display = 'block';
+    const ta = document.getElementById('fb-reply-text-' + id);
+    if (ta) ta.focus();
+    if (devCodeMemory) {
+      const codeInput = document.getElementById('fb-reply-code-' + id);
+      if (codeInput && !codeInput.value) codeInput.value = devCodeMemory;
+    }
+  }
+}
+
+function replyFeedbackItem(id) {
+  toggleFeedbackReply(id);
+}
+
+function submitFeedbackReply(id) {
+  const isEn = (currentLang === 'en');
+  const ta = document.getElementById('fb-reply-text-' + id);
+  const codeInput = document.getElementById('fb-reply-code-' + id);
+  const text = (ta && ta.value) ? ta.value.trim() : '';
+  const code = (codeInput && codeInput.value) ? codeInput.value.trim() : (devCodeMemory || '');
+
+  if (!text) {
+    alert(isEn ? 'Please enter response text!' : 'Введите текст ответа!');
+    return;
+  }
+  if (!code) {
+    alert(isEn ? 'Please enter developer code (2847)!' : 'Введите код разработчика (2847)!');
+    return;
+  }
+  if (code === '2847') {
+    devCodeMemory = '2847';
+  } else {
+    alert(isEn ? 'Invalid developer code!' : 'Неверный код разработчика!');
+    return;
+  }
+
+  socket.emit('replyFeedback', {
+    id: id,
+    devCode: code,
+    replyText: text,
+    author: isEn ? 'Control Room' : 'Диспетчер'
+  });
+
+  const form = document.getElementById('fb-reply-form-' + id);
+  if (form) form.style.display = 'none';
+}
+
 function deleteFeedbackItem(id) {
   const isEn = (currentLang === 'en');
   let code = devCodeMemory;
@@ -6036,6 +6090,17 @@ socket.on('feedbackList', (list) => {
           </div>
         </div>
         <div class="feedback-card-text">${safeText.innerHTML}</div>${replyHtml}
+        <div id="fb-reply-form-${item.id}" class="feedback-reply-form" style="display:none; margin-top:10px; padding:10px; background: rgba(0, 20, 10, 0.95); border: 1px solid var(--term-info); border-radius: 4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="color:var(--term-info); font-size:12px; font-weight:bold;">💬 ${isEn ? 'OFFICIAL RESPONSE (DISPATCHER)' : 'ОТВЕТ ДИСПЕТЧЕРА'}</span>
+            <button type="button" onclick="toggleFeedbackReply('${item.id}')" style="background:none; border:none; color:#888; cursor:pointer; font-size:12px;">✕</button>
+          </div>
+          <textarea id="fb-reply-text-${item.id}" rows="2" maxlength="500" placeholder="${isEn ? 'Enter response text...' : 'Введите текст ответа разработчика/диспетчера...'}" style="width:100%; box-sizing:border-box; background:#000; border:1px solid #444; color:#fff; font-family:inherit; font-size:12px; padding:6px; resize:vertical; border-radius:2px;"></textarea>
+          <div style="display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap;">
+            <input id="fb-reply-code-${item.id}" type="password" maxlength="10" placeholder="${isEn ? 'Dev code (2847)' : 'Код (2847)'}" value="${devCodeMemory || ''}" style="width:110px; background:#000; border:1px solid #444; color:var(--term-warn); font-family:inherit; font-size:12px; padding:5px 8px; border-radius:2px;">
+            <button type="button" onclick="submitFeedbackReply('${item.id}')" style="background:var(--term-info); color:#000; border:none; font-weight:bold; padding:5px 14px; font-size:12px; cursor:pointer; border-radius:2px;">${isEn ? 'SEND REPLY' : 'ОТПРАВИТЬ ОТВЕТ'}</button>
+          </div>
+        </div>
       </div>
     `;
   });
