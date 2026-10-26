@@ -2067,7 +2067,18 @@ io.on('connection', (socket) => {
         }
     });
 
-    function checkLifterTrigger(player, sock, loc) {
+    
+function getLifterIdForFloor(floor) {
+    let f = parseInt(floor, 10) || 0;
+    if (f >= 25) return 'npc_lifter_abyss';
+    if (f >= 20) return 'npc_lifter_cult';
+    if (f >= 15) return 'npc_lifter_vokhr';
+    if (f >= 10) return 'npc_lifter_reactor';
+    if (f >= 5) return 'npc_lifter_archive';
+    return 'npc_lifter';
+}
+
+function checkLifterTrigger(player, sock, loc) {
         if (loc === 'E4' && !player.talkedToLifter) {
             player.talkedToLifter = true;
             let evLifter = RANDOM_EVENTS.find(e => e.id === 'npc_lifter');
@@ -2083,8 +2094,11 @@ io.on('connection', (socket) => {
         let auth = getAuthPlayer(); if (!auth) return;
         let { username, p } = auth;
         if (activeCombats[username]) return;
-        let targetId = npcId || 'npc_lifter';
-        let ev = RANDOM_EVENTS.find(e => e.id === targetId);
+        let targetId = npcId;
+        if (!targetId || targetId === 'npc_lifter') {
+            targetId = getLifterIdForFloor(p.floor || 0);
+        }
+        let ev = RANDOM_EVENTS.find(e => e.id === targetId) || RANDOM_EVENTS.find(e => e.id === 'npc_lifter');
         if (ev) {
             p.activeEvent = ev.id;
             p.activeEventNode = null;
@@ -2947,7 +2961,8 @@ io.on('connection', (socket) => {
                 let hint = cfg.elevatorHint || `ЛИФТ НЕ АКТИВИРОВАН. Требуются: ${missing.join(', ')}.`;
                 socket.emit('terminalError', hint);
                 socket.emit('playSound', 'click');
-                let evLifter = RANDOM_EVENTS.find(e => e.id === 'npc_lifter');
+                let lifterId = getLifterIdForFloor(currentFloor);
+                let evLifter = RANDOM_EVENTS.find(e => e.id === lifterId) || RANDOM_EVENTS.find(e => e.id === 'npc_lifter');
                 if (evLifter) {
                     p.activeEvent = evLifter.id;
                     p.activeEventNode = null;
@@ -3108,6 +3123,32 @@ io.on('connection', (socket) => {
                 p.inventory.splice(idx, 1);
             }
         }
+        if (choice.reqElevatorKeys) {
+            let curF = p.floor || 0;
+            let cfg = FLOOR_CONFIGS[curF] || FLOOR_CONFIGS[0];
+            let neededKeys = cfg.elevatorKeys || ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'];
+            let missing = [];
+            for (let rItem of neededKeys) {
+                let has = (p.inventory && p.inventory.includes(rItem)) || (p.questItems && p.questItems.includes(rItem)) || (p.foundItems && p.foundItems.includes(rItem));
+                if (!has) {
+                    missing.push(GAME_ITEMS[rItem] ? GAME_ITEMS[rItem].name : rItem);
+                }
+            }
+            if (missing.length > 0) {
+                socket.emit('terminalError', `НЕ ХВАТАЕТ ДЕТАЛЕЙ ДЛЯ ЛИФТА: ${missing.join(', ')}`);
+                return;
+            }
+            for (let rItem of neededKeys) {
+                if (p.inventory && p.inventory.includes(rItem)) {
+                    let idx = p.inventory.indexOf(rItem);
+                    p.inventory.splice(idx, 1);
+                }
+                if (p.questItems && p.questItems.includes(rItem)) {
+                    let idx = p.questItems.indexOf(rItem);
+                    p.questItems.splice(idx, 1);
+                }
+            }
+        }
         if (choice.reqItems && Array.isArray(choice.reqItems)) {
             let missing = [];
             for (let rItem of choice.reqItems) {
@@ -3140,7 +3181,10 @@ io.on('connection', (socket) => {
             if (choice.activateElevator) {
                 p.liftRepaired = true;
                 if (!p.foundItems) p.foundItems = [];
-                ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'].forEach(k => {
+                let curF = p.floor || 0;
+                let cfg = FLOOR_CONFIGS[curF] || FLOOR_CONFIGS[0];
+                let neededKeys = cfg.elevatorKeys || ['quest_lift_repair', 'quest_lift_buttons', 'quest_lift_wire'];
+                neededKeys.forEach(k => {
                     if (!p.foundItems.includes(k)) p.foundItems.push(k);
                 });
                 socket.emit('playSound', 'victory');

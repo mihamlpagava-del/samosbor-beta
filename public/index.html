@@ -5088,8 +5088,22 @@ function updateUI(me, sectorPlayers) {
 
   let lifterBtn = '';
   if (me.location === 'E4') {
-    let makarTxt = isEn ? '👴 DED MAKAR (LIFT OPERATOR)' : '👴 ДЕД МАКАР (СЛЕПОЙ ЛИФТЁР)';
-    lifterBtn = `<button onclick="socket.emit('talkToNpc', 'npc_lifter');" style="color: #00e5ff; border-color: #00e5ff; font-weight:bold; margin-bottom: 6px; box-shadow: 0 0 10px rgba(0,229,255,0.25);">${makarTxt}</button>`;
+    let curF = me.floor || 0;
+    let lData;
+    if (curF >= 25) {
+      lData = { id: 'npc_lifter_abyss', text: isEn ? '👁️ SINGULAR-0 (CHRONO-WARDEN)' : '👁️ СИНГУЛЯР-0 (ХРОНО-СТРАЖ)' };
+    } else if (curF >= 20) {
+      lData = { id: 'npc_lifter_cult', text: isEn ? '🕯️ HERMIT AZARIY (FLESH SHAFT)' : '🕯️ ОТШЕЛЬНИК АЗАРИЙ (ЖИВАЯ ШАХТА)' };
+    } else if (curF >= 15) {
+      lData = { id: 'npc_lifter_vokhr', text: isEn ? '🎖️ SGT. TARASOV (VOKHR OUTPOST)' : '🎖️ СЕРЖАНТ ТАРАСОВ (ЗАСЛОН ВОХР)' };
+    } else if (curF >= 10) {
+      lData = { id: 'npc_lifter_reactor', text: isEn ? '⚡ CHIEF ZASLAVSKY (REACTOR)' : '⚡ ЭНЕРГЕТИК ЗАСЛАВСКИЙ (РЕАКТОР)' };
+    } else if (curF >= 5) {
+      lData = { id: 'npc_lifter_archive', text: isEn ? '📜 INSPECTOR KOVALEV (ARCHIVE)' : '📜 ИНСПЕКТОР КОВАЛЁВ (СПЕЦАРХИВ)' };
+    } else {
+      lData = { id: 'npc_lifter', text: isEn ? '👴 DED MAKAR (LIFT OPERATOR)' : '👴 ДЕД МАКАР (СЛЕПОЙ ЛИФТЁР)' };
+    }
+    lifterBtn = `<button onclick="socket.emit('talkToNpc', '${lData.id}');" style="color: #00e5ff; border-color: #00e5ff; font-weight:bold; margin-bottom: 6px; box-shadow: 0 0 10px rgba(0,229,255,0.25);">${lData.text}</button>`;
   }
   let expT = me.location === 'E4' ? (isEn ? '[ START BACKUP ELEVATOR ]' : '[ ЗАПУСТИТЬ РЕЗЕРВНЫЙ ЛИФТ ]') : (isEn ? 'EXPEDITION INTO FOG' : 'ВЫЛАЗКА В ТУМАН');
   let expC = me.location === 'E4' ? 'var(--term-warn)' : 'var(--term-danger)';
