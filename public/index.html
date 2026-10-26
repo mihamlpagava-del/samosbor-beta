@@ -20,6 +20,7 @@ try {
   const _r = document.referrer || '';
   const _isPkb = (window.location.hostname.includes('pikabu.ru') || _r.includes('pikabu.ru') || _s.includes('platform=pikabu') || _s.includes('pkb_'));
   const _isVk = !_isPkb && (_s.includes('vk_user_id') || _s.includes('vk_app_id') || window.location.hostname.includes('vk-apps.ru') || _r.includes('vk.com') || _r.includes('vk-apps.ru') || (window.parent && window.parent !== window));
+  if (_isVk) { try { document.documentElement.classList.add('vk-env'); } catch(e){} }
   if (_isVk && window.vkBridge) {
     vkBridge.send('VKWebAppInit').catch(function(){});
     vkBridge.send('VKWebAppResizeWindow', { width: 1000, height: 750 }).catch(function(){});
@@ -792,6 +793,58 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   gap: 10px;
   padding-top: 6px;
 }
+
+/* VK Seamless Launch Mode (п. 1.2.2 правил VK Mini Apps) */
+.vk-env #login-screen .panel form,
+.vk-env #login-screen .panel #vk-login-box,
+.vk-env #login-screen .panel #login-divider,
+.vk-env #login-screen .panel input,
+.vk-env #login-screen .panel #login-btn,
+.vk-env #login-screen .panel .login-input-row,
+.vk-env #login-screen .panel > div:not(#vk-auto-status):not(#auth-error) {
+  display: none !important;
+}
+.vk-env #vk-auto-status {
+  display: block !important;
+}
+
+/* INTERACTIVE GAMEPLAY ONBOARDING (п. 4.2.4 правил VK Mini Apps) */
+.onboarding-guide-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  background: rgba(4, 16, 8, 0.96);
+  border: 2px solid var(--term-warn);
+  box-shadow: 0 0 25px rgba(255, 170, 0, 0.6), inset 0 0 10px rgba(255, 170, 0, 0.2);
+  padding: 12px 18px;
+  border-radius: 4px;
+  color: #fff;
+  font-family: 'PT Mono', monospace;
+  font-size: 13.5px;
+  max-width: 92%;
+  width: 580px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: onboardingBounce 1.2s infinite alternate ease-in-out;
+}
+@keyframes onboardingBounce {
+  0% { transform: translateX(-50%) translateY(0); }
+  100% { transform: translateX(-50%) translateY(-5px); }
+}
+.onboarding-target-pulse {
+  outline: 3px solid #ffaa00 !important;
+  box-shadow: 0 0 20px #ffaa00, inset 0 0 12px rgba(255, 170, 0, 0.6) !important;
+  animation: pulseTarget 0.8s infinite alternate !important;
+}
+@keyframes pulseTarget {
+  0% { transform: scale(1); filter: brightness(1); }
+  100% { transform: scale(1.04); filter: brightness(1.35); }
+}
+
 </style>
 </head>
 <body class="crt-enabled">
@@ -943,7 +996,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-opt-donate" class="audio-btn opt-btn" style="display: none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
   <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
   <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
-  <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareOnWall()" data-i18n="opt_wall">📢 На стену (VK)</button>
+  <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareStory()" data-i18n="opt_story">📖 В Истории (VK)</button>
   <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()" data-i18n="opt_fav">⭐ В закладки (VK)</button>
 </div>
 
@@ -952,6 +1005,14 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <h2 style="font-size: 20px; margin-bottom: 20px; letter-spacing: 2px;" data-i18n="login_title">СИСТЕМА УПРАВЛЕНИЯ БЛОКОМ</h2>
     
     <!-- Панель входа через VK -->
+    
+    <!-- Панель бесшовного входа VK Games (п. 1.2.2 правил VK) -->
+    <div id="vk-auto-status" style="display: none; margin-bottom: 18px; padding: 22px 14px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.12); border-radius: 4px; text-align: center;">
+      <div style="font-size: 15px; color: #2787f5; font-weight: bold; margin-bottom: 8px; letter-spacing: 1px;">🔵 VK GAMES // ВХОД В БЛОК...</div>
+      <div style="font-size: 12.5px; color: var(--term-green); font-family: 'PT Mono', monospace;">АВТОРИЗАЦИЯ ПО ПАРАМЕТРАМ ЗАПУСКА</div>
+      <div style="margin-top: 12px; font-size: 11px; color: #888;">[ВХОД ВЫПОЛНЯЕТСЯ АВТОМАТИЧЕСКИ БЕЗ ПАРОЛЯ]</div>
+    </div>
+
     <div id="vk-login-box" style="display: none; margin-bottom: 18px; padding: 12px; border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.1); border-radius: 4px;">
       <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
         <img id="vk-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #2787f5; display: none;" src="" alt="">
@@ -1581,7 +1642,8 @@ const I18N = {
     btn_watch_intro: "🎬 СМОТРЕТЬ ЗАСТАВКУ (14 сек)",
     opt_donate: "💎 Поддержать проект (VK)",
     opt_invite: "👥 Позвать друга (VK)",
-    opt_wall: "📢 На стену (VK)",
+    opt_wall: "📖 В Истории (VK)",
+  opt_story: "📖 В Истории (VK)",
     opt_fav: "⭐ В закладки (VK)",
     login_title: "САМОСБОР // ВХОД В СИСТЕМУ",
     login_inmate_label: "Заключенный:",
@@ -1729,7 +1791,8 @@ const I18N = {
     btn_watch_intro: "🎬 WATCH INTRO (14 sec)",
     opt_donate: "💎 Support Project (VK)",
     opt_invite: "👥 Invite Friends (VK)",
-    opt_wall: "📢 Share on Wall (VK)",
+    opt_wall: "📖 Share Story (VK)",
+  opt_story: "📖 Share Story (VK)",
     opt_fav: "⭐ Add to Favorites (VK)",
     login_title: "SAMOSBOR // SYSTEM LOGIN",
     login_inmate_label: "Inmate:",
@@ -3213,7 +3276,111 @@ function closeTutorial() {
   playSound('click');
 }
 
+
+let onboardingStep = 0;
+let onboardingActive = false;
+
 function checkAutoTutorial() {
+  const done = localStorage.getItem('samosbor_onboarding_done');
+  if (!done) {
+    setTimeout(startInteractiveOnboarding, 600);
+  }
+}
+
+function startInteractiveOnboarding() {
+  if (onboardingActive) return;
+  onboardingActive = true;
+  onboardingStep = 1;
+  renderOnboardingStep();
+}
+
+function finishOnboarding() {
+  onboardingActive = false;
+  localStorage.setItem('samosbor_onboarding_done', 'true');
+  localStorage.setItem('samosbor_tutorial_completed', 'true');
+  const banner = document.getElementById('onboarding-guide-banner');
+  if (banner) banner.remove();
+  document.querySelectorAll('.onboarding-target-pulse').forEach(el => el.classList.remove('onboarding-target-pulse'));
+}
+
+function advanceOnboarding(fromStep) {
+  if (!onboardingActive) return;
+  if (onboardingStep === fromStep) {
+    onboardingStep = fromStep + 1;
+    renderOnboardingStep();
+  }
+}
+
+function renderOnboardingStep() {
+  if (!onboardingActive) return;
+  document.querySelectorAll('.onboarding-target-pulse').forEach(el => el.classList.remove('onboarding-target-pulse'));
+  let banner = document.getElementById('onboarding-guide-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'onboarding-guide-banner';
+    banner.className = 'onboarding-guide-banner';
+    document.body.appendChild(banner);
+  }
+
+  const isEn = (currentLang === 'en');
+  if (onboardingStep === 1) {
+    let mapBtn = document.getElementById('open-map-btn');
+    let farmBtn = document.getElementById('btn-farm-slime');
+    let target = null;
+    let text = '';
+    if (farmBtn && farmBtn.offsetParent !== null) {
+      target = farmBtn;
+      text = isEn 
+        ? '👉 <b>STEP 1/3:</b> Tap <b>[HARVEST SLIME]</b> to collect initial biomass from walls for talons!'
+        : '👉 <b>ШАГ 1/3:</b> Нажмите <b>[ФАРМ СЛИЗИ]</b>, чтобы собрать со стен биомассу для талонов и выживания!';
+    } else if (mapBtn && mapBtn.offsetParent !== null) {
+      target = mapBtn;
+      text = isEn
+        ? '👉 <b>STEP 1/3:</b> Tap <b>[ENTER BLOCK]</b> to leave your living cell and step into sector corridors!'
+        : '👉 <b>ШАГ 1/3:</b> Нажмите <b>[ВЫХОД В БЛОК]</b>, чтобы выйти из жилячейки в коридоры этажа!';
+    } else {
+      text = isEn
+        ? '👉 <b>STEP 1/3:</b> Prepare for duty. Move into the sector to begin survival operations!'
+        : '👉 <b>ШАГ 1/3:</b> Выходите в сектор блока, чтобы приступить к выживанию!';
+    }
+    if (target) target.classList.add('onboarding-target-pulse');
+
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'INTERACTIVE TRAINING' : 'ОБУЧЕНИЕ ВЫЖИВАНИЮ'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.4;">${text}</div>
+    `;
+  } else if (onboardingStep === 2) {
+    let expBtn = document.getElementById('btn-explore-fog');
+    if (expBtn) expBtn.classList.add('onboarding-target-pulse');
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'INTERACTIVE TRAINING' : 'ОБУЧЕНИЕ ВЫЖИВАНИЮ'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.4;">${isEn 
+        ? '👉 <b>STEP 2/3:</b> Great! Now tap <b>[EXPEDITION INTO FOG]</b> to explore the sector and hunt for caches!' 
+        : '👉 <b>ШАГ 2/3:</b> Отлично! Теперь нажмите <b>[ВЫЛАЗКА В ТУМАН]</b> для поиска припасов и деталей лифта!'}</div>
+    `;
+  } else if (onboardingStep === 3) {
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'INTERACTIVE TRAINING' : 'ОБУЧЕНИЕ ВЫЖИВАНИЮ'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.4;">${isEn
+        ? '🎯 <b>STEP 3/3:</b> In combat, hit <b>[AIMED ATTACK]</b> inside the green zone for <b>DOUBLE CRIT</b>! Your main floor objective: sector <b>E4</b> with the elevator. Watch your filter!'
+        : '🎯 <b>ШАГ 3/3:</b> В бою нажимайте <b>[ПРИЦЕЛ]</b> в зеленой зоне для <b>КРИТИЧЕСКОГО УРОНА (x2)</b>! Ваша главная цель на этаже — сектор <b>E4</b> с лифтом на нижние этажи. Следите за фильтром!'}</div>
+      <div style="margin-top:6px; text-align:right;">
+        <button onclick="finishOnboarding()" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 12px; cursor:pointer; font-size:12px;">${isEn ? 'GOT IT, TO BATTLE! ✓' : 'ПОНЯТНО, В БОЙ! ✓'}</button>
+      </div>
+    `;
+  }
+}
+
+function oldCheckAutoTutorial() {
   if (!localStorage.getItem('samosbor_tutorial_completed')) {
     setTimeout(() => {
       let ls = document.getElementById('login-screen');
@@ -3642,6 +3809,34 @@ if (isPikabuEnvironment) {
 }
 
 // ===== ИНТЕГРАЦИЯ VK.COM & VK MINI APPS (VK BRIDGE) =====
+
+function autoLoginVkUser() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const launchParams = window.location.search || window.location.hash.substring(1);
+  const fallbackId = (vkUserData && vkUserData.id) ? String(vkUserData.id) : (urlParams.get('vk_user_id') || 'guest');
+  const firstName = (vkUserData && vkUserData.first_name) ? vkUserData.first_name : 'Заключенный';
+  const photo = (vkUserData && vkUserData.photo_200) ? vkUserData.photo_200 : null;
+
+  try { document.documentElement.classList.add('vk-env'); } catch(e){}
+  const autoBox = document.getElementById('vk-auto-status');
+  if (autoBox) autoBox.style.display = 'block';
+
+  const payload = {
+    search: launchParams,
+    vkUserId: fallbackId,
+    firstName: firstName,
+    photo: photo
+  };
+  saveAuthSession({ type: 'vk', data: payload });
+  if (socket && socket.connected) {
+    socket.emit('vkLogin', payload);
+  } else {
+    socket.once('connect', () => {
+      socket.emit('vkLogin', payload);
+    });
+  }
+}
+
 function initVkBridgeIfAvailable() {
   if (!isVkEnvironment || typeof vkBridge === 'undefined') return;
   try {
@@ -3659,11 +3854,13 @@ function initVkBridgeIfAvailable() {
           .then(data => {
             vkUserData = data;
             setupVkLoginUI(data);
+            autoLoginVkUser();
           })
           .catch(() => {
             const urlParams = new URLSearchParams(window.location.search);
             const fallbackId = urlParams.get('vk_user_id');
             if (fallbackId) setupVkLoginUI({ id: fallbackId, first_name: 'Заключенный' });
+            autoLoginVkUser();
           });
       })
       .catch(err => console.log('[VK Bridge] Ошибка инициализации:', err));
@@ -3717,6 +3914,27 @@ if (isVkEnvironment) {
     window.addEventListener('load', initVkBridgeIfAvailable);
   }
 }
+
+
+function vkShareStory() {
+  if (typeof vkBridge === 'undefined' || isPikabuEnvironment) return;
+  try {
+    vkBridge.send('VKWebAppShowStoryBox', {
+      background_type: 'image',
+      url: 'https://195-19-219-215.sslip.io/assets/locations/bg_corridor.png',
+      attachment: {
+        text: 'go_to',
+        type: 'url',
+        url: window.location.href
+      }
+    }).catch(err => {
+      console.log('[VK Story] Dismissed or error:', err);
+    });
+  } catch(e) {
+    console.warn('[VK Story] Exception:', e);
+  }
+}
+window.vkShareOnWall = vkShareStory;
 
 function vkShareOnWall() {
   if (typeof vkBridge === 'undefined' || isPikabuEnvironment) return;
@@ -3858,7 +4076,7 @@ function finishVideoIntro() {
 
 function proceedAfterLogin(data) {
   if (typeof notifyPikabuGameStarted === 'function') notifyPikabuGameStarted();
-  if (data.showIntro) {
+  if (data.showIntro && !isVkEnvironment) {
     startBootSequence();
   } else {
     const curScreen = document.querySelector('.screen.active-screen');
@@ -4865,7 +5083,7 @@ function updateUI(me, sectorPlayers) {
   let baseTxt = isEn ? 'TO BASE' : 'НА БАЗУ';
   let enterLog = isEn ? '> Entering the fog...\\n' : '> Входим в туман...\\n';
   if (ec) {
-    ec.innerHTML = `${lifterBtn}<div class="row-2"><button onclick="socket.emit('work');" style="color: var(--term-info); border-color: var(--term-info);">${farmTxt}</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">${noteTxt}</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='${enterLog}'; socket.emit('explore');" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">${mapTxt}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">${baseTxt}</button></div>`;
+    ec.innerHTML = `${lifterBtn}<div class="row-2"><button id="btn-farm-slime" onclick="socket.emit('work'); advanceOnboarding(1);" style="color: var(--term-info); border-color: var(--term-info);">${farmTxt}</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">${noteTxt}</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='${enterLog}'; socket.emit('explore'); advanceOnboarding(2);" id="btn-explore-fog" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">${mapTxt}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">${baseTxt}</button></div>`;
   }
   const bfd = document.getElementById('btn-floor-down');
   const bfu = document.getElementById('btn-floor-up');
@@ -5603,6 +5821,7 @@ if (closeLbBtn) {
 document.getElementById('open-map-btn').onclick = () => { 
   showScreen('map-screen'); 
   updateActiveBackground();
+  advanceOnboarding(1);
   changeAmbient('map'); 
 };
 document.getElementById('close-map-btn').onclick = () => { 

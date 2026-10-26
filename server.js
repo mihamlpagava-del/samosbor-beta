@@ -1684,7 +1684,7 @@ io.on('connection', (socket) => {
                 writeLog(`Регистрация: ${username}`);
                 db.players[username] = {
                     password: hashPassword(password), talons: 0, hp: 100, maxHp: 100, filter: 100, hunger: 100, tox: 0, level: 1, xp: 0, monstersKilled: 0, roomsCleared: 0, rating: 0, playtime: 0,
-                    appearance: null, location: 'safe_room', floor: 0, activeEvent: null, workbenchLevel: 1,
+                    appearance: { skin: 'skin_1' }, location: 'safe_room', floor: 0, activeEvent: null, workbenchLevel: 1,
                     unlockedSectors: { 0: ['A0'] }, questItems: [], foundItems: [], quickSlots: [null, null], solvedGames: [], bossDefeated: {}, perks: [], mutations: [], robots: {},
                     notebook: [
                         "[ВВОДНАЯ]: Приговор приведён в исполнение. Нас, двадцать три заключённых, погрузили в клеть и отправили вниз, на нулевой этаж, в самое пекло Самосбора.",
