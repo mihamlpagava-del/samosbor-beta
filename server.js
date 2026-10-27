@@ -468,6 +468,110 @@ const GAME_PERKS = [
     { id: 'perk_vampire', name: 'Вампиризм', desc: 'Восстанавливает 5 HP при убийстве врага.' }
 ];
 
+// --- СИСТЕМА ДОСТИЖЕНИЙ (АЧИВКИ САМОСБОРА) ---
+const ACHIEVEMENTS_LIST = [
+    // 1. УБИЙСТВО МОНСТРОВ
+    { id: 'ach_kill_1', category: 'combat', icon: '🩸', name: 'Первая кровь', name_en: 'First Blood', desc: 'Уничтожить первого монстра Самосбора в катакомбах.', desc_en: 'Slay your first Samosbor creature in the catacombs.', target: 1, stat: 'monstersKilled', rewardTalons: 50, rewardXp: 25 },
+    { id: 'ach_kill_25', category: 'combat', icon: '⚔️', name: 'Ликвидатор слизи', name_en: 'Slime Liquidator', desc: 'Истребить 25 порождений Тумана.', desc_en: 'Exterminate 25 spawns of the Fog.', target: 25, stat: 'monstersKilled', rewardTalons: 200, rewardXp: 100 },
+    { id: 'ach_kill_100', category: 'combat', icon: '💀', name: 'Чистильщик блоков', name_en: 'Sector Purifier', desc: 'Уничтожить 100 мутантов и тварей.', desc_en: 'Destroy 100 mutants and horrors.', target: 100, stat: 'monstersKilled', rewardTalons: 500, rewardXp: 300 },
+    { id: 'ach_kill_500', category: 'combat', icon: '☠️', name: 'Бич Самосбора', name_en: 'Scourge of Samosbor', desc: 'Истребить 500 порождений Гигахрущевки.', desc_en: 'Wipe out 500 abominations of the Megastructure.', target: 500, stat: 'monstersKilled', rewardTalons: 1500, rewardXp: 1000 },
+
+    // 2. УБИЙСТВО БОССОВ
+    { id: 'ach_boss_1', category: 'boss', icon: '👹', name: 'Смерть титану', name_en: 'Titan Falls', desc: 'Сразить первого босса шахтного лифта.', desc_en: 'Defeat your first Elevator Guardian boss.', target: 1, stat: 'bossesKilled', rewardTalons: 300, rewardXp: 200 },
+    { id: 'ach_boss_5', category: 'boss', icon: '🛡️', name: 'Усмиритель гигантов', name_en: 'Giant Subduer', desc: 'Победить 5 боссов в глубинах Хруща.', desc_en: 'Overcome 5 bosses in the depths of the complex.', target: 5, stat: 'bossesKilled', rewardTalons: 800, rewardXp: 600 },
+    { id: 'ach_boss_10', category: 'boss', icon: '👑', name: 'Владыка глубин', name_en: 'Lord of the Deeps', desc: 'Одержать победу над 10 уникальными боссами этажей.', desc_en: 'Defeat 10 unique floor bosses.', target: 10, stat: 'bossesKilled', rewardTalons: 2000, rewardXp: 1500 },
+
+    // 3. ПРОХОДКА ЭТАЖЕЙ
+    { id: 'ach_floor_5', category: 'floor', icon: '🛗', name: 'Спуск в Спецархив', name_en: 'Descent to Archive', desc: 'Спуститься на 5-й этаж Гигахрущевки.', desc_en: 'Descend to Floor 5 of the Megastructure.', target: 5, stat: 'maxFloor', rewardTalons: 250, rewardXp: 150 },
+    { id: 'ach_floor_10', category: 'floor', icon: '☢️', name: 'Зона Реактора', name_en: 'Reactor Core Zone', desc: 'Достичь 10-го этажа сквозь радиацию и распад.', desc_en: 'Reach Floor 10 through radiation and decay.', target: 10, stat: 'maxFloor', rewardTalons: 600, rewardXp: 400 },
+    { id: 'ach_floor_20', category: 'floor', icon: '🌌', name: 'Врата Чернобога', name_en: 'Gates of Chernobog', desc: 'Пробиться сквозь плоть на 20-й горизонт.', desc_en: 'Break through flesh to Floor 20.', target: 20, stat: 'maxFloor', rewardTalons: 1200, rewardXp: 800 },
+    { id: 'ach_floor_all', category: 'floor', icon: '🏆', name: 'Покоритель Хруща', name_en: 'Master of the Megastructure', desc: 'Достичь финального 30-го этажа Бездны.', desc_en: 'Reach the final 30th floor of the Abyss.', target: 30, stat: 'maxFloor', rewardTalons: 3000, rewardXp: 2500 },
+
+    // 4. ОТКРЫТИЕ ДВЕРЕЙ И СЕКТОРОВ
+    { id: 'ach_doors_10', category: 'explore', icon: '🚪', name: 'Взломщик', name_en: 'Breaker', desc: 'Взломать и открыть 10 заблокированных гермодверей.', desc_en: 'Breach and open 10 locked blast doors.', target: 10, stat: 'roomsCleared', rewardTalons: 150, rewardXp: 80 },
+    { id: 'ach_doors_50', category: 'explore', icon: '🗝️', name: 'Ключник Самосбора', name_en: 'Master Locksmith', desc: 'Открыть 50 секторов и гермозатворов.', desc_en: 'Open 50 sectors and airlocks.', target: 50, stat: 'roomsCleared', rewardTalons: 500, rewardXp: 350 },
+    { id: 'ach_doors_100', category: 'explore', icon: '🔓', name: 'Мастер деблокировки', name_en: 'Unstoppable Breacher', desc: 'Открыть 100 герметичных створок в Жилом Блоке.', desc_en: 'Open 100 sealed doors across the Complex.', target: 100, stat: 'roomsCleared', rewardTalons: 1200, rewardXp: 800 },
+    { id: 'ach_floor_full', category: 'explore', icon: '🗺️', name: 'Полная зачистка', name_en: 'Total Cleansing', desc: 'Разблокировать все 25 секторов (A0–E4) на одном этаже.', desc_en: 'Unlock all 25 sectors (A0 through E4) on a single floor.', target: 1, stat: 'fullFloorsCleared', rewardTalons: 400, rewardXp: 300 },
+
+    // 5. ОТКРЫТИЕ ЗАГАДОК И МИНИ-ИГР
+    { id: 'ach_puzzle_1', category: 'puzzles', icon: '💡', name: 'Первая искра', name_en: 'First Spark', desc: 'Решить первую загадку, шифр или мини-игру коммутации.', desc_en: 'Solve your first riddle, cipher, or circuit minigame.', target: 1, stat: 'puzzlesSolved', rewardTalons: 100, rewardXp: 50 },
+    { id: 'ach_puzzle_10', category: 'puzzles', icon: '🧩', name: 'Инженер-дешифровщик', name_en: 'Codebreaker Engineer', desc: 'Решить 10 головоломок с замками, проводами и цепями.', desc_en: 'Solve 10 puzzle challenges across the sectors.', target: 10, stat: 'puzzlesSolved', rewardTalons: 400, rewardXp: 250 },
+    { id: 'ach_puzzle_30', category: 'puzzles', icon: '⚡', name: 'Тесла Самосбора', name_en: 'Tesla of the Complex', desc: 'Преодолеть 30 головоломок коммутации, шифров и замков.', desc_en: 'Master 30 circuit, cipher, and lock-cutting challenges.', target: 30, stat: 'puzzlesSolved', rewardTalons: 1000, rewardXp: 700 },
+
+    // 6. ПОЛУЧЕНИЕ РЕДКИХ ПРЕДМЕТОВ
+    { id: 'ach_rare_item', category: 'items', icon: '💎', name: 'Ценная находка', name_en: 'Valuable Find', desc: 'Получить предмет редкого (синего) качества.', desc_en: 'Acquire an item of Rare (Blue) quality.', target: 1, stat: 'hasRare', rewardTalons: 150, rewardXp: 100 },
+    { id: 'ach_epic_item', category: 'items', icon: '🔮', name: 'Реликт Партии', name_en: 'Party Relic', desc: 'Найти эпический (фиолетовый) предмет экипировки.', desc_en: 'Obtain an Epic (Purple) quality gear piece.', target: 1, stat: 'hasEpic', rewardTalons: 400, rewardXp: 300 },
+    { id: 'ach_legendary_item', category: 'items', icon: '⭐', name: 'Легенда Бетона', name_en: 'Concrete Legend', desc: 'Завладеть легендарным (золотым) снаряжением.', desc_en: 'Possess a Legendary (Gold) tier artifact.', target: 1, stat: 'hasLegendary', rewardTalons: 1000, rewardXp: 700 },
+    { id: 'ach_full_gear', category: 'items', icon: '🪖', name: 'В полном снаряжении', name_en: 'Fully Equipped', desc: 'Экипировать сразу все 4 слота (Оружие, Респиратор, Костюм, Вещмешок).', desc_en: 'Equip all 4 equipment slots simultaneously.', target: 1, stat: 'isFullyEquipped', rewardTalons: 200, rewardXp: 150 }
+];
+
+function checkPlayerAchievements(p, socket) {
+    if (!p) return [];
+    if (!p.achievements || typeof p.achievements !== 'object' || Array.isArray(p.achievements)) {
+        p.achievements = {};
+    }
+
+    let allItemIds = [...(p.inventory || []), ...(p.storage || [])];
+    if (p.equipment) {
+        if (p.equipment.weapon) allItemIds.push(p.equipment.weapon);
+        if (p.equipment.mask) allItemIds.push(p.equipment.mask);
+        if (p.equipment.suit) allItemIds.push(p.equipment.suit);
+        if (p.equipment.backpack) allItemIds.push(p.equipment.backpack);
+    }
+    let hasRare = allItemIds.some(id => String(id).includes('_rare') || String(id).includes('_epic') || String(id).includes('_legendary')) ? 1 : 0;
+    let hasEpic = allItemIds.some(id => String(id).includes('_epic') || String(id).includes('_legendary')) ? 1 : 0;
+    let hasLegendary = allItemIds.some(id => String(id).includes('_legendary')) ? 1 : 0;
+    let isFullyEquipped = (p.equipment && p.equipment.weapon && p.equipment.mask && p.equipment.suit && p.equipment.backpack) ? 1 : 0;
+
+    let fullFloorsCleared = 0;
+    if (p.unlockedSectors && typeof p.unlockedSectors === 'object') {
+        for (let fl in p.unlockedSectors) {
+            if (Array.isArray(p.unlockedSectors[fl]) && p.unlockedSectors[fl].length >= 25) {
+                fullFloorsCleared = 1;
+                break;
+            }
+        }
+    }
+
+    let bossesCount = Math.max(p.bossesKilled || 0, Object.keys(p.bossDefeated || {}).length);
+    let puzzlesCount = Math.max(p.puzzlesSolved || 0, (p.solvedGames ? p.solvedGames.length : 0));
+
+    const metrics = {
+        monstersKilled: p.monstersKilled || 0,
+        bossesKilled: bossesCount,
+        maxFloor: Math.max(p.maxFloor || 0, p.floor || 0),
+        roomsCleared: p.roomsCleared || 0,
+        puzzlesSolved: puzzlesCount,
+        fullFloorsCleared: fullFloorsCleared,
+        hasRare: hasRare,
+        hasEpic: hasEpic,
+        hasLegendary: hasLegendary,
+        isFullyEquipped: isFullyEquipped
+    };
+
+    let newlyUnlocked = [];
+    ACHIEVEMENTS_LIST.forEach(ach => {
+        if (!p.achievements[ach.id]) {
+            let currentVal = metrics[ach.stat] || 0;
+            if (currentVal >= ach.target) {
+                p.achievements[ach.id] = { unlockedAt: Date.now() };
+                p.talons = (p.talons || 0) + (ach.rewardTalons || 0);
+                p.xp = (p.xp || 0) + (ach.rewardXp || 0);
+                if (p.notebook) {
+                    p.notebook.push(`[🏆 ДОСТИЖЕНИЕ]: Получено «${ach.name}»! (+${ach.rewardTalons} талонов, +${ach.rewardXp} XP)`);
+                }
+                newlyUnlocked.push(ach);
+                if (socket) {
+                    socket.emit('achievementUnlocked', ach);
+                    socket.emit('playSound', 'victory');
+                }
+            }
+        }
+    });
+
+    return newlyUnlocked;
+}
+
 const { RIDDLES_150 } = require('./riddles.js');
 
 // --- ИНТЕРАКТИВНЫЕ ASCII МИНИ-ИГРЫ САМОСБОРА ---
@@ -1712,6 +1816,11 @@ function broadcastGameState() {
             }
         }
         let locKey = `${floor}_${p.location}`;
+
+        if (!p.achievements || typeof p.achievements !== 'object' || Array.isArray(p.achievements)) p.achievements = {};
+        let sock = io.sockets.sockets.get(socketId);
+        checkPlayerAchievements(p, sock || null);
+
         io.to(socketId).emit('gameState', {
             me: {
                 username: username, talons: p.talons, location: p.location, floor: floor,
@@ -1721,10 +1830,14 @@ function broadcastGameState() {
                 questItems: p.questItems, unlockedSectors: p.unlockedSectors[floor] || ['A0'], notebook: p.notebook,
                 quickSlots: p.quickSlots, perks: p.perks, level: p.level, xp: p.xp, monstersKilled: p.monstersKilled, roomsCleared: p.roomsCleared,
                 rating: p.rating, rankPos: rankPos, title: title, bossDefeated: p.bossDefeated,
+                bossesKilled: Math.max(p.bossesKilled || 0, Object.keys(p.bossDefeated || {}).length),
+                puzzlesSolved: Math.max(p.puzzlesSolved || 0, (p.solvedGames ? p.solvedGames.length : 0)),
+                achievements: p.achievements || {},
                 currentRobot: p.robots[locKey] !== undefined ? p.robots[locKey] : null, appearance: p.appearance, playtime: p.playtime,
                 workbenchLevel: p.workbenchLevel || 1
             },
             sectorPlayers: playersInSector, map: db.map[floor], GAME_PERKS: GAME_PERKS, GAME_ITEMS: GAME_ITEMS, MUTATIONS: MUTATIONS, BESTIARY: BASE_MONSTERS,
+            ACHIEVEMENTS_LIST: ACHIEVEMENTS_LIST,
             shopItems: currentShopItems, nextShopUpdate: nextShopUpdate, leaderboard: leaderboard
         });
     }
@@ -2498,6 +2611,7 @@ function checkLifterTrigger(player, sock, loc) {
                 checkLifterTrigger(p, socket, locId);
                 p.roomsCleared = (p.roomsCleared || 0) + 1;
                 p.notebook.push(`[ЭТАЖ ${currentFloor}]: Открыл сектор ${locId} с помощью ${GAME_ITEMS[reqItem] ? GAME_ITEMS[reqItem].name : reqItem}.`);
+                checkPlayerAchievements(p, socket);
                 socket.emit('playSound', 'victory');
                 saveDB();
                 socket.emit('transition', {to: locId, text: `ЗАМОК ОТКРЫТ...`});
@@ -2534,9 +2648,11 @@ function checkLifterTrigger(player, sock, loc) {
             p.unlockedSectors[currentFloor].push(locId);
         }
         p.location = locId;
+        p.puzzlesSolved = (p.puzzlesSolved || 0) + 1;
         checkLifterTrigger(p, socket, locId);
         p.roomsCleared = (p.roomsCleared || 0) + 1;
         p.notebook.push(`[ЭТАЖ ${currentFloor}]: Взломал гермодверь в ${locId}.`);
+        checkPlayerAchievements(p, socket);
         socket.emit('playSound', 'victory');
         saveDB();
         socket.emit('transition', {to: locId, text: `ВЗЛОМ УСПЕШЕН...`});
@@ -2564,6 +2680,7 @@ function checkLifterTrigger(player, sock, loc) {
             p.location = 'A0';
             if (!p.unlockedSectors[p.floor]) p.unlockedSectors[p.floor] = ['A0'];
             p.notebook.push(`[ЭТАЖ ${p.floor}]: Лифт опустился на этаж ${p.floor}.`);
+            checkPlayerAchievements(p, socket);
             generateFloor(p.floor); saveDB(); socket.emit('transition', {to: 'map', text: `СПУСК НА ЭТАЖ ${p.floor}...`}); broadcastGameState();
         } else if (dir === 'up') {
             if (currentFloor <= 0) { socket.emit('terminalError', 'ЭТО ВЕРХНИЙ ЭТАЖ.'); return; }
@@ -2681,6 +2798,7 @@ function checkLifterTrigger(player, sock, loc) {
             if (p.equipment[itemData.type]) p.inventory.push(p.equipment[itemData.type]);
             p.equipment[itemData.type] = itemId; p.inventory.splice(invIndex, 1);
             if (p.inventory.length > getMaxInv(p)) { socket.emit('terminalError', `ПРЕВЫШЕН ЛИМИТ ВЕСА!`); }
+            checkPlayerAchievements(p, socket);
             socket.emit('playSound', 'equip'); saveDB(); broadcastGameState();
         }
     });
@@ -3702,6 +3820,7 @@ setInterval(() => {
                 if (combat && p) {
                     let log = (combat.logs || []).join('\n') + '\n';
                     p.talons += gb.reward; p.xp += gb.xp; p.monstersKilled = (p.monstersKilled || 0) + 1;
+                    p.bossesKilled = (p.bossesKilled || 0) + 1;
                     log += `> БОСС ${gb.name} ПОВЕРЖЕН! +${gb.reward} талонов, +${gb.xp} XP.\n`;
                     if (gb.isElevatorBoss) {
                         if (!p.bossDefeated) p.bossDefeated = {}; p.bossDefeated[p?.floor ?? 0] = true;
@@ -3718,7 +3837,11 @@ setInterval(() => {
                             }
                         });
                     }
-                    if (socketId) io.to(socketId).emit('combatEnd', { log: log, enemy: gb, win: true });
+                    if (socketId) {
+                        let sock = io.sockets.sockets.get(socketId);
+                        checkPlayerAchievements(p, sock || null);
+                        io.to(socketId).emit('combatEnd', { log: log, enemy: gb, win: true });
+                    }
                     delete activeCombats[u];
                 } else if (combat) {
                     delete activeCombats[u];
@@ -3883,6 +4006,10 @@ setInterval(() => {
                 if (p.perks.includes('perk_vampire')) { p.hp = Math.min(p.maxHp, p.hp + 5); log += `> +5 HP (вампиризм).\n`; }
                 p.talons += combat.enemy.reward; p.xp += combat.enemy.xp; p.monstersKilled = (p.monstersKilled || 0) + 1;
                 log += `> ВРАГ ПОВЕРЖЕН! +${combat.enemy.reward} талонов, +${combat.enemy.xp} XP.\n`;
+                if (socketId) {
+                    let sock = io.sockets.sockets.get(socketId);
+                    checkPlayerAchievements(p, sock || null);
+                }
                 let nextLevelXp = p.level * 100;
                 if (p.xp >= nextLevelXp) {
                     p.level += 1; p.xp -= nextLevelXp; p.maxHp += 10; p.hp = p.maxHp; log += `>>> УРОВЕНЬ ${p.level}! <<<\n`;

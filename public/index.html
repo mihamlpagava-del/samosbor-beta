@@ -687,6 +687,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .item-stat-badge.stat-cap { background: rgba(90, 40, 140, 0.88); color: #ddb8ff; border: 1px solid #bb77ff; text-shadow: 0 0 2px #000; }
 
 .chest-tab-btn { background: rgba(255, 255, 255, 0.75); border: 1px solid rgba(0, 0, 0, 0.35); color: #2b2218; padding: 6px 14px; font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer; border-radius: 3px; transition: 0.15s; }
+.chest-tab-btn span { color: inherit !important; }
 .chest-tab-btn:hover { background: #ffffff; color: #000000; border-color: #000000; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
 .chest-tab-btn.active { background: #1c1c1c !important; color: #ffffff !important; border: 1px solid #000000 !important; font-weight: 900; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
 .chest-tab-btn.active span { color: #ffffff !important; }
@@ -857,9 +858,97 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   100% { transform: scale(1.04); filter: brightness(1.35); }
 }
 
+/* ===== СИСТЕМА ДОСТИЖЕНИЙ (ACHIEVEMENTS UI & TOAST NOTIFICATIONS) ===== */
+.ach-cat-btn { background: rgba(0,0,0,0.45); border: 1px solid var(--term-dim); color: #888; font-family: inherit; font-size: 11px; padding: 5px 12px; cursor: pointer; border-radius: 2px; transition: 0.15s; letter-spacing: 0.5px; margin: 0; }
+.ach-cat-btn:hover { border-color: #ffd700; color: #fff; background: rgba(255,215,0,0.12); }
+.ach-cat-btn.active { border-color: #ffd700; color: #ffd700; background: rgba(255,215,0,0.22); font-weight: bold; box-shadow: 0 0 8px rgba(255,215,0,0.35); }
+
+.ach-card { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.14); background: rgba(14, 18, 16, 0.85); border-radius: 4px; transition: 0.2s ease; position: relative; overflow: hidden; }
+.ach-card.unlocked { border-color: rgba(255, 215, 0, 0.55); background: linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(10,14,12,0.92) 100%); box-shadow: 0 0 12px rgba(255,215,0,0.18); }
+.ach-card.locked { opacity: 0.72; filter: grayscale(0.4); }
+.ach-card:hover { border-color: #ffd700; transform: translateY(-1px); box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+
+.ach-icon-box { width: 44px; height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; background: rgba(0,0,0,0.6); }
+.ach-card.unlocked .ach-icon-box { border-color: #ffd700; background: rgba(255,215,0,0.18); box-shadow: 0 0 10px rgba(255,215,0,0.45); text-shadow: 0 0 6px #ffd700; }
+.ach-card.locked .ach-icon-box { border-color: #444; color: #666; }
+
+.ach-info { flex: 1; min-width: 0; }
+.ach-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+.ach-name { font-size: 13.5px; font-weight: bold; color: #eee; letter-spacing: 0.5px; }
+.ach-card.unlocked .ach-name { color: #ffd700; text-shadow: 0 0 5px rgba(255,215,0,0.5); }
+.ach-status-badge { font-size: 10px; font-weight: bold; padding: 2px 7px; border-radius: 2px; letter-spacing: 0.5px; }
+.ach-status-badge.done { background: rgba(51,255,0,0.18); border: 1px solid var(--term-green); color: var(--term-green); text-shadow: 0 0 4px rgba(51,255,0,0.5); }
+.ach-status-badge.todo { background: rgba(255,255,255,0.06); border: 1px solid #555; color: #888; }
+
+.ach-desc { font-size: 11.5px; color: #aaa; margin-bottom: 6px; line-height: 1.35; }
+.ach-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
+.ach-rewards { display: flex; gap: 8px; color: #ffd700; font-size: 11px; font-weight: bold; }
+.ach-progress-num { color: #888; font-size: 11px; }
+
+.ach-mini-bar { width: 90px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+.ach-mini-bar-fill { height: 100%; background: #33ff55; transition: width 0.2s; }
+.ach-card.unlocked .ach-mini-bar-fill { background: #ffd700; box-shadow: 0 0 6px #ffd700; }
+
+/* Notification Toast */
+#achievements-toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10005;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 400px;
+  width: calc(100% - 48px);
+}
+.achievement-toast {
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(14, 18, 14, 0.95);
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 22px rgba(255, 215, 0, 0.45), inset 0 0 15px rgba(255, 215, 0, 0.18);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #fff;
+  font-family: inherit;
+  backdrop-filter: blur(8px);
+  animation: achToastSlideIn 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.achievement-toast.dismissing {
+  opacity: 0;
+  transform: translateX(60px);
+}
+.ach-toast-icon {
+  font-size: 32px;
+  min-width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ffd700;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,215,0,0.35) 0%, rgba(0,0,0,0.7) 80%);
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.65);
+  animation: achIconPulse 1.2s infinite alternate ease-in-out;
+}
+@keyframes achIconPulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 4px #ffd700); }
+  100% { transform: scale(1.1); filter: drop-shadow(0 0 12px #ffea00); }
+}
+@keyframes achToastSlideIn {
+  0% { opacity: 0; transform: translateY(-30px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 </style>
 </head>
 <body class="crt-enabled">
+<div id="achievements-toast-container"></div>
 <div id="bg-layer" style="background-image: url('assets/locations/bg_safe_room.png');"></div>
 <div id="transition-overlay"><div id="trans-ascii" class="door-ascii"></div><div id="trans-text" class="flicker">ЗАГРУЗКА...</div></div>
 
@@ -899,6 +988,42 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <div class="shop-header"><span data-i18n="lb_title">ЗАЛ СЛАВЫ ПАРТИИ</span><button onclick="document.getElementById('leaderboard-modal').style.display='none';">[X]</button></div>
     <div style="overflow-y: auto; flex-grow: 1;">
       <table class="leaderboard-table"><thead><tr><th data-i18n="lb_rank">МЕСТО</th><th data-i18n="lb_name">ИМЯ</th><th data-i18n="lb_title_col">ТИТУЛ</th><th data-i18n="lb_lvl">УР.</th><th data-i18n="lb_floor">ЭТАЖ</th><th data-i18n="lb_time">ВРЕМЯ</th><th data-i18n="lb_score">ОЧКИ</th></tr></thead><tbody id="leaderboard-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО ДОСТИЖЕНИЙ -->
+<div id="achievements-modal" class="modal-overlay" style="z-index: 85; display: none;">
+  <div class="shop-panel" style="width: 780px; max-width: 95%; height: 85vh; max-height: 720px; display: flex; flex-direction: column;">
+    <div class="shop-header">
+      <span style="color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); font-weight: bold;" data-i18n="ach_modal_title">🏆 ДОСТИЖЕНИЯ // ЛИЧНОЕ ДЕЛО</span>
+      <button onclick="document.getElementById('achievements-modal').style.display='none';">[X]</button>
+    </div>
+
+    <!-- Сводка прогресса -->
+    <div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,215,0,0.35); padding: 12px 16px; margin-bottom: 12px; border-radius: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; flex-wrap: wrap; gap: 6px;">
+        <span style="color: #ffd700; font-weight: bold;"><span data-i18n="ach_progress_lbl">ОБЩИЙ ПРОГРЕСС:</span> <span id="ach-stat-count">0 / 22</span> (<span id="ach-stat-percent">0%</span>)</span>
+        <span style="color: #ccc; font-size: 12px;"><span data-i18n="ach_total_rewards">НАГРАДЫ:</span> <span id="ach-stat-talons" style="color: var(--term-warn); font-weight: bold;">0</span> 🎫 | <span id="ach-stat-xp" style="color: var(--term-info); font-weight: bold;">0</span> XP</span>
+      </div>
+      <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,215,0,0.4); border-radius: 5px; overflow: hidden; position: relative;">
+        <div id="ach-progress-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ffaa00, #ffd700); box-shadow: 0 0 12px rgba(255,215,0,0.85); transition: width 0.35s ease;"></div>
+      </div>
+    </div>
+
+    <!-- Фильтры категорий -->
+    <div class="ach-category-bar" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+      <button class="ach-cat-btn active" data-cat="all" onclick="filterAchievements('all')">⭐ ВСЕ</button>
+      <button class="ach-cat-btn" data-cat="combat" onclick="filterAchievements('combat')">🩸 БОЙ</button>
+      <button class="ach-cat-btn" data-cat="boss" onclick="filterAchievements('boss')">👹 БОССЫ</button>
+      <button class="ach-cat-btn" data-cat="floor" onclick="filterAchievements('floor')">🛗 ЭТАЖИ</button>
+      <button class="ach-cat-btn" data-cat="explore" onclick="filterAchievements('explore')">🚪 РАЗВЕДКА</button>
+      <button class="ach-cat-btn" data-cat="puzzles" onclick="filterAchievements('puzzles')">💡 ЗАГАДКИ</button>
+      <button class="ach-cat-btn" data-cat="items" onclick="filterAchievements('items')">💎 СНАРЯЖЕНИЕ</button>
+    </div>
+
+    <!-- Контейнер карточек -->
+    <div id="achievements-list-container" style="flex: 1; overflow-y: auto; padding-right: 6px; display: grid; grid-template-columns: 1fr; gap: 8px;">
     </div>
   </div>
 </div>
@@ -992,12 +1117,14 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div class="audio-controls">
+  <button id="btn-achievements" class="audio-btn" style="border-color: rgba(255,215,0,0.55); color: #ffd700;" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 ДОСТИЖЕНИЯ</button>
   <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);" data-i18n="btn_feedback">⚠️ БАГИ / ИДЕИ [Shift+P]</button>
   <button id="btn-bestiary" class="audio-btn" style="display:none;" data-i18n="btn_bestiary">📖 БЕСТИАРИЙ</button>
   <button id="btn-info" class="audio-btn" data-i18n="btn_info">ℹ️ СПРАВКА</button>
   <button id="btn-options" class="audio-btn" data-i18n="btn_options">⚙️ ОПЦИИ</button>
 </div>
 <div id="options-menu" class="options-menu">
+  <button id="btn-opt-achievements" class="audio-btn opt-btn" style="color: #ffd700;" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 Достижения (Ачивки)</button>
   <button id="btn-opt-lang" class="audio-btn opt-btn" style="color: #00e5ff;" onclick="toggleLanguage()">🌐 Язык: РУССКИЙ (RU/EN)</button>
   <button id="btn-opt-guide" class="audio-btn opt-btn" style="color: #33ff55; border-color: rgba(51,255,85,0.4); font-weight: bold;" onclick="startTutorial(true)" data-i18n="opt_guide">🎓 Обучение и Гайд</button>
   <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
@@ -1099,6 +1226,10 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div class="row-2"><button id="open-notebook-btn" data-i18n="btn_notebook">БЛОКНОТ</button><button id="open-chest-btn" data-i18n="btn_chest">СУНДУК</button></div>
       <div class="row-2"><button id="open-shop-btn" data-i18n="btn_shop">РАСПРЕДЕЛИТЕЛЬ</button><button id="open-craft-btn" data-i18n="btn_craft">ВЕРСТАК</button></div>
       <div class="row-2"><button id="open-chat-btn" data-i18n="btn_chat">СЕТЬ</button><button id="open-leaderboard-btn" data-i18n="btn_leaderboard">РЕЙТИНГ</button></div>
+      <div class="row-2">
+        <button id="open-achievements-btn" style="color: #ffd700; border-color: rgba(255,215,0,0.5);" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 ДОСТИЖЕНИЯ</button>
+        <button id="open-bestiary-btn" onclick="document.getElementById('bestiary-modal').style.display='flex';" data-i18n="btn_bestiary">📖 БЕСТИАРИЙ</button>
+      </div>
       <button id="open-map-btn" data-i18n="btn_map">ВЫХОД В БЛОК</button>
     </div>
   </div>
@@ -1638,6 +1769,10 @@ const I18N = {
     talons_450: "+450 талонов",
     talons_1000: "+1000 талонов",
     btn_feedback: "⚠️ БАГИ / ИДЕИ [Shift+P]",
+    btn_achievements: "🏆 ДОСТИЖЕНИЯ",
+    ach_modal_title: "🏆 ДОСТИЖЕНИЯ // ЛИЧНОЕ ДЕЛО",
+    ach_progress_lbl: "ОБЩИЙ ПРОГРЕСС:",
+    ach_total_rewards: "НАГРАДЫ:",
     btn_bestiary: "📖 БЕСТИАРИЙ",
     btn_info: "ℹ️ СПРАВКА",
     btn_options: "⚙️ ОПЦИИ",
@@ -1787,6 +1922,10 @@ const I18N = {
     talons_450: "+450 talons",
     talons_1000: "+1000 talons",
     btn_feedback: "⚠️ BUGS / IDEAS [Shift+P]",
+    btn_achievements: "🏆 ACHIEVEMENTS",
+    ach_modal_title: "🏆 ACHIEVEMENTS // DOSSIER",
+    ach_progress_lbl: "TOTAL PROGRESS:",
+    ach_total_rewards: "REWARDS:",
     btn_bestiary: "📖 BESTIARY",
     btn_info: "ℹ️ GUIDE",
     btn_options: "⚙️ OPTIONS",
@@ -4209,6 +4348,16 @@ socket.on('gameState', (data) => {
     renderBestiaryList();
   }
 
+  if (data.ACHIEVEMENTS_LIST) {
+    cachedAchievementsList = data.ACHIEVEMENTS_LIST;
+  }
+  if (data.me && data.me.achievements) {
+    cachedPlayerAchievements = data.me.achievements;
+  }
+  if (document.getElementById('achievements-modal') && document.getElementById('achievements-modal').style.display === 'flex') {
+    renderAchievementsList();
+  }
+
   if(data.leaderboard) {
     let lb = document.getElementById('leaderboard-body');
     if(lb) {
@@ -6508,6 +6657,10 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     openFeedbackModal(null, 'list');
   }
+  if (e.shiftKey && (e.code === 'KeyA' || e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'ф')) {
+    e.preventDefault();
+    openAchievementsModal();
+  }
 });
 bindQuickSlotClicks();
 bindChestButtons();
@@ -6766,6 +6919,243 @@ socket.on('feedbackList', (list) => {
   });
   fbListContainer.innerHTML = html;
 });
+
+// ===== СИСТЕМА ДОСТИЖЕНИЙ (ACHIEVEMENTS SYSTEM) =====
+const DEFAULT_ACHIEVEMENTS_LIST = [
+  // 1. УБИЙСТВО МОНСТРОВ
+  { id: 'ach_kill_1', category: 'combat', icon: '🩸', name: 'Первая кровь', name_en: 'First Blood', desc: 'Уничтожить первого монстра Самосбора в катакомбах.', desc_en: 'Slay your first Samosbor creature in the catacombs.', target: 1, stat: 'monstersKilled', rewardTalons: 50, rewardXp: 25 },
+  { id: 'ach_kill_25', category: 'combat', icon: '⚔️', name: 'Ликвидатор слизи', name_en: 'Slime Liquidator', desc: 'Истребить 25 порождений Тумана.', desc_en: 'Exterminate 25 spawns of the Fog.', target: 25, stat: 'monstersKilled', rewardTalons: 200, rewardXp: 100 },
+  { id: 'ach_kill_100', category: 'combat', icon: '💀', name: 'Чистильщик блоков', name_en: 'Sector Purifier', desc: 'Уничтожить 100 мутантов и тварей.', desc_en: 'Destroy 100 mutants and horrors.', target: 100, stat: 'monstersKilled', rewardTalons: 500, rewardXp: 300 },
+  { id: 'ach_kill_500', category: 'combat', icon: '☠️', name: 'Бич Самосбора', name_en: 'Scourge of Samosbor', desc: 'Истребить 500 порождений Гигахрущевки.', desc_en: 'Wipe out 500 abominations of the Megastructure.', target: 500, stat: 'monstersKilled', rewardTalons: 1500, rewardXp: 1000 },
+
+  // 2. УБИЙСТВО БОССОВ
+  { id: 'ach_boss_1', category: 'boss', icon: '👹', name: 'Смерть титану', name_en: 'Titan Falls', desc: 'Сразить первого босса шахтного лифта.', desc_en: 'Defeat your first Elevator Guardian boss.', target: 1, stat: 'bossesKilled', rewardTalons: 300, rewardXp: 200 },
+  { id: 'ach_boss_5', category: 'boss', icon: '🛡️', name: 'Усмиритель гигантов', name_en: 'Giant Subduer', desc: 'Победить 5 боссов в глубинах Хруща.', desc_en: 'Overcome 5 bosses in the depths of the complex.', target: 5, stat: 'bossesKilled', rewardTalons: 800, rewardXp: 600 },
+  { id: 'ach_boss_10', category: 'boss', icon: '👑', name: 'Владыка глубин', name_en: 'Lord of the Deeps', desc: 'Одержать победу над 10 уникальными боссами этажей.', desc_en: 'Defeat 10 unique floor bosses.', target: 10, stat: 'bossesKilled', rewardTalons: 2000, rewardXp: 1500 },
+
+  // 3. ПРОХОДКА ЭТАЖЕЙ
+  { id: 'ach_floor_5', category: 'floor', icon: '🛗', name: 'Спуск в Спецархив', name_en: 'Descent to Archive', desc: 'Спуститься на 5-й этаж Гигахрущевки.', desc_en: 'Descend to Floor 5 of the Megastructure.', target: 5, stat: 'maxFloor', rewardTalons: 250, rewardXp: 150 },
+  { id: 'ach_floor_10', category: 'floor', icon: '☢️', name: 'Зона Реактора', name_en: 'Reactor Core Zone', desc: 'Достичь 10-го этажа сквозь радиацию и распад.', desc_en: 'Reach Floor 10 through radiation and decay.', target: 10, stat: 'maxFloor', rewardTalons: 600, rewardXp: 400 },
+  { id: 'ach_floor_20', category: 'floor', icon: '🌌', name: 'Врата Чернобога', name_en: 'Gates of Chernobog', desc: 'Пробиться сквозь плоть на 20-й горизонт.', desc_en: 'Break through flesh to Floor 20.', target: 20, stat: 'maxFloor', rewardTalons: 1200, rewardXp: 800 },
+  { id: 'ach_floor_all', category: 'floor', icon: '🏆', name: 'Покоритель Хруща', name_en: 'Master of the Megastructure', desc: 'Достичь финального 30-го этажа Бездны.', desc_en: 'Reach the final 30th floor of the Abyss.', target: 30, stat: 'maxFloor', rewardTalons: 3000, rewardXp: 2500 },
+
+  // 4. ОТКРЫТИЕ ДВЕРЕЙ И СЕКТОРОВ
+  { id: 'ach_doors_10', category: 'explore', icon: '🚪', name: 'Взломщик', name_en: 'Breaker', desc: 'Вскрыть гермодвери или войти в 10 секторов.', desc_en: 'Breach blast doors or enter 10 sectors.', target: 10, stat: 'roomsCleared', rewardTalons: 100, rewardXp: 50 },
+  { id: 'ach_doors_50', category: 'explore', icon: '🗝️', name: 'Ключник Самосбора', name_en: 'Master Locksmith', desc: 'Открыть 50 дверей и отсеков блока.', desc_en: 'Unlock 50 doors and complex compartments.', target: 50, stat: 'roomsCleared', rewardTalons: 400, rewardXp: 250 },
+  { id: 'ach_doors_100', category: 'explore', icon: '🔓', name: 'Мастер деблокировки', name_en: 'Unsealing Master', desc: 'Деблокировать 100 гермозамков и секторов.', desc_en: 'Unseal 100 blast locks and sectors.', target: 100, stat: 'roomsCleared', rewardTalons: 1000, rewardXp: 600 },
+  { id: 'ach_floor_full', category: 'explore', icon: '🗺️', name: 'Полная зачистка', name_en: 'Full Sweep', desc: 'Открыть все 25 секторов (A0–E4) хотя бы на одном этаже.', desc_en: 'Unlock all 25 sectors (A0–E4) on any floor.', target: 1, stat: 'fullFloorsCleared', rewardTalons: 600, rewardXp: 400 },
+
+  // 5. ЗАГАДКИ И КОММУТАЦИЯ
+  { id: 'ach_puzzle_1', category: 'puzzles', icon: '💡', name: 'Первая искра', name_en: 'First Spark', desc: 'Решить первую загадку, шифр или мини-игру коммутации.', desc_en: 'Solve your first riddle, cipher, or circuit minigame.', target: 1, stat: 'puzzlesSolved', rewardTalons: 100, rewardXp: 50 },
+  { id: 'ach_puzzle_10', category: 'puzzles', icon: '🧩', name: 'Инженер-дешифровщик', name_en: 'Cipher Engineer', desc: 'Разгадать 10 головоломок и взломов энерголиний.', desc_en: 'Solve 10 riddles, ciphers, or power-line routings.', target: 10, stat: 'puzzlesSolved', rewardTalons: 450, rewardXp: 300 },
+  { id: 'ach_puzzle_30', category: 'puzzles', icon: '⚡', name: 'Тесла Самосбора', name_en: 'Tesla of Samosbor', desc: 'Успешно решить 30 мини-игр и электрических цепей.', desc_en: 'Successfully solve 30 minigames and electric circuits.', target: 30, stat: 'puzzlesSolved', rewardTalons: 1200, rewardXp: 800 },
+
+  // 6. СНАРЯЖЕНИЕ И РЕДКОСТИ
+  { id: 'ach_rare_item', category: 'items', icon: '💎', name: 'Ценная находка', name_en: 'Valuable Find', desc: 'Получить предмет редкого (синего) качества.', desc_en: 'Acquire an item of Rare (Blue) quality.', target: 1, stat: 'hasRare', rewardTalons: 150, rewardXp: 100 },
+  { id: 'ach_epic_item', category: 'items', icon: '🔮', name: 'Реликт Партии', name_en: 'Party Relic', desc: 'Найти эпический (фиолетовый) предмет экипировки.', desc_en: 'Obtain an Epic (Purple) quality gear piece.', target: 1, stat: 'hasEpic', rewardTalons: 400, rewardXp: 300 },
+  { id: 'ach_legendary_item', category: 'items', icon: '⭐', name: 'Легенда Бетона', name_en: 'Concrete Legend', desc: 'Завладеть легендарным (золотым) снаряжением.', desc_en: 'Possess a Legendary (Gold) tier artifact.', target: 1, stat: 'hasLegendary', rewardTalons: 1000, rewardXp: 700 },
+  { id: 'ach_full_gear', category: 'items', icon: '🪖', name: 'В полном снаряжении', name_en: 'Fully Equipped', desc: 'Экипировать сразу все 4 слота (Оружие, Респиратор, Костюм, Вещмешок).', desc_en: 'Equip all 4 equipment slots simultaneously.', target: 1, stat: 'isFullyEquipped', rewardTalons: 200, rewardXp: 150 }
+];
+
+let cachedAchievementsList = DEFAULT_ACHIEVEMENTS_LIST;
+let cachedPlayerAchievements = {};
+let currentAchCategory = 'all';
+
+function showAchievementToast(ach) {
+  if (!ach) return;
+  const container = document.getElementById('achievements-toast-container');
+  if (!container) return;
+
+  const isEn = (currentLang === 'en');
+  const title = isEn ? (ach.name_en || ach.name) : ach.name;
+  const desc = isEn ? (ach.desc_en || ach.desc) : ach.desc;
+  const headerText = isEn ? '🏆 ACHIEVEMENT UNLOCKED!' : '🏆 ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО!';
+  const rewardTalons = ach.rewardTalons || 0;
+  const rewardXp = ach.rewardXp || 0;
+  const rewardStr = isEn
+    ? `+${rewardTalons} Talons | +${rewardXp} XP`
+    : `+${rewardTalons} талонов | +${rewardXp} XP`;
+
+  const toast = document.createElement('div');
+  toast.className = 'achievement-toast';
+  toast.innerHTML = `
+    <div class="ach-toast-icon">${ach.icon || '🏆'}</div>
+    <div style="flex:1; min-width:0; text-align: left;">
+      <div style="font-size: 10px; color: #ffd700; letter-spacing: 1px; font-weight: bold; text-transform: uppercase;">${headerText}</div>
+      <div style="font-size: 14px; font-weight: bold; color: #fff; margin: 2px 0;">${title}</div>
+      <div style="font-size: 11px; color: #ccc; line-height: 1.3;">${desc}</div>
+      <div style="margin-top: 4px; font-size: 11px; color: #ffd700; font-weight: bold;">${rewardStr}</div>
+    </div>
+  `;
+
+  toast.onclick = () => {
+    openAchievementsModal();
+    toast.remove();
+  };
+
+  container.appendChild(toast);
+  playSound('victory');
+
+  if (navigator.vibrate) {
+    try { navigator.vibrate([100, 50, 150]); } catch(e){}
+  }
+
+  setTimeout(() => {
+    toast.classList.add('dismissing');
+    setTimeout(() => {
+      if (toast.parentNode) toast.remove();
+    }, 450);
+  }, 4500);
+}
+
+socket.on('achievementUnlocked', (ach) => {
+  if (!ach) return;
+  if (!cachedPlayerAchievements) cachedPlayerAchievements = {};
+  cachedPlayerAchievements[ach.id] = { unlockedAt: Date.now() };
+  showAchievementToast(ach);
+  if (document.getElementById('achievements-modal') && document.getElementById('achievements-modal').style.display === 'flex') {
+    renderAchievementsList();
+  }
+});
+
+function openAchievementsModal() {
+  const m = document.getElementById('achievements-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  renderAchievementsList();
+  playSound('click');
+}
+
+function filterAchievements(cat) {
+  currentAchCategory = cat;
+  document.querySelectorAll('.ach-cat-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-cat') === cat);
+  });
+  renderAchievementsList();
+  playSound('click');
+}
+
+function computeAchievementMetrics() {
+  const p = clientMe || {};
+  let allItemIds = [...(p.inventory || []), ...(p.storage || [])];
+  if (p.equipment) {
+    if (p.equipment.weapon) allItemIds.push(p.equipment.weapon);
+    if (p.equipment.mask) allItemIds.push(p.equipment.mask);
+    if (p.equipment.suit) allItemIds.push(p.equipment.suit);
+    if (p.equipment.backpack) allItemIds.push(p.equipment.backpack);
+  }
+  let hasRare = allItemIds.some(id => String(id).includes('_rare') || String(id).includes('_epic') || String(id).includes('_legendary')) ? 1 : 0;
+  let hasEpic = allItemIds.some(id => String(id).includes('_epic') || String(id).includes('_legendary')) ? 1 : 0;
+  let hasLegendary = allItemIds.some(id => String(id).includes('_legendary')) ? 1 : 0;
+  let isFullyEquipped = (p.equipment && p.equipment.weapon && p.equipment.mask && p.equipment.suit && p.equipment.backpack) ? 1 : 0;
+
+  let fullFloorsCleared = 0;
+  if (p.unlockedSectors && typeof p.unlockedSectors === 'object') {
+    for (let fl in p.unlockedSectors) {
+      if (Array.isArray(p.unlockedSectors[fl]) && p.unlockedSectors[fl].length >= 25) {
+        fullFloorsCleared = 1;
+        break;
+      }
+    }
+  }
+
+  let bossesCount = Math.max(p.bossesKilled || 0, Object.keys(p.bossDefeated || {}).length);
+  let puzzlesCount = Math.max(p.puzzlesSolved || 0, (p.solvedGames ? p.solvedGames.length : 0));
+
+  return {
+    monstersKilled: p.monstersKilled || 0,
+    bossesKilled: bossesCount,
+    maxFloor: Math.max(p.maxFloor || 0, p.floor || 0),
+    roomsCleared: p.roomsCleared || 0,
+    puzzlesSolved: puzzlesCount,
+    fullFloorsCleared: fullFloorsCleared,
+    hasRare: hasRare,
+    hasEpic: hasEpic,
+    hasLegendary: hasLegendary,
+    isFullyEquipped: isFullyEquipped
+  };
+}
+
+function renderAchievementsList() {
+  const container = document.getElementById('achievements-list-container');
+  if (!container) return;
+
+  const isEn = (currentLang === 'en');
+  const metrics = computeAchievementMetrics();
+  const list = cachedAchievementsList || DEFAULT_ACHIEVEMENTS_LIST;
+  const pAchs = cachedPlayerAchievements || (clientMe && clientMe.achievements) || {};
+
+  let totalCount = list.length;
+  let unlockedCount = 0;
+  let earnedTalons = 0;
+  let earnedXp = 0;
+
+  list.forEach(a => {
+    if (pAchs[a.id]) {
+      unlockedCount++;
+      earnedTalons += (a.rewardTalons || 0);
+      earnedXp += (a.rewardXp || 0);
+    }
+  });
+
+  const percent = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
+  const countEl = document.getElementById('ach-stat-count');
+  const pctEl = document.getElementById('ach-stat-percent');
+  const barEl = document.getElementById('ach-progress-bar-fill');
+  const talonsEl = document.getElementById('ach-stat-talons');
+  const xpEl = document.getElementById('ach-stat-xp');
+
+  if (countEl) countEl.innerText = `${unlockedCount} / ${totalCount}`;
+  if (pctEl) pctEl.innerText = `${percent}%`;
+  if (barEl) barEl.style.width = `${percent}%`;
+  if (talonsEl) talonsEl.innerText = earnedTalons;
+  if (xpEl) xpEl.innerText = earnedXp;
+
+  const filtered = (currentAchCategory === 'all')
+    ? list
+    : list.filter(a => a.category === currentAchCategory);
+
+  let html = '';
+  filtered.forEach(ach => {
+    const isUnlocked = !!pAchs[ach.id];
+    const metricVal = metrics[ach.stat] !== undefined ? metrics[ach.stat] : 0;
+    const curVal = isUnlocked ? ach.target : Math.min(metricVal, ach.target);
+    const progressPct = Math.min(100, Math.round((curVal / ach.target) * 100));
+
+    const name = isEn ? (ach.name_en || ach.name) : ach.name;
+    const desc = isEn ? (ach.desc_en || ach.desc) : ach.desc;
+
+    const statusBadge = isUnlocked
+      ? `<span class="ach-status-badge done">${isEn ? '✓ COMPLETED' : '✓ ВЫПОЛНЕНО'}</span>`
+      : `<span class="ach-status-badge todo">🔒 ${curVal} / ${ach.target}</span>`;
+
+    const rewardBadge = `<span class="ach-rewards">+${ach.rewardTalons} 🎫 | +${ach.rewardXp} XP</span>`;
+
+    html += `
+      <div class="ach-card ${isUnlocked ? 'unlocked' : 'locked'}">
+        <div class="ach-icon-box">${ach.icon || '🏆'}</div>
+        <div class="ach-info">
+          <div class="ach-title-row">
+            <span class="ach-name">${name}</span>
+            ${statusBadge}
+          </div>
+          <div class="ach-desc">${desc}</div>
+          <div class="ach-footer">
+            ${rewardBadge}
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="ach-progress-num">${curVal} / ${ach.target} (${progressPct}%)</span>
+              <div class="ach-mini-bar">
+                <div class="ach-mini-bar-fill" style="width: ${progressPct}%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
 
 window.addEventListener('DOMContentLoaded', applyLanguage);
 applyLanguage();
