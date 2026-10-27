@@ -265,6 +265,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .critical-hp { color: var(--term-danger) !important; }
 .rating-box { margin-top: 8px; border-top: 1px dashed var(--term-dim); padding-top: 6px; font-size: 12.5px; line-height: 1.4; color: #8c8; }
 .ascii-art { font-family: 'Courier New', monospace; white-space: pre; line-height: 1.2; text-align: center; margin: 15px 0; color: var(--term-warn); font-weight: bold; }
+.ascii-art.interactive-target { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; border: 1px dashed rgba(255, 170, 0, 0.45); background: rgba(255, 170, 0, 0.04); padding: 8px; border-radius: 4px; transition: transform 0.05s ease, background 0.05s ease; }
+.ascii-art.interactive-target:active { transform: scale(0.985); background: rgba(255, 170, 0, 0.16); border-color: var(--term-warn); box-shadow: 0 0 12px rgba(255, 170, 0, 0.3); }
 .flicker { animation: textFlicker 0.15s infinite alternate; }
 @keyframes textFlicker { 0% { opacity: 1; } 100% { opacity: 0.7; } }
 .levelup-btn { width: 100%; padding: 12px; margin-bottom: 8px; text-align: left; background: transparent; border: 1px solid var(--term-warn); color: #fff; cursor: pointer; font-size: 15px; }
@@ -2873,12 +2875,14 @@ function getDisplayLogMessage(msg) {
 function getDisplayMinigame(mgData) {
   if (currentLang !== 'en' || !mgData) return mgData;
   let copy = Object.assign({}, mgData);
-  if (copy.title) {
-    if (MINIGAMES_EN.titles[copy.title]) copy.title = MINIGAMES_EN.titles[copy.title];
+  if (copy.title_en) copy.title = copy.title_en;
+  else if (copy.title) {
+    if (MINIGAMES_EN.titles && MINIGAMES_EN.titles[copy.title]) copy.title = MINIGAMES_EN.titles[copy.title];
     else if (copy.title.startsWith('ЗАГАДКА')) copy.title = copy.title.replace('ЗАГАДКА', 'RIDDLE');
   }
-  if (copy.text) {
-    if (MINIGAMES_EN.texts[copy.text]) copy.text = MINIGAMES_EN.texts[copy.text];
+  if (copy.text_en) copy.text = copy.text_en;
+  else if (copy.text && MINIGAMES_EN.texts && MINIGAMES_EN.texts[copy.text]) {
+    copy.text = MINIGAMES_EN.texts[copy.text];
   }
   return copy;
 }
@@ -4489,6 +4493,389 @@ socket.on('triggerEvent', (evRaw) => {
   document.getElementById('event-modal').style.display = 'flex';
 });
 
+// --- ИНТЕРАКТИВНЫЕ ASCII МИНИ-ИГРЫ САМОСБОРА ---
+let cutProgress = 0, lastSpark = '', isCuttingWon = false;
+let cutWireState = { severed: -1, isDone: false };
+let valveState = { press: 160, maxPress: 160, step: 20, angle: 0, isDone: false };
+const valveFrames = ['|', '/', '—', '\\'];
+let freqState = { current: 380, target: 440, unit: 'MHz', isDone: false };
+
+function cleanupMinigameUI() {
+  const art = document.getElementById('mg-art');
+  if (art) {
+    art.onclick = null;
+    art.ontouchstart = null;
+    art.classList.remove('interactive-target');
+  }
+}
+
+function initLockCutUI() {
+  cutProgress = 0;
+  lastSpark = '';
+  isCuttingWon = false;
+  const art = document.getElementById('mg-art');
+  art.classList.add('interactive-target');
+  art.onclick = () => tapCutLock();
+  art.ontouchstart = (e) => { e.preventDefault(); tapCutLock(); };
+  renderLockCutUI();
+}
+
+function tapCutLock() {
+  if (isCuttingWon) return;
+  const power = (mgData && mgData.clickPower) ? mgData.clickPower : 7;
+  cutProgress = Math.min(100, cutProgress + power);
+  
+  playSound('hit');
+  if (window.navigator && window.navigator.vibrate) {
+    try { window.navigator.vibrate(25); } catch(e){}
+  }
+
+  const sparksRu = ['⚡ ИСКРЫ!', '💥 ВЖЖЖ-ХРР!', '✨ ХРУСТ МЕТАЛЛА!', '🔥 ПРОПИЛ ГЛУБЖЕ!', '⚡ ТРЕНИЕ!', '💥 ЗУБ НАДПИЛА!'];
+  const sparksEn = ['⚡ SPARKS!', '💥 GRIND!', '✨ METAL SCRAPE!', '🔥 CUT DEEPER!', '⚡ FRICTION!', '💥 CUT NOTCH!'];
+  const pool = (currentLang === 'en' ? sparksEn : sparksRu);
+  lastSpark = pool[Math.floor(Math.random() * pool.length)];
+
+  renderLockCutUI();
+
+  if (cutProgress >= 100) {
+    isCuttingWon = true;
+    playSound('victory');
+    setTimeout(() => {
+      cleanupMinigameUI();
+      document.getElementById('minigame-modal').style.display = 'none';
+      let cc = document.getElementById('combat-controls');
+      if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+      else socket.emit('minigameWon', currentGameLoc);
+    }, 650);
+  }
+}
+
+function renderLockCutUI() {
+  const art = document.getElementById('mg-art');
+  const ui = document.getElementById('mg-ui');
+  if (!art || !ui) return;
+
+  const isEn = (currentLang === 'en');
+  const pct = Math.floor(cutProgress);
+  const barLen = 16;
+  const filled = Math.round((pct / 100) * barLen);
+  const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
+
+  let shRight = ' | | ';
+  if (pct >= 100) {
+    shRight = '     ';
+  } else if (pct > 75) {
+    shRight = ' > < ';
+  } else if (pct > 50) {
+    shRight = '>==< ';
+  } else if (pct > 25) {
+    shRight = '>- | ';
+  }
+
+  let ascii = '';
+  if (pct >= 100) {
+    ascii = isEn ?
+`        .--------.         
+       /          \\        
+      |   ______   \\       ★ SHACKLE SEVERED! ★
+      |  |      |   \\      [ACCESS GRANTED]
+      |  |      |          
+      |  +======+          ПРОПИЛ: [████████████████] 100%
+      |  | SAMO |          
+      |  | SBOR |          ✓ OPENING SECTOR...
+      '------------'       ` :
+`        .--------.         
+       /          \\        
+      |   ______   \\       ★ ДУЖКА ПЕРЕРЕЗАНА! ★
+      |  |      |   \\      [ДОСТУП ОТКРЫТ]
+      |  |      |          
+      |  +======+          ПРОПИЛ: [████████████████] 100%
+      |  | САМО |          
+      |  | СБОР |          ✓ ОТКРЫТИЕ СЕКТОРА...
+      '------------'       `;
+  } else {
+    let sparkTag = lastSpark ? `  ${lastSpark}` : '';
+    ascii =
+`        .--------.
+       /          \\
+      |   ______   |     ${sparkTag}
+      |  |     ${shRight} |     <-- [ЗОНА РЕЗКИ]
+      |  |      |  |     
+      |  +======+  |     ПРОПИЛ: [${bar}] ${pct}%
+      |  | САМО |  |     
+      |  | СБОР |  |     (НАЖИМАЙТЕ НА ЭКРАН / ЗАМОК!)
+      '------------'`;
+  }
+
+  art.innerText = ascii;
+
+  let btnLabel = isEn ?
+    (pct >= 100 ? "✓ ACCESS GRANTED" : `🪚 SAW THROUGH SHACKLE (${pct}%)`) :
+    (pct >= 100 ? "✓ ДОСТУП РАЗРЕШЕН" : `🪚 ПЕРЕПИЛИТЬ ДУЖКУ (${pct}%)`);
+
+  let hintText = isEn ?
+    "👆 TAP/CLICK SCREEN OR BUTTON RAPIDLY TO CUT!" :
+    "👆 НАЖИМАЙТЕ НА ЭКРАН / ЗАМОК ИЛИ КНОПКУ РЕЗКИ!";
+
+  ui.innerHTML = `
+    <div style="font-size:13px; color:var(--term-warn); margin-bottom:8px; text-align:center; font-weight:bold; letter-spacing:1px;">${hintText}</div>
+    <button id="btn-lock-cut-act" onclick="tapCutLock()" style="width:100%; font-size:16px; padding:12px; font-weight:bold; background:rgba(255,170,0,0.15); border:2px solid var(--term-warn); cursor:pointer;" ${pct >= 100 ? 'disabled' : ''}>${btnLabel}</button>
+  `;
+}
+
+function initWireCutUI() {
+  cutWireState = { severed: -1, isDone: false };
+  cleanupMinigameUI();
+  renderWireCutUI();
+}
+
+function cutWire(index) {
+  if (cutWireState.isDone) return;
+  const isEn = (currentLang === 'en');
+  const correctIdx = (mgData && mgData.correctWire !== undefined) ? mgData.correctWire : 0;
+
+  if (index === correctIdx) {
+    cutWireState.severed = index;
+    cutWireState.isDone = true;
+    playSound('victory');
+    renderWireCutUI();
+    setTimeout(() => {
+      cleanupMinigameUI();
+      document.getElementById('minigame-modal').style.display = 'none';
+      let cc = document.getElementById('combat-controls');
+      if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+      else socket.emit('minigameWon', currentGameLoc);
+    }, 700);
+  } else {
+    playSound('defeat');
+    cutWireState.severed = index;
+    renderWireCutUI();
+  }
+}
+
+function renderWireCutUI() {
+  const art = document.getElementById('mg-art');
+  const ui = document.getElementById('mg-ui');
+  if (!art || !ui) return;
+
+  const isEn = (currentLang === 'en');
+  const wires = isEn ? (mgData.wires_en || mgData.wires || ['RED','BLUE','YELLOW','GREEN']) : (mgData.wires || ['КРАСНЫЙ','СИНИЙ','ЖЕЛТЫЙ','ЗЕЛЕНЫЙ']);
+  const dests = isEn ? (mgData.destinations_en || mgData.destinations || ['LINE 1','LINE 2','LINE 3','LINE 4']) : (mgData.destinations || ['ЛИНИЯ 1','ЛИНИЯ 2','ЛИНИЯ 3','ЛИНИЯ 4']);
+
+  let wireLines = wires.map((name, idx) => {
+    let num = `(${idx + 1})`;
+    let padName = `[${name}]`.padEnd(11, ' ');
+    let dest = dests[idx] ? `[ ${dests[idx]} ]` : `[ ЦЕПЬ ${idx + 1} ]`;
+    if (cutWireState.severed === idx) {
+      if (cutWireState.isDone) {
+        return `  ${num} ${padName} ══[ ✂️ ПЕРЕРЕЗАН ✂️ ]══► [ОБЕСТОЧЕНО] ✓`;
+      } else {
+        return `  ${num} ${padName} ══[ 💥 ЗАМЫКАНИЕ! 💥 ]══► ${dest} ✖`;
+      }
+    }
+    return `  ${num} ${padName} ═══════[ ⚡ ]═══════► ${dest}`;
+  }).join('\n');
+
+  let titleLine = isEn ? "AIRLOCK ELECTRONIC BYPASS TERMINAL" : "ЭЛЕКТРОННЫЙ БЛОКИРАТОР ГЕРМОЗАТВОРА";
+  let statusLine = cutWireState.isDone ?
+    (isEn ? "★ CIRCUIT DEAD: LOCK DISENGAGED ★" : "★ ЦЕПЬ ОБЕСТОЧЕНА: ЗАМОК ОТКРЫТ ★") :
+    (isEn ? "[VOLTAGE: 380V | SECURITY LOOP ARMED]" : "[НАПРЯЖЕНИЕ: 380V | КОНТУР ОХРАНЫ АКТИВЕН]");
+
+  art.innerText =
+`+===================================================+
+|  ${titleLine.padEnd(49, ' ')}|
+|  ${statusLine.padEnd(49, ' ')}|
++===================================================+
+|                                                   |
+${wireLines}
+|                                                   |
++===================================================+`;
+
+  let btns = wires.map((name, idx) => {
+    let isCut = (cutWireState.severed === idx && !cutWireState.isDone);
+    let dis = (cutWireState.isDone || isCut) ? 'disabled' : '';
+    let label = isCut ? `✖ [${name} - ОШИБКА]` : `✂️ ${idx + 1}. [${name}]`;
+    let colorStyle = isCut ? 'color:var(--term-danger); border-color:var(--term-danger);' : '';
+    return `<button onclick="cutWire(${idx})" style="flex:1; min-width:140px; margin:4px; font-size:13px; padding:10px 8px; ${colorStyle}" ${dis}>${label}</button>`;
+  }).join('');
+
+  let promptText = isEn ? "SELECT WIRE TO CUT:" : "ВЫБЕРИТЕ ПРОВОД ДЛЯ ПЕРЕКУСЫВАНИЯ:";
+  ui.innerHTML = `
+    <div style="font-size:13px; color:var(--term-warn); margin-bottom:8px; text-align:center; font-weight:bold;">${promptText}</div>
+    <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:6px;">${btns}</div>
+  `;
+}
+
+function initValveUI() {
+  valveState = {
+    press: (mgData && mgData.startPressure) ? mgData.startPressure : 160,
+    maxPress: (mgData && mgData.startPressure) ? mgData.startPressure : 160,
+    step: (mgData && mgData.step) ? mgData.step : 20,
+    angle: 0,
+    isDone: false
+  };
+  const art = document.getElementById('mg-art');
+  art.classList.add('interactive-target');
+  art.onclick = () => turnValve();
+  art.ontouchstart = (e) => { e.preventDefault(); turnValve(); };
+  renderValveUI();
+}
+
+function turnValve() {
+  if (valveState.isDone) return;
+  valveState.angle++;
+  valveState.press = Math.max(0, valveState.press - valveState.step);
+  playSound('click');
+
+  if (window.navigator && window.navigator.vibrate) {
+    try { window.navigator.vibrate(20); } catch(e){}
+  }
+
+  renderValveUI();
+
+  if (valveState.press <= 0) {
+    valveState.isDone = true;
+    playSound('victory');
+    setTimeout(() => {
+      cleanupMinigameUI();
+      document.getElementById('minigame-modal').style.display = 'none';
+      let cc = document.getElementById('combat-controls');
+      if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+      else socket.emit('minigameWon', currentGameLoc);
+    }, 650);
+  }
+}
+
+function renderValveUI() {
+  const art = document.getElementById('mg-art');
+  const ui = document.getElementById('mg-ui');
+  if (!art || !ui) return;
+
+  const isEn = (currentLang === 'en');
+  const f = valveFrames[valveState.angle % 4];
+  const p = valveState.press;
+  const pct = Math.round(((valveState.maxPress - p) / valveState.maxPress) * 100);
+  const barLen = 14;
+  const filled = Math.round((pct / 100) * barLen);
+  const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
+
+  let statusMsg = valveState.isDone ?
+    (isEn ? "★ PRESSURE PURGED: LOCK OPEN ★" : "★ ДАВЛЕНИЕ СБРОШЕНО: ЗАТВОР ОТКРЫТ ★") :
+    (isEn ? `💨 STEAM RELEASE: -${valveState.step} kPa` : `💨 СБРОС ПАРА: -${valveState.step} kPa`);
+
+  art.innerText =
+`         .-----[ КЛАПАН СБРОСА ДАВЛЕНИЯ ]-----.
+        |               _.-''''-._            |
+        |             .'    ${f}     '.          |
+        |            /   \\  |  /    \\         |
+        |           | -----(${f})-----  |        |
+        |            \\   /  |  \\    /         |
+        |             '. _  |  _ .'           |
+        |                \`''''\`               |
+        |   МАХОВИК: [ ${f} ]   ДАВЛЕНИЕ: ${String(p).padStart(3, ' ')} kPa |
+        |   СБРОС: [${bar}] ${pct}%            |
+        '-------------------------------------'
+        ${statusMsg}`;
+
+  let btnLabel = isEn ?
+    (valveState.isDone ? "✓ PRESSURE PURGED" : `⚙️ ROTATE VALVE (-${valveState.step} kPa)`) :
+    (valveState.isDone ? "✓ ДАВЛЕНИЕ В НОРМЕ" : `⚙️ ПРОВЕРНУТЬ ВЕНТИЛЬ (-${valveState.step} kPa)`);
+
+  let hintText = isEn ?
+    "👆 TAP WHEEL OR BUTTON TO PURGE STEAM PRESSURE!" :
+    "👆 НАЖИМАЙТЕ НА МАХОВИК ИЛИ КНОПКУ ЧТОБЫ СТРАВИТЬ ПАР!";
+
+  ui.innerHTML = `
+    <div style="font-size:13px; color:var(--term-warn); margin-bottom:8px; text-align:center; font-weight:bold;">${hintText}</div>
+    <button onclick="turnValve()" style="width:100%; font-size:16px; padding:12px; font-weight:bold; background:rgba(255,170,0,0.15); border:2px solid var(--term-warn); cursor:pointer;" ${valveState.isDone ? 'disabled' : ''}>${btnLabel}</button>
+  `;
+}
+
+function initFreqUI() {
+  freqState = {
+    current: (mgData && mgData.startFreq) ? mgData.startFreq : 380,
+    target: (mgData && mgData.targetFreq) ? mgData.targetFreq : 440,
+    unit: (mgData && mgData.unit) ? mgData.unit : 'MHz',
+    isDone: false
+  };
+  cleanupMinigameUI();
+  renderFreqUI();
+}
+
+function adjustFreq(delta) {
+  if (freqState.isDone) return;
+  freqState.current = Math.max(0, freqState.current + delta);
+  playSound('click');
+  renderFreqUI();
+
+  if (freqState.current === freqState.target) {
+    freqState.isDone = true;
+    playSound('victory');
+    setTimeout(() => {
+      cleanupMinigameUI();
+      document.getElementById('minigame-modal').style.display = 'none';
+      let cc = document.getElementById('combat-controls');
+      if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+      else socket.emit('minigameWon', currentGameLoc);
+    }, 650);
+  }
+}
+
+function renderFreqUI() {
+  const art = document.getElementById('mg-art');
+  const ui = document.getElementById('mg-ui');
+  if (!art || !ui) return;
+
+  const isEn = (currentLang === 'en');
+  const diff = freqState.current - freqState.target;
+  const absDiff = Math.abs(diff);
+
+  let hint = '';
+  if (absDiff === 0) {
+    hint = isEn ? "★ RESONANCE 100%! SOLENOID UNLOCKED ★" : "★ РЕЗОНАНС 100%! СОЛЕНОИД СРАБОТАЛ ★";
+  } else if (diff < 0) {
+    hint = isEn ? `▲ LOW (-${absDiff} ${freqState.unit}) ► TUNE UP ▲` : `▲ НИЗКО (-${absDiff} ${freqState.unit}) ► КРУТИТЕ ВВЕРХ ▲`;
+  } else {
+    hint = isEn ? `▼ HIGH (+${absDiff} ${freqState.unit}) ◄ TUNE DOWN ▼` : `▼ ВЫСОКО (+${absDiff} ${freqState.unit}) ◄ КРУТИТЕ ВНИЗ ▼`;
+  }
+
+  let sigWave = '';
+  if (absDiff === 0) {
+    sigWave = "/\\_/\\_/\\_/\\_/\\_/\\_/\\_/\\";
+  } else if (absDiff <= 5) {
+    sigWave = "/\\__/\_/\__/\_/\__/\_";
+  } else if (absDiff <= 20) {
+    sigWave = "\\__//\\__//\\__//\\__//";
+  } else {
+    sigWave = "~~~___~~~___~~~___~~~";
+  }
+
+  art.innerText =
+`+===================================================+
+|         РЕЗОНАНСНЫЙ ОСЦИЛЛОГРАФ «ЭХО-7»           |
++===================================================+
+|  ЦЕЛЕВАЯ ВОЛНА :  /\\_/\\_/\\_/\\_/\\_/\\_/\\_/\\  (${freqState.target} ${freqState.unit})  |
+|  ТЕКУЩИЙ СИГНАЛ:  ${sigWave.padEnd(20, ' ')} (${freqState.current} ${freqState.unit})  |
+|                                                   |
+|  РАССОГЛАСОВАНИЕ: ${String(absDiff).padStart(3, ' ')} ${freqState.unit.padEnd(4, ' ')} ${hint.padEnd(24, ' ')}|
++===================================================+`;
+
+  let btns = `
+    <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; width:100%;">
+      <button onclick="adjustFreq(-10)" style="flex:1; min-width:80px; font-size:14px; padding:10px;" ${freqState.isDone ? 'disabled' : ''}>-10 ${freqState.unit}</button>
+      <button onclick="adjustFreq(-1)" style="flex:1; min-width:80px; font-size:14px; padding:10px;" ${freqState.isDone ? 'disabled' : ''}>-1 ${freqState.unit}</button>
+      <button onclick="adjustFreq(1)" style="flex:1; min-width:80px; font-size:14px; padding:10px;" ${freqState.isDone ? 'disabled' : ''}>+1 ${freqState.unit}</button>
+      <button onclick="adjustFreq(10)" style="flex:1; min-width:80px; font-size:14px; padding:10px;" ${freqState.isDone ? 'disabled' : ''}>+10 ${freqState.unit}</button>
+    </div>
+  `;
+
+  let titleText = isEn ? "CALIBRATE RESONANCE FREQUENCY:" : "НАСТРОЙКА ЧАСТОТЫ РЕЗОНАНСА:";
+  ui.innerHTML = `
+    <div style="font-size:13px; color:var(--term-warn); margin-bottom:8px; text-align:center; font-weight:bold;">${titleText}</div>
+    ${btns}
+  `;
+}
+
 socket.on('startMinigame', (data) => {
   currentGameLoc = data.locId;
   mgData = getDisplayMinigame(data.gameData);
@@ -4500,7 +4887,18 @@ socket.on('startMinigame', (data) => {
   document.getElementById('mg-title').innerText = mgData.title || (isEn ? 'HACKING' : 'ВЗЛОМ');
   document.getElementById('mg-text').innerText = mgData.text || '';
   modal.style.display = 'flex';
-  if (mgData.type === 'password') {
+
+  cleanupMinigameUI();
+
+  if (mgData.type === 'lock_cut') {
+    initLockCutUI();
+  } else if (mgData.type === 'wire_cut') {
+    initWireCutUI();
+  } else if (mgData.type === 'valve_turn') {
+    initValveUI();
+  } else if (mgData.type === 'frequency_tune') {
+    initFreqUI();
+  } else if (mgData.type === 'password') {
     art.innerText = isEn ? `\n  +-----------------+\n  |   ACCESS CODE   |\n  +-----------------+` : `\n  +-----------------+\n  |   КОД ДОСТУПА   |\n  +-----------------+`;
     let ph = isEn ? "Code / Answer" : "Код / Ответ";
     let btnSubmit = isEn ? "SUBMIT" : "ВВОД";
@@ -4531,6 +4929,7 @@ function checkPass() {
   let altAnswers = (mgData.altAnswers || []).map(a => String(a).trim().toUpperCase().replace(/Ё/g, 'Е'));
   
   if (val && (val === ans || altAnswers.includes(val))) {
+    cleanupMinigameUI();
     document.getElementById('minigame-modal').style.display = 'none';
     let cc = document.getElementById('combat-controls');
     if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
@@ -4546,6 +4945,7 @@ function checkPass() {
 
 function handleChoice(isCorrect, btnEl) {
   if (isCorrect) {
+    cleanupMinigameUI();
     document.getElementById('minigame-modal').style.display = 'none';
     let cc = document.getElementById('combat-controls');
     if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
@@ -4578,6 +4978,7 @@ function addVolt(v) {
   const isEn = (currentLang === 'en');
   if (mgStep >= 4) {
     if (mgInput[0] === mgData.target) {
+      cleanupMinigameUI();
       document.getElementById('minigame-modal').style.display = 'none';
       let cc = document.getElementById('combat-controls');
       if(cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
@@ -4586,6 +4987,7 @@ function addVolt(v) {
       playSound('defeat');
       let cc = document.getElementById('combat-controls');
       if(cc && cc.style.display === 'flex' && !currentGameLoc) {
+        cleanupMinigameUI();
         document.getElementById('minigame-modal').style.display = 'none';
         socket.emit('combatMinigameResult', false);
       } else {
@@ -4596,7 +4998,7 @@ function addVolt(v) {
     }
   } else updateVoltageUI();
 }
-function cancelMinigame() { document.getElementById('minigame-modal').style.display = 'none'; socket.emit('minigameCancel'); }
+function cancelMinigame() { cleanupMinigameUI(); document.getElementById('minigame-modal').style.display = 'none'; socket.emit('minigameCancel'); }
 
 socket.on('terminalError', (msg) => {
   if (isVideoPlaying) finishVideoIntro();

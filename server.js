@@ -470,11 +470,173 @@ const GAME_PERKS = [
 
 const { RIDDLES_150 } = require('./riddles.js');
 
-const MINIGAME_POOL = [
-    // 150 атмосферных сюжетных загадок Самосбора
-    ...RIDDLES_150,
+// --- ИНТЕРАКТИВНЫЕ ASCII МИНИ-ИГРЫ САМОСБОРА ---
+const PHYSICAL_MINIGAMES = [
+    // 1. ПЕРЕПИЛИВАНИЕ / СРЕЗАНИЕ ЗАМКОВ (Кликайте/жмакайте по экрану/замку чтобы перепилить дужку!)
+    {
+        id: 'mg_cut_rust',
+        type: 'lock_cut',
+        title: 'РЖАВЫЙ НАВЕСНОЙ ЗАМОК',
+        title_en: 'RUSTED PADLOCK',
+        text: 'Створки гермозатвора скованы старым навесным замком «ЧАЗ». Металл источен сыростью. Нажимайте на экран или кнопку резки, чтобы перепилить дужку ножовкой!',
+        text_en: 'The blast doors are locked with an old padlock. The metal is corroded by dampness. Tap or click rapidly on the screen to saw through the shackle!',
+        clickPower: 8,
+        target: 100
+    },
+    {
+        id: 'mg_cut_chain',
+        type: 'lock_cut',
+        title: 'ТЯЖЕЛАЯ СТАЛЬНАЯ ЦЕПЬ',
+        title_en: 'HEAVY STEEL CHAIN',
+        text: 'Противопожарная решетка обмотана каленой якорной цепью. Быстро жмите на экран или кнопку, чтобы перекусить звенья гидравлическим болторезом!',
+        text_en: 'The fire gate is wrapped in a heavy mooring chain. Rapidly tap or click to snap the chain links with bolt cutters!',
+        clickPower: 7,
+        target: 100
+    },
+    {
+        id: 'mg_cut_vokhr',
+        type: 'lock_cut',
+        title: 'БРОНЕЗАМОК ВОХР',
+        title_en: 'VOKHR ARMORED LOCK',
+        text: 'Усиленный караульный замок с защитной титановой планкой. Требуется непрерывный распил ножовкой по металлу. Не сбавляйте темп!',
+        text_en: 'Reinforced security lock with titanium guard plate. Continuous sawing required. Keep up the rapid pace!',
+        clickPower: 6,
+        target: 100
+    },
+    {
+        id: 'mg_cut_cable',
+        type: 'lock_cut',
+        title: 'СИЛОВОЙ НАТЯЖНОЙ ТРОС',
+        title_en: 'HIGH-TENSION CABLE',
+        text: 'Гермозатвор заклинен сорванным тросом шахтного подъемника. Перепиливайте каленые стальные жилы быстрыми нажатиями!',
+        text_en: 'The blast door is jammed by a snapped elevator winch cable. Saw through the hardened steel strands with rapid taps!',
+        clickPower: 7,
+        target: 100
+    },
+    {
+        id: 'mg_cut_bio',
+        type: 'lock_cut',
+        title: 'ОКАМЕНЕВШИЙ НАРОСТ ПЛОТИ',
+        title_en: 'PETRIFIED FLESH GROWTH',
+        text: 'Хрящевая биомасса Самосбора залила ригели засова и окаменела. Наносите частые рубящие удары тесаком, чтобы расколоть нарост!',
+        text_en: 'Samosbor cartilaginous biomass flooded the latch bolts and hardened. Deliver rapid slashing strikes to hack through the growth!',
+        clickPower: 8,
+        target: 100
+    },
 
-    // Дополнительные архивные шифры
+    // 2. ПЕРЕКУСЫВАНИЕ ПРОВОДОВ / РАЗМИНИРОВАНИЕ
+    {
+        id: 'mg_wire_solenoid',
+        type: 'wire_cut',
+        title: 'ЭЛЕКТРОМАГНИТНЫЙ ЗАМОК',
+        title_en: 'ELECTROMAGNETIC LOCK',
+        text: 'Инструкция электрика: «Питание соленоида идет по ЖЕЛТОМУ проводу. Красный активирует сирену, синий — детонатор разряда, зеленый — заземление». Перекусите провод соленоида!',
+        text_en: 'Electrician manual: "Solenoid power runs through the YELLOW wire. Red triggers alarm siren, blue powers detonator, green is ground". Cut the solenoid wire!',
+        wires: ['КРАСНЫЙ', 'СИНИЙ', 'ЖЕЛТЫЙ', 'ЗЕЛЕНЫЙ'],
+        wires_en: ['RED', 'BLUE', 'YELLOW', 'GREEN'],
+        destinations: ['СИРЕНА', 'ДЕТОНАТОР', 'СОЛЕНОИД (ЦЕЛЬ)', 'ЗАЗЕМЛЕНИЕ'],
+        destinations_en: ['SIREN', 'DETONATOR', 'SOLENOID (TARGET)', 'GROUND'],
+        correctWire: 2
+    },
+    {
+        id: 'mg_wire_trap',
+        type: 'wire_cut',
+        title: 'РАСТЯЖКА СИСТЕМЫ ОХРАНЫ',
+        title_en: 'DEFENSE TRIPWIRE',
+        text: 'Схема разминирования: «Для безопасного обесточивания ловушки перекусите СИНИЙ провод деактивации. Красный замкнет запал!»',
+        text_en: 'Defusal schematic: "To safely disarm the explosive latch, cut the BLUE bypass line. Red will trip the fuse!"',
+        wires: ['КРАСНЫЙ', 'СИНИЙ', 'БЕЛЫЙ', 'ЧЕРНЫЙ'],
+        wires_en: ['RED', 'BLUE', 'WHITE', 'BLACK'],
+        destinations: ['ЗАПАЛ', 'ДЕАКТИВАЦИЯ (ЦЕЛЬ)', 'КОНДЕНСАТОР', 'КОРПУС'],
+        destinations_en: ['FUSE', 'DISARM (TARGET)', 'CAPACITOR', 'CHASSIS'],
+        correctWire: 1
+    },
+    {
+        id: 'mg_wire_barrier',
+        type: 'wire_cut',
+        title: 'СИЛОВОЙ БАРЬЕР ШЛЮЗА',
+        title_en: 'AIRLOCK FORCE BARRIER',
+        text: 'Аварийный протокол: «Трансформатор барьера запитан через КРАСНЫЙ высоковольтный ввод. Перекусите его для отключения поля».',
+        text_en: 'Emergency protocol: "The force field transformer is fed by the RED high-voltage input. Sever it to collapse the barrier".',
+        wires: ['КРАСНЫЙ', 'ЖЕЛТЫЙ', 'ЗЕЛЕНЫЙ', 'СИНИЙ'],
+        wires_en: ['RED', 'YELLOW', 'GREEN', 'BLUE'],
+        destinations: ['ТРАНСФОРМАТОР (ЦЕЛЬ)', 'СИГНАЛИЗАТОР', 'РЕЗЕРВНАЯ ШИНА', 'ЗАЩИТНОЕ РЕЛЕ'],
+        destinations_en: ['TRANSFORMER (TARGET)', 'ALARM', 'STANDBY BUS', 'SAFETY RELAY'],
+        correctWire: 0
+    },
+    {
+        id: 'mg_wire_relay',
+        type: 'wire_cut',
+        title: 'РЕЛЕ САМОСБОРА',
+        title_en: 'SAMOSBOR RELAY JUNCTION',
+        text: 'Журнал дежурного: «Контур аварийной герметизации шунтируется через ЗЕЛЕНУЮ шину. Разорвите ее кусачками».',
+        text_en: 'Duty log: "Airlock sealing loop is shunted via the GREEN busbar. Snip it with wire cutters".',
+        wires: ['СЕРЫЙ', 'ЗЕЛЕНЫЙ', 'КОРИЧНЕВЫЙ', 'СИНИЙ'],
+        wires_en: ['GRAY', 'GREEN', 'BROWN', 'BLUE'],
+        destinations: ['ДАТЧИК ДАВЛЕНИЯ', 'ШУНТ ГЕРМЕТИЗАЦИИ (ЦЕЛЬ)', 'ТЕРМОПАРА', 'СИЛОВОЙ КОНТАКТОР'],
+        destinations_en: ['PRESSURE SENSOR', 'SEALING SHUNT (TARGET)', 'THERMOCOUPLE', 'POWER CONTACTOR'],
+        correctWire: 1
+    },
+
+    // 3. ВЕНТИЛЬ СБРОСА ДАВЛЕНИЯ
+    {
+        id: 'mg_valve_steam',
+        type: 'valve_turn',
+        title: 'СБРОС ПЕРЕГРЕТОГО ПАРА',
+        title_en: 'SUPERHEATED STEAM PURGE',
+        text: 'Гидрозатвор заблокирован давлением 160 kPa. Вращайте маховик вентиля нажатиями, чтобы стравить пар до нуля!',
+        text_en: 'Airlock is locked by 160 kPa pressure. Rotate the valve wheel with rapid turns to bleed steam down to 0 kPa!',
+        startPressure: 160,
+        step: 20
+    },
+    {
+        id: 'mg_valve_chlorine',
+        type: 'valve_turn',
+        title: 'ПРОДУВКА ХЛОРНОЙ МАГИСТРАЛИ',
+        title_en: 'CHLORINE LINE FLUSH',
+        text: 'В шлюзе скопился тяжелый хлор. Откройте продувочный клапан быстрыми оборотами маховика до сброса давления!',
+        text_en: 'Toxic chlorine gas trapped in airlock. Crank the purge valve open until pressure equalizes!',
+        startPressure: 140,
+        step: 20
+    },
+    {
+        id: 'mg_valve_hydraulic',
+        type: 'valve_turn',
+        title: 'РУЧНОЙ ГИДРОНАСОС',
+        title_en: 'HYDRAULIC MANUAL PUMP',
+        text: 'Защитная бронеплита опущена. Вращайте вентиль насоса, чтобы сбросить гидрозамок затвора!',
+        text_en: 'Blast plate is locked down. Rotate the hydraulic relief valve to release the deadbolts!',
+        startPressure: 180,
+        step: 25
+    },
+
+    // 4. НАСТРОЙКА РЕЗОНАНСНОЙ ЧАСТОТЫ
+    {
+        id: 'mg_freq_radio',
+        type: 'frequency_tune',
+        title: 'РАДИОМАЯК ВОХР',
+        title_en: 'VOKHR RADIO BEACON',
+        text: 'Поймайте несущую частоту радиоканала маяка (440 MHz). Подстройте сигнал кнопками [+/-] до точного совпадения!',
+        text_en: 'Acquire carrier frequency of the beacon (440 MHz). Adjust tuning with [+/-] buttons until exact match!',
+        targetFreq: 440,
+        startFreq: 380,
+        unit: 'MHz'
+    },
+    {
+        id: 'mg_freq_sonar',
+        type: 'frequency_tune',
+        title: 'АКУСТИЧЕСКИЙ РЕЗОНАТОР',
+        title_en: 'ACOUSTIC RESONATOR',
+        text: 'Совместите частоту ультразвукового генератора (125 kHz) для разблокировки акустического пьезо-замка!',
+        text_en: 'Align ultrasonic generator frequency (125 kHz) to unlock the acoustic piezo-latch!',
+        targetFreq: 125,
+        startFreq: 85,
+        unit: 'kHz'
+    }
+];
+
+// Логические шифры и калибровка напряжения
+const LOGIC_MINIGAMES = [
     { id: 'mg_code_3', type: 'password', title: 'ШИФРОГРАММА ПАРТИИ', text: 'На терминале надпись: «Год великой закладки фундамента Жилого Блока №7». Код в архиве: 1984.', answer: '1984' },
     { id: 'mg_code_4', type: 'password', title: 'АВАРИЙНЫЙ ШЛЮЗ ГАЗА', text: 'Шифр замка: номера букв в слове Г-А-З (Г=4, А=1, З=9). Введите 4-значный код с ведущим нулем.', answer: '0419' },
     { id: 'mg_code_5', type: 'password', title: 'АРХИВНЫЙ КОД НКВД', text: 'Инструкция: «Первая цифра 7, каждая последующая на 2 меньше предыдущей (7, 5, 3, 1)».', answer: '7531' },
@@ -492,6 +654,12 @@ const MINIGAME_POOL = [
     { id: 'mg_v_60', type: 'voltage', title: 'ОСВЕЩЕНИЕ СЕКТОРА', text: 'Откалибровать напряжение на 60W для включения прожекторов.', target: 60 },
     { id: 'mg_v_100', type: 'voltage', title: 'ТРАНСФОРМАТОР ТЕХБЛОКА', text: 'Откалибровать напряжение ровно на 100W.', target: 100 },
     { id: 'mg_v_120', type: 'voltage', title: 'СИЛОВАЯ МАГИСТРАЛЬ', text: 'Откалибровать напряжение на 120W для открытия электрогермодвери.', target: 120 }
+];
+
+const MINIGAME_POOL = [
+    ...PHYSICAL_MINIGAMES,
+    ...LOGIC_MINIGAMES,
+    ...RIDDLES_150
 ];
 
 const BASE_MONSTERS = [
@@ -1251,7 +1419,13 @@ function generateFloor(floorIndex) {
     (cfg.keys || ['quest_boltcutter', 'quest_battery', 'quest_red_card', 'quest_fuse']).forEach(item => {
         locks.push({ type: 'item', val: item });
     });
-    let mPool = shuffleArray(MINIGAME_POOL).slice(0, 5);
+    // Гарантируем разнообразие: 2 интерактивные ASCII мини-игры (перепиливание замков, перекусывание проводов, вентили), 1 шифр/напряжение, 2 сюжетные загадки
+    let mPool = [
+        ...shuffleArray(PHYSICAL_MINIGAMES).slice(0, 2),
+        ...shuffleArray(LOGIC_MINIGAMES).slice(0, 1),
+        ...shuffleArray(RIDDLES_150).slice(0, 2)
+    ];
+    mPool = shuffleArray(mPool);
     mPool.forEach(mg => locks.push({ type: 'minigame', val: mg }));
     
     let floorKeys = [...RANDOM_LOC_KEYS];
