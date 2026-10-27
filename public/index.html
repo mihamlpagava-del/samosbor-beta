@@ -267,6 +267,14 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .ascii-art { font-family: 'Courier New', monospace; white-space: pre; line-height: 1.2; text-align: center; margin: 15px 0; color: var(--term-warn); font-weight: bold; }
 .ascii-art.interactive-target { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; border: 1px dashed rgba(255, 170, 0, 0.45); background: rgba(255, 170, 0, 0.04); padding: 8px; border-radius: 4px; transition: transform 0.05s ease, background 0.05s ease; }
 .ascii-art.interactive-target:active { transform: scale(0.985); background: rgba(255, 170, 0, 0.16); border-color: var(--term-warn); box-shadow: 0 0 12px rgba(255, 170, 0, 0.3); }
+.pipe-grid-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0; }
+.pipe-grid { display: inline-grid; gap: 8px; padding: 12px; background: rgba(0, 15, 0, 0.75); border: 2px solid var(--term-warn); border-radius: 6px; box-shadow: 0 0 15px rgba(255, 170, 0, 0.15) inset; max-width: 100%; box-sizing: border-box; }
+.pipe-tile { width: 66px; height: 66px; font-family: 'Courier New', monospace; font-size: 32px; font-weight: 900; cursor: pointer; border-radius: 4px; background: rgba(22, 22, 22, 0.9); border: 2px solid #555; color: #777; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; touch-action: manipulation; transition: transform 0.08s ease, background 0.12s ease, border-color 0.12s ease, color 0.12s ease; }
+.pipe-tile:hover { border-color: #bbb; color: #fff; background: rgba(40, 40, 40, 0.95); }
+.pipe-tile:active { transform: scale(0.92); }
+.pipe-tile.powered-power { border-color: #00e5ff !important; color: #00e5ff !important; background: rgba(0, 229, 255, 0.18) !important; text-shadow: 0 0 12px #00e5ff, 0 0 20px #00e5ff; box-shadow: 0 0 12px rgba(0, 229, 255, 0.45); }
+.pipe-tile.powered-gas { border-color: #39ff14 !important; color: #39ff14 !important; background: rgba(57, 255, 20, 0.18) !important; text-shadow: 0 0 12px #39ff14, 0 0 20px #39ff14; box-shadow: 0 0 12px rgba(57, 255, 20, 0.45); }
+.pipe-tile.powered-fluid { border-color: #ff33aa !important; color: #ff33aa !important; background: rgba(255, 51, 170, 0.18) !important; text-shadow: 0 0 12px #ff33aa, 0 0 20px #ff33aa; box-shadow: 0 0 12px rgba(255, 51, 170, 0.45); }
 .flicker { animation: textFlicker 0.15s infinite alternate; }
 @keyframes textFlicker { 0% { opacity: 1; } 100% { opacity: 0.7; } }
 .levelup-btn { width: 100%; padding: 12px; margin-bottom: 8px; text-align: left; background: transparent; border: 1px solid var(--term-warn); color: #fff; cursor: pointer; font-size: 15px; }
@@ -2884,6 +2892,8 @@ function getDisplayMinigame(mgData) {
   else if (copy.text && MINIGAMES_EN.texts && MINIGAMES_EN.texts[copy.text]) {
     copy.text = MINIGAMES_EN.texts[copy.text];
   }
+  if (copy.startLabel_en) copy.startLabel = copy.startLabel_en;
+  if (copy.endLabel_en) copy.endLabel = copy.endLabel_en;
   return copy;
 }
 
@@ -4500,6 +4510,211 @@ let valveState = { press: 160, maxPress: 160, step: 20, angle: 0, isDone: false 
 const valveFrames = ['|', '/', '—', '\\'];
 let freqState = { current: 380, target: 440, unit: 'MHz', isDone: false };
 
+// Головоломки построения пути А -> Б (Электричество / Газ / Жидкость)
+const TILE_CHARS = {
+  0: ' ',
+  1: '╹', 2: '╸', 4: '╻', 8: '╾',
+  5: '║', 10: '═',
+  3: '╚', 6: '╔', 12: '╗', 9: '╝',
+  7: '╠', 14: '╦', 13: '╣', 11: '╩',
+  15: '╬'
+};
+
+function rotMask(m) {
+  return ((m << 1) & 15) | (m >> 3);
+}
+
+let pipeGrid = [];
+let pipeFlowResult = { won: false, powered: new Set() };
+let isPipeWon = false;
+
+function initPipeCircuitUI() {
+  isPipeWon = false;
+  cleanupMinigameUI();
+
+  const R = (mgData && mgData.R) ? mgData.R : 3;
+  const C = (mgData && mgData.C) ? mgData.C : 3;
+  const solved = (mgData && mgData.solved) ? mgData.solved : [[10,12,5],[5,5,6],[6,3,10]];
+
+  pipeGrid = solved.map(row => row.slice());
+
+  let attempts = 0;
+  do {
+    for (let r = 0; r < R; r++) {
+      for (let c = 0; c < C; c++) {
+        let rCount = Math.floor(Math.random() * 3) + 1;
+        for (let i = 0; i < rCount; i++) {
+          pipeGrid[r][c] = rotMask(pipeGrid[r][c]);
+        }
+      }
+    }
+    pipeFlowResult = evalPipeFlow();
+    attempts++;
+  } while (pipeFlowResult.won && attempts < 10);
+
+  if (pipeFlowResult.won) {
+    pipeGrid[0][0] = rotMask(pipeGrid[0][0]);
+    pipeFlowResult = evalPipeFlow();
+  }
+
+  renderPipeCircuitUI();
+}
+
+function evalPipeFlow() {
+  const R = (mgData && mgData.R) ? mgData.R : 3;
+  const C = (mgData && mgData.C) ? mgData.C : 3;
+  const startR = (mgData && mgData.startR !== undefined) ? mgData.startR : 0;
+  const startC = (mgData && mgData.startC !== undefined) ? mgData.startC : 0;
+  const startDir = (mgData && mgData.startDir) ? mgData.startDir : 8;
+  const endR = (mgData && mgData.endR !== undefined) ? mgData.endR : (R - 1);
+  const endC = (mgData && mgData.endC !== undefined) ? mgData.endC : (C - 1);
+  const endDir = (mgData && mgData.endDir) ? mgData.endDir : 2;
+
+  if (!pipeGrid[startR] || !(pipeGrid[startR][startC] & startDir)) {
+    return { won: false, powered: new Set() };
+  }
+
+  let q = [[startR, startC]];
+  let visited = new Set(['' + startR + ',' + startC]);
+  let won = false;
+
+  const DIRS = [
+    { dr: -1, dc: 0, outBit: 1, inBit: 4 }, // UP
+    { dr: 0, dc: 1, outBit: 2, inBit: 8 },  // RIGHT
+    { dr: 1, dc: 0, outBit: 4, inBit: 1 },  // DOWN
+    { dr: 0, dc: -1, outBit: 8, inBit: 2 }  // LEFT
+  ];
+
+  while (q.length > 0) {
+    let [r, c] = q.shift();
+    let mask = pipeGrid[r][c];
+
+    if (r === endR && c === endC && (mask & endDir)) {
+      won = true;
+    }
+
+    for (let d of DIRS) {
+      if (mask & d.outBit) {
+        let nr = r + d.dr, nc = c + d.dc;
+        if (nr >= 0 && nr < R && nc >= 0 && nc < C) {
+          let nmask = pipeGrid[nr][nc];
+          if ((nmask & d.inBit) && !visited.has(nr + ',' + nc)) {
+            visited.add(nr + ',' + nc);
+            q.push([nr, nc]);
+          }
+        }
+      }
+    }
+  }
+
+  return { won, powered: visited };
+}
+
+function rotatePipeTile(r, c) {
+  if (isPipeWon) return;
+  pipeGrid[r][c] = rotMask(pipeGrid[r][c]);
+  playSound('click');
+
+  if (window.navigator && window.navigator.vibrate) {
+    try { window.navigator.vibrate(20); } catch(e){}
+  }
+
+  pipeFlowResult = evalPipeFlow();
+  renderPipeCircuitUI();
+
+  if (pipeFlowResult.won) {
+    isPipeWon = true;
+    playSound('victory');
+    if (window.navigator && window.navigator.vibrate) {
+      try { window.navigator.vibrate(60); } catch(e){}
+    }
+    setTimeout(() => {
+      cleanupMinigameUI();
+      document.getElementById('minigame-modal').style.display = 'none';
+      let cc = document.getElementById('combat-controls');
+      if (cc && cc.style.display === 'flex' && !currentGameLoc) socket.emit('combatMinigameResult', true);
+      else socket.emit('minigameWon', currentGameLoc);
+    }, 850);
+  }
+}
+
+function renderPipeCircuitUI() {
+  const art = document.getElementById('mg-art');
+  const ui = document.getElementById('mg-ui');
+  if (!art || !ui) return;
+
+  const isEn = (currentLang === 'en');
+  const R = (mgData && mgData.R) ? mgData.R : 3;
+  const C = (mgData && mgData.C) ? mgData.C : 3;
+  const theme = (mgData && mgData.theme) ? mgData.theme : 'power';
+
+  let startLabel = isEn ? (mgData.startLabel_en || mgData.startLabel || 'GEN-A') : (mgData.startLabel || 'ИСТОЧНИК-A');
+  let endLabel = isEn ? (mgData.endLabel_en || mgData.endLabel || 'RELAY-B') : (mgData.endLabel || 'ПРИЕМНИК-B');
+
+  let themeIcon = '⚡';
+  let themeName = isEn ? 'CIRCUIT MATRIX' : 'МАТРИЦА КОММУТАЦИИ';
+  if (theme === 'gas') {
+    themeIcon = '💨';
+    themeName = isEn ? 'GAS DISTRIBUTION' : 'РАСПРЕДЕЛЕНИЕ ГАЗА';
+  } else if (theme === 'fluid') {
+    themeIcon = '🧪';
+    themeName = isEn ? 'HYDRAULIC CIRCUIT' : 'ГИДРОКОНТУР ЗАТВОРА';
+  }
+
+  let statusText = '';
+  if (pipeFlowResult.won) {
+    if (theme === 'power') {
+      statusText = isEn ? "★ 380V POWER LOOP CLOSED! DOOR OPENED! ★" : "★ ЦЕПЬ 380V ЗАМКНУТА! СОЛЕНОИД СРАБОТАЛ! ★";
+    } else if (theme === 'gas') {
+      statusText = isEn ? "★ GAS FLOW RESTORED! PURGE COMPLETE! ★" : "★ ПОТОК ГАЗА ВОССТАНОВЛЕН! ДЕГАЗАЦИЯ УСПЕШНА! ★";
+    } else {
+      statusText = isEn ? "★ HYDRAULIC PRESSURE AT 160 BAR! UNLOCKED! ★" : "★ ДАВЛЕНИЕ 160 BAR! ГИДРОЗАТВОР ОТКРЫТ! ★";
+    }
+  } else {
+    let activeNodes = pipeFlowResult.powered ? pipeFlowResult.powered.size : 0;
+    let totalNodes = R * C;
+    if (theme === 'power') {
+      statusText = isEn ? `⚡ POWER SEVERED: ${activeNodes}/${totalNodes} NODES ENERGIZED ⚡` : `⚡ ОБРЫВ ЦЕПИ: ${activeNodes}/${totalNodes} УЗЛОВ ПОД ТОКОМ ⚡`;
+    } else if (theme === 'gas') {
+      statusText = isEn ? `💨 GAS LINE BLOCKED: ${activeNodes}/${totalNodes} SECTIONS FILLED 💨` : `💨 ЛИНИЯ ПЕРЕКРЫТА: ${activeNodes}/${totalNodes} СЕКЦИЙ ЗАПОЛНЕНО 💨`;
+    } else {
+      statusText = isEn ? `🧪 HYDRAULIC DISCONNECTED: ${activeNodes}/${totalNodes} ARMS ACTIVE 🧪` : `🧪 КОНТУР РАЗОМКНУТ: ${activeNodes}/${totalNodes} РУКАВОВ ЗАПОЛНЕНО 🧪`;
+    }
+  }
+
+  art.innerText =
+`[A: ${startLabel}] ══►  [ ${themeIcon} ${themeName} ]  ══► [B: ${endLabel}]
++===================================================+
+|  ${statusText.padEnd(49, ' ')}|
++===================================================+`;
+
+  let tileSize = (C > 3) ? '58px' : '66px';
+  let fontSize = (C > 3) ? '26px' : '32px';
+
+  let gridCells = '';
+  for (let r = 0; r < R; r++) {
+    for (let c = 0; c < C; c++) {
+      let isPowered = pipeFlowResult.powered && pipeFlowResult.powered.has(r + ',' + c);
+      let char = TILE_CHARS[pipeGrid[r][c]] || ' ';
+      let poweredCls = isPowered ? `powered-${theme}` : '';
+      gridCells += `<button class="pipe-tile ${poweredCls}" style="width:${tileSize}; height:${tileSize}; font-size:${fontSize};" onclick="rotatePipeTile(${r}, ${c})">${char}</button>`;
+    }
+  }
+
+  let hintText = isEn ?
+    "👆 TAP/CLICK BLOCKS TO ROTATE 90° AND CONNECT [A] TO [B]!" :
+    "👆 НАЖИМАЙТЕ НА БЛОКИ ЧТОБЫ ВРАЩАТЬ НА 90° И СОЕДИНИТЬ [A] С [B]!";
+
+  ui.innerHTML = `
+    <div style="font-size:13px; color:var(--term-warn); margin-bottom:6px; text-align:center; font-weight:bold;">${hintText}</div>
+    <div class="pipe-grid-wrap">
+      <div class="pipe-grid" style="grid-template-columns: repeat(${C}, 1fr);">
+        ${gridCells}
+      </div>
+    </div>
+  `;
+}
+
 function cleanupMinigameUI() {
   const art = document.getElementById('mg-art');
   if (art) {
@@ -4890,7 +5105,9 @@ socket.on('startMinigame', (data) => {
 
   cleanupMinigameUI();
 
-  if (mgData.type === 'lock_cut') {
+  if (mgData.type === 'pipe_circuit') {
+    initPipeCircuitUI();
+  } else if (mgData.type === 'lock_cut') {
     initLockCutUI();
   } else if (mgData.type === 'wire_cut') {
     initWireCutUI();

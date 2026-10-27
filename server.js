@@ -656,7 +656,144 @@ const LOGIC_MINIGAMES = [
     { id: 'mg_v_120', type: 'voltage', title: 'СИЛОВАЯ МАГИСТРАЛЬ', text: 'Откалибровать напряжение на 120W для открытия электрогермодвери.', target: 120 }
 ];
 
+// --- ГОЛОВОЛОМКИ ПОСТРОЕНИЯ ПУТИ А -> Б (ЭЛЕКТРИЧЕСТВО / ГАЗ / ЖИДКОСТЬ В СТИЛЕ ASCII) ---
+const CIRCUIT_MINIGAMES = [
+    // 1. ЭЛЕКТРИЧЕСТВО: СИЛОВАЯ ШИНА 380V (3x3)
+    {
+        id: 'mg_circuit_power_1',
+        type: 'pipe_circuit',
+        theme: 'power',
+        title: 'КОММУТАЦИЯ СИЛОВОЙ ШИНЫ 380V',
+        title_en: '380V POWER BUS COMMUTATION',
+        text: 'Силовая цепь питания гермозатвора разомкнута. Вращайте блоки коммутатора нажатиями, чтобы соединить генератор [A] с соленоидом замка [B]!',
+        text_en: 'The blast door power circuit is open. Click or tap commutator blocks to rotate them and connect Generator [A] to Lock Solenoid [B]!',
+        startLabel: 'ГЕН-380V',
+        startLabel_en: 'GEN-380V',
+        endLabel: 'СОЛЕНОИД',
+        endLabel_en: 'SOLENOID',
+        R: 3, C: 3,
+        startR: 0, startC: 0, startDir: 8,
+        endR: 2, endC: 2, endDir: 2,
+        solved: [
+            [10, 12,  5],
+            [ 5,  5,  6],
+            [ 6,  3, 10]
+        ]
+    },
+    // 2. ГАЗ: ДЕГАЗАЦИЯ ШЛЮЗА (3x3)
+    {
+        id: 'mg_circuit_gas_1',
+        type: 'pipe_circuit',
+        theme: 'gas',
+        title: 'МАГИСТРАЛЬ ДЕГАЗАЦИИ ШЛЮЗА',
+        title_en: 'AIRLOCK DECONTAMINATION GAS LINE',
+        text: 'Шлюз блокирован датчиком токсичности. Поверните трубопроводы нажатиями, чтобы провести нейтрализующий газ от баллона [A] к форсункам шлюза [B]!',
+        text_en: 'Airlock is locked by toxicity sensors. Rotate the pipelines to route decontaminant gas from Cylinder [A] to Sprinklers [B]!',
+        startLabel: 'БАЛЛОН-ГАЗ',
+        startLabel_en: 'CYLINDER',
+        endLabel: 'ФОРСУНКИ',
+        endLabel_en: 'NOZZLES',
+        R: 3, C: 3,
+        startR: 0, startC: 0, startDir: 8,
+        endR: 2, endC: 2, endDir: 2,
+        solved: [
+            [10, 10, 12],
+            [ 5,  6,  5],
+            [ 3, 10,  3]
+        ]
+    },
+    // 3. ЖИДКОСТЬ: ГИДРОПРИВОД ЗАТВОРА (3x3)
+    {
+        id: 'mg_circuit_fluid_1',
+        type: 'pipe_circuit',
+        theme: 'fluid',
+        title: 'ГИДРОПРИВОД ГЕРМОЗАТВОРА',
+        title_en: 'HYDRAULIC ACTUATOR LINE',
+        text: 'Гидравлические цилиндры опечатаны без давления. Соберите замкнутый трубопровод от насоса высокого давления [A] к поршням затвора [B]!',
+        text_en: 'Hydraulic rams lack pressure. Align the high-pressure pipeline from Hydraulic Pump [A] to Blast Pistons [B]!',
+        startLabel: 'НАСОС',
+        startLabel_en: 'PUMP',
+        endLabel: 'ПОРШНИ',
+        endLabel_en: 'PISTONS',
+        R: 3, C: 3,
+        startR: 0, startC: 0, startDir: 8,
+        endR: 2, endC: 2, endDir: 2,
+        solved: [
+            [14, 10, 12],
+            [ 5, 15,  5],
+            [ 3, 11, 10]
+        ]
+    },
+    // 4. ЭЛЕКТРИЧЕСТВО: РЕЗЕРВНЫЙ ТРАНСФОРМАТОР (3x3)
+    {
+        id: 'mg_circuit_power_2',
+        type: 'pipe_circuit',
+        theme: 'power',
+        title: 'РЕЗЕРВНЫЙ ТРАНСФОРМАТОР ПОДСТАНЦИИ',
+        title_en: 'SUBSTATION BACKUP TRANSFORMER',
+        text: 'Реле освещения и привода аварийной секции обесточено. Вращайте распределительные клеммы, чтобы замкнуть контур от ввода [A] к реле [B]!',
+        text_en: 'The backup power loop is severed. Rotate the terminal blocks to close the circuit from Feed [A] to Relay [B]!',
+        startLabel: 'ВВОД-A',
+        startLabel_en: 'FEED-A',
+        endLabel: 'РЕЛЕ-B',
+        endLabel_en: 'RELAY-B',
+        R: 3, C: 3,
+        startR: 0, startC: 0, startDir: 8,
+        endR: 2, endC: 2, endDir: 2,
+        solved: [
+            [10, 12,  5],
+            [ 5, 15, 12],
+            [ 6,  3, 10]
+        ]
+    },
+    // 5. ГАЗ: СБРОС ХЛОРА САМОСБОРА (3x3)
+    {
+        id: 'mg_circuit_gas_2',
+        type: 'pipe_circuit',
+        theme: 'gas',
+        title: 'СБРОС ХЛОРА В ВЕНТШАХТУ',
+        title_en: 'CHLORINE PURGE EXHAUST',
+        text: 'Магистраль перегружена едким газом. Проложите аварийный обводной путь от аварийного клапана [A] к вытяжной вентшахте [B]!',
+        text_en: 'Vent line clogged with caustic chlorine. Construct a bypass path from Relief Valve [A] to Exhaust Shaft [B]!',
+        startLabel: 'КЛАПАН',
+        startLabel_en: 'VALVE',
+        endLabel: 'ШАХТА-B',
+        endLabel_en: 'SHAFT-B',
+        R: 3, C: 3,
+        startR: 0, startC: 0, startDir: 8,
+        endR: 2, endC: 2, endDir: 2,
+        solved: [
+            [10, 12,  5],
+            [ 6,  9,  5],
+            [ 3, 10, 10]
+        ]
+    },
+    // 6. ЖИДКОСТЬ: ОХЛАДИТЕЛЬ РЕАКТОРА (4x3)
+    {
+        id: 'mg_circuit_fluid_2',
+        type: 'pipe_circuit',
+        theme: 'fluid',
+        title: 'КОНТУР ОХЛАЖДЕНИЯ АКТИВНОЙ ЗОНЫ',
+        title_en: 'REACTOR CORE COOLANT LOOP',
+        text: 'Температура теплоносителя критическая. Соедините теплообменник [A] с рубашкой охлаждения [B] через секцию 4x3!',
+        text_en: 'Coolant temperature critical. Route primary coolant from Exchanger [A] to Cooling Jacket [B] across the 4x3 grid!',
+        startLabel: 'ОБМЕННИК',
+        startLabel_en: 'EXCHANGER',
+        endLabel: 'РЕАКТОР',
+        endLabel_en: 'REACTOR',
+        R: 3, C: 4,
+        startR: 0, startC: 0, startDir: 8,
+        endR: 2, endC: 3, endDir: 2,
+        solved: [
+            [10, 10, 12,  5],
+            [ 5,  6,  9,  6],
+            [ 3,  3, 10, 10]
+        ]
+    }
+];
+
 const MINIGAME_POOL = [
+    ...CIRCUIT_MINIGAMES,
     ...PHYSICAL_MINIGAMES,
     ...LOGIC_MINIGAMES,
     ...RIDDLES_150
@@ -1419,9 +1556,14 @@ function generateFloor(floorIndex) {
     (cfg.keys || ['quest_boltcutter', 'quest_battery', 'quest_red_card', 'quest_fuse']).forEach(item => {
         locks.push({ type: 'item', val: item });
     });
-    // Гарантируем разнообразие: 2 интерактивные ASCII мини-игры (перепиливание замков, перекусывание проводов, вентили), 1 шифр/напряжение, 2 сюжетные загадки
+    // НА КАЖДОМ ЭТАЖЕ гарантированно:
+    // 1 головоломка построения пути А->Б (электричество, газ, жидкость в стиле ASCII)
+    // 1 интерактивная физическая задача (перепиливание замка / провода / вентиль)
+    // 1 логический шифр / напряжение
+    // 2 сюжетные атмосферные загадки Самосбора
     let mPool = [
-        ...shuffleArray(PHYSICAL_MINIGAMES).slice(0, 2),
+        ...shuffleArray(CIRCUIT_MINIGAMES).slice(0, 1),
+        ...shuffleArray(PHYSICAL_MINIGAMES).slice(0, 1),
         ...shuffleArray(LOGIC_MINIGAMES).slice(0, 1),
         ...shuffleArray(RIDDLES_150).slice(0, 2)
     ];
