@@ -163,8 +163,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .avatar-hp-val { font-size: 10px; font-weight: bold; color: #fff; text-shadow: 0 0 3px #000, 1px 1px 2px #000; line-height: 1; }
 .quest-items-panel { width: 100%; flex: 1; border: 1px solid var(--ink-danger); padding: 10px; font-size: 13px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: rgba(122,16,16,0.05); }
 #quest-items-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
-.quest-item { padding: 4px; border-bottom: 1px dashed rgba(122,16,16,0.4); margin-bottom: 4px; color: var(--ink-dim); }
-.quest-item-title { font-weight: bold; font-size: 14px; color: var(--ink-accent); }
+.quest-item { padding: 4px; border-bottom: 1px dashed rgba(122,16,16,0.4); margin-bottom: 4px; color: #222; }
+.quest-item-title { font-weight: bold; font-size: 14px; color: #7a1010; }
 .equipment-panel { width: 255px; font-size: 14px; border-right: 1px dashed rgba(0,0,0,0.25); padding-right: 16px; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; overflow-y: auto; }
 .equipment-panel h3 { margin-top: 0; font-size: 15px; color: var(--ink-color); letter-spacing: 1px; border-bottom: 1px solid rgba(0,0,0,0.2); padding-bottom: 4px; }
 .equip-slot { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0,0,0,0.35); padding: 6px 8px; margin-bottom: 7px; cursor: pointer; background: rgba(255,255,255,0.45); transition: 0.15s; min-height: 52px; box-sizing: border-box; }
@@ -686,8 +686,10 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .item-stat-badge.stat-filter { background: rgba(140, 80, 0, 0.88); color: #ffcc55; border: 1px solid #ffaa00; text-shadow: 0 0 2px #000; }
 .item-stat-badge.stat-cap { background: rgba(90, 40, 140, 0.88); color: #ddb8ff; border: 1px solid #bb77ff; text-shadow: 0 0 2px #000; }
 
-.chest-tab-btn { background: transparent; border: 1px solid var(--term-dim); color: #888; padding: 4px 10px; font-family: inherit; font-size: 12px; cursor: pointer; border-radius: 2px; transition: 0.15s; }
-.chest-tab-btn.active { border-color: var(--term-warn); color: var(--term-warn); background: rgba(255, 170, 0, 0.12); font-weight: bold; }
+.chest-tab-btn { background: rgba(255, 255, 255, 0.75); border: 1px solid rgba(0, 0, 0, 0.35); color: #2b2218; padding: 6px 14px; font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer; border-radius: 3px; transition: 0.15s; }
+.chest-tab-btn:hover { background: #ffffff; color: #000000; border-color: #000000; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+.chest-tab-btn.active { background: #1c1c1c !important; color: #ffffff !important; border: 1px solid #000000 !important; font-weight: 900; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+.chest-tab-btn.active span { color: #ffffff !important; }
 .feedback-reply-btn { background: transparent; border: 1px solid var(--term-dim); color: var(--term-info); font-size: 11px; padding: 2px 8px; cursor: pointer; border-radius: 2px; transition: 0.15s; font-family: inherit; }
 .feedback-reply-btn:hover { border-color: var(--term-info); background: rgba(0,229,255,0.15); color: #fff; }
 .feedback-del-btn { background: transparent; border: 1px solid #555; color: #888; font-size: 11px; padding: 1px 6px; cursor: pointer; border-radius: 2px; transition: 0.15s; }
@@ -1411,7 +1413,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
             <button id="tab-inv-backpack" class="chest-tab-btn active" type="button" onclick="switchChestTab('backpack')">🎒 <span data-i18n="lbl_backpack_tab">РЮКЗАК</span> [<span id="inv-capacity">0/12</span>]</button>
             <button id="tab-inv-storage" class="chest-tab-btn" type="button" onclick="switchChestTab('storage')">📦 <span data-i18n="lbl_storage_tab">СКЛАД БАЗЫ</span> [<span id="storage-capacity">0/40</span>]</button>
           </div>
-          <div id="storage-hint" style="font-size: 11px; color: #888;"></div>
+          <div id="storage-hint" style="font-size: 11px; color: #4a3c2c; font-weight: bold;"></div>
         </div>
         <div class="chest-grid" id="chest-container"></div>
       </div>
