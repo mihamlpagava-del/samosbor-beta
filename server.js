@@ -243,6 +243,14 @@ function initDatabase() {
         if (!db.vkMap) db.vkMap = {};
         if (!Array.isArray(db.feedback)) db.feedback = [];
         if (!Array.isArray(db.fleaMarket)) db.fleaMarket = [];
+        if (!Array.isArray(db.chatHistory)) db.chatHistory = [];
+        if (db.chatHistory.length === 0) {
+            db.chatHistory = [
+                { user: 'Диспетчер', text: 'Внимание всем блокам: радиоканал связи активен. Соблюдайте режим светомаскировки.', time: '12:00' },
+                { user: 'Семен_Ликвидатор', text: 'Кто собирает штурмовой отряд на вылазку? Я в полной броне с огнеметом.', time: '12:05' },
+                { user: 'Архип_Слесарь', text: 'Выставил на барахолку спецовку и монтировку, забирайте талонами.', time: '12:12' }
+            ];
+        }
         if (db.fleaMarket.length === 0) {
             db.fleaMarket = [
                 { id: 'lot_seed_1', seller: 'Семён_Ликвидатор', sellerTitle: 'Ликвидатор', itemId: 'weapon_crowbar_uncommon', price: 180, createdAt: Date.now() - 3600000 },
@@ -256,7 +264,7 @@ function initDatabase() {
         saveDB(true);
     } else {
         writeLog(`[БД] База данных не обнаружена. Инициализация чистой структуры.`);
-        db = { players: {}, map: {}, vkMap: {}, feedback: [], fleaMarket: [] };
+        db = { players: {}, map: {}, vkMap: {}, feedback: [], fleaMarket: [], chatHistory: [] };
     }
 }
 initDatabase();
@@ -298,10 +306,151 @@ function shuffleArray(arr) {
 let onlinePlayers = {};
 let activeCombats = {};
 let globalBosses = {};
+let coopSquads = {}; // Активные отряды совместной вылазки
 let currentShopItems = [];
 let nextShopUpdate = 0;
-let chatHistory = [];
-const MAX_CHAT_MESSAGES = 50;
+let chatHistory = (typeof db !== 'undefined' && db && Array.isArray(db.chatHistory)) ? db.chatHistory : [];
+const MAX_CHAT_MESSAGES = 100;
+
+// ===== КОНФИГУРАЦИЯ ВОЛН СОВМЕСТНОЙ ВЫЛАЗКИ =====
+const RAID_WAVE_MONSTERS = [
+    { wave: 1, name: "Хлюп-Мутант Сливной Трубы", hp: 220, dmg: 12, def: 2, reward: 35, xp: 45, img: "m_slime.png", tier: "common" },
+    { wave: 2, name: "Членистоногий Труп", hp: 300, dmg: 16, def: 4, reward: 45, xp: 60, img: "m_corpse.png", tier: "common" },
+    { wave: 3, name: "Гнилостный Червь Вентиляции", hp: 400, dmg: 20, def: 6, reward: 60, xp: 80, img: "m_worm.png", tier: "common" },
+    { wave: 4, name: "Сбежавший Биомеханоид", hp: 520, dmg: 25, def: 8, reward: 75, xp: 110, img: "m_biomech.png", tier: "uncommon" },
+    { wave: 5, name: "Очумевший Ликвидатор-Мутант", hp: 660, dmg: 30, def: 10, reward: 95, xp: 145, img: "m_liquidator.png", tier: "uncommon" },
+    { wave: 6, name: "Мясная Амальгама Блока", hp: 820, dmg: 35, def: 12, reward: 120, xp: 185, img: "m_amalgam.png", tier: "uncommon" },
+    { wave: 7, name: "Чумной Плевун Тумана", hp: 1000, dmg: 40, def: 15, reward: 150, xp: 230, img: "m_spitter.png", tier: "rare" },
+    { wave: 8, name: "Цербер Технических Катакомб", hp: 1220, dmg: 46, def: 18, reward: 190, xp: 285, img: "m_hound.png", tier: "rare" },
+    { wave: 9, name: "Осквернённый Страж Периметра", hp: 1480, dmg: 52, def: 22, reward: 240, xp: 350, img: "m_guard.png", tier: "rare" },
+    { wave: 10, name: "Верховный Адепт Культа Самосбора", hp: 1800, dmg: 60, def: 25, reward: 300, xp: 450, img: "m_cultist.png", tier: "elite" }
+];
+
+const RAID_ELITE_BOSSES = {
+    blue: {
+        name: "🔷 Кобальтовый Левиафан Блока-9",
+        tier: "rare_blue",
+        colorTheme: "#33aaff",
+        badge: "СИНИЙ РЕДКИЙ БОСС",
+        hp: 3600,
+        dmg: 74,
+        def: 32,
+        reward: 950,
+        xp: 1600,
+        img: "boss_reactor.png",
+        lore: "Редкий аномальный исполин. Его ледяной панцирь искрится синим разрядом и поглощает кинетическую энергию!",
+        lootTable: ['weapon_chainsaw', 'clothes_stalker', 'food_medkit', 'mat_electro']
+    },
+    purple: {
+        name: "🔮 Псионический Пожиратель Бездны",
+        tier: "epic_purple",
+        colorTheme: "#c033ff",
+        badge: "ФИОЛЕТОВЫЙ ЭПИЧЕСКИЙ БОСС",
+        hp: 4600,
+        dmg: 90,
+        def: 28,
+        reward: 1600,
+        xp: 2500,
+        img: "boss_final.png",
+        lore: "Эпическая древняя сущность нулевого горизонта. Её фиолетовый пси-туман сокрушает рассудок и расплавляет броню!",
+        lootTable: ['weapon_shotgun', 'clothes_liquidator', 'food_medkit', 'mat_chem']
+    }
+};
+
+function getPublicRaidSquads() {
+    let list = [];
+    for (let sId in coopSquads) {
+        let sq = coopSquads[sId];
+        list.push({
+            id: sq.id,
+            name: sq.name,
+            leader: sq.leader,
+            memberCount: sq.members.length,
+            maxMembers: 4,
+            status: sq.status,
+            currentWave: sq.currentWave || 1,
+            members: sq.members.map(m => {
+                let mp = db.players[m.username];
+                return {
+                    username: m.username,
+                    level: m.level || (mp ? mp.level : 1),
+                    title: m.title || (mp ? mp.title : 'Заключенный'),
+                    isReady: !!m.isReady,
+                    isDowned: !!m.isDowned,
+                    hp: m.hp !== undefined ? m.hp : (mp ? mp.hp : 100),
+                    maxHp: m.maxHp || (mp ? mp.maxHp : 100),
+                    skin: mp && mp.appearance ? mp.appearance.skin : 'skin_1'
+                };
+            })
+        });
+    }
+    return list;
+}
+
+function broadcastToSquad(squad, event, data) {
+    if (!squad || !squad.members) return;
+    for (let m of squad.members) {
+        let sId = Object.keys(onlinePlayers).find(k => onlinePlayers[k] === m.username);
+        if (sId) {
+            io.to(sId).emit(event, data);
+        }
+    }
+}
+
+function getSquadClientData(sq) {
+    if (!sq) return null;
+    return {
+        id: sq.id,
+        name: sq.name,
+        leader: sq.leader,
+        status: sq.status,
+        currentWave: sq.currentWave || 1,
+        maxWaves: sq.maxWaves || 11,
+        members: sq.members.map(m => {
+            let mp = db.players[m.username];
+            return {
+                username: m.username,
+                level: m.level || (mp ? mp.level : 1),
+                title: m.title || (mp ? mp.title : 'Заключенный'),
+                hp: m.hp !== undefined ? m.hp : (mp ? mp.hp : 100),
+                maxHp: m.maxHp || (mp ? mp.maxHp : 100),
+                isReady: !!m.isReady,
+                isDowned: !!m.isDowned,
+                skin: mp && mp.appearance ? mp.appearance.skin : 'skin_1'
+            };
+        }),
+        chat: sq.chat || []
+    };
+}
+
+function getOnlinePlayersList() {
+    let list = [];
+    let seen = new Set();
+    for (let sId in onlinePlayers) {
+        let u = onlinePlayers[sId];
+        if (u && !seen.has(u)) {
+            seen.add(u);
+            let p = db.players[u];
+            let activeSquad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === u));
+            let statusText = 'В жилячейке';
+            if (activeSquad) {
+                statusText = activeSquad.status === 'combat' ? '⚔️ Рейд: В ' + activeSquad.currentWave + '/11' : '👥 В лобби рейда';
+            } else if (p && p.location !== 'safe_room') {
+                statusText = '🧭 Блок (Эт. ' + (p.floor || 0) + ')';
+            }
+            list.push({
+                username: u,
+                level: p ? p.level : 1,
+                title: p ? (p.title || 'Заключенный') : 'Заключенный',
+                floor: p ? (p.floor || 0) : 0,
+                location: p ? (p.location || 'safe_room') : 'safe_room',
+                statusText: statusText,
+                inCombat: !!(activeCombats[u] || (activeSquad && activeSquad.status === 'combat'))
+            });
+        }
+    }
+    return list;
+}
 
 function getSpeedMult(filter) { if (filter >= 65) return 1.25; if (filter >= 45) return 1.0; if (filter >= 20) return 0.8; return 0.5; }
 
@@ -1849,7 +1998,10 @@ function broadcastGameState() {
             sectorPlayers: playersInSector, map: db.map[floor], GAME_PERKS: GAME_PERKS, GAME_ITEMS: GAME_ITEMS, MUTATIONS: MUTATIONS, BESTIARY: BASE_MONSTERS,
             ACHIEVEMENTS_LIST: ACHIEVEMENTS_LIST,
             fleaMarket: db.fleaMarket || [],
-            shopItems: currentShopItems, nextShopUpdate: nextShopUpdate, leaderboard: leaderboard
+            shopItems: currentShopItems, nextShopUpdate: nextShopUpdate, leaderboard: leaderboard,
+            onlineList: getOnlinePlayersList(),
+            chatHistory: (db.chatHistory || []),
+            coopSquadsList: getPublicRaidSquads()
         });
     }
 }
@@ -2082,7 +2234,11 @@ app.post('/vk-payment', (req, res) => {
 });
 
 io.on('connection', (socket) => {
-    socket.emit('chatHistory', chatHistory);
+    if (!Array.isArray(db.chatHistory)) db.chatHistory = [];
+    chatHistory = db.chatHistory;
+    socket.emit('chatHistory', db.chatHistory);
+    socket.emit('onlineList', getOnlinePlayersList());
+    socket.emit('raidSquadsList', getPublicRaidSquads());
 
     let lastChatTime = 0;
     let lastWorkTime = 0;
@@ -2403,10 +2559,284 @@ io.on('connection', (socket) => {
         let u = onlinePlayers[socket.id]; if (!u) return;
         let now = Date.now();
         if (now - lastChatTime < 2000) { socket.emit('terminalError', 'СЕТЬ: Ожидайте 2 сек.'); return; }
-        lastChatTime = now; let cleanMsg = msg.substring(0, 100);
-        let entry = { user: u, text: cleanMsg, time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' }) };
-        chatHistory.push(entry); if (chatHistory.length > MAX_CHAT_MESSAGES) chatHistory.shift();
+        lastChatTime = now;
+        let cleanMsg = String(msg || '').trim().substring(0, 100);
+        if (!cleanMsg) return;
+        let p = db.players[u];
+        let entry = {
+            user: u,
+            level: p ? p.level : 1,
+            title: p ? (p.title || 'Заключенный') : 'Заключенный',
+            text: cleanMsg,
+            time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' })
+        };
+        if (!Array.isArray(db.chatHistory)) db.chatHistory = [];
+        db.chatHistory.push(entry);
+        if (db.chatHistory.length > MAX_CHAT_MESSAGES) db.chatHistory.shift();
+        chatHistory = db.chatHistory;
+        saveDB();
         io.emit('chatMessage', entry);
+    });
+
+    // ===== СОВМЕСТНАЯ ВЫЛАЗКА: ОБРАБОТЧИКИ ОТРЯДА И РЕЙДА =====
+    socket.on('getRaidSquads', () => {
+        socket.emit('raidSquadsList', getPublicRaidSquads());
+        let u = onlinePlayers[socket.id];
+        if (u) {
+            let mySquad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === u));
+            socket.emit('myRaidSquad', mySquad ? getSquadClientData(mySquad) : null);
+        }
+    });
+
+    socket.on('createRaidSquad', (data) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let existing = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (existing) { socket.emit('terminalError', 'ВЫ УЖЕ СОСТОИТЕ В ОТРЯДЕ!'); return; }
+        let sName = (data && typeof data.name === 'string' && data.name.trim()) ? data.name.trim().slice(0, 24) : ('Штурм ' + username);
+        let squadId = 'squad_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        let newSquad = {
+            id: squadId,
+            name: sName,
+            leader: username,
+            members: [{
+                username: username,
+                level: p.level || 1,
+                title: p.title || 'Заключенный',
+                hp: p.hp || 100,
+                maxHp: p.maxHp || 100,
+                isReady: true,
+                isDowned: false,
+                pDodging: false,
+                pTimer: 2.0
+            }],
+            status: 'lobby',
+            currentWave: 1,
+            maxWaves: 11,
+            enemy: null,
+            eTimer: 2.2,
+            chat: [{ user: 'ШТАБ', text: 'Штурмовой отряд сформирован командиром ' + username + '. Ожидание бойцов...', time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' }) }],
+            logs: []
+        };
+        coopSquads[squadId] = newSquad;
+        socket.emit('myRaidSquad', getSquadClientData(newSquad));
+        io.emit('raidSquadsList', getPublicRaidSquads());
+        socket.emit('terminalError', 'ОТРЯД «' + sName + '» СОЗДАН!');
+        socket.emit('playSound', 'equip');
+        broadcastGameState();
+    });
+
+    socket.on('joinRaidSquad', (squadId) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let existing = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (existing) { socket.emit('terminalError', 'СНАЧАЛА ВЫЙДИТЕ ИЗ ТЕКУЩЕГО ОТРЯДА!'); return; }
+        let squad = coopSquads[squadId];
+        if (!squad) { socket.emit('terminalError', 'ОТРЯД НЕ НАЙДЕН!'); return; }
+        if (squad.status !== 'lobby') { socket.emit('terminalError', 'ОТРЯД УЖЕ В БОЮ!'); return; }
+        if (squad.members.length >= 4) { socket.emit('terminalError', 'ОТРЯД ПОЛОН (МАКС. 4 БОЙЦА)!'); return; }
+        squad.members.push({
+            username: username,
+            level: p.level || 1,
+            title: p.title || 'Заключенный',
+            hp: p.hp || 100,
+            maxHp: p.maxHp || 100,
+            isReady: false,
+            isDowned: false,
+            pDodging: false,
+            pTimer: 2.0
+        });
+        squad.chat.push({ user: 'ШТАБ', text: 'Боец ' + username + ' [Ур. ' + p.level + '] вступил в отряд!', time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' }) });
+        broadcastToSquad(squad, 'myRaidSquad', getSquadClientData(squad));
+        io.emit('raidSquadsList', getPublicRaidSquads());
+        socket.emit('playSound', 'buy');
+        broadcastGameState();
+    });
+
+    socket.on('leaveRaidSquad', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let squad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (!squad) return;
+        let wasLeader = (squad.leader === username);
+        squad.members = squad.members.filter(m => m.username !== username);
+        if (squad.status === 'combat') {
+            p.location = 'safe_room';
+        }
+        if (squad.members.length === 0) {
+            delete coopSquads[squad.id];
+        } else {
+            if (wasLeader) squad.leader = squad.members[0].username;
+            squad.chat.push({ user: 'ШТАБ', text: 'Боец ' + username + ' покинул отряд.', time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' }) });
+            broadcastToSquad(squad, 'myRaidSquad', getSquadClientData(squad));
+        }
+        socket.emit('myRaidSquad', null);
+        io.emit('raidSquadsList', getPublicRaidSquads());
+        socket.emit('terminalError', 'ВЫ ПОКИНУЛИ ОТРЯД.');
+        broadcastGameState();
+    });
+
+    socket.on('toggleRaidReady', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username } = auth;
+        let squad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (!squad || squad.status !== 'lobby') return;
+        let member = squad.members.find(m => m.username === username);
+        if (member) {
+            member.isReady = !member.isReady;
+            broadcastToSquad(squad, 'myRaidSquad', getSquadClientData(squad));
+            io.emit('raidSquadsList', getPublicRaidSquads());
+        }
+    });
+
+    socket.on('startRaidSortie', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username } = auth;
+        let squad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (!squad || squad.status !== 'lobby') return;
+        if (squad.leader !== username) { socket.emit('terminalError', 'ТОЛЬКО КОМАНДИР МОЖЕТ НАЧАТЬ ВЫЛАЗКУ!'); return; }
+        let notReady = squad.members.filter(m => m.username !== squad.leader && !m.isReady);
+        if (notReady.length > 0) {
+            socket.emit('terminalError', 'НЕ ВСЕ БОЙЦЫ ГОТОВЫ (' + notReady.map(m=>m.username).join(', ') + ')!');
+            return;
+        }
+        squad.status = 'combat';
+        squad.currentWave = 1;
+        let mob = RAID_WAVE_MONSTERS[0];
+        let hpMult = 1 + (squad.members.length - 1) * 0.45;
+        squad.enemy = {
+            name: mob.name,
+            hp: Math.floor(mob.hp * hpMult),
+            maxHp: Math.floor(mob.hp * hpMult),
+            dmg: mob.dmg,
+            def: mob.def,
+            reward: mob.reward,
+            xp: mob.xp,
+            img: mob.img,
+            tier: mob.tier
+        };
+        squad.eTimer = 2.5;
+        squad.logs = ['[ШТУРМ НАЧАТ] Отряд вошёл в опасный сектор! Волна 1/11: ' + squad.enemy.name + '!'];
+        squad.members.forEach(m => {
+            let mp = db.players[m.username];
+            if (mp) {
+                m.hp = mp.hp || 100;
+                m.maxHp = mp.maxHp || 100;
+                m.isDowned = (m.hp <= 0);
+                m.pDodging = false;
+                m.pTimer = 2.0;
+            }
+        });
+        broadcastToSquad(squad, 'raidSortieStarted', {
+            squad: getSquadClientData(squad),
+            enemy: squad.enemy,
+            currentWave: squad.currentWave,
+            maxWaves: squad.maxWaves
+        });
+        io.emit('raidSquadsList', getPublicRaidSquads());
+        broadcastGameState();
+    });
+
+    socket.on('raidPlayerAttack', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let squad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (!squad || squad.status !== 'combat' || !squad.enemy) return;
+        let member = squad.members.find(m => m.username === username);
+        if (!member || member.isDowned || member.hp <= 0) {
+            socket.emit('terminalError', 'ВЫ ТЯЖЕЛО РАНЕНЫ! Ждите помощи медика.');
+            return;
+        }
+        let stats = getPlayerStats(p);
+        let pDmg = Math.max(4, stats.dmg - Math.floor((squad.enemy.def || 0) / 2));
+        if (Math.random() < (stats.crit || 0.1)) {
+            pDmg = Math.floor(pDmg * 1.8);
+            squad.logs.push('> 💥 КРИТИЧЕСКИЙ УДАР! ' + username + ' наносит ' + pDmg + ' урона по ' + squad.enemy.name + '!');
+        } else {
+            squad.logs.push('> ' + username + ' атакует: -' + pDmg + ' HP у ' + squad.enemy.name + '.');
+        }
+        squad.enemy.hp = Math.max(0, squad.enemy.hp - pDmg);
+        socket.emit('playSound', 'hit_enemy');
+    });
+
+    socket.on('raidPlayerDodge', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username } = auth;
+        let squad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (!squad || squad.status !== 'combat') return;
+        let member = squad.members.find(m => m.username === username);
+        if (!member || member.isDowned) return;
+        member.pDodging = true;
+        squad.logs.push('> 🛡️ ' + username + ' приготовился к уклонению!');
+        socket.emit('playSound', 'dodge');
+    });
+
+    socket.on('reviveRaidTeammate', (data) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let targetUsername = data && data.targetUsername;
+        if (!targetUsername) return;
+        let squad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (!squad || squad.status !== 'combat') return;
+        let healerMember = squad.members.find(m => m.username === username);
+        if (!healerMember || healerMember.isDowned || healerMember.hp <= 0) {
+            socket.emit('terminalError', 'ВЫ НЕ МОЖЕТЕ ЛЕЧИТЬ В БЕССОЗНАТЕЛЬНОМ СОСТОЯНИИ!');
+            return;
+        }
+        let targetMember = squad.members.find(m => m.username === targetUsername);
+        if (!targetMember) { socket.emit('terminalError', 'ЦЕЛЬ НЕ НАЙДЕНА В ОТРЯДЕ.'); return; }
+        if (!targetMember.isDowned && targetMember.hp > 0) {
+            socket.emit('terminalError', targetUsername + ' НЕ ТРЕБУЕТ РЕАНИМАЦИИ.');
+            return;
+        }
+        let targetP = db.players[targetUsername];
+        if (!targetP) return;
+        let medIndex = p.inventory.findIndex(id => id === 'food_medkit' || id === 'food_pure' || id === 'food_ration' || id === 'mat_chem');
+        if (medIndex === -1) {
+            socket.emit('terminalError', 'НЕТ МЕДИЦИНЫ! Нужна Военная аптечка или Биоконцентрат в рюкзаке.');
+            socket.emit('playSound', 'defeat');
+            return;
+        }
+        let consumedItem = p.inventory.splice(medIndex, 1)[0];
+        let itemName = (GAME_ITEMS[consumedItem] && GAME_ITEMS[consumedItem].name) || consumedItem;
+        let healHp = Math.max(45, Math.floor((targetP.maxHp || 100) * 0.45));
+        targetP.hp = healHp;
+        targetMember.hp = healHp;
+        targetMember.isDowned = false;
+        let reviveMsg = '[САНИТАР] 💉 ' + username + ' применил «' + itemName + '» и ПОДНЯЛ НА НОГИ бойца ' + targetUsername + '! (+' + healHp + ' HP)';
+        squad.logs.push(reviveMsg);
+        broadcastToSquad(squad, 'playSound', 'potion');
+        broadcastToSquad(squad, 'raidTeammateRevived', {
+            healer: username,
+            target: targetUsername,
+            item: itemName,
+            hp: healHp
+        });
+        saveDB();
+        broadcastGameState();
+    });
+
+    socket.on('sendRaidChatMessage', (data) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { username, p } = auth;
+        let text = typeof data === 'string' ? data : (data && data.text ? data.text : '');
+        text = String(text || '').trim().slice(0, 120);
+        if (!text) return;
+        let squad = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
+        if (!squad) return;
+        let member = squad.members.find(m => m.username === username);
+        let entry = {
+            user: username,
+            level: p.level || 1,
+            title: p.title || 'Заключенный',
+            isDowned: member ? !!member.isDowned : false,
+            text: text,
+            time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute: '2-digit' })
+        };
+        squad.chat = squad.chat || [];
+        squad.chat.push(entry);
+        if (squad.chat.length > 40) squad.chat.shift();
+        broadcastToSquad(squad, 'raidChatMessage', entry);
     });
 
     socket.on('submitFeedback', (data) => {
@@ -3888,6 +4318,28 @@ function checkLifterTrigger(player, sock, loc) {
                 }
                 delete activeCombats[u];
             }
+            // Очистка бойца из отряда рейда
+            for (let sqId in coopSquads) {
+                let sq = coopSquads[sqId];
+                if (sq.members.some(m => m.username === u)) {
+                    if (sq.status === 'lobby') {
+                        sq.members = sq.members.filter(m => m.username !== u);
+                        if (sq.members.length === 0) {
+                            delete coopSquads[sqId];
+                        } else {
+                            if (sq.leader === u) sq.leader = sq.members[0].username;
+                            broadcastToSquad(sq, 'myRaidSquad', getSquadClientData(sq));
+                        }
+                    } else if (sq.status === 'combat') {
+                        let m = sq.members.find(mem => mem.username === u);
+                        if (m) m.isDowned = true;
+                        if (sq.members.every(mem => mem.isDowned || mem.hp <= 0)) {
+                            sq.status = 'ended';
+                            delete coopSquads[sqId];
+                        }
+                    }
+                }
+            }
             delete onlinePlayers[socket.id];
             broadcastGameState();
         }
@@ -4196,6 +4648,210 @@ setInterval(() => {
             io.to(socketId).emit('combatTick', { enemyHp: combat.enemy.hp, enemyMaxHp: combat.enemy.maxHp, logs: combat.logs, sounds: combat.sounds, vfx: combat.vfx });
             combat.logs = []; combat.sounds = []; combat.vfx = [];
         }
+    }
+
+    // ===== ТАКТИЧЕСКИЙ ЦИКЛ БОЯ СОВМЕСТНОЙ ВЫЛАЗКИ =====
+    for (let squadId in coopSquads) {
+        let squad = coopSquads[squadId];
+        if (!squad || squad.status !== 'combat') continue;
+
+        squad.eTimer = (squad.eTimer || 2.5) - 0.25;
+
+        // 1. Атака монстра по живому члену отряда
+        if (squad.eTimer <= 0 && squad.enemy && squad.enemy.hp > 0) {
+            squad.eTimer = 2.2;
+            let aliveMembers = squad.members.filter(m => !m.isDowned && m.hp > 0);
+            if (aliveMembers.length === 0) {
+                // ВЕСЬ ОТРЯД ПАЛ: ВАЙП И ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ
+                squad.status = 'ended';
+                squad.members.forEach(m => {
+                    let mp = db.players[m.username];
+                    if (mp) {
+                        mp.location = 'safe_room';
+                        mp.hp = Math.max(25, Math.floor((mp.maxHp || 100) * 0.25));
+                    }
+                });
+                broadcastToSquad(squad, 'raidSortieEnded', {
+                    win: false,
+                    wiped: true,
+                    reason: '💀 ВЕСЬ ОТРЯД ПАЛ В БОЮ! Аварийная эвакуация в жилячейку.'
+                });
+                delete coopSquads[squadId];
+                saveDB();
+                broadcastGameState();
+                continue;
+            }
+
+            let targetMember = aliveMembers[Math.floor(Math.random() * aliveMembers.length)];
+            let targetP = db.players[targetMember.username];
+            let targetDef = targetP ? getPlayerStats(targetP).def : 0;
+            let rawDmg = Math.max(6, squad.enemy.dmg - Math.floor(targetDef / 4));
+
+            if (targetMember.pDodging) {
+                if (Math.random() < 0.75) {
+                    rawDmg = 0;
+                    squad.logs.push('> 💨 ' + targetMember.username + ' УСПЕШНО УКЛОНИЛСЯ от сокрушительного удара!');
+                    broadcastToSquad(squad, 'playSound', 'dodge');
+                } else {
+                    squad.logs.push('> ⚠️ ' + targetMember.username + ' не успел отскочить в сторону!');
+                }
+                targetMember.pDodging = false;
+            }
+
+            if (rawDmg > 0) {
+                targetMember.hp = Math.max(0, targetMember.hp - rawDmg);
+                if (targetP) targetP.hp = targetMember.hp;
+                squad.logs.push('> 💥 ' + squad.enemy.name + ' АТАКУЕТ ' + targetMember.username + '! -' + rawDmg + ' HP.');
+                broadcastToSquad(squad, 'playSound', 'hit_enemy');
+
+                if (targetMember.hp <= 0) {
+                    targetMember.isDowned = true;
+                    targetMember.hp = 0;
+                    if (targetP) targetP.hp = 0;
+                    squad.logs.push('> ⚠️ [ТЯЖЕЛО РАНЕН] Боец ' + targetMember.username + ' ПАЛ БЕЗ СОЗНАНИЯ! Нужна помощь санитара (аптечка)!');
+                    broadcastToSquad(squad, 'playSound', 'defeat');
+
+                    if (squad.members.every(m => m.isDowned || m.hp <= 0)) {
+                        squad.status = 'ended';
+                        squad.members.forEach(m => {
+                            let mp = db.players[m.username];
+                            if (mp) {
+                                mp.location = 'safe_room';
+                                mp.hp = Math.max(25, Math.floor((mp.maxHp || 100) * 0.25));
+                            }
+                        });
+                        broadcastToSquad(squad, 'raidSortieEnded', {
+                            win: false,
+                            wiped: true,
+                            reason: '💀 ВЕСЬ ОТРЯД ПАЛ В БОЮ! Аварийная эвакуация в жилячейку.'
+                        });
+                        delete coopSquads[squadId];
+                        saveDB();
+                        broadcastGameState();
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // 2. Проверка гибели монстра волны и переход на следующую волну
+        if (squad.enemy && squad.enemy.hp <= 0) {
+            let enemyReward = squad.enemy.reward || 35;
+            let enemyXp = squad.enemy.xp || 45;
+            squad.members.forEach(m => {
+                let mp = db.players[m.username];
+                if (mp) {
+                    mp.talons = (mp.talons || 0) + enemyReward;
+                    mp.xp = (mp.xp || 0) + enemyXp;
+                    mp.monstersKilled = (mp.monstersKilled || 0) + 1;
+                    let nextXp = mp.level * 100;
+                    if (mp.xp >= nextXp) {
+                        mp.level += 1;
+                        mp.xp -= nextXp;
+                        mp.maxHp += 10;
+                        mp.hp = mp.maxHp;
+                        squad.logs.push('>>> БОЕЦ ' + m.username + ' ПОЛУЧИЛ УРОВЕНЬ ' + mp.level + '! <<<');
+                    }
+                }
+            });
+
+            if (squad.currentWave < 10) {
+                let prevWave = squad.currentWave;
+                squad.currentWave++;
+                let mob = RAID_WAVE_MONSTERS[squad.currentWave - 1];
+                let hpMult = 1 + (squad.members.length - 1) * 0.45;
+                squad.enemy = {
+                    name: mob.name,
+                    hp: Math.floor(mob.hp * hpMult),
+                    maxHp: Math.floor(mob.hp * hpMult),
+                    dmg: mob.dmg,
+                    def: mob.def,
+                    reward: mob.reward,
+                    xp: mob.xp,
+                    img: mob.img,
+                    tier: mob.tier
+                };
+                squad.eTimer = 2.5;
+                squad.logs.push('[ВОЛНА ' + prevWave + ' ЗАЧИЩЕНА] Награда: +' + enemyReward + ' талонов, +' + enemyXp + ' XP каждому! Надвигается Волна ' + squad.currentWave + '/11: ' + squad.enemy.name + '!');
+                broadcastToSquad(squad, 'playSound', 'buy');
+            } else if (squad.currentWave === 10) {
+                // 10 ВОЛН ПРОЙДЕНО -> 11 ВОЛНА: ПОЯВЛЕНИЕ ЭЛИТНОГО БОССА (СИНИЙ ИЛИ ФИОЛЕТОВЫЙ)!
+                squad.currentWave = 11;
+                let bossRoll = Math.random() < 0.5 ? 'blue' : 'purple';
+                let bossConfig = RAID_ELITE_BOSSES[bossRoll];
+                let hpMult = 1 + (squad.members.length - 1) * 0.5;
+                squad.enemy = {
+                    name: bossConfig.name,
+                    hp: Math.floor(bossConfig.hp * hpMult),
+                    maxHp: Math.floor(bossConfig.hp * hpMult),
+                    dmg: bossConfig.dmg,
+                    def: bossConfig.def,
+                    reward: bossConfig.reward,
+                    xp: bossConfig.xp,
+                    img: bossConfig.img,
+                    tier: bossConfig.tier,
+                    colorTheme: bossConfig.colorTheme,
+                    badge: bossConfig.badge,
+                    lore: bossConfig.lore,
+                    lootTable: bossConfig.lootTable
+                };
+                squad.eTimer = 3.0;
+                squad.logs.push('[ТРЕВОГА МАКСИМАЛЬНОГО УРОВНЯ] 10 волн отбито! ПОЯВИЛСЯ ' + squad.enemy.name + '! ' + squad.enemy.lore);
+                broadcastToSquad(squad, 'playSound', 'defeat');
+            } else if (squad.currentWave === 11) {
+                // ФИНАЛЬНЫЙ БОСС ПОВЕРЖЕН! ПОЛНАЯ ПОБЕДА!
+                squad.logs.push('[ЛЕГЕНДАРНАЯ ПОБЕДА] Финальный босс ' + squad.enemy.name + ' ПОВЕРЖЕН! Штурмовая операция успешно завершена!');
+                let droppedItems = {};
+                squad.members.forEach(m => {
+                    let mp = db.players[m.username];
+                    if (mp) {
+                        let lootItem = squad.enemy.lootTable[Math.floor(Math.random() * squad.enemy.lootTable.length)];
+                        if (mp.inventory.length < getMaxInv(mp)) {
+                            mp.inventory.push(lootItem);
+                            droppedItems[m.username] = (GAME_ITEMS[lootItem] && GAME_ITEMS[lootItem].name) || lootItem;
+                        }
+                        if (!mp.bossDefeated) mp.bossDefeated = {};
+                        mp.bossDefeated['raid_' + squad.enemy.tier] = true;
+                        mp.location = 'safe_room';
+                        if (mp.hp <= 0) mp.hp = 50;
+                    }
+                });
+                broadcastToSquad(squad, 'raidSortieEnded', {
+                    win: true,
+                    wiped: false,
+                    bossName: squad.enemy.name,
+                    bossTier: squad.enemy.tier,
+                    reward: squad.enemy.reward,
+                    xp: squad.enemy.xp,
+                    droppedItems: droppedItems
+                });
+                delete coopSquads[squadId];
+                saveDB();
+                broadcastGameState();
+                continue;
+            }
+        }
+
+        // Отправка тика боя всем бойцам отряда
+        broadcastToSquad(squad, 'raidCombatTick', {
+            currentWave: squad.currentWave,
+            maxWaves: squad.maxWaves,
+            enemy: squad.enemy,
+            members: squad.members.map(m => {
+                let mp = db.players[m.username];
+                return {
+                    username: m.username,
+                    level: m.level || (mp ? mp.level : 1),
+                    title: m.title || (mp ? mp.title : 'Заключенный'),
+                    hp: m.hp,
+                    maxHp: m.maxHp,
+                    isDowned: m.isDowned,
+                    pDodging: m.pDodging,
+                    skin: mp && mp.appearance ? mp.appearance.skin : 'skin_1'
+                };
+            }),
+            logs: squad.logs.slice(-15)
+        });
     }
 }, 250);
 

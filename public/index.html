@@ -1037,6 +1037,29 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   gap: 4px;
 }
 
+
+@keyframes bossPulse {
+  0% { box-shadow: 0 0 10px rgba(51,170,255,0.4); border-color: rgba(51,170,255,0.6); }
+  50% { box-shadow: 0 0 25px rgba(51,170,255,0.9); border-color: #33aaff; }
+  100% { box-shadow: 0 0 10px rgba(51,170,255,0.4); border-color: rgba(51,170,255,0.6); }
+}
+@keyframes bossPurplePulse {
+  0% { box-shadow: 0 0 10px rgba(192,51,255,0.4); border-color: rgba(192,51,255,0.6); }
+  50% { box-shadow: 0 0 28px rgba(192,51,255,0.95); border-color: #c033ff; }
+  100% { box-shadow: 0 0 10px rgba(192,51,255,0.4); border-color: rgba(192,51,255,0.6); }
+}
+@keyframes downedFlash {
+  0% { background: rgba(90,10,10,0.6); border-color: rgba(255,60,60,0.5); }
+  50% { background: rgba(150,15,15,0.9); border-color: #ff3333; }
+  100% { background: rgba(90,10,10,0.6); border-color: rgba(255,60,60,0.5); }
+}
+.downed-card {
+  animation: downedFlash 1.5s infinite ease-in-out;
+}
+.chat-online-row:hover {
+  background: rgba(0, 50, 20, 0.5) !important;
+  cursor: pointer;
+}
 </style>
 </head>
 <body class="crt-enabled">
@@ -1064,13 +1087,199 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
+<!-- ОБНОВЛЕННЫЙ ЧАТ С ОНЛАЙНОМ И ИСТОРИЕЙ -->
 <div id="chat-modal" class="modal-overlay" style="z-index: 75;">
-  <div class="shop-panel" style="width: 700px; display: flex; flex-direction: column; height: 600px;">
-    <div class="shop-header"><span data-i18n="chat_title">ОБЩИЙ КАНАЛ [СЕТЬ]</span><button onclick="document.getElementById('chat-modal').style.display='none';">[X]</button></div>
-    <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; text-align: left; padding: 10px; border: 1px solid var(--term-dim); background: rgba(0,20,0,0.5); margin-bottom: 12px; font-size: 14px; color: #ddd;"></div>
-    <div style="display: flex; gap: 8px;">
-      <input type="text" id="chat-input" placeholder="СООБЩЕНИЕ..." data-i18n-ph="chat_ph" style="flex-grow: 1; margin: 0; width: auto; padding: 8px;" maxlength="100">
-      <button id="btn-send-chat" style="margin: 0; width: 120px; padding: 8px;" data-i18n="chat_send">ОТПРАВИТЬ</button>
+  <div class="shop-panel" style="width: 860px; max-width: 96vw; height: 620px; max-height: 88vh; display: flex; flex-direction: column;">
+    <div class="shop-header">
+      <span data-i18n="chat_title">📡 ОБЩИЙ КАНАЛ СВЯЗИ [СЕТЬ]</span>
+      <button onclick="document.getElementById('chat-modal').style.display='none';">[X]</button>
+    </div>
+    
+    <div style="display: flex; gap: 12px; flex-grow: 1; min-height: 0; margin-bottom: 8px;">
+      <!-- Левая колонка: Сообщения и ввод -->
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; text-align: left; padding: 10px; border: 1px solid var(--term-dim); background: rgba(0,18,0,0.65); font-size: 13px; line-height: 1.5; color: #ddd; word-break: break-word;"></div>
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+          <input type="text" id="chat-input" placeholder="СООБЩЕНИЕ (клик по нику справа для ответа)..." data-i18n-ph="chat_ph" style="flex-grow: 1; margin: 0; padding: 8px; font-size: 13px;" maxlength="100">
+          <button id="btn-send-chat" style="margin: 0; width: 120px; padding: 8px; font-weight: bold;" data-i18n="chat_send">ОТПРАВИТЬ</button>
+        </div>
+      </div>
+      
+      <!-- Правая колонка: Игроки в онлайне -->
+      <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; border: 1px solid var(--term-dim); background: rgba(0,14,0,0.6); padding: 8px; border-radius: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--term-dim); padding-bottom: 6px; margin-bottom: 6px;">
+          <span style="color: var(--term-main); font-weight: bold; font-size: 12px; letter-spacing: 1px;">🟢 В СЕТИ</span>
+          <span id="chat-online-count" style="color: var(--term-warn); font-size: 12px; font-weight: bold;">0</span>
+        </div>
+        <div style="font-size: 10px; color: #888; margin-bottom: 6px;">Нажмите ник для обращения:</div>
+        <div id="chat-online-list" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО СОВМЕСТНОЙ ВЫЛАЗКИ (РЕЙД / ШТУРМОВОЙ ОТРЯД) -->
+<div id="raid-modal" class="modal-overlay" style="z-index: 80; display: none;">
+  <div class="shop-panel" style="width: 880px; max-width: 96vw; height: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="shop-header">
+      <span style="color: #33d4ff; text-shadow: 0 0 10px rgba(51,212,255,0.6); font-weight: bold;">👥 СОВМЕСТНАЯ ВЫЛАЗКА // ТАКТИЧЕСКИЙ ШТАБ</span>
+      <button onclick="closeRaidModal()">[X]</button>
+    </div>
+
+    <!-- Тактический брифинг -->
+    <div style="background: rgba(0,25,35,0.6); border: 1px solid rgba(51,212,255,0.35); padding: 10px 14px; margin-bottom: 12px; border-radius: 4px; font-size: 12px; line-height: 1.45; color: #a0d8ef;">
+      <div style="color: #33d4ff; font-weight: bold; margin-bottom: 4px; font-size: 13px;">📋 ПРИКАЗ ПО БЛОКУ: СОВМЕСТНАЯ ОПЕРАЦИЯ ЗАЧИСТКИ</div>
+      <div>• <b>Цель:</b> Сформируйте штурмовой отряд (до 4 бойцов) и отразите <b>10 волн монстров</b>. На 11-й волне появится смертоносный <b>АНОМАЛЬНЫЙ БОСС</b>: <span style="color: #33aaff; font-weight: bold;">🔷 Синий Редкий</span> или <span style="color: #c033ff; font-weight: bold;">🔮 Фиолетовый Эпический</span>!</div>
+      <div>• <b>Награды:</b> Весь отряд получает <b>общий опыт, талоны и редкий лут</b> за каждого поверженного мутанта.</div>
+      <div>• <b>Полевая медицина:</b> Если боец потерял все HP, он тяжело ранен. Живой товарищ может реанимировать его <b>армейской аптечкой</b> прямо в бою!</div>
+      <div>• <b>Эвакуация:</b> При гибели всего состава отряда срабатывает аварийный маяк — все возвращаются в жилячейку.</div>
+    </div>
+
+    <!-- Вкладки / Состояния -->
+    <div id="raid-lobby-container" style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column;">
+      
+      <!-- СОСТОЯНИЕ А: ИГРОК НЕ В ОТРЯДЕ -->
+      <div id="raid-view-no-squad" style="display: flex; flex-direction: column; flex-grow: 1; min-height: 0;">
+        <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+          <input type="text" id="raid-new-squad-name" placeholder="Название отряда (по умолч.: Штурм [Ник])..." maxlength="24" style="flex: 1; min-width: 200px; padding: 8px 12px; font-size: 13px; margin: 0;">
+          <button id="raid-create-squad-btn" onclick="createRaidSquad()" style="width: auto; margin: 0; padding: 8px 16px; background: rgba(0,60,90,0.8); border-color: #33d4ff; color: #33d4ff; font-weight: bold;">+ СОЗДАТЬ ОТРЯД</button>
+          <button id="raid-solo-start-btn" onclick="quickSoloSortie()" style="width: auto; margin: 0; padding: 8px 16px; background: rgba(50,30,0,0.8); border-color: var(--term-warn); color: var(--term-warn); font-weight: bold;">⚡ БЫСТРАЯ ВЫЛАЗКА (СОЛО)</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--term-dim); padding-bottom: 4px; margin-bottom: 8px;">
+          <span style="color: var(--term-main); font-weight: bold; font-size: 13px;">ОТКРЫТЫЕ ШТУРМОВЫЕ ОТРЯДЫ:</span>
+          <button onclick="socket.emit('getRaidSquads')" style="width: auto; margin: 0; padding: 3px 10px; font-size: 11px;">🔄 ОБНОВИТЬ</button>
+        </div>
+
+        <div id="raid-squads-list" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+          <!-- Карточки открытых отрядов -->
+        </div>
+      </div>
+
+      <!-- СОСТОЯНИЕ Б: ИГРОК В ОТРЯДЕ -->
+      <div id="raid-view-in-squad" style="display: none; flex-direction: column; flex-grow: 1; min-height: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,35,50,0.5); padding: 8px 12px; border: 1px solid rgba(51,212,255,0.4); border-radius: 4px; margin-bottom: 10px;">
+          <div>
+            <span style="color: #888; font-size: 12px;">ОТРЯД: </span>
+            <span id="raid-my-squad-name" style="color: #33d4ff; font-weight: bold; font-size: 15px;">-</span>
+            <span id="raid-my-squad-role" style="margin-left: 8px; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(51,212,255,0.2); color: #33d4ff;"></span>
+          </div>
+          <div style="color: #aaa; font-size: 12px;">
+            Состав: <span id="raid-my-squad-count" style="color: var(--term-warn); font-weight: bold;">1/4</span>
+          </div>
+        </div>
+
+        <!-- 4 слота бойцов отряда -->
+        <div id="raid-my-squad-members" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
+          <!-- Заполняется динамически -->
+        </div>
+
+        <!-- Чат лобби отряда -->
+        <div style="flex-grow: 1; min-height: 120px; display: flex; flex-direction: column; border: 1px solid var(--term-dim); background: rgba(0,18,0,0.6); padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+          <div style="font-size: 11px; color: #888; margin-bottom: 4px; border-bottom: 1px solid var(--term-dim); padding-bottom: 2px;">РАДИОКАНАЛ ШТУРМОВОГО ОТРЯДА:</div>
+          <div id="raid-lobby-chat-msgs" style="flex-grow: 1; overflow-y: auto; font-size: 12px; line-height: 1.4; color: #ddd; word-break: break-word;"></div>
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <input type="text" id="raid-lobby-chat-input" placeholder="Сообщение бойцам отряда..." maxlength="100" style="flex: 1; padding: 6px 10px; font-size: 12px; margin: 0;">
+            <button onclick="sendRaidLobbyChat()" style="width: auto; padding: 6px 14px; margin: 0; font-size: 12px;">СКАЗАТЬ</button>
+          </div>
+        </div>
+
+        <!-- Кнопки управления отрядом -->
+        <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          <button id="raid-leave-btn" onclick="leaveRaidSquad()" style="width: auto; margin: 0; padding: 10px 18px; background: rgba(60,10,10,0.8); border-color: var(--term-danger); color: var(--term-danger);">🚪 ПОКИНУТЬ ОТРЯД</button>
+          <button id="raid-ready-btn" onclick="toggleRaidReady()" style="width: auto; margin: 0; padding: 10px 22px; background: rgba(50,40,0,0.8); border-color: var(--term-warn); color: var(--term-warn); font-weight: bold;">⚡ ГОТОВ</button>
+          <button id="raid-start-btn" onclick="startRaidSortie()" style="width: auto; margin: 0; padding: 10px 26px; background: rgba(0,80,40,0.8); border-color: var(--term-main); color: var(--term-main); font-weight: bold; display: none;">🚀 НАЧАТЬ ВЫЛАЗКУ В СЕКТОР</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО АКТИВНОГО БОЯ СОВМЕСТНОЙ ВЫЛАЗКИ -->
+<div id="raid-combat-modal" class="modal-overlay" style="z-index: 90; display: none;">
+  <div class="shop-panel" style="width: 920px; max-width: 98vw; height: 720px; max-height: 94vh; display: flex; flex-direction: column; border: 2px solid #33d4ff; box-shadow: 0 0 25px rgba(51,212,255,0.3); position: relative;">
+    
+    <!-- Шапка боя и счетчик волн -->
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(51,212,255,0.4); padding-bottom: 8px; margin-bottom: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="color: #33d4ff; font-weight: bold; font-size: 16px; letter-spacing: 1px;">⚔️ СОВМЕСТНАЯ ВЫЛАЗКА</span>
+        <div style="background: rgba(0,40,60,0.8); border: 1px solid #33d4ff; padding: 2px 10px; border-radius: 4px; font-weight: bold; color: #fff;">
+          ВОЛНА: <span id="rc-wave-num" style="color: var(--term-warn); font-size: 16px;">1</span> / 11
+        </div>
+      </div>
+      <div id="rc-wave-indicators" style="display: flex; gap: 4px; align-items: center;">
+        <!-- Точки волн 1..10 + 11 (босс) -->
+      </div>
+    </div>
+
+    <!-- Баннер 11-й волны (Аномальный Босс: Синий / Фиолетовый) -->
+    <div id="rc-boss-alert" style="display: none; padding: 8px 14px; margin-bottom: 8px; border-radius: 4px; text-align: center; font-weight: bold; font-size: 14px; border: 2px solid #33aaff;"></div>
+
+    <!-- Основная боевая арена -->
+    <div style="display: flex; gap: 12px; flex-grow: 1; min-height: 0; margin-bottom: 8px;">
+      
+      <!-- Левая часть: Монстр волны + Боевые действия игрока -->
+      <div style="flex: 1.2; min-width: 0; display: flex; flex-direction: column; background: rgba(0,15,20,0.6); border: 1px solid rgba(51,212,255,0.3); padding: 10px; border-radius: 4px;">
+        
+        <!-- Карточка монстра -->
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; min-height: 180px; position: relative;">
+          <div id="rc-monster-tier-badge" style="position: absolute; top: 0; left: 0; font-size: 11px; padding: 2px 8px; border-radius: 3px; background: rgba(0,0,0,0.6); border: 1px solid #555; color: #aaa;">ОБЫЧНЫЙ</div>
+          <img id="rc-monster-img" src="assets/monsters/m_slime.png" alt="Мутант" style="max-height: 140px; max-width: 180px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(51,212,255,0.4)); margin-bottom: 8px; transition: transform 0.15s ease;">
+          <div id="rc-monster-name" style="font-size: 15px; font-weight: bold; color: var(--term-main); margin-bottom: 6px; text-align: center;">Хлюп-Мутант Сливной Трубы</div>
+          
+          <!-- Полоса здоровья монстра -->
+          <div style="width: 85%; background: #222; border: 1px solid #555; height: 18px; border-radius: 9px; overflow: hidden; position: relative;">
+            <div id="rc-monster-hp-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); transition: width 0.2s ease;"></div>
+            <div id="rc-monster-hp-text" style="position: absolute; width: 100%; top: 0; left: 0; text-align: center; font-size: 11px; line-height: 18px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000;">220 / 220</div>
+          </div>
+        </div>
+
+        <!-- Кнопки действий игрока -->
+        <div style="display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid rgba(51,212,255,0.25); padding-top: 10px;">
+          <button id="rc-btn-attack" onclick="raidDoAttack()" style="flex: 1.5; margin: 0; padding: 10px; font-size: 14px; font-weight: bold; background: rgba(80,20,20,0.8); border-color: #ff5555; color: #fff;">⚔️ АТАКОВАТЬ</button>
+          <button id="rc-btn-dodge" onclick="raidDoDodge()" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; font-weight: bold; background: rgba(20,60,80,0.8); border-color: #33d4ff; color: #33d4ff;">🛡️ УКЛОНЕНИЕ</button>
+        </div>
+      </div>
+
+      <!-- Правая часть: Состав отряда (HP + Кнопки Реанимации) + Радиосвязь / Логи -->
+      <div style="flex: 1.3; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+        
+        <!-- Карточки бойцов отряда -->
+        <div id="rc-squad-status-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto;">
+          <!-- Динамически заполняются карточки с кнопками [ 💉 ОЖИВИТЬ АПТЕЧКОЙ ] -->
+        </div>
+
+        <!-- Окно тактического чата и боевых логов -->
+        <div style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--term-dim); background: rgba(0,15,5,0.7); padding: 8px; border-radius: 4px;">
+          <div style="font-size: 11px; color: #888; border-bottom: 1px solid var(--term-dim); padding-bottom: 3px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+            <span>📻 ТАКТИЧЕСКИЙ РАДИОКАНАЛ // БОЕВОЙ ЛОГ</span>
+            <span style="color: #33d4ff;">РЕАЛЬНОЕ ВРЕМЯ</span>
+          </div>
+          
+          <div id="rc-chat-log" style="flex-grow: 1; overflow-y: auto; font-size: 12px; line-height: 1.45; color: #ddd; word-break: break-word; padding-right: 4px;">
+            <!-- Сообщения логов боя и реплики бойцов -->
+          </div>
+
+          <!-- Быстрые команды радиосвязи -->
+          <div style="display: flex; gap: 4px; margin: 6px 0 4px 0; overflow-x: auto; padding-bottom: 2px;">
+            <button onclick="sendQuickRaidRadio('🚑 ВРАЧ, НУЖНА АПТЕЧКА!')" style="font-size: 10px; padding: 2px 6px; width: auto; margin: 0; background: rgba(70,10,10,0.7); border-color: #ff6666; color: #ff9999;">🚑 ВРАЧ, АПТЕЧКУ!</button>
+            <button onclick="sendQuickRaidRadio('🎯 ФОКУСИТЕ БОССА!')" style="font-size: 10px; padding: 2px 6px; width: auto; margin: 0; background: rgba(70,50,0,0.7); border-color: #ffcc00; color: #ffee66;">🎯 ФОКУСИТЕ БОССА!</button>
+            <button onclick="sendQuickRaidRadio('🛡️ ДЕРЖАТЬ СТРОЙ!')" style="font-size: 10px; padding: 2px 6px; width: auto; margin: 0; background: rgba(0,50,60,0.7); border-color: #33d4ff; color: #88e0ff;">🛡️ ДЕРЖАТЬ СТРОЙ!</button>
+          </div>
+
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="rc-chat-input" placeholder="Сказать в рацию отряда..." maxlength="100" style="flex: 1; margin: 0; padding: 6px 10px; font-size: 12px;">
+            <button onclick="sendRaidCombatChat()" style="width: auto; margin: 0; padding: 6px 14px; font-size: 12px; font-weight: bold;">СКАЗАТЬ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Оверлей результатов вылазки (Победа или Вайп) -->
+    <div id="rc-result-overlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,10,15,0.95); z-index: 100; border-radius: 4px; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;">
+      <div id="rc-result-title" style="font-size: 24px; font-weight: bold; margin-bottom: 12px; letter-spacing: 2px;"></div>
+      <div id="rc-result-details" style="font-size: 14px; line-height: 1.6; max-width: 600px; margin-bottom: 20px; color: #ddd;"></div>
+      <button onclick="closeRaidCombatModal()" style="width: auto; margin: 0; padding: 12px 32px; font-size: 16px; font-weight: bold; border-color: var(--term-main); color: var(--term-main); background: rgba(0,40,10,0.8);">ВЕРНУТЬСЯ НА БАЗУ</button>
     </div>
   </div>
 </div>
@@ -1320,7 +1529,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div class="row-2"><button id="open-chat-btn" data-i18n="btn_chat">СЕТЬ</button><button id="open-leaderboard-btn" data-i18n="btn_leaderboard">РЕЙТИНГ</button></div>
       <div class="row-2">
         <button id="open-achievements-btn" style="color: #ffd700; border-color: rgba(255,215,0,0.5);" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 ДОСТИЖЕНИЯ</button>
-        <button id="open-bestiary-btn" onclick="document.getElementById('bestiary-modal').style.display='flex';" data-i18n="btn_bestiary">📖 БЕСТИАРИЙ</button>
+        <button id="open-raid-btn" style="color: #33d4ff; border-color: rgba(51, 212, 255, 0.6); font-weight: bold; background: rgba(0, 30, 45, 0.6);" onclick="openRaidModal()" data-i18n="btn_raid">👥 СОВМЕСТНАЯ ВЫЛАЗКА</button>
       </div>
       <button id="open-map-btn" data-i18n="btn_map">ВЫХОД В БЛОК</button>
     </div>
@@ -1970,6 +2179,7 @@ const I18N = {
     ach_progress_lbl: "ОБЩИЙ ПРОГРЕСС:",
     ach_total_rewards: "НАГРАДЫ:",
     btn_bestiary: "📖 БЕСТИАРИЙ",
+    btn_raid: "👥 СОВМЕСТНАЯ ВЫЛАЗКА",
     btn_info: "ℹ️ СПРАВКА",
     btn_options: "⚙️ ОПЦИИ",
     opt_guide: "🎓 Обучение и Гайд",
@@ -2128,6 +2338,7 @@ const I18N = {
     ach_progress_lbl: "TOTAL PROGRESS:",
     ach_total_rewards: "REWARDS:",
     btn_bestiary: "📖 BESTIARY",
+    btn_raid: "👥 CO-OP SORTIE",
     btn_info: "ℹ️ GUIDE",
     btn_options: "⚙️ OPTIONS",
     opt_guide: "🎓 Tutorial & Guide",
@@ -4508,8 +4719,593 @@ socket.on('loginSuccess', (data) => {
 });
 socket.on('startGame', () => { if (typeof notifyPikabuGameStarted === 'function') notifyPikabuGameStarted(); document.getElementById('login-screen').classList.remove('active-screen'); document.getElementById('intro-screen').classList.remove('active-screen'); checkAutoTutorial(); });
 
-socket.on('chatHistory', (h) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML = ''; h.forEach(m => b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`); b.scrollTop = b.scrollHeight; });
-socket.on('chatMessage', (m) => { const b = document.getElementById('chat-messages'); if(!b) return; b.innerHTML += `<div><span style="color:#666;">[${m.time}]</span> <span style="color:var(--term-warn);">${m.user}:</span> ${m.text}</div>`; b.scrollTop = b.scrollHeight; });
+// ===== СИСТЕМА ЧАТА С ОНЛАЙНОМ И ИСТОРИЕЙ =====
+let cachedOnlinePlayers = [];
+
+function renderChatHistory(h) {
+  const b = document.getElementById('chat-messages');
+  if (!b) return;
+  b.innerHTML = '';
+  if (!Array.isArray(h)) return;
+  h.forEach(m => appendChatMessage(m, false));
+  b.scrollTop = b.scrollHeight;
+}
+
+function appendChatMessage(m, autoScroll = true) {
+  const b = document.getElementById('chat-messages');
+  if (!b) return;
+  const div = document.createElement('div');
+  div.style.marginBottom = '5px';
+  div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+  div.style.paddingBottom = '3px';
+  
+  let userBadge = m.level ? `<span style="background: rgba(51,212,255,0.2); color:#33d4ff; font-size:10px; padding:1px 4px; border-radius:2px; margin-right:4px;">Ур.${m.level}</span>` : '';
+  let userTitle = m.title ? `<span style="color:#888; font-size:10px; margin-right:4px;">[${m.title}]</span>` : '';
+  let isSystem = (m.user === 'Диспетчер' || m.user === 'СИСТЕМА' || m.user === 'ШТАБ');
+  let nameColor = isSystem ? '#ffcc00' : 'var(--term-warn)';
+  
+  div.innerHTML = `<span style="color:#666; font-size:11px;">[${m.time || '12:00'}]</span> ${userBadge}${userTitle}<span style="color:${nameColor}; font-weight:bold; cursor:pointer;" onclick="mentionUser('${m.user}')">${m.user}:</span> <span style="color:#eee;">${m.text}</span>`;
+  b.appendChild(div);
+  if (autoScroll) b.scrollTop = b.scrollHeight;
+}
+
+function mentionUser(nick) {
+  if (!nick || nick === 'Диспетчер' || nick === 'СИСТЕМА' || nick === 'ШТАБ') return;
+  let ci = document.getElementById('chat-input');
+  if (ci) {
+    ci.value = `@${nick}, ` + ci.value.replace(new RegExp(`^@${nick},\\s*`), '');
+    ci.focus();
+  }
+}
+
+function renderOnlineList(list) {
+  cachedOnlinePlayers = list || [];
+  const countEl = document.getElementById('chat-online-count');
+  if (countEl) countEl.innerText = cachedOnlinePlayers.length;
+  const listEl = document.getElementById('chat-online-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  
+  if (cachedOnlinePlayers.length === 0) {
+    listEl.innerHTML = '<div style="color:#666; font-size:11px; padding:6px;">Нет данных о сети...</div>';
+    return;
+  }
+  
+  cachedOnlinePlayers.forEach(p => {
+    let row = document.createElement('div');
+    row.className = 'chat-online-row';
+    row.style.background = 'rgba(0,25,10,0.5)';
+    row.style.border = '1px solid rgba(0,255,100,0.2)';
+    row.style.padding = '5px 8px';
+    row.style.borderRadius = '3px';
+    row.style.display = 'flex';
+    row.style.flexDirection = 'column';
+    row.style.gap = '2px';
+    row.onclick = () => mentionUser(p.username);
+    
+    let isMe = (clientMe && p.username === clientMe.username);
+    let meBadge = isMe ? ' <span style="color:var(--term-main); font-size:9px;">(ВЫ)</span>' : '';
+    
+    row.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px;">${p.username}${meBadge}</span>
+        <span style="color:#33d4ff; font-size:10px; background:rgba(51,212,255,0.15); padding:1px 4px; border-radius:2px;">Ур.${p.level || 1}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; color:#aaa;">
+        <span>${p.title || 'Заключенный'}</span>
+        <span style="color:#99ff99;">${p.statusText || 'В сети'}</span>
+      </div>
+    `;
+    listEl.appendChild(row);
+  });
+}
+
+socket.on('chatHistory', (h) => renderChatHistory(h));
+socket.on('chatMessage', (m) => appendChatMessage(m));
+socket.on('onlineList', (l) => renderOnlineList(l));
+
+// ===== КЛИЕНТСКИЙ МОДУЛЬ СОВМЕСТНОЙ ВЫЛАЗКИ (РЕЙД) =====
+let myActiveRaidSquad = null;
+let currentRaidCombat = null;
+
+function openRaidModal() {
+  document.getElementById('raid-modal').style.display = 'flex';
+  updateActiveBackground();
+  socket.emit('getRaidSquads');
+}
+
+function closeRaidModal() {
+  document.getElementById('raid-modal').style.display = 'none';
+  updateActiveBackground();
+}
+
+function createRaidSquad() {
+  let nameInput = document.getElementById('raid-new-squad-name');
+  let name = nameInput ? nameInput.value.trim() : '';
+  socket.emit('createRaidSquad', { name: name });
+  if (nameInput) nameInput.value = '';
+}
+
+function quickSoloSortie() {
+  socket.emit('createRaidSquad', { name: 'Штурм Одиночки' });
+  setTimeout(() => {
+    socket.emit('startRaidSortie');
+  }, 350);
+}
+
+function joinRaidSquad(squadId) {
+  socket.emit('joinRaidSquad', squadId);
+}
+
+function leaveRaidSquad() {
+  socket.emit('leaveRaidSquad');
+}
+
+function toggleRaidReady() {
+  socket.emit('toggleRaidReady');
+}
+
+function startRaidSortie() {
+  socket.emit('startRaidSortie');
+}
+
+function sendRaidLobbyChat() {
+  let inp = document.getElementById('raid-lobby-chat-input');
+  if (!inp) return;
+  let text = inp.value.trim();
+  if (text) {
+    socket.emit('sendRaidChatMessage', text);
+    inp.value = '';
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  let li = document.getElementById('raid-lobby-chat-input');
+  if (li) li.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendRaidLobbyChat(); });
+});
+
+function sendRaidCombatChat() {
+  let inp = document.getElementById('rc-chat-input');
+  if (!inp) return;
+  let text = inp.value.trim();
+  if (text) {
+    socket.emit('sendRaidChatMessage', text);
+    inp.value = '';
+  }
+}
+
+function sendQuickRaidRadio(txt) {
+  socket.emit('sendRaidChatMessage', txt);
+}
+
+function raidDoAttack() {
+  socket.emit('raidPlayerAttack');
+  let btn = document.getElementById('rc-btn-attack');
+  if (btn) {
+    btn.disabled = true;
+    setTimeout(() => { if (btn) btn.disabled = false; }, 400);
+  }
+}
+
+function raidDoDodge() {
+  socket.emit('raidPlayerDodge');
+  let btn = document.getElementById('rc-btn-dodge');
+  if (btn) {
+    btn.disabled = true;
+    setTimeout(() => { if (btn) btn.disabled = false; }, 800);
+  }
+}
+
+function reviveRaidTeammate(targetUsername) {
+  socket.emit('reviveRaidTeammate', { targetUsername: targetUsername });
+}
+
+function closeRaidCombatModal() {
+  document.getElementById('raid-combat-modal').style.display = 'none';
+  document.getElementById('rc-result-overlay').style.display = 'none';
+  currentRaidCombat = null;
+  myActiveRaidSquad = null;
+  showScreen('hub-screen');
+  updateActiveBackground();
+}
+
+function renderRaidSquadsList(squads) {
+  const container = document.getElementById('raid-squads-list');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  if (!squads || squads.length === 0) {
+    container.innerHTML = '<div style="color:#888; font-size:12px; padding:16px; text-align:center; background:rgba(0,20,10,0.4); border:1px dashed var(--term-dim);">Нет открытых штурмовых отрядов. Создайте свой отряд выше!</div>';
+    return;
+  }
+  
+  squads.forEach(sq => {
+    let card = document.createElement('div');
+    card.style.background = 'rgba(0,30,40,0.6)';
+    card.style.border = '1px solid rgba(51,212,255,0.4)';
+    card.style.borderRadius = '4px';
+    card.style.padding = '10px 14px';
+    card.style.display = 'flex';
+    card.style.justifyContent = 'space-between';
+    card.style.alignItems = 'center';
+    card.style.flexWrap = 'wrap';
+    card.style.gap = '8px';
+    
+    let isFull = sq.memberCount >= sq.maxMembers;
+    let isCombat = sq.status === 'combat';
+    let statusBadge = isCombat ? '<span style="color:#ff5555; font-size:11px;">[В БОЮ]</span>' : (isFull ? '<span style="color:#ffaa00; font-size:11px;">[ПОЛОН]</span>' : '<span style="color:#55ff55; font-size:11px;">[НАБОР]</span>');
+    let canJoin = !isFull && !isCombat && (!myActiveRaidSquad || myActiveRaidSquad.id !== sq.id);
+    
+    card.innerHTML = `
+      <div>
+        <div style="font-size:14px; font-weight:bold; color:#33d4ff;">${sq.name} ${statusBadge}</div>
+        <div style="font-size:11px; color:#aaa; margin-top:2px;">Командир: <span style="color:var(--term-warn);">${sq.leader}</span> | Бойцов: <span style="color:#fff; font-weight:bold;">${sq.memberCount}/${sq.maxMembers}</span></div>
+      </div>
+      <div>
+        ${canJoin ? `<button onclick="joinRaidSquad('${sq.id}')" style="width:auto; margin:0; padding:6px 16px; background:rgba(0,60,90,0.8); border-color:#33d4ff; color:#33d4ff; font-weight:bold;">ВСТУПИТЬ</button>` : `<button disabled style="width:auto; margin:0; padding:6px 14px; opacity:0.5;">${isCombat ? 'В БОЮ' : (isFull ? 'ПОЛОН' : 'В ОТРЯДЕ')}</button>`}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderMyRaidSquad(squad) {
+  myActiveRaidSquad = squad;
+  const noSquadView = document.getElementById('raid-view-no-squad');
+  const inSquadView = document.getElementById('raid-view-in-squad');
+  
+  if (!squad) {
+    if (noSquadView) noSquadView.style.display = 'flex';
+    if (inSquadView) inSquadView.style.display = 'none';
+    return;
+  }
+  
+  if (noSquadView) noSquadView.style.display = 'none';
+  if (inSquadView) inSquadView.style.display = 'flex';
+  
+  document.getElementById('raid-my-squad-name').innerText = squad.name;
+  let isLeader = (clientMe && squad.leader === clientMe.username);
+  let roleEl = document.getElementById('raid-my-squad-role');
+  if (roleEl) roleEl.innerText = isLeader ? '👑 КОМАНДИР' : 'БОЕЦ ОТРЯДА';
+  document.getElementById('raid-my-squad-count').innerText = `${squad.members.length}/4`;
+  
+  let startBtn = document.getElementById('raid-start-btn');
+  let readyBtn = document.getElementById('raid-ready-btn');
+  if (startBtn) startBtn.style.display = isLeader ? 'inline-block' : 'none';
+  
+  let myMember = clientMe ? squad.members.find(m => m.username === clientMe.username) : null;
+  if (readyBtn && myMember) {
+    readyBtn.innerText = myMember.isReady ? 'ГОТОВ 🟢' : 'НЕ ГОТОВ ⏳';
+    readyBtn.style.borderColor = myMember.isReady ? 'var(--term-main)' : 'var(--term-warn)';
+    readyBtn.style.color = myMember.isReady ? 'var(--term-main)' : 'var(--term-warn)';
+  }
+  
+  // Рендер карточек участников
+  const membersContainer = document.getElementById('raid-my-squad-members');
+  if (membersContainer) {
+    membersContainer.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+      let m = squad.members[i];
+      let card = document.createElement('div');
+      card.style.background = m ? 'rgba(0,35,25,0.7)' : 'rgba(0,15,10,0.4)';
+      card.style.border = m ? '1px solid rgba(0,255,100,0.35)' : '1px dashed #444';
+      card.style.borderRadius = '4px';
+      card.style.padding = '10px';
+      card.style.minHeight = '110px';
+      card.style.display = 'flex';
+      card.style.flexDirection = 'column';
+      card.style.justifyContent = 'space-between';
+      
+      if (m) {
+        let isMLeader = (m.username === squad.leader);
+        let skinSrc = `assets/skins/${m.skin || 'skin_1'}.png`;
+        card.innerHTML = `
+          <div style="display:flex; gap:8px; align-items:center;">
+            <img src="${skinSrc}" onerror="this.src='assets/skins/skin_1.png'" style="width:36px; height:36px; object-fit:cover; border-radius:3px; border:1px solid #555;">
+            <div>
+              <div style="font-size:12px; font-weight:bold; color:var(--term-warn);">${m.username} ${isMLeader ? '👑' : ''}</div>
+              <div style="font-size:10px; color:#33d4ff;">Ур.${m.level} • ${m.title || 'Заключенный'}</div>
+            </div>
+          </div>
+          <div style="margin-top:6px;">
+            <div style="font-size:10px; color:#aaa; margin-bottom:2px;">HP: ${m.hp}/${m.maxHp}</div>
+            <div style="background:#222; height:8px; border-radius:4px; overflow:hidden;">
+              <div style="width:${Math.max(0, Math.min(100, Math.round((m.hp / m.maxHp)*100)))}%; height:100%; background:var(--term-main);"></div>
+            </div>
+          </div>
+          <div style="margin-top:6px; text-align:right;">
+            <span style="font-size:10px; padding:2px 6px; border-radius:2px; font-weight:bold; background:${m.isReady ? 'rgba(0,255,100,0.2)' : 'rgba(255,150,0,0.2)'}; color:${m.isReady ? 'var(--term-main)' : 'var(--term-warn)'};">${m.isReady ? 'ГОТОВ 🟢' : 'НЕ ГОТОВ ⏳'}</span>
+          </div>
+        `;
+      } else {
+        card.innerHTML = `
+          <div style="height:100%; display:flex; align-items:center; justify-content:center; color:#555; font-size:11px;">
+            [ СВОБОДНЫЙ СЛОТ ]
+          </div>
+        `;
+      }
+      membersContainer.appendChild(card);
+    }
+  }
+  
+  // Рендер сообщений лобби
+  const msgsEl = document.getElementById('raid-lobby-chat-msgs');
+  if (msgsEl && squad.chat) {
+    msgsEl.innerHTML = '';
+    squad.chat.forEach(cm => {
+      let d = document.createElement('div');
+      d.style.marginBottom = '3px';
+      d.innerHTML = `<span style="color:#666; font-size:10px;">[${cm.time}]</span> <span style="color:var(--term-warn); font-weight:bold;">${cm.user}:</span> <span style="color:#ddd;">${cm.text}</span>`;
+      msgsEl.appendChild(d);
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+}
+
+socket.on('raidSquadsList', (squads) => renderRaidSquadsList(squads));
+socket.on('myRaidSquad', (sq) => renderMyRaidSquad(sq));
+
+socket.on('raidSortieStarted', (data) => {
+  document.getElementById('raid-modal').style.display = 'none';
+  document.getElementById('raid-combat-modal').style.display = 'flex';
+  document.getElementById('rc-result-overlay').style.display = 'none';
+  currentRaidCombat = data;
+  updateRaidWaveDots(data.currentWave, data.maxWaves);
+  appendRaidLog(`[ВЫЛАЗКА НАЧАТА] Штурмовой отряд вошел в опасный сектор Самосбора! Волна 1/11!`, 'info');
+});
+
+function updateRaidWaveDots(curWave, maxWaves = 11) {
+  const container = document.getElementById('rc-wave-indicators');
+  if (!container) return;
+  container.innerHTML = '';
+  for (let i = 1; i <= maxWaves; i++) {
+    let dot = document.createElement('div');
+    dot.style.width = (i === 11) ? '18px' : '10px';
+    dot.style.height = '10px';
+    dot.style.borderRadius = (i === 11) ? '3px' : '50%';
+    dot.style.border = (i === 11) ? '1px solid #ffd700' : '1px solid #555';
+    if (i < curWave) {
+      dot.style.background = 'var(--term-main)';
+    } else if (i === curWave) {
+      dot.style.background = (i === 11) ? '#ffd700' : '#33d4ff';
+      dot.style.boxShadow = '0 0 6px #33d4ff';
+    } else {
+      dot.style.background = '#222';
+    }
+    dot.title = (i === 11) ? 'Волна 11: Аномальный Босс' : `Волна ${i}`;
+    container.appendChild(dot);
+  }
+}
+
+socket.on('raidCombatTick', (data) => {
+  currentRaidCombat = data;
+  document.getElementById('rc-wave-num').innerText = data.currentWave;
+  updateRaidWaveDots(data.currentWave, data.maxWaves);
+  
+  // Обновление монстра
+  let enemy = data.enemy;
+  if (enemy) {
+    document.getElementById('rc-monster-name').innerText = enemy.name;
+    let imgEl = document.getElementById('rc-monster-img');
+    if (imgEl) {
+      imgEl.src = `assets/monsters/${enemy.img || 'm_slime.png'}`;
+      if (enemy.tier === 'rare_blue') {
+        imgEl.style.filter = 'drop-shadow(0 0 16px #33aaff)';
+      } else if (enemy.tier === 'epic_purple') {
+        imgEl.style.filter = 'drop-shadow(0 0 20px #c033ff)';
+      } else {
+        imgEl.style.filter = 'drop-shadow(0 0 8px rgba(51,212,255,0.4))';
+      }
+    }
+    
+    // HP монстра
+    let hpPercent = Math.max(0, Math.min(100, Math.round((enemy.hp / enemy.maxHp) * 100)));
+    let hpBar = document.getElementById('rc-monster-hp-bar');
+    if (hpBar) {
+      hpBar.style.width = hpPercent + '%';
+      if (enemy.tier === 'rare_blue') {
+        hpBar.style.background = 'linear-gradient(90deg, #104e8b, #33aaff)';
+      } else if (enemy.tier === 'epic_purple') {
+        hpBar.style.background = 'linear-gradient(90deg, #581845, #c033ff)';
+      } else {
+        hpBar.style.background = 'linear-gradient(90deg, #c0392b, #e74c3c)';
+      }
+    }
+    let hpText = document.getElementById('rc-monster-hp-text');
+    if (hpText) hpText.innerText = `${enemy.hp} / ${enemy.maxHp}`;
+    
+    // Бейдж редкости
+    let badgeEl = document.getElementById('rc-monster-tier-badge');
+    if (badgeEl) {
+      if (enemy.badge) {
+        badgeEl.innerText = enemy.badge;
+        badgeEl.style.color = enemy.colorTheme || '#ffd700';
+        badgeEl.style.borderColor = enemy.colorTheme || '#ffd700';
+      } else {
+        badgeEl.innerText = `ВОЛНА ${data.currentWave}`;
+        badgeEl.style.color = '#aaa';
+        badgeEl.style.borderColor = '#555';
+      }
+    }
+    
+    // Баннер 11-й волны
+    let bossAlert = document.getElementById('rc-boss-alert');
+    if (bossAlert) {
+      if (data.currentWave === 11) {
+        bossAlert.style.display = 'block';
+        if (enemy.tier === 'rare_blue') {
+          bossAlert.style.background = 'rgba(10,40,70,0.85)';
+          bossAlert.style.borderColor = '#33aaff';
+          bossAlert.style.color = '#33aaff';
+          bossAlert.style.animation = 'bossPulse 1.8s infinite';
+          bossAlert.innerHTML = `🔷 [ВНИМАНИЕ: СИНИЙ РЕДКИЙ БОСС] ${enemy.name}!`;
+        } else {
+          bossAlert.style.background = 'rgba(40,10,60,0.85)';
+          bossAlert.style.borderColor = '#c033ff';
+          bossAlert.style.color = '#c033ff';
+          bossAlert.style.animation = 'bossPurplePulse 1.8s infinite';
+          bossAlert.innerHTML = `🔮 [ТРЕВОГА: ФИОЛЕТОВЫЙ ЭПИЧЕСКИЙ БОСС] ${enemy.name}!`;
+        }
+      } else {
+        bossAlert.style.display = 'none';
+      }
+    }
+  }
+  
+  // Обновление карточек бойцов отряда
+  const squadListEl = document.getElementById('rc-squad-status-list');
+  if (squadListEl && data.members) {
+    squadListEl.innerHTML = '';
+    let amIDowned = false;
+    if (clientMe) {
+      let myM = data.members.find(m => m.username === clientMe.username);
+      if (myM && myM.isDowned) amIDowned = true;
+    }
+    
+    // Блокировка кнопки атаки если сам тяжело ранен
+    let attackBtn = document.getElementById('rc-btn-attack');
+    let dodgeBtn = document.getElementById('rc-btn-dodge');
+    if (attackBtn) attackBtn.disabled = amIDowned;
+    if (dodgeBtn) dodgeBtn.disabled = amIDowned;
+    
+    data.members.forEach(m => {
+      let row = document.createElement('div');
+      row.className = m.isDowned ? 'downed-card' : '';
+      row.style.background = m.isDowned ? 'rgba(80,0,0,0.6)' : 'rgba(0,30,20,0.6)';
+      row.style.border = m.isDowned ? '1px solid #ff3333' : '1px solid rgba(0,255,100,0.3)';
+      row.style.borderRadius = '4px';
+      row.style.padding = '6px 10px';
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      
+      let isMe = (clientMe && m.username === clientMe.username);
+      let skinSrc = `assets/skins/${m.skin || 'skin_1'}.png`;
+      let hpPercent = Math.max(0, Math.min(100, Math.round((m.hp / m.maxHp) * 100)));
+      
+      let statusHtml = '';
+      if (m.isDowned) {
+        statusHtml = '<span style="color:#ff3333; font-weight:bold; font-size:11px;">⚠️ ТЯЖЕЛО РАНЕН! (0 HP)</span>';
+      } else if (m.pDodging) {
+        statusHtml = '<span style="color:#33d4ff; font-size:11px;">🛡️ УКЛОНЯЕТСЯ</span>';
+      } else {
+        statusHtml = '<span style="color:var(--term-main); font-size:11px;">В БОЮ ⚔️</span>';
+      }
+      
+      let reviveBtnHtml = '';
+      // Если боец тяжело ранен, а текущий игрок жив и не сам упавший
+      if (m.isDowned && !amIDowned && !isMe) {
+        reviveBtnHtml = `<button onclick="reviveRaidTeammate('${m.username}')" style="width:auto; margin:0; padding:4px 10px; font-size:11px; background:rgba(0,80,30,0.9); border-color:#00ff66; color:#fff; font-weight:bold;" title="Использовать аптечку из рюкзака">💉 ОЖИВИТЬ АПТЕЧКОЙ</button>`;
+      }
+      
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <img src="${skinSrc}" onerror="this.src='assets/skins/skin_1.png'" style="width:28px; height:28px; border-radius:2px; border:1px solid #555;">
+          <div>
+            <div style="font-size:12px; font-weight:bold; color:var(--term-warn);">${m.username} ${isMe ? '<span style="color:#aaa; font-size:10px;">(Вы)</span>' : ''}</div>
+            <div style="font-size:10px; color:#aaa;">HP: ${m.hp}/${m.maxHp} • ${statusHtml}</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:70px; background:#222; height:8px; border-radius:4px; overflow:hidden;">
+            <div style="width:${hpPercent}%; height:100%; background:${m.isDowned ? '#ff3333' : 'var(--term-main)'};"></div>
+          </div>
+          ${reviveBtnHtml}
+        </div>
+      `;
+      squadListEl.appendChild(row);
+    });
+  }
+  
+  // Обновление логов
+  if (data.logs && data.logs.length > 0) {
+    data.logs.forEach(l => appendRaidLog(l));
+  }
+});
+
+function appendRaidLog(msg, type = 'normal') {
+  const container = document.getElementById('rc-chat-log');
+  if (!container) return;
+  const d = document.createElement('div');
+  d.style.marginBottom = '3px';
+  d.style.fontSize = '12px';
+  d.style.lineHeight = '1.4';
+  
+  if (msg.includes('ТЯЖЕЛО РАНЕН') || msg.includes('смертельный')) {
+    d.style.color = '#ff4444';
+    d.style.fontWeight = 'bold';
+  } else if (msg.includes('САНИТАР') || msg.includes('ПОДНЯЛ НА НОГИ')) {
+    d.style.color = '#55ff99';
+    d.style.fontWeight = 'bold';
+  } else if (msg.includes('ПОВЕРЖЕН') || msg.includes('ПОБЕДА') || msg.includes('ЗАЧИЩЕНА')) {
+    d.style.color = '#ffd700';
+    d.style.fontWeight = 'bold';
+  } else if (msg.includes('ТРЕВОГА') || msg.includes('БОСС')) {
+    d.style.color = '#33d4ff';
+    d.style.fontWeight = 'bold';
+  } else {
+    d.style.color = '#ccc';
+  }
+  
+  d.innerText = msg;
+  container.appendChild(d);
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendRaidChatMessage(cm) {
+  const container = document.getElementById('rc-chat-log');
+  if (!container) return;
+  const d = document.createElement('div');
+  d.style.marginBottom = '3px';
+  d.style.background = 'rgba(0,35,45,0.4)';
+  d.style.padding = '2px 6px';
+  d.style.borderRadius = '3px';
+  d.style.borderLeft = '2px solid #33d4ff';
+  
+  let downedTag = cm.isDowned ? '<span style="color:#ff4444; font-size:10px; margin-right:4px;">[РАНЕН]</span>' : '';
+  d.innerHTML = `<span style="color:#666; font-size:10px;">[${cm.time}]</span> ${downedTag}<span style="color:#33d4ff; font-weight:bold;">${cm.user}:</span> <span style="color:#fff;">${cm.text}</span>`;
+  container.appendChild(d);
+  container.scrollTop = container.scrollHeight;
+}
+
+socket.on('raidChatMessage', (cm) => appendRaidChatMessage(cm));
+
+socket.on('raidTeammateRevived', (d) => {
+  playSound('potion');
+  appendRaidLog(`[САНИТАР] 💉 ${d.healer} использовал «${d.item}» и поднял на ноги бойца ${d.target}! (+${d.hp} HP)`, 'heal');
+});
+
+socket.on('raidSortieEnded', (result) => {
+  const overlay = document.getElementById('rc-result-overlay');
+  const titleEl = document.getElementById('rc-result-title');
+  const detailsEl = document.getElementById('rc-result-details');
+  if (!overlay || !titleEl || !detailsEl) return;
+  
+  overlay.style.display = 'flex';
+  if (result.win) {
+    playSound('buy');
+    titleEl.innerText = '🏆 ВЫЛАЗКА УСПЕШНО ЗАВЕРШЕНА!';
+    titleEl.style.color = '#ffd700';
+    let drops = result.droppedItems || {};
+    let dropsList = Object.keys(drops).map(u => `<div>• ${u}: <b>${drops[u]}</b></div>`).join('');
+    detailsEl.innerHTML = `
+      <div style="font-size:16px; color:#55ff99; margin-bottom:8px;">Финальный босс <b>${result.bossName}</b> повержен!</div>
+      <div style="margin-bottom:8px;">Награда отряду: <b>+${result.reward} талонов</b> и <b>+${result.xp} XP</b> каждому бойцу!</div>
+      <div style="background:rgba(0,30,10,0.6); border:1px solid #33ff66; padding:8px; border-radius:4px; margin-top:10px; text-align:left;">
+        <div style="color:#ffd700; font-weight:bold; margin-bottom:4px;">НАЙДЕННЫЙ ТРОФЕЙНЫЙ ЛУТ:</div>
+        ${dropsList || '<div>Материалы и снаряжение доставлены на склад.</div>'}
+      </div>
+    `;
+  } else {
+    playSound('defeat');
+    titleEl.innerText = '💀 ОТРЯД ПОГИБ В БОЮ';
+    titleEl.style.color = '#ff3333';
+    detailsEl.innerHTML = `
+      <div style="font-size:15px; margin-bottom:8px; color:#ff9999;">${result.reason || 'Все бойцы отряда потеряли сознание.'}</div>
+      <div>Аварийная автоматика эвакуировала выживших обратно в жилячейку. Раны перевязаны, здоровье частично восстановлено.</div>
+    `;
+  }
+});
 
 function renderBestiaryList() {
   if (!cachedBestiary) return;
@@ -4563,6 +5359,9 @@ socket.on('gameState', (data) => {
   if (document.getElementById('achievements-modal') && document.getElementById('achievements-modal').style.display === 'flex') {
     renderAchievementsList();
   }
+
+  if (data.onlineList) renderOnlineList(data.onlineList);
+  if (data.coopSquadsList) renderRaidSquadsList(data.coopSquadsList);
 
   if (data.fleaMarket) {
     cachedFleaMarket = data.fleaMarket;
