@@ -1102,6 +1102,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   display: flex;
   justify-content: center;
   align-items: flex-end;
+  animation: squadIdle 3.2s ease-in-out infinite;
+  transform-origin: bottom center;
 }
 .raid-char-figure img {
   position: absolute;
@@ -1114,9 +1116,178 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   pointer-events: none;
 }
 .raid-char-figure.downed {
-  transform: rotate(82deg) translateY(24px) scale(0.88);
-  filter: grayscale(75%) brightness(0.65);
+  animation: none !important;
+  transform: rotate(82deg) translateY(24px) scale(0.88) !important;
+  filter: grayscale(80%) brightness(0.65) drop-shadow(0 0 6px #ff0000) !important;
   opacity: 0.85;
+}
+.raid-char-figure.dodging {
+  filter: drop-shadow(0 0 10px #33d4ff) brightness(1.2);
+}
+
+/* Animations for Squad & Monster */
+@keyframes squadIdle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.anim-attack {
+  animation: raidAttackAnim 0.35s ease-out !important;
+}
+@keyframes raidAttackAnim {
+  0% { transform: translateX(0) scale(1); }
+  45% { transform: translateX(24px) scale(1.08); filter: drop-shadow(0 0 12px #ffbb00) brightness(1.3); }
+  100% { transform: translateX(0) scale(1); }
+}
+.anim-dodge {
+  animation: raidDodgeAnim 0.45s ease-out !important;
+}
+@keyframes raidDodgeAnim {
+  0% { transform: translateX(0); }
+  35% { transform: translateX(-20px) scale(0.95); filter: drop-shadow(0 0 16px #33d4ff) brightness(1.4); opacity: 0.75; }
+  100% { transform: translateX(0); filter: none; opacity: 1; }
+}
+.anim-hurt {
+  animation: raidHurtAnim 0.35s ease-in-out !important;
+}
+@keyframes raidHurtAnim {
+  0%, 100% { transform: translateX(0); filter: none; }
+  20% { transform: translateX(-8px); filter: drop-shadow(0 0 14px #ff2222) brightness(1.8); }
+  40% { transform: translateX(8px); filter: drop-shadow(0 0 14px #ff2222) brightness(1.8); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.raid-monster-animated {
+  animation: monsterHover 2.8s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+@keyframes monsterHover {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-5px) scale(1.02); }
+}
+.anim-monster-attack {
+  animation: monsterAttackAnim 0.4s ease-out !important;
+}
+@keyframes monsterAttackAnim {
+  0% { transform: translateX(0) scale(1); }
+  45% { transform: translateX(-30px) scale(1.12); filter: drop-shadow(0 0 16px #ff3333); }
+  100% { transform: translateX(0) scale(1); }
+}
+.anim-monster-special {
+  animation: monsterSpecialAnim 0.8s ease-in-out !important;
+}
+@keyframes monsterSpecialAnim {
+  0% { transform: scale(1); filter: drop-shadow(0 0 8px #ff5500); }
+  25% { transform: scale(1.22) rotate(-5deg); filter: drop-shadow(0 0 25px #ff1100) brightness(1.8); }
+  50% { transform: translateX(-38px) scale(1.25) rotate(3deg); filter: drop-shadow(0 0 35px #ff0055) brightness(2.1); }
+  75% { transform: translateX(-16px) scale(1.08); }
+  100% { transform: translateX(0) scale(1); filter: none; }
+}
+.anim-monster-hurt {
+  animation: monsterHurtAnim 0.35s ease-in-out !important;
+}
+@keyframes monsterHurtAnim {
+  0%, 100% { transform: translateX(0); filter: drop-shadow(0 0 10px rgba(51,212,255,0.4)); }
+  20% { transform: translateX(12px); filter: drop-shadow(0 0 20px #ffffff) brightness(1.9); }
+  40% { transform: translateX(-12px); filter: drop-shadow(0 0 20px #ff3333) brightness(1.7); }
+  60% { transform: translateX(6px); }
+  80% { transform: translateX(-4px); }
+}
+
+/* CRT Style Enemy Gauge */
+.monster-crt-gauge {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(4, 18, 10, 0.92);
+  border: 1px solid #00ff66;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 255, 102, 0.25), inset 0 0 12px rgba(0, 255, 102, 0.12);
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+.monster-crt-scanlines {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0px, rgba(0, 0, 0, 0.28) 1px, transparent 1px, transparent 2px);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.85;
+}
+.monster-crt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  position: relative;
+  z-index: 3;
+}
+.monster-crt-title {
+  font-size: 11.5px;
+  font-weight: bold;
+  color: #33ff77;
+  text-shadow: 0 0 6px rgba(51, 255, 119, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 135px;
+}
+.monster-crt-badge {
+  font-size: 9px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid #555;
+  background: rgba(0, 0, 0, 0.7);
+  color: #aaa;
+  white-space: nowrap;
+}
+.monster-crt-hp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  margin-bottom: 3px;
+  color: #88ffaa;
+  position: relative;
+  z-index: 3;
+}
+.monster-crt-label {
+  font-size: 8.5px;
+  color: rgba(136, 255, 170, 0.75);
+  letter-spacing: 0.5px;
+}
+.monster-crt-hp-digits {
+  font-weight: bold;
+  font-size: 10.5px;
+  color: #00ff66;
+  text-shadow: 0 0 5px rgba(0, 255, 102, 0.8);
+}
+.monster-crt-bar-track {
+  position: relative;
+  width: 100%;
+  height: 11px;
+  background: #111b13;
+  border: 1px solid rgba(0, 255, 102, 0.45);
+  border-radius: 2px;
+  overflow: hidden;
+  z-index: 3;
+}
+.monster-crt-bar-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #ff2244 0%, #ffaa00 45%, #00ff66 100%);
+  box-shadow: 0 0 8px rgba(0, 255, 102, 0.7);
+  transition: width 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.monster-crt-bar-grid {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(90deg, transparent 0px, transparent 7px, rgba(0, 0, 0, 0.6) 7px, rgba(0, 0, 0, 0.6) 9px);
+  pointer-events: none;
 }
 .raid-tab-btn.active {
   background: rgba(0,45,30,0.95) !important;
@@ -1438,16 +1609,28 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
           <div style="color: rgba(51,212,255,0.4); font-weight: bold; font-size: 14px; margin-bottom: 50px; text-shadow: 0 0 8px rgba(51,212,255,0.5);">VS</div>
 
           <!-- Правая сторона сцены: Монстр волны -->
-          <div id="rc-monster-container" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 170px; flex-shrink: 0; position: relative; margin-right: 6px;">
-            <div id="rc-monster-tier-badge" style="position: absolute; top: 0; right: 0; font-size: 10px; padding: 2px 6px; border-radius: 3px; background: rgba(0,0,0,0.6); border: 1px solid #555; color: #aaa;">ОБЫЧНЫЙ</div>
-            <div id="rc-monster-vfx" class="vfx-container" style="position: absolute; inset: 0; pointer-events: none;"></div>
-            <img id="rc-monster-img" src="assets/monsters/m_slime.png" alt="Мутант" style="max-height: 140px; max-width: 160px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(51,212,255,0.4)); margin-bottom: 6px; transition: transform 0.15s ease;">
-            <div id="rc-monster-name" style="font-size: 13px; font-weight: bold; color: var(--term-main); margin-bottom: 4px; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Хлюп-Мутант Сливной Трубы</div>
-            
-            <!-- Полоса здоровья монстра -->
-            <div style="width: 100%; background: #222; border: 1px solid #555; height: 16px; border-radius: 8px; overflow: hidden; position: relative;">
-              <div id="rc-monster-hp-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); transition: width 0.2s ease;"></div>
-              <div id="rc-monster-hp-text" style="position: absolute; width: 100%; top: 0; left: 0; text-align: center; font-size: 10px; line-height: 16px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000;">220 / 220</div>
+          <div id="rc-monster-container" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 195px; flex-shrink: 0; position: relative; margin-right: 6px;">
+            <!-- ЭЛТ-Индикатор состояния противника (над головой монстра) -->
+            <div class="monster-crt-gauge">
+              <div class="monster-crt-scanlines"></div>
+              <div class="monster-crt-header">
+                <span id="rc-monster-name" class="monster-crt-title">Хлюп-Мутант Сливной Трубы</span>
+                <span id="rc-monster-tier-badge" class="monster-crt-badge">ОБЫЧНЫЙ</span>
+              </div>
+              <div class="monster-crt-hp-row">
+                <span class="monster-crt-label">ОЦЕНКА БИОМАССЫ</span>
+                <span id="rc-monster-hp-text" class="monster-crt-hp-digits">220 / 220 HP</span>
+              </div>
+              <div class="monster-crt-bar-track">
+                <div id="rc-monster-hp-bar" class="monster-crt-bar-fill"></div>
+                <div class="monster-crt-bar-grid"></div>
+              </div>
+            </div>
+
+            <!-- Изображение монстра с VFX контейнером -->
+            <div style="position: relative; width: 100%; display: flex; justify-content: center; align-items: flex-end; min-height: 135px;">
+              <div id="rc-monster-vfx" class="vfx-container" style="position: absolute; inset: 0; pointer-events: none; z-index: 5;"></div>
+              <img id="rc-monster-img" class="raid-monster-animated" src="assets/monsters/m_slime.png" alt="Мутант" style="max-height: 140px; max-width: 175px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(51,212,255,0.4)); margin-bottom: 2px;">
             </div>
           </div>
         </div>
@@ -5460,6 +5643,16 @@ function raidDoAttack() {
   if (!btn || btn.disabled) return;
   socket.emit('raidPlayerAttack');
   
+  if (clientMe) {
+    const myFig = document.getElementById(`rc-member-fig-${clientMe.username}`);
+    if (myFig) {
+      myFig.classList.remove('anim-attack');
+      void myFig.offsetWidth;
+      myFig.classList.add('anim-attack');
+      setTimeout(() => { if (myFig) myFig.classList.remove('anim-attack'); }, 360);
+    }
+  }
+
   btn.disabled = true;
   let remainingMs = 1200;
   const isEn = (currentLang === 'en');
@@ -5473,7 +5666,12 @@ function raidDoAttack() {
     if (rem <= 0) {
       clearInterval(raidAttackCooldownTimer);
       raidAttackCooldownTimer = null;
-      btn.disabled = false;
+      let amDown = false;
+      if (currentRaidCombat && currentRaidCombat.members && clientMe) {
+        let m = currentRaidCombat.members.find(x => x.username === clientMe.username);
+        if (m && m.isDowned) amDown = true;
+      }
+      btn.disabled = amDown;
       btn.innerText = (currentLang === 'en') ? '⚔️ ATTACK' : '⚔️ АТАКОВАТЬ';
     } else {
       btn.innerText = `${(currentLang === 'en') ? '⚔️ ATTACK' : '⚔️ АТАКА'} (${(rem / 1000).toFixed(1)}${(currentLang === 'en') ? 's' : 'с'})`;
@@ -5486,6 +5684,16 @@ function raidDoDodge() {
   if (!btn || btn.disabled) return;
   socket.emit('raidPlayerDodge');
   
+  if (clientMe) {
+    const myFig = document.getElementById(`rc-member-fig-${clientMe.username}`);
+    if (myFig) {
+      myFig.classList.remove('anim-dodge');
+      void myFig.offsetWidth;
+      myFig.classList.add('anim-dodge');
+      setTimeout(() => { if (myFig) myFig.classList.remove('anim-dodge'); }, 460);
+    }
+  }
+
   btn.disabled = true;
   let remainingMs = 2500;
   const isEn = (currentLang === 'en');
@@ -5499,7 +5707,12 @@ function raidDoDodge() {
     if (rem <= 0) {
       clearInterval(raidDodgeCooldownTimer);
       raidDodgeCooldownTimer = null;
-      btn.disabled = false;
+      let amDown = false;
+      if (currentRaidCombat && currentRaidCombat.members && clientMe) {
+        let m = currentRaidCombat.members.find(x => x.username === clientMe.username);
+        if (m && m.isDowned) amDown = true;
+      }
+      btn.disabled = amDown;
       btn.innerText = (currentLang === 'en') ? '🛡️ DODGE' : '🛡️ УКЛОНЕНИЕ';
     } else {
       btn.innerText = `${(currentLang === 'en') ? '🛡️ DODGE' : '🛡️ УКЛОНЕНИЕ'} (${(rem / 1000).toFixed(1)}${(currentLang === 'en') ? 's' : 'с'})`;
@@ -5570,12 +5783,22 @@ function spawnFloatingText(targetEl, text, color = '#ff3333', isBig = false) {
   setTimeout(() => floater.remove(), isBig ? 1100 : 900);
 }
 
+function getRaidItemIcon(slot, itemId) {
+  if (!itemId) return '';
+  let itData = (typeof GAME_ITEMS !== 'undefined' && GAME_ITEMS) ? GAME_ITEMS[itemId] : null;
+  let iconId = (itData && itData.iconId) ? itData.iconId : itemId;
+  return `assets/${slot}/${iconId}.png`;
+}
+
 function renderRaidSquadFigures(members) {
   const stage = document.getElementById('rc-squad-stage');
   if (!stage) return;
-  stage.innerHTML = '';
-  if (!members || members.length === 0) return;
+  if (!members || members.length === 0) {
+    stage.innerHTML = '';
+    return;
+  }
 
+  const isEn = (currentLang === 'en');
   let amIDowned = false;
   if (clientMe) {
     let myM = members.find(m => m.username === clientMe.username);
@@ -5584,62 +5807,111 @@ function renderRaidSquadFigures(members) {
 
   let attackBtn = document.getElementById('rc-btn-attack');
   let dodgeBtn = document.getElementById('rc-btn-dodge');
-  if (attackBtn) attackBtn.disabled = amIDowned;
-  if (dodgeBtn) dodgeBtn.disabled = amIDowned;
+  if (attackBtn && !raidAttackCooldownTimer) attackBtn.disabled = amIDowned;
+  if (dodgeBtn && !raidDodgeCooldownTimer) dodgeBtn.disabled = amIDowned;
+
+  // Удаляем фигурки игроков, покинувших отряд
+  const currentMemberNames = new Set(members.map(m => m.username));
+  Array.from(stage.children).forEach(child => {
+    let uname = child.getAttribute('data-username');
+    if (uname && !currentMemberNames.has(uname)) {
+      child.remove();
+    }
+  });
 
   members.forEach(m => {
-    let unit = document.createElement('div');
-    unit.className = 'raid-member-unit';
-    unit.id = `rc-member-unit-${m.username}`;
-
+    let unit = document.getElementById(`rc-member-unit-${m.username}`);
     let isMe = (clientMe && m.username === clientMe.username);
-    let skinId = m.skin || 'skin_1';
-    let eq = m.equipment || {};
+    let skinId = (m.skin && m.skin !== 'undefined') ? m.skin : ((isMe && clientMe && clientMe.appearance && clientMe.appearance.skin) ? clientMe.appearance.skin : 'skin_1');
+    let eq = m.equipment || ((isMe && clientMe && clientMe.equipment) ? clientMe.equipment : {});
 
-    let clothesImg = (eq.clothes && GAME_ITEMS[eq.clothes]) ? `<img src="assets/clothes/${GAME_ITEMS[eq.clothes].iconId || eq.clothes}.png" style="z-index:2;">` : '';
-    let maskImg = (eq.mask && GAME_ITEMS[eq.mask]) ? `<img src="assets/mask/${GAME_ITEMS[eq.mask].iconId || eq.mask}.png" style="z-index:3;">` : '';
-    let weaponImg = (eq.weapon && GAME_ITEMS[eq.weapon]) ? `<img src="assets/weapon/${GAME_ITEMS[eq.weapon].iconId || eq.weapon}.png" style="z-index:4;">` : '';
+    let clothesSrc = getRaidItemIcon('clothes', eq.clothes);
+    let maskSrc = getRaidItemIcon('mask', eq.mask);
+    let weaponSrc = getRaidItemIcon('weapon', eq.weapon);
 
-    let hpPct = Math.max(0, Math.min(100, Math.round((m.hp / m.maxHp) * 100)));
+    let clothesImg = clothesSrc ? `<img src="${clothesSrc}" style="z-index:2;">` : '';
+    let maskImg = maskSrc ? `<img src="${maskSrc}" style="z-index:3;">` : '';
+    let weaponImg = weaponSrc ? `<img src="${weaponSrc}" style="z-index:4;">` : '';
+
+    let hpPct = Math.max(0, Math.min(100, Math.round((m.hp / (m.maxHp || 100)) * 100)));
     let barColor = m.isDowned ? '#ff3333' : (hpPct < 30 ? 'var(--term-warn)' : 'var(--term-main)');
 
     let reviveActionHtml = '';
     if (m.isDowned && !amIDowned && !isMe) {
-      const isEn = (currentLang === 'en');
-    let reviveTitle = isEn ? 'Use medkit from backpack' : 'Использовать аптечку из рюкзака';
-    let reviveBtnTxt = isEn ? '💉 REVIVE' : '💉 ОЖИВИТЬ';
-    reviveActionHtml = `<button onclick="reviveRaidTeammate('${m.username}')" style="width:100%; margin:4px 0 0 0; padding:4px 6px; font-size:10px; background:rgba(0,80,30,0.95); border-color:#00ff66; color:#fff; font-weight:bold; box-shadow:0 0 8px #00ff66;" title="${reviveTitle}">${reviveBtnTxt}</button>`;
+      let reviveTitle = isEn ? 'Use medkit from backpack' : 'Использовать аптечку из рюкзака';
+      let reviveBtnTxt = isEn ? '💉 REVIVE' : '💉 ОЖИВИТЬ';
+      reviveActionHtml = `<button onclick="reviveRaidTeammate('${m.username}')" style="width:100%; margin:4px 0 0 0; padding:4px 6px; font-size:10px; background:rgba(0,80,30,0.95); border-color:#00ff66; color:#fff; font-weight:bold; box-shadow:0 0 8px #00ff66;" title="${reviveTitle}">${reviveBtnTxt}</button>`;
     }
 
-    let statusText = m.isDowned ? `<span style="color:#ff3333; font-weight:bold; font-size:10px;">${isEn ? '⚠️ DOWNED!' : '⚠️ РАНЕН!'}</span>` : (m.pDodging ? `<span style="color:#33d4ff; font-size:10px;">${isEn ? '🛡️ DODGING' : '🛡️ УКЛОНЕНИЕ'}</span>` : `<span style="color:#aaa; font-size:9.5px;">${isEn ? 'IN COMBAT ⚔️' : 'В БОЮ ⚔️'}</span>`);
+    let statusText = m.isDowned 
+      ? `<span style="color:#ff3333; font-weight:bold; font-size:10px;">${isEn ? '⚠️ DOWNED!' : '⚠️ РАНЕН!'}</span>` 
+      : (m.pDodging 
+        ? `<span style="color:#33d4ff; font-size:10px;">${isEn ? '🛡️ DODGING' : '🛡️ УКЛОНЕНИЕ'}</span>` 
+        : `<span style="color:#aaa; font-size:9.5px;">${isEn ? 'IN COMBAT ⚔️' : 'В БОЮ ⚔️'}</span>`);
 
-    unit.innerHTML = `
-      <div style="text-align:center; margin-bottom:4px; width:100%;">
-        <div style="font-size:11px; font-weight:bold; color:var(--term-warn); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          ${m.username} ${isMe ? (isEn ? '<span style="color:#33d4ff; font-size:9px;">(You)</span>' : '<span style="color:#33d4ff; font-size:9px;">(Вы)</span>') : ''}
+    if (!unit) {
+      unit = document.createElement('div');
+      unit.className = 'raid-member-unit';
+      unit.id = `rc-member-unit-${m.username}`;
+      unit.setAttribute('data-username', m.username);
+      unit.innerHTML = `
+        <div style="text-align:center; margin-bottom:4px; width:100%;">
+          <div style="font-size:11px; font-weight:bold; color:var(--term-warn); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            ${m.username} ${isMe ? (isEn ? '<span style="color:#33d4ff; font-size:9px;">(You)</span>' : '<span style="color:#33d4ff; font-size:9px;">(Вы)</span>') : ''}
+          </div>
+          <div id="rc-member-hptext-${m.username}" style="font-size:9px; color:#aaa;">${isEn ? 'Lvl.' : 'Ур.'}${m.level || 1} • ${m.hp}/${m.maxHp}</div>
+          <div style="width:100%; height:6px; background:#222; border:1px solid #444; border-radius:3px; overflow:hidden; margin-top:2px;">
+            <div id="rc-member-hpbar-${m.username}" style="width:${hpPct}%; height:100%; background:${barColor}; transition: width 0.2s ease;"></div>
+          </div>
         </div>
-        <div style="font-size:9px; color:#aaa;">${isEn ? 'Lvl.' : 'Ур.'}${m.level || 1} • ${m.hp}/${m.maxHp}</div>
-        <div style="width:100%; height:6px; background:#222; border:1px solid #444; border-radius:3px; overflow:hidden; margin-top:2px;">
-          <div style="width:${hpPct}%; height:100%; background:${barColor};"></div>
+        
+        <!-- Фигурка бойца со слоями -->
+        <div id="rc-member-fig-${m.username}" class="raid-char-figure ${m.isDowned ? 'downed' : ''} ${m.pDodging ? 'dodging' : ''}">
+          <div class="vfx-container" id="rc-vfx-${m.username}"></div>
+          <img src="assets/character/${skinId}.png" style="z-index:1;" onerror="this.src='assets/character/skin_1.png'">
+          ${clothesImg}
+          ${maskImg}
+          ${weaponImg}
         </div>
-      </div>
-      
-      <!-- Фигурка бойца со слоями -->
-      <div id="rc-member-fig-${m.username}" class="raid-char-figure ${m.isDowned ? 'downed' : ''}">
-        <div class="vfx-container" id="rc-vfx-${m.username}"></div>
-        <img src="assets/character/${skinId}.png" style="z-index:1;" onerror="this.src='assets/character/skin_1.png'">
-        ${clothesImg}
-        ${maskImg}
-        ${weaponImg}
-      </div>
 
-      <div style="margin-top:2px; text-align:center; width:100%;">
-        ${statusText}
-        ${reviveActionHtml}
-      </div>
-    `;
+        <div id="rc-member-actions-${m.username}" style="margin-top:2px; text-align:center; width:100%;">
+          ${statusText}
+          ${reviveActionHtml}
+        </div>
+      `;
+      stage.appendChild(unit);
+    } else {
+      let hpTextEl = document.getElementById(`rc-member-hptext-${m.username}`);
+      if (hpTextEl) hpTextEl.innerText = `${isEn ? 'Lvl.' : 'Ур.'}${m.level || 1} • ${m.hp}/${m.maxHp}`;
 
-    stage.appendChild(unit);
+      let hpBarEl = document.getElementById(`rc-member-hpbar-${m.username}`);
+      if (hpBarEl) {
+        hpBarEl.style.width = hpPct + '%';
+        hpBarEl.style.background = barColor;
+      }
+
+      let figEl = document.getElementById(`rc-member-fig-${m.username}`);
+      if (figEl) {
+        if (m.isDowned) {
+          figEl.classList.add('downed');
+        } else {
+          figEl.classList.remove('downed');
+        }
+        if (m.pDodging) {
+          figEl.classList.add('dodging');
+        } else {
+          figEl.classList.remove('dodging');
+        }
+      }
+
+      let actionsEl = document.getElementById(`rc-member-actions-${m.username}`);
+      if (actionsEl) {
+        actionsEl.innerHTML = `
+          ${statusText}
+          ${reviveActionHtml}
+        `;
+      }
+    }
   });
 }
 
@@ -5790,6 +6062,9 @@ socket.on('raidSortieStarted', (data) => {
   document.getElementById('rc-intermission-overlay').style.display = 'none';
   currentRaidCombat = data;
   updateRaidWaveDots(data.currentWave, data.maxWaves);
+  if (data.members) {
+    renderRaidSquadFigures(data.members);
+  }
   appendRaidCombatLog(`[ВЫЛАЗКА НАЧАТА] Штурмовой отряд вошел в опасный сектор Самосбора! Волна 1/11!`);
 });
 
@@ -5836,29 +6111,32 @@ socket.on('raidCombatTick', (data) => {
     if (imgEl) {
       imgEl.src = `assets/monsters/${enemy.img || 'm_slime.png'}`;
       if (enemy.tier === 'rare_blue') {
-        imgEl.style.filter = 'drop-shadow(0 0 16px #33aaff)';
+        imgEl.style.filter = 'drop-shadow(0 0 18px #33aaff)';
       } else if (enemy.tier === 'epic_purple') {
-        imgEl.style.filter = 'drop-shadow(0 0 20px #c033ff)';
+        imgEl.style.filter = 'drop-shadow(0 0 22px #c033ff)';
       } else {
-        imgEl.style.filter = 'drop-shadow(0 0 8px rgba(51,212,255,0.4))';
+        imgEl.style.filter = 'drop-shadow(0 0 10px rgba(51,212,255,0.4))';
       }
     }
     
-    // HP монстра
+    // HP монстра (в ЭЛТ-шкале над головой)
     let hpPercent = Math.max(0, Math.min(100, Math.round((enemy.hp / enemy.maxHp) * 100)));
     let hpBar = document.getElementById('rc-monster-hp-bar');
     if (hpBar) {
       hpBar.style.width = hpPercent + '%';
       if (enemy.tier === 'rare_blue') {
         hpBar.style.background = 'linear-gradient(90deg, #104e8b, #33aaff)';
+        hpBar.style.boxShadow = '0 0 10px rgba(51, 170, 255, 0.8)';
       } else if (enemy.tier === 'epic_purple') {
         hpBar.style.background = 'linear-gradient(90deg, #581845, #c033ff)';
+        hpBar.style.boxShadow = '0 0 12px rgba(192, 51, 255, 0.8)';
       } else {
-        hpBar.style.background = 'linear-gradient(90deg, #c0392b, #e74c3c)';
+        hpBar.style.background = 'linear-gradient(90deg, #ff2244 0%, #ffaa00 45%, #00ff66 100%)';
+        hpBar.style.boxShadow = '0 0 8px rgba(0, 255, 102, 0.7)';
       }
     }
     let hpText = document.getElementById('rc-monster-hp-text');
-    if (hpText) hpText.innerText = `${enemy.hp} / ${enemy.maxHp}`;
+    if (hpText) hpText.innerText = `${enemy.hp} / ${enemy.maxHp} HP`;
     
     // Бейдж редкости
     let badgeEl = document.getElementById('rc-monster-tier-badge');
@@ -5910,9 +6188,20 @@ socket.on('raidCombatTick', (data) => {
 
     data.vfx.forEach(v => {
       if (v.type === 'enemy_hit') {
+        if (v.from) {
+          const attackerFig = document.getElementById(`rc-member-fig-${v.from}`);
+          if (attackerFig) {
+            attackerFig.classList.remove('anim-attack');
+            void attackerFig.offsetWidth;
+            attackerFig.classList.add('anim-attack');
+            setTimeout(() => { if (attackerFig) attackerFig.classList.remove('anim-attack'); }, 360);
+          }
+        }
         if (monsterImg) {
-          monsterImg.classList.add('avatar-shake');
-          setTimeout(() => { if (monsterImg) monsterImg.classList.remove('avatar-shake'); }, 300);
+          monsterImg.classList.remove('anim-monster-hurt');
+          void monsterImg.offsetWidth;
+          monsterImg.classList.add('anim-monster-hurt');
+          setTimeout(() => { if (monsterImg) monsterImg.classList.remove('anim-monster-hurt'); }, 360);
         }
         if (monsterVfx) {
           const slash = document.createElement('div');
@@ -5920,14 +6209,22 @@ socket.on('raidCombatTick', (data) => {
           monsterVfx.appendChild(slash);
           setTimeout(() => slash.remove(), 400);
         }
-        spawnFloatingText(monsterBox, (v.isCrit ? '💥 -' : '-') + v.dmg, v.isCrit ? '#ff3300' : '#ff9900', v.isCrit);
+        spawnFloatingText(monsterBox, (v.isCrit ? '💥 -' : '-') + v.dmg, v.isCrit ? '#ff3300' : '#ffaa00', v.isCrit);
       } else if (v.type === 'player_hit') {
+        if (monsterImg) {
+          monsterImg.classList.remove('anim-monster-attack');
+          void monsterImg.offsetWidth;
+          monsterImg.classList.add('anim-monster-attack');
+          setTimeout(() => { if (monsterImg) monsterImg.classList.remove('anim-monster-attack'); }, 420);
+        }
         const unitEl = document.getElementById(`rc-member-unit-${v.target}`);
         const figEl = document.getElementById(`rc-member-fig-${v.target}`);
         const vfxEl = document.getElementById(`rc-vfx-${v.target}`);
         if (figEl) {
-          figEl.classList.add('avatar-shake');
-          setTimeout(() => { if (figEl) figEl.classList.remove('avatar-shake'); }, 300);
+          figEl.classList.remove('anim-hurt');
+          void figEl.offsetWidth;
+          figEl.classList.add('anim-hurt');
+          setTimeout(() => { if (figEl) figEl.classList.remove('anim-hurt'); }, 360);
         }
         if (vfxEl) {
           const hit = document.createElement('div');
@@ -5936,9 +6233,40 @@ socket.on('raidCombatTick', (data) => {
           setTimeout(() => hit.remove(), 300);
         }
         spawnFloatingText(unitEl || figEl, '-' + v.dmg + ' HP', '#ff3333');
+      } else if (v.type === 'enemy_special') {
+        if (monsterImg) {
+          monsterImg.classList.remove('anim-monster-special');
+          void monsterImg.offsetWidth;
+          monsterImg.classList.add('anim-monster-special');
+          setTimeout(() => { if (monsterImg) monsterImg.classList.remove('anim-monster-special'); }, 820);
+        }
+        spawnFloatingText(monsterBox, '⚡ ' + (v.skill || 'СПЕЦ-ПРИЕМ') + '!', '#ffcc00', true);
+        const unitEl = document.getElementById(`rc-member-unit-${v.target}`);
+        const figEl = document.getElementById(`rc-member-fig-${v.target}`);
+        const vfxEl = document.getElementById(`rc-vfx-${v.target}`);
+        if (figEl) {
+          figEl.classList.remove('anim-hurt');
+          void figEl.offsetWidth;
+          figEl.classList.add('anim-hurt');
+          setTimeout(() => { if (figEl) figEl.classList.remove('anim-hurt'); }, 600);
+        }
+        if (vfxEl) {
+          const hit = document.createElement('div');
+          hit.className = 'vfx-crit';
+          vfxEl.appendChild(hit);
+          setTimeout(() => hit.remove(), 400);
+        }
+        spawnFloatingText(unitEl || figEl, '💥 КРИТ: -' + v.dmg + ' HP!', '#ff1133', true);
       } else if (v.type === 'player_dodge') {
         const unitEl = document.getElementById(`rc-member-unit-${v.target}`);
-        spawnFloatingText(unitEl, (currentLang === 'en' ? '💨 DODGE!' : '💨 УКЛОНЕНИЕ!'), '#33d4ff');
+        const figEl = document.getElementById(`rc-member-fig-${v.target}`);
+        if (figEl) {
+          figEl.classList.remove('anim-dodge');
+          void figEl.offsetWidth;
+          figEl.classList.add('anim-dodge');
+          setTimeout(() => { if (figEl) figEl.classList.remove('anim-dodge'); }, 460);
+        }
+        spawnFloatingText(unitEl || figEl, (currentLang === 'en' ? '💨 DODGE!' : '💨 УКЛОНЕНИЕ!'), '#33d4ff');
       } else if (v.type === 'heal') {
         const unitEl = document.getElementById(`rc-member-unit-${v.target}`);
         const vfxEl = document.getElementById(`rc-vfx-${v.target}`);

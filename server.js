@@ -416,7 +416,8 @@ function getSquadClientData(sq) {
                 maxHp: m.maxHp || (mp ? mp.maxHp : 100),
                 isReady: !!m.isReady,
                 isDowned: !!m.isDowned,
-                skin: mp && mp.appearance ? mp.appearance.skin : 'skin_1'
+                skin: mp && mp.appearance ? mp.appearance.skin : 'skin_1',
+                equipment: mp ? (mp.equipment || {}) : {}
             };
         }),
         chat: sq.chat || []
@@ -4848,17 +4849,32 @@ setInterval(() => {
             let targetMember = aliveMembers[Math.floor(Math.random() * aliveMembers.length)];
             let targetP = db.players[targetMember.username];
             let targetDef = targetP ? getPlayerStats(targetP).def : 0;
-            let rawDmg = Math.max(6, squad.enemy.dmg - Math.floor(targetDef / 4));
+            let isSpecialAttack = Math.random() < 0.22; // 22% шанс спец-приема у врагов
+            let specialName = 'СОКРУШИТЕЛЬНЫЙ УДАР';
+            if (squad.enemy.name.includes('Хлюп')) specialName = 'КИСЛОТНЫЙ ВСПЛЕСК';
+            else if (squad.enemy.name.includes('Комар')) specialName = 'ТОКСИЧНЫЙ ПРОКОЛ';
+            else if (squad.enemy.name.includes('Крыса')) specialName = 'БЕШЕНЫЙ УКУС';
+            else if (squad.enemy.name.includes('Паразит')) specialName = 'НЕЙРОИНФЕКЦИЯ';
+            else if (squad.enemy.name.includes('Ликвидатор')) specialName = 'ТАКТИЧЕСКИЙ ЗАЛП';
+            else if (squad.enemy.name.includes('Культист')) specialName = 'ТЕМНЫЙ РИТУАЛ';
+            else if (squad.enemy.name.includes('Биомасса')) specialName = 'БЕЛКОВЫЙ РАЗРЫВ';
+            else if (squad.enemy.name.includes('Химера')) specialName = 'РАЗРЫВАЮЩИЙ ТАРАН';
+
+            let enemyAttackPower = squad.enemy.dmg;
+            if (isSpecialAttack) {
+                enemyAttackPower = Math.floor(enemyAttackPower * 1.9) + 6; // Высокий критический урон
+            }
+            let rawDmg = Math.max(8, enemyAttackPower - Math.floor(targetDef / 4));
 
             if (targetMember.pDodging) {
                 if (Math.random() < 0.75) {
                     rawDmg = 0;
-                    squad.logs.push('> 💨 ' + targetMember.username + ' УСПЕШНО УКЛОНИЛСЯ от сокрушительного удара!');
+                    squad.logs.push('> 💨 ' + targetMember.username + ' УСПЕШНО УКЛОНИЛСЯ от ' + (isSpecialAttack ? ('спец-приема «' + specialName + '»') : 'удара') + '!');
                     squad.vfx = squad.vfx || [];
                     squad.vfx.push({ type: 'player_dodge', target: targetMember.username });
                     broadcastToSquad(squad, 'playSound', 'dodge');
                 } else {
-                    squad.logs.push('> ⚠️ ' + targetMember.username + ' не успел отскочить в сторону!');
+                    squad.logs.push('> ⚠️ ' + targetMember.username + ' не успел отскочить от ' + (isSpecialAttack ? ('спец-приема «' + specialName + '»!') : 'удара!'));
                 }
                 targetMember.pDodging = false;
             }
@@ -4866,10 +4882,16 @@ setInterval(() => {
             if (rawDmg > 0) {
                 targetMember.hp = Math.max(0, targetMember.hp - rawDmg);
                 if (targetP) targetP.hp = targetMember.hp;
-                squad.logs.push('> 💥 ' + squad.enemy.name + ' АТАКУЕТ ' + targetMember.username + '! -' + rawDmg + ' HP.');
                 squad.vfx = squad.vfx || [];
-                squad.vfx.push({ type: 'player_hit', target: targetMember.username, dmg: rawDmg });
-                broadcastToSquad(squad, 'playSound', 'hit_enemy');
+                if (isSpecialAttack) {
+                    squad.logs.push('> ⚡ [СПЕЦ-ПРИЕМ!] ' + squad.enemy.name + ' применяет «' + specialName + '» по ' + targetMember.username + '! КРИТИЧЕСКИЙ УРОН -' + rawDmg + ' HP!');
+                    squad.vfx.push({ type: 'enemy_special', target: targetMember.username, skill: specialName, dmg: rawDmg });
+                    broadcastToSquad(squad, 'playSound', 'explosion');
+                } else {
+                    squad.logs.push('> 💥 ' + squad.enemy.name + ' АТАКУЕТ ' + targetMember.username + '! -' + rawDmg + ' HP.');
+                    squad.vfx.push({ type: 'player_hit', target: targetMember.username, dmg: rawDmg });
+                    broadcastToSquad(squad, 'playSound', 'hit_enemy');
+                }
 
                 if (targetMember.hp <= 0) {
                     targetMember.isDowned = true;
