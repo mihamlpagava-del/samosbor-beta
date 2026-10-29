@@ -945,6 +945,98 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ===== БАРАХОЛКА (FLEA MARKET) ===== */
+.shop-tab-btn {
+  background: transparent;
+  border: 1px solid var(--term-dim);
+  color: #888;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 2px 2px 0 0;
+  transition: 0.15s;
+  letter-spacing: 0.5px;
+}
+.shop-tab-btn:hover {
+  border-color: var(--term-green);
+  color: #fff;
+  background: rgba(51, 255, 0, 0.08);
+}
+.shop-tab-btn.active {
+  border-color: var(--term-warn);
+  color: var(--term-warn);
+  background: rgba(255, 170, 0, 0.14);
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.25);
+}
+
+.market-cat-btn {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--term-dim);
+  color: #888;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: 0.15s;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+.market-cat-btn:hover {
+  border-color: var(--term-green);
+  color: #fff;
+}
+.market-cat-btn.active {
+  border-color: var(--term-green);
+  color: var(--term-green);
+  background: rgba(51, 255, 0, 0.15);
+  font-weight: bold;
+  box-shadow: 0 0 8px rgba(51, 255, 0, 0.25);
+}
+
+.market-item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #1a3a1a;
+  padding: 8px 12px;
+  background: rgba(5, 20, 10, 0.55);
+  border-radius: 3px;
+  transition: 0.15s ease;
+  gap: 12px;
+}
+.market-item-card:hover {
+  border-color: var(--term-green);
+  background: rgba(10, 30, 15, 0.75);
+  box-shadow: 0 0 10px rgba(51, 255, 0, 0.15);
+}
+.market-item-card.my-lot {
+  border-color: rgba(97, 176, 255, 0.45);
+  background: rgba(8, 22, 38, 0.65);
+}
+.market-item-card.my-lot:hover {
+  border-color: #61b0ff;
+  box-shadow: 0 0 10px rgba(97, 176, 255, 0.3);
+}
+.market-item-icon {
+  width: 36px;
+  height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.market-seller-badge {
+  font-size: 11px;
+  color: #888;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 </style>
 </head>
 <body class="crt-enabled">
@@ -1617,18 +1709,122 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div id="shop-modal" class="modal-overlay" style="z-index: 70;">
-  <div class="shop-panel">
-    <div class="shop-header"><span data-i18n="shop_title">РАСПРЕДЕЛИТЕЛЬ</span><button id="close-shop-btn">[X]</button></div>
-    <div style="text-align: left; margin-bottom: 15px;"><span data-i18n="shop_available">ДОСТУПНО:</span> <span class="ui-score" style="color: var(--term-warn); font-size: 20px;">0</span> <span data-i18n="shop_talons_unit">ТАЛОНОВ</span></div>
-    <div style="display: flex; gap: 20px; text-align: left; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 280px;">
-        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;"><span data-i18n="shop_goods">= АССОРТИМЕНТ =</span> <span style="font-size:12px; color:#666;">(<span id="shop-timer">10:00</span>)</span></h3>
-        <div id="shop-items-container"></div>
+  <div class="shop-panel" style="width: 880px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="shop-header">
+      <span data-i18n="shop_title">РАСПРЕДЕЛИТЕЛЬ // ТОРГОВЛЯ</span>
+      <button id="close-shop-btn">[X]</button>
+    </div>
+
+    <!-- Вкладки: Госснабжение и Барахолка -->
+    <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--term-dim); margin-bottom: 12px; flex-wrap: wrap;">
+      <button id="tab-shop-vendor" class="shop-tab-btn active" type="button" onclick="switchShopView('vendor')">
+        🛒 <span data-i18n="shop_tab_vendor">ГОССНАБЖЕНИЕ</span>
+      </button>
+      <button id="tab-shop-market" class="shop-tab-btn" type="button" onclick="switchShopView('market')">
+        🏷️ <span data-i18n="shop_tab_market">БАРАХОЛКА</span> <span id="market-badge-count" style="font-size: 11px; background: rgba(255,170,0,0.25); color: var(--term-warn); padding: 1px 6px; border-radius: 10px; border: 1px solid var(--term-warn);">0</span>
+      </button>
+    </div>
+
+    <!-- Баланс талонов и кнопка выставления -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <span data-i18n="shop_available">ДОСТУПНО:</span> 
+        <span class="ui-score" style="color: var(--term-warn); font-size: 19px; font-weight: bold;">0</span> 
+        <span data-i18n="shop_talons_unit">ТАЛОНОВ</span>
       </div>
-      <div style="flex: 1; min-width: 280px; border-left: 1px dashed var(--term-dim); padding-left: 15px;">
-        <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;" data-i18n="shop_sell_loot">= СДАТЬ ХАБАР =</h3>
-        <div id="shop-sell-container" style="max-height: 400px; overflow-y: auto;"></div>
+      <div id="market-header-actions" style="display: none; gap: 8px; align-items: center;">
+        <button id="btn-open-market-sell" type="button" style="color: #ffd700; border-color: #ffd700; font-weight: bold; padding: 4px 12px; font-size: 12px; cursor: pointer;" onclick="openMarketSellModal()">
+          ➕ <span data-i18n="market_btn_sell">ВЫСТАВИТЬ ПРЕДМЕТ</span>
+        </button>
       </div>
+    </div>
+
+    <!-- ВИД 1: ГОССНАБЖЕНИЕ (Стандартный магазин + сдать хабар) -->
+    <div id="view-shop-vendor" style="display: block; overflow-y: auto;">
+      <div style="display: flex; gap: 20px; text-align: left; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 280px;">
+          <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;">
+            <span data-i18n="shop_goods">= АССОРТИМЕНТ =</span> <span style="font-size:12px; color:#666;">(<span id="shop-timer">10:00</span>)</span>
+          </h3>
+          <div id="shop-items-container"></div>
+        </div>
+        <div style="flex: 1; min-width: 280px; border-left: 1px dashed var(--term-dim); padding-left: 15px;">
+          <h3 style="color: var(--term-warn); margin-top:0; border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;" data-i18n="shop_sell_loot">= СДАТЬ ХАБАР =</h3>
+          <div id="shop-sell-container" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ВИД 2: БАРАХОЛКА (Рынок заключенных) -->
+    <div id="view-shop-market" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
+      <!-- Фильтры: все, оружие, одежда, медицина, предметы -->
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; justify-content: space-between;">
+        <div class="market-filters-row" style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="market-cat-btn active" data-cat="all" onclick="filterMarket('all')">⭐ ВСЕ</button>
+          <button class="market-cat-btn" data-cat="weapon" onclick="filterMarket('weapon')">⚔️ ОРУЖИЕ</button>
+          <button class="market-cat-btn" data-cat="clothes" onclick="filterMarket('clothes')">🛡️ ОДЕЖДА</button>
+          <button class="market-cat-btn" data-cat="medicine" onclick="filterMarket('medicine')">💊 МЕДИЦИНА</button>
+          <button class="market-cat-btn" data-cat="items" onclick="filterMarket('items')">📦 ПРЕДМЕТЫ</button>
+          <button id="btn-filter-my-lots" class="market-cat-btn" style="border-color: #61b0ff; color: #61b0ff;" onclick="toggleMyMarketLots()">👤 МОИ ЛОТЫ</button>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <select id="market-sort-select" onchange="renderMarketListings()" style="background: #000; border: 1px solid var(--term-dim); color: #aaa; font-family: inherit; font-size: 11px; padding: 4px 6px;">
+            <option value="new">🕒 Сначала новые</option>
+            <option value="price_asc">🔽 Сначала дешевые</option>
+            <option value="price_desc">🔼 Сначала дорогие</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Список лотов барахолки -->
+      <div id="market-items-container" style="flex: 1; overflow-y: auto; padding-right: 6px; max-height: 52vh; display: flex; flex-direction: column; gap: 6px;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО: ВЫСТАВИТЬ ПРЕДМЕТ НА БАРАХОЛКУ -->
+<div id="market-sell-modal" class="modal-overlay" style="z-index: 85; display: none;">
+  <div class="shop-panel" style="width: 500px; max-width: 95%;">
+    <div class="shop-header">
+      <span style="color: #ffd700;" data-i18n="market_sell_title">🏷️ ВЫСТАВИТЬ НА БАРАХОЛКУ</span>
+      <button onclick="closeMarketSellModal()">[X]</button>
+    </div>
+    <div style="font-size: 12.5px; color: #aaa; margin-bottom: 12px; text-align: left;" data-i18n="market_sell_desc">
+      Выберите предмет из рюкзака и укажите желаемую цену в талонах снабжения:
+    </div>
+
+    <!-- Выбор предмета -->
+    <div style="margin-bottom: 14px; text-align: left;">
+      <label style="font-size: 12px; color: var(--term-green); display: block; margin-bottom: 4px;">ПРЕДМЕТ ДЛЯ ПРОДАЖИ:</label>
+      <select id="market-sell-item-select" onchange="onMarketItemSelected()" style="width: 100%; background: #000; border: 1px solid var(--term-green); color: #fff; font-family: inherit; font-size: 13px; padding: 8px;">
+        <option value="">-- Выберите предмет --</option>
+      </select>
+      <div id="market-sell-item-hint" style="font-size: 11.5px; color: #888; margin-top: 4px;"></div>
+    </div>
+
+    <!-- Ввод цены -->
+    <div style="margin-bottom: 16px; text-align: left;">
+      <label style="font-size: 12px; color: var(--term-warn); display: block; margin-bottom: 4px;">ЦЕНА (В ТАЛОНАХ):</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="number" id="market-sell-price-input" min="1" max="1000000" placeholder="Например: 150" style="flex: 1; background: #000; border: 1px solid var(--term-warn); color: var(--term-warn); font-size: 16px; font-weight: bold; padding: 8px; font-family: inherit;">
+        <span style="font-size: 14px; color: var(--term-warn);">🎫</span>
+      </div>
+      <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+        <button type="button" onclick="setQuickMarketPrice(25)" style="padding: 2px 8px; font-size: 11px;">25</button>
+        <button type="button" onclick="setQuickMarketPrice(50)" style="padding: 2px 8px; font-size: 11px;">50</button>
+        <button type="button" onclick="setQuickMarketPrice(100)" style="padding: 2px 8px; font-size: 11px;">100</button>
+        <button type="button" onclick="setQuickMarketPrice(250)" style="padding: 2px 8px; font-size: 11px;">250</button>
+        <button type="button" onclick="setQuickMarketPrice(500)" style="padding: 2px 8px; font-size: 11px;">500</button>
+        <button type="button" onclick="setQuickMarketPrice(1000)" style="padding: 2px 8px; font-size: 11px;">1000</button>
+      </div>
+    </div>
+
+    <div id="market-sell-error" style="color: var(--term-danger); font-size: 12px; margin-bottom: 12px; text-align: left; display: none;"></div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+      <button onclick="closeMarketSellModal()" style="border-color: #555; color: #888; padding: 6px 14px; font-size: 12px;">ОТМЕНА</button>
+      <button id="btn-confirm-list-market" onclick="submitListMarketItem()" style="border-color: #ffd700; color: #ffd700; font-weight: bold; padding: 6px 18px; font-size: 12px;">ВЫСТАВИТЬ ЛОТ</button>
     </div>
   </div>
 </div>
@@ -1850,6 +2046,11 @@ const I18N = {
     badge_auto: "АВТО",
     stat_dmg_unit: "УРОН",
     shop_title: "ТОРГОВЕЦ БЛОКА",
+    shop_tab_vendor: "ГОССНАБЖЕНИЕ",
+    shop_tab_market: "БАРАХОЛКА",
+    market_btn_sell: "ВЫСТАВИТЬ ПРЕДМЕТ",
+    market_sell_title: "🏷️ ВЫСТАВИТЬ НА БАРАХОЛКУ",
+    market_sell_desc: "Выберите предмет из рюкзака и укажите цену в талонах снабжения:",
     shop_available: "Доступно:",
     shop_talons_unit: "талонов",
     shop_goods: "= ТОВАРЫ СНАБЖЕНИЯ =",
@@ -2003,6 +2204,11 @@ const I18N = {
     badge_auto: "AUTO",
     stat_dmg_unit: "DMG",
     shop_title: "BLOCK TRADER",
+    shop_tab_vendor: "STATE SUPPLY",
+    shop_tab_market: "FLEA MARKET",
+    market_btn_sell: "LIST ITEM FOR SALE",
+    market_sell_title: "🏷️ LIST ON FLEA MARKET",
+    market_sell_desc: "Select an item from your backpack and specify its price in talons:",
     shop_available: "Available:",
     shop_talons_unit: "talons",
     shop_goods: "= SUPPLY GOODS =",
@@ -4358,6 +4564,15 @@ socket.on('gameState', (data) => {
     renderAchievementsList();
   }
 
+  if (data.fleaMarket) {
+    cachedFleaMarket = data.fleaMarket;
+    const badge = document.getElementById('market-badge-count');
+    if (badge) badge.innerText = cachedFleaMarket.length;
+    if (currentShopView === 'market') {
+      renderMarketListings();
+    }
+  }
+
   if(data.leaderboard) {
     let lb = document.getElementById('leaderboard-body');
     if(lb) {
@@ -5485,6 +5700,7 @@ function bindChestButtons() {
       if (action === 'belt') prepareQuickEquip(idx);
       else if (action === 'use') socket.emit('useItem', idx);
       else if (action === 'equip') socket.emit('equipItem', idx);
+      else if (action === 'sell-market') openMarketSellModal(idx);
       else if (action === 'drop') socket.emit('dropItem', idx);
       else if (action === 'to-storage') socket.emit('moveToStorage', idx);
       else if (action === 'from-storage') socket.emit('moveFromStorage', idx);
@@ -5739,6 +5955,9 @@ function updateUI(me, sectorPlayers) {
         }
         if (isSafeRoom) {
           actionBtns += `<button class="chest-act-btn" data-action="to-storage" data-index="${index}" style="color:var(--term-warn); border-color:var(--term-warn); font-weight:bold;">📦 ${isEn ? 'TO STASH' : 'В СУНДУК'}</button>`;
+        }
+        if (item.type !== 'quest') {
+          actionBtns += `<button class="chest-act-btn" data-action="sell-market" data-index="${index}" style="color:#ffd700; border-color:#ffd700;">🏷️ ${isEn ? 'FLEA MARKET' : 'НА БАРАХОЛКУ'}</button>`;
         }
         actionBtns += `<button class="chest-act-btn" data-action="drop" data-index="${index}">🗑️ ${isEn ? 'DROP' : 'ВЫБРОСИТЬ'}</button>`;
 
@@ -6096,6 +6315,288 @@ setInterval(() => {
     if (el) el.innerText = `${m}:${s}`;
   }
 }, 1000);
+
+// ===== БАРАХОЛКА (FLEA MARKET / BLACK MARKET) =====
+let cachedFleaMarket = [];
+let currentShopView = 'vendor';
+let currentMarketCategory = 'all';
+let isMyLotsOnly = false;
+
+function switchShopView(view) {
+  currentShopView = view;
+  const tabV = document.getElementById('tab-shop-vendor');
+  const tabM = document.getElementById('tab-shop-market');
+  const viewV = document.getElementById('view-shop-vendor');
+  const viewM = document.getElementById('view-shop-market');
+  const actM = document.getElementById('market-header-actions');
+
+  if (tabV) tabV.classList.toggle('active', view === 'vendor');
+  if (tabM) tabM.classList.toggle('active', view === 'market');
+  if (viewV) viewV.style.display = (view === 'vendor') ? 'block' : 'none';
+  if (viewM) viewM.style.display = (view === 'market') ? 'flex' : 'none';
+  if (actM) actM.style.display = (view === 'market') ? 'flex' : 'none';
+
+  if (view === 'market') {
+    renderMarketListings();
+  } else {
+    renderShop();
+  }
+  playSound('click');
+}
+
+function filterMarket(category) {
+  currentMarketCategory = category;
+  isMyLotsOnly = false;
+  const btnMy = document.getElementById('btn-filter-my-lots');
+  if (btnMy) btnMy.classList.remove('active');
+
+  document.querySelectorAll('.market-cat-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-cat') === category);
+  });
+  renderMarketListings();
+  playSound('click');
+}
+
+function toggleMyMarketLots() {
+  isMyLotsOnly = !isMyLotsOnly;
+  const btnMy = document.getElementById('btn-filter-my-lots');
+  if (btnMy) btnMy.classList.toggle('active', isMyLotsOnly);
+  if (isMyLotsOnly) {
+    document.querySelectorAll('.market-cat-btn[data-cat]').forEach(btn => btn.classList.remove('active'));
+  } else {
+    filterMarket('all');
+    return;
+  }
+  renderMarketListings();
+  playSound('click');
+}
+
+function getItemMarketCategory(item) {
+  if (!item) return 'items';
+  if (item.type === 'weapon') return 'weapon';
+  if (item.type === 'clothes' || item.type === 'mask' || item.type === 'backpack') return 'clothes';
+  if (item.type === 'consumable' || item.isCure || item.restoreHp > 0 || item.restoreFilter > 0 || item.restoreHunger > 0) return 'medicine';
+  return 'items';
+}
+
+function renderMarketListings() {
+  const container = document.getElementById('market-items-container');
+  if (!container) return;
+
+  const isEn = (currentLang === 'en');
+  const myTalons = (clientMe && clientMe.talons !== undefined) ? clientMe.talons : 0;
+  const myInvCount = (clientMe && clientMe.inventory) ? clientMe.inventory.length : 0;
+  const myMaxInv = (clientMe && clientMe.maxInv) ? clientMe.maxInv : 12;
+  const isInvFull = myInvCount >= myMaxInv;
+
+  let lots = Array.isArray(cachedFleaMarket) ? [...cachedFleaMarket] : [];
+
+  // Фильтр по "Мои лоты"
+  if (isMyLotsOnly) {
+    lots = lots.filter(l => l.seller === myUsername);
+  } else if (currentMarketCategory !== 'all') {
+    lots = lots.filter(l => {
+      let item = GAME_ITEMS[l.itemId];
+      return item && getItemMarketCategory(item) === currentMarketCategory;
+    });
+  }
+
+  // Сортировка
+  const sortSelect = document.getElementById('market-sort-select');
+  const sortMode = sortSelect ? sortSelect.value : 'new';
+  if (sortMode === 'price_asc') {
+    lots.sort((a, b) => (a.price || 0) - (b.price || 0));
+  } else if (sortMode === 'price_desc') {
+    lots.sort((a, b) => (b.price || 0) - (a.price || 0));
+  } else {
+    lots.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }
+
+  if (lots.length === 0) {
+    let emptyText = isMyLotsOnly
+      ? (isEn ? 'You have no active listings. Click [LIST ITEM] to sell something!' : 'У вас пока нет активных лотов. Нажмите «ВЫСТАВИТЬ ПРЕДМЕТ»!')
+      : (isEn ? 'No items in this category yet. Be the first to list!' : 'В этой категории пока нет товаров. Выставьте свой предмет на продажу!');
+    container.innerHTML = `<div style="text-align:center; color:#888; padding:35px 15px; border:1px dashed var(--term-dim); background:rgba(0,0,0,0.3); font-size:13px;">${emptyText}</div>`;
+    return;
+  }
+
+  let html = '';
+  lots.forEach(lot => {
+    let item = GAME_ITEMS[lot.itemId];
+    if (!item) return;
+
+    let isMyLot = (lot.seller === myUsername);
+    let dName = getItemDisplayName(item, lot.itemId);
+    let statBadges = getItemStatBadges(item);
+    let iconName = item.iconId || lot.itemId;
+    let iconPath = `assets/icons/${iconName}.png`;
+    let typeLabel = getItemTypeLabel(item.type);
+
+    let sellerDisplay = isMyLot
+      ? `<span style="color:var(--term-green); font-weight:bold;">${isEn ? 'YOU' : 'ВЫ'}</span>`
+      : `<span style="color:#ddd;">#${lot.seller}</span> (${lot.sellerTitle || (isEn ? 'Inmate' : 'Заключенный')})`;
+
+    let actionBtnHtml = '';
+    if (isMyLot) {
+      actionBtnHtml = `
+        <button onclick="cancelMarketLot('${lot.id}')" style="border-color:#ff4444; color:#ff6666; font-size:11px; padding:4px 10px; cursor:pointer;" title="${isEn ? 'Withdraw listing back to inventory' : 'Снять лот и вернуть предмет в рюкзак'}">
+          ✕ ${isEn ? 'WITHDRAW' : 'СНЯТЬ'}
+        </button>
+      `;
+    } else {
+      let isTooExpensive = (myTalons < lot.price);
+      if (isTooExpensive) {
+        actionBtnHtml = `<button disabled style="opacity:0.45; cursor:not-allowed; border-color:var(--term-dim); color:var(--term-dim); padding:4px 10px; font-size:11px;">${isEn ? 'NO TALONS' : 'НЕТ ТАЛОНОВ'}</button>`;
+      } else if (isInvFull) {
+        actionBtnHtml = `<button disabled style="opacity:0.45; cursor:not-allowed; border-color:var(--term-warn); color:var(--term-warn); padding:4px 10px; font-size:11px;">${isEn ? 'BAG FULL' : 'МЕСТА НЕТ'}</button>`;
+      } else {
+        actionBtnHtml = `
+          <button onclick="buyMarketLot('${lot.id}', ${lot.price})" style="border-color:var(--term-green); color:var(--term-green); font-weight:bold; font-size:11.5px; padding:4px 12px; cursor:pointer;">
+            🛒 ${isEn ? 'BUY' : 'КУПИТЬ'}
+          </button>
+        `;
+      }
+    }
+
+    html += `
+      <div class="market-item-card ${isMyLot ? 'my-lot' : ''}">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+          <img class="market-item-icon" src="${iconPath}" onerror="this.style.display='none'">
+          <div style="min-width:0;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="color:${item.color || '#fff'}; font-weight:bold; font-size:13.5px;">${dName}</span>
+              <span style="color:#666; font-size:11px;">[${typeLabel}]</span>
+            </div>
+            ${statBadges}
+            <div class="market-seller-badge">
+              👤 ${isEn ? 'Seller:' : 'Продавец:'} ${sellerDisplay}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+          <div style="text-align:right;">
+            <div style="color:var(--term-warn); font-size:16px; font-weight:bold; letter-spacing:0.5px;">${lot.price} 🎫</div>
+            <div style="font-size:10px; color:#888;">${isEn ? 'talons' : 'талонов'}</div>
+          </div>
+          ${actionBtnHtml}
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function buyMarketLot(lotId, price) {
+  if (!lotId) return;
+  const isEn = (currentLang === 'en');
+  if (confirm(isEn ? `Buy this item for ${price} talons?` : `Купить этот предмет за ${price} талонов?`)) {
+    socket.emit('buyMarketItem', lotId);
+  }
+}
+
+function cancelMarketLot(lotId) {
+  if (!lotId) return;
+  const isEn = (currentLang === 'en');
+  if (confirm(isEn ? 'Withdraw this listing back to your backpack?' : 'Снять этот лот с барахолки и вернуть в рюкзак?')) {
+    socket.emit('cancelMarketItem', lotId);
+  }
+}
+
+function openMarketSellModal(preselectInvIndex) {
+  const m = document.getElementById('market-sell-modal');
+  if (!m) return;
+  const sel = document.getElementById('market-sell-item-select');
+  const priceInput = document.getElementById('market-sell-price-input');
+  const errEl = document.getElementById('market-sell-error');
+  if (errEl) errEl.style.display = 'none';
+
+  if (sel) {
+    sel.innerHTML = `<option value="">-- ${(currentLang === 'en') ? 'Select item from backpack' : 'Выберите предмет из рюкзака'} --</option>`;
+    if (clientMe && Array.isArray(clientMe.inventory)) {
+      clientMe.inventory.forEach((itemId, idx) => {
+        let item = GAME_ITEMS[itemId];
+        if (!item || item.type === 'quest') return;
+        let dName = getItemDisplayName(item, itemId);
+        let baseCost = item.cost || 10;
+        let selectedAttr = (preselectInvIndex !== undefined && preselectInvIndex === idx) ? 'selected' : '';
+        sel.innerHTML += `<option value="${idx}" data-cost="${baseCost}" ${selectedAttr}>${dName} (${(currentLang === 'en') ? 'Vendor price' : 'Базовая цена'}: ${baseCost} т.)</option>`;
+      });
+    }
+  }
+
+  if (preselectInvIndex !== undefined && clientMe && clientMe.inventory && clientMe.inventory[preselectInvIndex]) {
+    let item = GAME_ITEMS[clientMe.inventory[preselectInvIndex]];
+    if (priceInput && item) {
+      priceInput.value = item.cost || 50;
+    }
+  } else if (priceInput) {
+    priceInput.value = '';
+  }
+
+  onMarketItemSelected();
+  m.style.display = 'flex';
+  playSound('click');
+}
+
+function closeMarketSellModal() {
+  const m = document.getElementById('market-sell-modal');
+  if (m) m.style.display = 'none';
+}
+
+function onMarketItemSelected() {
+  const sel = document.getElementById('market-sell-item-select');
+  const hint = document.getElementById('market-sell-item-hint');
+  const priceInput = document.getElementById('market-sell-price-input');
+  if (!sel || !hint) return;
+
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) {
+    hint.innerText = '';
+    return;
+  }
+  const cost = parseInt(opt.getAttribute('data-cost'), 10) || 50;
+  hint.innerText = (currentLang === 'en')
+    ? `Reference standard vendor price: ${cost} talons.`
+    : `Ориентировочная базовая цена у скупщика: ${cost} талонов.`;
+
+  if (priceInput && (!priceInput.value || parseInt(priceInput.value, 10) <= 0)) {
+    priceInput.value = cost;
+  }
+}
+
+function setQuickMarketPrice(val) {
+  const priceInput = document.getElementById('market-sell-price-input');
+  if (priceInput) priceInput.value = val;
+}
+
+function submitListMarketItem() {
+  const sel = document.getElementById('market-sell-item-select');
+  const priceInput = document.getElementById('market-sell-price-input');
+  const errEl = document.getElementById('market-sell-error');
+  const isEn = (currentLang === 'en');
+
+  if (!sel || !sel.value) {
+    if (errEl) {
+      errEl.innerText = isEn ? 'Please select an item to list.' : 'Выберите предмет для продажи.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+  const invIndex = parseInt(sel.value, 10);
+  const price = parseInt(priceInput ? priceInput.value : 0, 10);
+
+  if (isNaN(price) || price < 1 || price > 1000000) {
+    if (errEl) {
+      errEl.innerText = isEn ? 'Price must be between 1 and 1,000,000 talons.' : 'Цена должна быть от 1 до 1 000 000 талонов.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  socket.emit('listMarketItem', { invIndex: invIndex, price: price });
+  closeMarketSellModal();
+}
 
 function doUpgradeWorkbench() {
   if (!clientMe) return;
@@ -6573,6 +7074,8 @@ document.getElementById('open-shop-btn').onclick = () => {
   document.getElementById('shop-modal').style.display = 'flex'; 
   updateActiveBackground();
   changeAmbient('shop'); 
+  if (currentShopView === 'market') renderMarketListings();
+  else renderShop();
 };
 document.getElementById('close-shop-btn').onclick = () => { 
   document.getElementById('shop-modal').style.display = 'none'; 

@@ -242,11 +242,21 @@ function initDatabase() {
         if (!db.map) db.map = {};
         if (!db.vkMap) db.vkMap = {};
         if (!Array.isArray(db.feedback)) db.feedback = [];
+        if (!Array.isArray(db.fleaMarket)) db.fleaMarket = [];
+        if (db.fleaMarket.length === 0) {
+            db.fleaMarket = [
+                { id: 'lot_seed_1', seller: 'Семён_Ликвидатор', sellerTitle: 'Ликвидатор', itemId: 'weapon_crowbar_uncommon', price: 180, createdAt: Date.now() - 3600000 },
+                { id: 'lot_seed_2', seller: 'Архип_Слесарь', sellerTitle: 'Ударник Труда', itemId: 'clothes_worker_uncommon', price: 75, createdAt: Date.now() - 7200000 },
+                { id: 'lot_seed_3', seller: 'Зэк_Бывалый', sellerTitle: 'Заключенный', itemId: 'food_medkit', price: 55, createdAt: Date.now() - 1800000 },
+                { id: 'lot_seed_4', seller: 'Химик_Гриша', sellerTitle: 'Сталкер', itemId: 'mat_chem', price: 12, createdAt: Date.now() - 900000 },
+                { id: 'lot_seed_5', seller: 'Мастер_Петрович', sellerTitle: 'Ударник Труда', itemId: 'mat_electro', price: 18, createdAt: Date.now() - 450000 }
+            ];
+        }
         writeLog(`[БД ЗАГРУЗКА] Успешно загружена база из ${source}`);
         saveDB(true);
     } else {
         writeLog(`[БД] База данных не обнаружена. Инициализация чистой структуры.`);
-        db = { players: {}, map: {}, vkMap: {}, feedback: [] };
+        db = { players: {}, map: {}, vkMap: {}, feedback: [], fleaMarket: [] };
     }
 }
 initDatabase();
@@ -1838,6 +1848,7 @@ function broadcastGameState() {
             },
             sectorPlayers: playersInSector, map: db.map[floor], GAME_PERKS: GAME_PERKS, GAME_ITEMS: GAME_ITEMS, MUTATIONS: MUTATIONS, BESTIARY: BASE_MONSTERS,
             ACHIEVEMENTS_LIST: ACHIEVEMENTS_LIST,
+            fleaMarket: db.fleaMarket || [],
             shopItems: currentShopItems, nextShopUpdate: nextShopUpdate, leaderboard: leaderboard
         });
     }
@@ -2741,6 +2752,160 @@ function checkLifterTrigger(player, sock, loc) {
         p.inventory.splice(invIndex, 1); p.talons = (p.talons || 0) + price;
         socket.emit('playSound', 'buy'); socket.emit('terminalError', `СДАНО: ${itemData.name} (+${price} т.)`);
         saveDB(); broadcastGameState();
+    });
+
+    // ===== БАРАХОЛКА ЗАКЛЮЧЕННЫХ (РЫНОК ИГРОКОВ) =====
+    socket.on('listMarketItem', (data) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p, username } = auth;
+        if (!data || data.invIndex === undefined) return;
+        let invIndex = parseInt(data.invIndex, 10);
+        let price = parseInt(data.price, 10);
+        if (isNaN(invIndex) || !p.inventory || !p.inventory[invIndex]) {
+            socket.emit('terminalError', 'ПРЕДМЕТ НЕ НАЙДЕН В РЮКЗАКЕ.');
+            return;
+        }
+        if (isNaN(price) || price < 1 || price > 1000000) {
+            socket.emit('terminalError', 'УКАЖИТЕ ЦЕНУ ОТ 1 ДО 1 000 000 ТАЛОНОВ.');
+            socket.emit('playSound', 'defeat');
+            return;
+        }
+
+        let itemId = p.inventory[invIndex];
+        let itemData = GAME_ITEMS[itemId];
+        if (!itemData || itemData.type === 'quest') {
+            socket.emit('terminalError', 'ЭТОТ ПРЕДМЕТ НЕЛЬЗЯ ВЫСТАВИТЬ НА БАРАХОЛКУ.');
+            socket.emit('playSound', 'defeat');
+            return;
+        }
+
+        if (!Array.isArray(db.fleaMarket)) db.fleaMarket = [];
+        let userLots = db.fleaMarket.filter(l => l.seller === username);
+        if (userLots.length >= 12) {
+            socket.emit('terminalError', 'ЛИМИТ ЛОТОВ: МАКСИМУМ 12 ОДНОВРЕМЕННО.');
+            socket.emit('playSound', 'defeat');
+            return;
+        }
+
+        p.inventory.splice(invIndex, 1);
+        let lotId = 'lot_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        db.fleaMarket.unshift({
+            id: lotId,
+            seller: username,
+            sellerTitle: p.title || 'Заключенный',
+            sellerLevel: p.level || 1,
+            itemId: itemId,
+            price: price,
+            createdAt: Date.now()
+        });
+
+        if (!p.notebook) p.notebook = [];
+        p.notebook.push(`[БАРАХОЛКА]: Выставил на продажу «${itemData.name}» за ${price} талонов.`);
+        socket.emit('playSound', 'equip');
+        socket.emit('terminalError', `ЛОТ «${itemData.name}» ВЫСТАВЛЕН НА БАРАХОЛКУ (+${price} т.)!`);
+        saveDB();
+        broadcastGameState();
+    });
+
+    socket.on('buyMarketItem', (lotId) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p, username } = auth;
+        if (!lotId || !Array.isArray(db.fleaMarket)) return;
+
+        let lotIdx = db.fleaMarket.findIndex(l => l.id === lotId);
+        if (lotIdx === -1) {
+            socket.emit('terminalError', 'ЛОТ УЖЕ КУПЛЕН ИЛИ СНЯТ.');
+            socket.emit('playSound', 'defeat');
+            broadcastGameState();
+            return;
+        }
+
+        let lot = db.fleaMarket[lotIdx];
+        if (lot.seller === username) {
+            socket.emit('terminalError', 'ВЫ НЕ МОЖЕТЕ КУПИТЬ СВОЙ СОБСТВЕННЫЙ ЛОТ.');
+            return;
+        }
+
+        if (p.inventory.length >= getMaxInv(p)) {
+            socket.emit('terminalError', 'СУНДУК ПОЛОН! НЕТ МЕСТА В РЮКЗАКЕ.');
+            socket.emit('playSound', 'defeat');
+            return;
+        }
+
+        if ((p.talons || 0) < lot.price) {
+            socket.emit('terminalError', `НЕ ХВАТАЕТ ТАЛОНОВ! ЦЕНА: ${lot.price}`);
+            socket.emit('playSound', 'defeat');
+            return;
+        }
+
+        let itemData = GAME_ITEMS[lot.itemId];
+        if (!itemData) {
+            db.fleaMarket.splice(lotIdx, 1);
+            saveDB();
+            broadcastGameState();
+            return;
+        }
+
+        // Оплата и передача товара покупателю
+        p.talons -= lot.price;
+        p.inventory.push(lot.itemId);
+        db.fleaMarket.splice(lotIdx, 1);
+
+        if (!p.notebook) p.notebook = [];
+        p.notebook.push(`[БАРАХОЛКА]: Купил лот «${itemData.name}» у ${lot.seller} за ${lot.price} талонов.`);
+
+        // Зачисление талонов продавцу (даже если он оффлайн)
+        let sellerUser = db.players[lot.seller];
+        if (sellerUser) {
+            sellerUser.talons = (sellerUser.talons || 0) + lot.price;
+            if (!sellerUser.notebook) sellerUser.notebook = [];
+            sellerUser.notebook.push(`[БАРАХОЛКА]: Заключенный ${username} купил ваш лот «${itemData.name}» (+${lot.price} талонов)!`);
+
+            let sellerSocketId = Object.keys(onlinePlayers).find(k => onlinePlayers[k] === lot.seller);
+            if (sellerSocketId) {
+                io.to(sellerSocketId).emit('terminalError', `ВАШ ЛОТ «${itemData.name}» КУПЛЕН ИГРОКОМ ${username}! (+${lot.price} ТАЛОНОВ)`);
+                io.to(sellerSocketId).emit('playSound', 'buy');
+            }
+        }
+
+        socket.emit('playSound', 'buy');
+        socket.emit('terminalError', `КУПЛЕНО: «${itemData.name}» ЗА ${lot.price} ТАЛОНОВ!`);
+        checkPlayerAchievements(p, socket);
+        saveDB();
+        broadcastGameState();
+    });
+
+    socket.on('cancelMarketItem', (lotId) => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p, username } = auth;
+        if (!lotId || !Array.isArray(db.fleaMarket)) return;
+
+        let lotIdx = db.fleaMarket.findIndex(l => l.id === lotId && l.seller === username);
+        if (lotIdx === -1) {
+            socket.emit('terminalError', 'ЛОТ НЕ НАЙДЕН ИЛИ НЕ ПРИНАДЛЕЖИТ ВАМ.');
+            return;
+        }
+
+        let lot = db.fleaMarket[lotIdx];
+        let itemData = GAME_ITEMS[lot.itemId];
+
+        if (p.inventory.length < getMaxInv(p)) {
+            p.inventory.push(lot.itemId);
+        } else if (p.location === 'safe_room' && (p.storage || []).length < 40) {
+            p.storage = p.storage || [];
+            p.storage.push(lot.itemId);
+            socket.emit('terminalError', `РЮКЗАК ПОЛОН! ПРЕДМЕТ ВЕРНУЛСЯ НА СКЛАД БАЗЫ.`);
+        } else {
+            socket.emit('terminalError', 'НЕТ СВОБОДНОГО МЕСТА В РЮКЗАКЕ ЧТОБЫ СНЯТЬ ЛОТ!');
+            socket.emit('playSound', 'defeat');
+            return;
+        }
+
+        db.fleaMarket.splice(lotIdx, 1);
+        socket.emit('playSound', 'equip');
+        socket.emit('terminalError', `ЛОТ «${itemData ? itemData.name : lot.itemId}» СНЯТ С ПРОДАЖИ.`);
+        saveDB();
+        broadcastGameState();
     });
 
     socket.on('dropItem', (invIndex) => {
