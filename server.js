@@ -2687,7 +2687,25 @@ io.on('connection', (socket) => {
         let auth = getAuthPlayer(); if (!auth) return;
         let { username, p } = auth;
         let existing = Object.values(coopSquads).find(sq => sq.members.some(m => m.username === username));
-        if (existing) { socket.emit('terminalError', 'ВЫ УЖЕ СОСТОИТЕ В ОТРЯДЕ!'); return; }
+        if (existing) {
+            // Если игрок уже единственный участник в лобби - просто переименуем и вернем его отряд
+            if (existing.status === 'lobby' && existing.members.length === 1 && existing.leader === username) {
+                if (data && typeof data.name === 'string' && data.name.trim()) {
+                    existing.name = data.name.trim().slice(0, 24);
+                }
+                socket.emit('myRaidSquad', getSquadClientData(existing));
+                io.emit('raidSquadsList', getPublicRaidSquads());
+                return;
+            }
+            // Иначе безопасно покидаем предыдущий/зависший отряд
+            existing.members = existing.members.filter(m => m.username !== username);
+            if (existing.members.length === 0) {
+                delete coopSquads[existing.id];
+            } else {
+                if (existing.leader === username) existing.leader = existing.members[0].username;
+                broadcastToSquad(existing, 'myRaidSquad', getSquadClientData(existing));
+            }
+        }
         let sName = (data && typeof data.name === 'string' && data.name.trim()) ? data.name.trim().slice(0, 24) : ('Штурм ' + username);
         let squadId = 'squad_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
         let newSquad = {
@@ -2719,7 +2737,6 @@ io.on('connection', (socket) => {
         coopSquads[squadId] = newSquad;
         socket.emit('myRaidSquad', getSquadClientData(newSquad));
         io.emit('raidSquadsList', getPublicRaidSquads());
-        socket.emit('terminalError', 'ОТРЯД «' + sName + '» СОЗДАН!');
         socket.emit('playSound', 'equip');
         broadcastGameState();
     });

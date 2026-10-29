@@ -1127,6 +1127,141 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   background: rgba(0, 50, 20, 0.5) !important;
   cursor: pointer;
 }
+
+/* ===== С.С.Р.С. ХРОНИКИ ГИГАХРУЩА (INTERACTIVE STORY MODE) ===== */
+.story-terminal-container {
+  width: 860px;
+  max-width: 96vw;
+  height: 640px;
+  max-height: 94vh;
+  background: #020b06;
+  border: 2px solid #00ffaa;
+  box-shadow: 0 0 25px rgba(0, 255, 170, 0.35), inset 0 0 20px rgba(0, 255, 170, 0.1);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Share Tech Mono', 'Consolas', 'Courier New', monospace;
+}
+.story-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(0, 40, 25, 0.85);
+  border-bottom: 1px solid #00ffaa;
+  color: #00ffaa;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  user-select: none;
+  cursor: pointer;
+}
+.story-status-bar:hover { background: rgba(0, 60, 35, 0.9); }
+.story-rec-blink { color: #ff3333; animation: storyRecBlink 1s infinite steps(1); }
+@keyframes storyRecBlink { 50% { opacity: 0; } }
+.story-status-esc {
+  font-size: 11px;
+  color: #88ccaa;
+  border: 1px solid #00aa66;
+  padding: 2px 8px;
+  border-radius: 2px;
+  background: rgba(0, 20, 10, 0.6);
+}
+.story-screen-wrapper {
+  flex-grow: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  background: #010d06;
+}
+#story-canvas { width: 100%; height: 100%; display: block; object-fit: fill; }
+.story-crt-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(0,0,0,0) 60%, rgba(0,15,5,0.7) 100%),
+              repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 3px);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+}
+#story-pause-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 15, 8, 0.92);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+}
+.story-pause-box {
+  width: 420px;
+  max-width: 90%;
+  border: 1px solid #00ffaa;
+  background: #02140a;
+  box-shadow: 0 0 20px rgba(0,255,170,0.3);
+  padding: 20px;
+  text-align: center;
+  border-radius: 4px;
+}
+.story-btn {
+  width: 100%;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.8px;
+  color: #00ffaa;
+  background: rgba(0, 40, 20, 0.8);
+  border: 1px solid #00ffaa;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.story-btn:hover {
+  background: rgba(0, 80, 40, 0.9);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+  transform: translateY(-1px);
+}
+.story-choices-panel {
+  padding: 10px 16px;
+  background: rgba(0, 25, 15, 0.95);
+  border-top: 1px solid #00ffaa;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.story-choices-header { font-size: 12px; color: #00ffcc; font-weight: bold; letter-spacing: 1px; }
+.story-choices-list { display: flex; flex-direction: column; gap: 6px; }
+.story-choice-btn {
+  text-align: left;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  color: #e0ffee;
+  background: rgba(0, 35, 20, 0.65);
+  border: 1px solid rgba(0, 255, 170, 0.4);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.story-choice-btn:hover {
+  background: rgba(0, 70, 40, 0.85);
+  border-color: #00ffaa;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.4);
+  transform: translateX(4px);
+}
+.story-choice-num { color: #00ffaa; font-weight: 900; }
 </style>
 </head>
 <body class="crt-enabled">
@@ -1489,6 +1624,46 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
+<!-- МОДАЛЬНОЕ ОКНО: С.С.Р.С. ХРОНИКИ ГИГАХРУЩА (INTERACTIVE STORY MODE) -->
+<div id="story-simulation-modal" class="modal-overlay" style="z-index: 120; display: none; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(5px);">
+  <div class="story-terminal-container">
+    <!-- Top Status Bar -->
+    <div class="story-status-bar" onclick="storyTogglePause()" title="Нажмите для паузы / выхода">
+      <div class="story-status-title">
+        <span class="story-rec-blink">●</span> <span data-i18n="story_status_active">[С.С.Р.С. СИМУЛЯЦИЯ АКТИВНА]</span>
+      </div>
+      <div class="story-status-esc" data-i18n="story_btn_esc">[ESC] ПАУЗА / МЕНЮ</div>
+    </div>
+
+    <!-- CRT Hologram Screen Area -->
+    <div class="story-screen-wrapper">
+      <canvas id="story-canvas"></canvas>
+      <div id="story-crt-overlay" class="story-crt-fx"></div>
+
+      <!-- Pause Overlay -->
+      <div id="story-pause-overlay" style="display: none;">
+        <div class="story-pause-box">
+          <h3 style="color: #00ffcc; text-shadow: 0 0 10px #00ffcc; margin-top: 0;" data-i18n="story_pause_title">СИМУЛЯЦИЯ НА ПАУЗЕ</h3>
+          <p style="color: #88ccaa; font-size: 13px; line-height: 1.4;" data-i18n="story_pause_desc">Состояние нейроинтерфейса сохранено в энергонезависимой памяти.</p>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px;">
+            <button class="story-btn" onclick="storyResume()" data-i18n="story_btn_resume">▶ ПРОДОЛЖИТЬ СИМУЛЯЦИЮ</button>
+            <button class="story-btn" onclick="storyRestart()" data-i18n="story_btn_restart">🔄 НАЧАТЬ ЗАНОВО (СБРОС)</button>
+            <button class="story-btn" onclick="closeStorySimulationModal()" style="border-color: #ff4444; color: #ff6666;" data-i18n="story_btn_exit">🚪 ВЫХОД В ЖИЛЯЧЕЙКУ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Choices Panel -->
+    <div class="story-choices-panel">
+      <div class="story-choices-header" data-i18n="story_choices_header">ВЫБОРЫ ДЕЙСТВИЯ:</div>
+      <div id="story-choices-container" class="story-choices-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="support-controls">
   <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
   <a id="btn-telegram-header" class="telegram-btn" href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer" title="Telegram канал Самосбора">
@@ -1558,6 +1733,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
+  <button id="btn-opt-story" class="audio-btn opt-btn" style="color: #00ffaa; border-color: rgba(0,255,170,0.5); font-weight: bold;" onclick="openStorySimulationModal()" data-i18n="opt_story_mode">📟 «С.С.Р.С. Хроники Гигахруща»</button>
     <a id="btn-opt-telegram" class="audio-btn opt-btn" style="color: #29b6f6; text-decoration: none; display: flex; align-items: center; gap: 6px;" href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer">
     <span>✈️</span> <span data-i18n="opt_telegram">Канал в Telegram</span>
   </a>
@@ -1665,6 +1841,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         <button id="open-achievements-btn" style="color: #ffd700; border-color: rgba(255,215,0,0.5);" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 ДОСТИЖЕНИЯ</button>
         <button id="open-raid-btn" style="color: #33d4ff; border-color: rgba(51, 212, 255, 0.6); font-weight: bold; background: rgba(0, 30, 45, 0.6);" onclick="openRaidModal()" data-i18n="btn_raid">👥 СОВМЕСТНАЯ ВЫЛАЗКА</button>
       </div>
+      <button id="open-story-btn" style="margin-top: 6px; width: 100%; color: #00ffaa; border-color: rgba(0,255,170,0.6); font-weight: bold; background: rgba(0, 35, 25, 0.7); letter-spacing: 1px;" onclick="openStorySimulationModal()" data-i18n="btn_story_simulation">📟 С.С.Р.С. // ХРОНИКИ ГИГАХРУЩА</button>
       <button id="open-map-btn" data-i18n="btn_map">ВЫХОД В БЛОК</button>
     </div>
   </div>
@@ -2321,6 +2498,16 @@ const I18N = {
     ach_total_rewards: "НАГРАДЫ:",
     btn_bestiary: "📖 БЕСТИАРИЙ",
     btn_raid: "👥 СОВМЕСТНАЯ ВЫЛАЗКА",
+    btn_story_simulation: "📟 С.С.Р.С. // ХРОНИКИ ГИГАХРУЩА",
+    opt_story_mode: "📟 «С.С.Р.С. Хроники Гигахруща»",
+    story_status_active: "[С.С.Р.С. СИМУЛЯЦИЯ АКТИВНА]",
+    story_btn_esc: "[ESC] ПАУЗА / МЕНЮ",
+    story_pause_title: "СИМУЛЯЦИЯ НА ПАУЗЕ",
+    story_pause_desc: "Состояние нейроинтерфейса сохранено в энергонезависимой памяти.",
+    story_btn_resume: "▶ ПРОДОЛЖИТЬ СИМУЛЯЦИЮ",
+    story_btn_restart: "🔄 НАЧАТЬ ЗАНОВО (СБРОС)",
+    story_btn_exit: "🚪 ВЫХОД В ЖИЛЯЧЕЙКУ",
+    story_choices_header: "ВЫБОРЫ ДЕЙСТВИЯ:",
     btn_info: "ℹ️ СПРАВКА",
     btn_options: "⚙️ ОПЦИИ",
     opt_guide: "🎓 Обучение и Гайд",
@@ -2549,6 +2736,16 @@ const I18N = {
     ach_total_rewards: "REWARDS:",
     btn_bestiary: "📖 BESTIARY",
     btn_raid: "👥 CO-OP SORTIE",
+    btn_story_simulation: "📟 S.S.R.S. // GIGAKHRUSHCH CHRONICLES",
+    opt_story_mode: "📟 \"S.S.R.S. Gigakhrushch Chronicles\"",
+    story_status_active: "[S.S.R.S. SIMULATION ACTIVE]",
+    story_btn_esc: "[ESC] PAUSE / MENU",
+    story_pause_title: "SIMULATION PAUSED",
+    story_pause_desc: "Neural interface state saved to non-volatile memory.",
+    story_btn_resume: "▶ RESUME SIMULATION",
+    story_btn_restart: "🔄 RESTART (RESET)",
+    story_btn_exit: "🚪 EXIT TO CELL",
+    story_choices_header: "ACTION CHOICES:",
     btn_info: "ℹ️ GUIDE",
     btn_options: "⚙️ OPTIONS",
     opt_guide: "🎓 Tutorial & Guide",
@@ -5164,6 +5361,7 @@ let activeRaidTab = 'chat';
 function openRaidModal() {
   document.getElementById('raid-modal').style.display = 'flex';
   updateActiveBackground();
+  renderMyRaidSquad(myActiveRaidSquad);
   socket.emit('getRaidSquads');
 }
 
@@ -5355,6 +5553,7 @@ function closeRaidCombatModal() {
   document.getElementById('rc-intermission-overlay').style.display = 'none';
   currentRaidCombat = null;
   myActiveRaidSquad = null;
+  renderMyRaidSquad(null);
   showScreen('hub-screen');
   updateActiveBackground();
 }
@@ -5448,10 +5647,10 @@ function renderRaidSquadsList(squads) {
   const container = document.getElementById('raid-squads-list');
   if (!container) return;
   container.innerHTML = '';
+  const isEn = (currentLang === 'en');
   
   if (!squads || squads.length === 0) {
-    const isEn = (currentLang === 'en');
-  container.innerHTML = `<div style="color:#888; font-size:12px; padding:16px; text-align:center; background:rgba(0,20,10,0.4); border:1px dashed var(--term-dim);">${isEn ? 'No open assault squads. Create your squad above!' : 'Нет открытых штурмовых отрядов. Создайте свой отряд выше!'}</div>`;
+    container.innerHTML = `<div style="color:#888; font-size:12px; padding:16px; text-align:center; background:rgba(0,20,10,0.4); border:1px dashed var(--term-dim);">${isEn ? 'No open assault squads. Create your squad above!' : 'Нет открытых штурмовых отрядов. Создайте свой отряд выше!'}</div>`;
     return;
   }
   
@@ -5499,12 +5698,14 @@ function renderMyRaidSquad(squad) {
   if (noSquadView) noSquadView.style.display = 'none';
   if (inSquadView) inSquadView.style.display = 'flex';
   
-  document.getElementById('raid-my-squad-name').innerText = squad.name;
+  const squadNameEl = document.getElementById('raid-my-squad-name');
+  if (squadNameEl) squadNameEl.innerText = squad.name;
   let isLeader = (clientMe && squad.leader === clientMe.username);
   let roleEl = document.getElementById('raid-my-squad-role');
   const isEn = (currentLang === 'en');
   if (roleEl) roleEl.innerText = isLeader ? (isEn ? '👑 COMMANDER' : '👑 КОМАНДИР') : (isEn ? 'SQUAD MEMBER' : 'БОЕЦ ОТРЯДА');
-  document.getElementById('raid-my-squad-count').innerText = `${squad.members.length}/4`;
+  const countEl = document.getElementById('raid-my-squad-count');
+  if (countEl) countEl.innerText = `${squad.members.length}/4`;
   
   let startBtn = document.getElementById('raid-start-btn');
   let readyBtn = document.getElementById('raid-ready-btn');
@@ -9100,5 +9301,6 @@ function renderAchievementsList() {
 window.addEventListener('DOMContentLoaded', applyLanguage);
 applyLanguage();
 </script>
+<script src="assets/samosborQuestEngine.js"></script>
 </body>
 </html>
