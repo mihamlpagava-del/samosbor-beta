@@ -1265,8 +1265,11 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
           ВОЛНА: <span id="rc-wave-num" style="color: var(--term-warn); font-size: 16px;">1</span> / 11
         </div>
       </div>
-      <div id="rc-wave-indicators" style="display: flex; gap: 4px; align-items: center;">
-        <!-- Точки волн 1..10 + 11 (босс) -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div id="rc-wave-indicators" style="display: flex; gap: 4px; align-items: center;">
+          <!-- Точки волн 1..10 + 11 (босс) -->
+        </div>
+        <button onclick="emergencyRaidRetreat()" style="width: auto; margin: 0; padding: 3px 10px; font-size: 11px; background: rgba(70,10,10,0.8); border-color: var(--term-danger); color: #ff9999;" title="Срочная эвакуация обратно в жилячейку">🚪 НА БАЗУ</button>
       </div>
     </div>
 
@@ -1529,7 +1532,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div class="audio-controls">
-  <button id="btn-achievements" class="audio-btn" style="border-color: rgba(255,215,0,0.55); color: #ffd700;" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 ДОСТИЖЕНИЯ</button>
+  
   <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);" data-i18n="btn_feedback">⚠️ БАГИ / ИДЕИ [Shift+P]</button>
   <button id="btn-bestiary" class="audio-btn" style="display:none;" data-i18n="btn_bestiary">📖 БЕСТИАРИЙ</button>
   <button id="btn-info" class="audio-btn" data-i18n="btn_info">ℹ️ СПРАВКА</button>
@@ -5012,21 +5015,63 @@ function sendQuickRaidRadio(txt) {
   socket.emit('sendRaidChatMessage', txt);
 }
 
+let raidAttackCooldownTimer = null;
+let raidDodgeCooldownTimer = null;
+
 function raidDoAttack() {
+  const btn = document.getElementById('rc-btn-attack');
+  if (!btn || btn.disabled) return;
   socket.emit('raidPlayerAttack');
-  let btn = document.getElementById('rc-btn-attack');
-  if (btn) {
-    btn.disabled = true;
-    setTimeout(() => { if (btn) btn.disabled = false; }, 400);
-  }
+  
+  btn.disabled = true;
+  let remainingMs = 1200;
+  btn.innerText = '⚔️ АТАКА (1.2с)';
+  
+  if (raidAttackCooldownTimer) clearInterval(raidAttackCooldownTimer);
+  const startTime = Date.now();
+  raidAttackCooldownTimer = setInterval(() => {
+    let elapsed = Date.now() - startTime;
+    let rem = Math.max(0, remainingMs - elapsed);
+    if (rem <= 0) {
+      clearInterval(raidAttackCooldownTimer);
+      raidAttackCooldownTimer = null;
+      btn.disabled = false;
+      btn.innerText = '⚔️ АТАКОВАТЬ';
+    } else {
+      btn.innerText = `⚔️ АТАКА (${(rem / 1000).toFixed(1)}с)`;
+    }
+  }, 100);
 }
 
 function raidDoDodge() {
+  const btn = document.getElementById('rc-btn-dodge');
+  if (!btn || btn.disabled) return;
   socket.emit('raidPlayerDodge');
-  let btn = document.getElementById('rc-btn-dodge');
-  if (btn) {
-    btn.disabled = true;
-    setTimeout(() => { if (btn) btn.disabled = false; }, 800);
+  
+  btn.disabled = true;
+  let remainingMs = 2500;
+  btn.innerText = '🛡️ УКЛОНЕНИЕ (2.5с)';
+  
+  if (raidDodgeCooldownTimer) clearInterval(raidDodgeCooldownTimer);
+  const startTime = Date.now();
+  raidDodgeCooldownTimer = setInterval(() => {
+    let elapsed = Date.now() - startTime;
+    let rem = Math.max(0, remainingMs - elapsed);
+    if (rem <= 0) {
+      clearInterval(raidDodgeCooldownTimer);
+      raidDodgeCooldownTimer = null;
+      btn.disabled = false;
+      btn.innerText = '🛡️ УКЛОНЕНИЕ';
+    } else {
+      btn.innerText = `🛡️ УКЛОНЕНИЕ (${(rem / 1000).toFixed(1)}с)`;
+    }
+  }, 100);
+}
+
+function emergencyRaidRetreat() {
+  if (confirm('Вы уверены, что хотите завершить вылазку и вернуться в жилячейку?')) {
+    socket.emit('leaveRaidSquad');
+    closeRaidCombatModal();
   }
 }
 
@@ -5039,11 +5084,25 @@ function voteRaidIntermission(choice) {
   let bCont = document.getElementById('rc-btn-vote-continue');
   let bEvac = document.getElementById('rc-btn-vote-evacuate');
   if (choice === 'continue') {
-    if (bCont) { bCont.style.borderWidth = '3px'; bCont.style.boxShadow = '0 0 12px #00ff66'; }
-    if (bEvac) { bEvac.style.opacity = '0.5'; }
+    if (bCont) { bCont.style.borderWidth = '3px'; bCont.style.boxShadow = '0 0 12px #00ff66'; bCont.disabled = true; }
+    if (bEvac) { bEvac.style.opacity = '0.5'; bEvac.disabled = true; }
   } else {
-    if (bEvac) { bEvac.style.borderWidth = '3px'; bEvac.style.boxShadow = '0 0 12px #ff5555'; }
-    if (bCont) { bCont.style.opacity = '0.5'; }
+    if (bEvac) { bEvac.style.borderWidth = '3px'; bEvac.style.boxShadow = '0 0 12px #ff5555'; bEvac.disabled = true; }
+    if (bCont) { bCont.style.opacity = '0.5'; bCont.disabled = true; }
+  }
+
+  // Немедленно обновляем отображение собственного голоса в списке
+  if (clientMe) {
+    const votesList = document.getElementById('rc-int-votes-list');
+    if (votesList) {
+      const allRows = votesList.querySelectorAll('div');
+      allRows.forEach(row => {
+        if (row.innerText.includes(clientMe.username)) {
+          let badge = (choice === 'evacuate') ? '<span style="color:#ff6666; font-weight:bold;">🚪 За эвакуацию</span>' : '<span style="color:#00ff66; font-weight:bold;">⚔️ За продолжение</span>';
+          row.innerHTML = `<span style="color:var(--term-warn); font-weight:bold;">${clientMe.username} (Вы)</span> ${badge}`;
+        }
+      });
+    }
   }
 }
 
@@ -5547,6 +5606,11 @@ function renderIntermission(data) {
   }
 }
 
+socket.on('raidIntermissionTimerTick', (d) => {
+  let timerEl = document.getElementById('rc-int-timer');
+  if (timerEl) timerEl.innerText = d.timer;
+});
+
 socket.on('raidIntermissionStarted', (data) => {
   playSound('buy');
   renderIntermission(data);
@@ -5581,9 +5645,12 @@ socket.on('raidSortieEnded', (result) => {
       titleEl.innerText = '🚪 УСПЕШНАЯ ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ';
       titleEl.style.color = '#33d4ff';
       detailsEl.innerHTML = `
-        <div style="font-size:16px; color:#a0d8ef; margin-bottom:8px;">Отряд принял решение прервать вылазку на волне ${result.clearedWave}.</div>
-        <div style="margin-bottom:8px;">Все заработанные талоны, опыт и трофеи сохранены и доставлены в жилячейку!</div>
+        <div style="font-size:16px; color:#a0d8ef; margin-bottom:8px;">Вылазка успешно завершена на волне ${result.clearedWave}.</div>
+        <div style="margin-bottom:8px;">Все заработанные талоны, опыт и трофеи доставлены на базу!</div>
       `;
+      setTimeout(() => {
+        closeRaidCombatModal();
+      }, 2500);
     } else {
       titleEl.innerText = '🏆 ВЫЛАЗКА УСПЕШНО ЗАВЕРШЕНА!';
       titleEl.style.color = '#ffd700';

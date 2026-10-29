@@ -423,6 +423,101 @@ function getSquadClientData(sq) {
     };
 }
 
+function getIntermissionData(sq) {
+    if (!sq) return null;
+    return {
+        clearedWave: sq.clearedWave || sq.currentWave || 1,
+        nextWave: (sq.clearedWave || sq.currentWave || 1) + 1,
+        timer: Math.max(0, Math.ceil(sq.intermissionTimer || 15)),
+        votes: sq.votes || {},
+        members: sq.members ? sq.members.map(m => m.username) : []
+    };
+}
+
+function resolveRaidIntermission(squad) {
+    if (!squad || squad.status !== 'intermission') return;
+    let evacCount = squad.members.filter(m => squad.votes && squad.votes[m.username] === 'evacuate').length;
+    let contCount = squad.members.filter(m => squad.votes && squad.votes[m.username] === 'continue').length;
+    let totalMembers = squad.members.length;
+
+    let shouldEvacuate = false;
+    if (totalMembers <= 1) {
+        shouldEvacuate = (evacCount > 0);
+    } else {
+        shouldEvacuate = (evacCount >= Math.ceil(totalMembers / 2));
+    }
+
+    if (shouldEvacuate) {
+        squad.status = 'ended';
+        squad.members.forEach(m => {
+            let mp = db.players[m.username];
+            if (mp) {
+                mp.location = 'safe_room';
+                if (mp.hp <= 0) mp.hp = 50;
+            }
+        });
+        broadcastToSquad(squad, 'raidSortieEnded', {
+            win: true,
+            evacuated: true,
+            clearedWave: squad.clearedWave,
+            reason: 'ОТРЯД ПРИНЯЛ РЕШЕНИЕ ЭВАКУИРОВАТЬСЯ В ЖИЛЯЧЕЙКУ С ТРОФЕЯМИ!'
+        });
+        delete coopSquads[squad.id];
+        saveDB();
+        broadcastGameState();
+        return;
+    }
+
+    squad.currentWave = (squad.clearedWave || squad.currentWave) + 1;
+    squad.votes = {};
+    if (squad.currentWave <= 10) {
+        let mob = RAID_WAVE_MONSTERS[squad.currentWave - 1];
+        let hpMult = 1 + (squad.members.length - 1) * 0.45;
+        squad.enemy = {
+            name: mob.name,
+            hp: Math.floor(mob.hp * hpMult),
+            maxHp: Math.floor(mob.hp * hpMult),
+            dmg: mob.dmg,
+            def: mob.def,
+            reward: mob.reward,
+            xp: mob.xp,
+            img: mob.img,
+            tier: mob.tier
+        };
+        squad.eTimer = 2.5;
+        squad.logs.push('[ВОЛНА ' + squad.currentWave + '/11] Штурм продолжается! Появился ' + squad.enemy.name + '!');
+        broadcastToSquad(squad, 'playSound', 'buy');
+    } else if (squad.currentWave === 11) {
+        let bossRoll = Math.random() < 0.5 ? 'blue' : 'purple';
+        let bossConfig = RAID_ELITE_BOSSES[bossRoll];
+        let hpMult = 1 + (squad.members.length - 1) * 0.5;
+        squad.enemy = {
+            name: bossConfig.name,
+            hp: Math.floor(bossConfig.hp * hpMult),
+            maxHp: Math.floor(bossConfig.hp * hpMult),
+            dmg: bossConfig.dmg,
+            def: bossConfig.def,
+            reward: bossConfig.reward,
+            xp: bossConfig.xp,
+            img: bossConfig.img,
+            tier: bossConfig.tier,
+            colorTheme: bossConfig.colorTheme,
+            badge: bossConfig.badge,
+            lore: bossConfig.lore,
+            lootTable: bossConfig.lootTable
+        };
+        squad.eTimer = 3.0;
+        squad.logs.push('[ТРЕВОГА МАКСИМАЛЬНОГО УРОВНЯ] 10 волн отбито! ПОЯВИЛСЯ ' + squad.enemy.name + '! ' + squad.enemy.lore);
+        broadcastToSquad(squad, 'playSound', 'defeat');
+    }
+    squad.status = 'combat';
+    broadcastToSquad(squad, 'raidWaveStarted', {
+        currentWave: squad.currentWave,
+        maxWaves: squad.maxWaves,
+        enemy: squad.enemy
+    });
+}
+
 function getOnlinePlayersList() {
     let list = [];
     let seen = new Set();
@@ -2750,6 +2845,12 @@ io.on('connection', (socket) => {
             socket.emit('terminalError', 'ВЫ ТЯЖЕЛО РАНЕНЫ! Ждите помощи медика.');
             return;
         }
+        let now = Date.now();
+        member.lastAttackTime = member.lastAttackTime || 0;
+        if (now - member.lastAttackTime < 1100) {
+            return;
+        }
+        member.lastAttackTime = now;
         let stats = getPlayerStats(p);
         let pDmg = Math.max(4, stats.dmg - Math.floor((squad.enemy.def || 0) / 2));
         let isCrit = (Math.random() < (stats.crit || 0.1));
@@ -2772,6 +2873,12 @@ io.on('connection', (socket) => {
         if (!squad || squad.status !== 'combat') return;
         let member = squad.members.find(m => m.username === username);
         if (!member || member.isDowned) return;
+        let now = Date.now();
+        member.lastDodgeTime = member.lastDodgeTime || 0;
+        if (now - member.lastDodgeTime < 2400) {
+            return;
+        }
+        member.lastDodgeTime = now;
         member.pDodging = true;
         squad.vfx = squad.vfx || [];
         squad.vfx.push({ type: 'player_dodge', target: username });
@@ -4673,99 +4780,7 @@ setInterval(() => {
         }
     }
 
-function getIntermissionData(sq) {
-    return {
-        clearedWave: sq.clearedWave || sq.currentWave,
-        nextWave: (sq.clearedWave || sq.currentWave) + 1,
-        timer: Math.max(0, Math.ceil(sq.intermissionTimer || 15)),
-        votes: sq.votes || {},
-        members: sq.members.map(m => m.username)
-    };
-}
 
-function resolveRaidIntermission(squad) {
-    if (!squad || squad.status !== 'intermission') return;
-    let evacCount = squad.members.filter(m => squad.votes && squad.votes[m.username] === 'evacuate').length;
-    let contCount = squad.members.filter(m => squad.votes && squad.votes[m.username] === 'continue').length;
-    let totalMembers = squad.members.length;
-
-    let shouldEvacuate = false;
-    if (totalMembers === 1) {
-        shouldEvacuate = (evacCount > 0);
-    } else {
-        shouldEvacuate = (evacCount >= Math.ceil(totalMembers / 2));
-    }
-
-    if (shouldEvacuate) {
-        squad.status = 'ended';
-        squad.members.forEach(m => {
-            let mp = db.players[m.username];
-            if (mp) {
-                mp.location = 'safe_room';
-                if (mp.hp <= 0) mp.hp = 50;
-            }
-        });
-        broadcastToSquad(squad, 'raidSortieEnded', {
-            win: true,
-            evacuated: true,
-            clearedWave: squad.clearedWave,
-            reason: 'ОТРЯД ПРИНЯЛ РЕШЕНИЕ ЭВАКУИРОВАТЬСЯ В ЖИЛЯЧЕЙКУ С ТРОФЕЯМИ!'
-        });
-        delete coopSquads[squad.id];
-        saveDB();
-        broadcastGameState();
-        return;
-    }
-
-    squad.currentWave = (squad.clearedWave || squad.currentWave) + 1;
-    squad.votes = {};
-    if (squad.currentWave <= 10) {
-        let mob = RAID_WAVE_MONSTERS[squad.currentWave - 1];
-        let hpMult = 1 + (squad.members.length - 1) * 0.45;
-        squad.enemy = {
-            name: mob.name,
-            hp: Math.floor(mob.hp * hpMult),
-            maxHp: Math.floor(mob.hp * hpMult),
-            dmg: mob.dmg,
-            def: mob.def,
-            reward: mob.reward,
-            xp: mob.xp,
-            img: mob.img,
-            tier: mob.tier
-        };
-        squad.eTimer = 2.5;
-        squad.logs.push('[ВОЛНА ' + squad.currentWave + '/11] Штурм продолжается! Появился ' + squad.enemy.name + '!');
-        broadcastToSquad(squad, 'playSound', 'buy');
-    } else if (squad.currentWave === 11) {
-        let bossRoll = Math.random() < 0.5 ? 'blue' : 'purple';
-        let bossConfig = RAID_ELITE_BOSSES[bossRoll];
-        let hpMult = 1 + (squad.members.length - 1) * 0.5;
-        squad.enemy = {
-            name: bossConfig.name,
-            hp: Math.floor(bossConfig.hp * hpMult),
-            maxHp: Math.floor(bossConfig.hp * hpMult),
-            dmg: bossConfig.dmg,
-            def: bossConfig.def,
-            reward: bossConfig.reward,
-            xp: bossConfig.xp,
-            img: bossConfig.img,
-            tier: bossConfig.tier,
-            colorTheme: bossConfig.colorTheme,
-            badge: bossConfig.badge,
-            lore: bossConfig.lore,
-            lootTable: bossConfig.lootTable
-        };
-        squad.eTimer = 3.0;
-        squad.logs.push('[ТРЕВОГА МАКСИМАЛЬНОГО УРОВНЯ] 10 волн отбито! ПОЯВИЛСЯ ' + squad.enemy.name + '! ' + squad.enemy.lore);
-        broadcastToSquad(squad, 'playSound', 'defeat');
-    }
-    squad.status = 'combat';
-    broadcastToSquad(squad, 'raidWaveStarted', {
-        currentWave: squad.currentWave,
-        maxWaves: squad.maxWaves,
-        enemy: squad.enemy
-    });
-}
 
     // ===== ТАКТИЧЕСКИЙ ЦИКЛ БОЯ СОВМЕСТНОЙ ВЫЛАЗКИ =====
     for (let squadId in coopSquads) {
@@ -4775,6 +4790,11 @@ function resolveRaidIntermission(squad) {
         // Если отряд на тактическом перерыве между волнами
         if (squad.status === 'intermission') {
             squad.intermissionTimer = (squad.intermissionTimer || 15) - 0.25;
+            let currentSec = Math.max(0, Math.ceil(squad.intermissionTimer));
+            if (currentSec !== squad.lastTimerSec) {
+                squad.lastTimerSec = currentSec;
+                broadcastToSquad(squad, 'raidIntermissionTimerTick', { timer: currentSec });
+            }
             if (squad.intermissionTimer <= 0) {
                 resolveRaidIntermission(squad);
             }
