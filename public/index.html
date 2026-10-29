@@ -1056,6 +1056,64 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .downed-card {
   animation: downedFlash 1.5s infinite ease-in-out;
 }
+@keyframes floatUpFade {
+  0% { transform: translateY(0) scale(0.9); opacity: 1; }
+  50% { transform: translateY(-24px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-48px) scale(1); opacity: 0; }
+}
+.raid-floating-text {
+  position: absolute;
+  pointer-events: none;
+  font-weight: bold;
+  font-size: 15px;
+  text-shadow: 0 0 6px rgba(0,0,0,0.9), 1px 1px 3px #000;
+  animation: floatUpFade 0.95s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  z-index: 100;
+  white-space: nowrap;
+}
+.raid-floating-crit {
+  font-size: 21px;
+  animation: floatUpFade 1.15s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  text-shadow: 0 0 12px rgba(255,50,0,0.9), 0 0 4px #fff;
+}
+.raid-member-unit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100px;
+  min-width: 85px;
+  transition: transform 0.2s ease;
+}
+.raid-char-figure {
+  position: relative;
+  width: 90px;
+  height: 155px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+.raid-char-figure img {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.raid-char-figure.downed {
+  transform: rotate(82deg) translateY(24px) scale(0.88);
+  filter: grayscale(75%) brightness(0.65);
+  opacity: 0.85;
+}
+.raid-tab-btn.active {
+  background: rgba(0,45,30,0.95) !important;
+  color: var(--term-main) !important;
+  border-bottom: 2px solid var(--term-main) !important;
+}
 .chat-online-row:hover {
   background: rgba(0, 50, 20, 0.5) !important;
   cursor: pointer;
@@ -1195,9 +1253,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
-<!-- МОДАЛЬНОЕ ОКНО АКТИВНОГО БОЯ СОВМЕСТНОЙ ВЫЛАЗКИ -->
+<!-- МОДАЛЬНОЕ ОКНО АКТИВНОГО БОЯ СОВМЕСТНОЙ ВЫЛАЗКИ (ВИЗУАЛЬНАЯ АРЕНА + ВКЛАДКИ) -->
 <div id="raid-combat-modal" class="modal-overlay" style="z-index: 90; display: none;">
-  <div class="shop-panel" style="width: 920px; max-width: 98vw; height: 720px; max-height: 94vh; display: flex; flex-direction: column; border: 2px solid #33d4ff; box-shadow: 0 0 25px rgba(51,212,255,0.3); position: relative;">
+  <div class="shop-panel" style="width: 980px; max-width: 98vw; height: 740px; max-height: 95vh; display: flex; flex-direction: column; border: 2px solid #33d4ff; box-shadow: 0 0 25px rgba(51,212,255,0.3); position: relative; padding: 12px;">
     
     <!-- Шапка боя и счетчик волн -->
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(51,212,255,0.4); padding-bottom: 8px; margin-bottom: 8px;">
@@ -1218,48 +1276,61 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <!-- Основная боевая арена -->
     <div style="display: flex; gap: 12px; flex-grow: 1; min-height: 0; margin-bottom: 8px;">
       
-      <!-- Левая часть: Монстр волны + Боевые действия игрока -->
-      <div style="flex: 1.2; min-width: 0; display: flex; flex-direction: column; background: rgba(0,15,20,0.6); border: 1px solid rgba(51,212,255,0.3); padding: 10px; border-radius: 4px;">
+      <!-- ЛЕВАЯ ЧАСТЬ: ВИЗУАЛЬНАЯ АРЕНА (Штурмовой отряд VS Монстр) -->
+      <div style="flex: 1.5; min-width: 0; display: flex; flex-direction: column; background: rgba(0,12,18,0.7); border: 1px solid rgba(51,212,255,0.3); padding: 10px; border-radius: 4px; position: relative;">
         
-        <!-- Карточка монстра -->
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; min-height: 180px; position: relative;">
-          <div id="rc-monster-tier-badge" style="position: absolute; top: 0; left: 0; font-size: 11px; padding: 2px 8px; border-radius: 3px; background: rgba(0,0,0,0.6); border: 1px solid #555; color: #aaa;">ОБЫЧНЫЙ</div>
-          <img id="rc-monster-img" src="assets/monsters/m_slime.png" alt="Мутант" style="max-height: 140px; max-width: 180px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(51,212,255,0.4)); margin-bottom: 8px; transition: transform 0.15s ease;">
-          <div id="rc-monster-name" style="font-size: 15px; font-weight: bold; color: var(--term-main); margin-bottom: 6px; text-align: center;">Хлюп-Мутант Сливной Трубы</div>
+        <!-- Верх арены: Фигуры бойцов отряда слева + Монстр справа -->
+        <div id="rc-battle-stage" style="flex: 1; min-height: 240px; display: flex; justify-content: space-between; align-items: flex-end; position: relative; border-bottom: 1px solid rgba(51,212,255,0.2); padding-bottom: 8px; overflow: hidden; background: radial-gradient(circle at center, rgba(0,40,50,0.3) 0%, rgba(0,10,15,0.7) 100%);">
           
-          <!-- Полоса здоровья монстра -->
-          <div style="width: 85%; background: #222; border: 1px solid #555; height: 18px; border-radius: 9px; overflow: hidden; position: relative;">
-            <div id="rc-monster-hp-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); transition: width 0.2s ease;"></div>
-            <div id="rc-monster-hp-text" style="position: absolute; width: 100%; top: 0; left: 0; text-align: center; font-size: 11px; line-height: 18px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000;">220 / 220</div>
+          <!-- Левая сторона сцены: Штурмовой отряд (до 4 фигурок) -->
+          <div id="rc-squad-stage" style="display: flex; gap: 8px; align-items: flex-end; max-width: 65%; flex-wrap: nowrap; overflow-x: auto; padding-left: 6px;">
+            <!-- Динамически заполняются фигуры бойцов отряда -->
+          </div>
+
+          <!-- Разделитель VS -->
+          <div style="color: rgba(51,212,255,0.4); font-weight: bold; font-size: 14px; margin-bottom: 50px; text-shadow: 0 0 8px rgba(51,212,255,0.5);">VS</div>
+
+          <!-- Правая сторона сцены: Монстр волны -->
+          <div id="rc-monster-container" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 170px; flex-shrink: 0; position: relative; margin-right: 6px;">
+            <div id="rc-monster-tier-badge" style="position: absolute; top: 0; right: 0; font-size: 10px; padding: 2px 6px; border-radius: 3px; background: rgba(0,0,0,0.6); border: 1px solid #555; color: #aaa;">ОБЫЧНЫЙ</div>
+            <div id="rc-monster-vfx" class="vfx-container" style="position: absolute; inset: 0; pointer-events: none;"></div>
+            <img id="rc-monster-img" src="assets/monsters/m_slime.png" alt="Мутант" style="max-height: 140px; max-width: 160px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(51,212,255,0.4)); margin-bottom: 6px; transition: transform 0.15s ease;">
+            <div id="rc-monster-name" style="font-size: 13px; font-weight: bold; color: var(--term-main); margin-bottom: 4px; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Хлюп-Мутант Сливной Трубы</div>
+            
+            <!-- Полоса здоровья монстра -->
+            <div style="width: 100%; background: #222; border: 1px solid #555; height: 16px; border-radius: 8px; overflow: hidden; position: relative;">
+              <div id="rc-monster-hp-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); transition: width 0.2s ease;"></div>
+              <div id="rc-monster-hp-text" style="position: absolute; width: 100%; top: 0; left: 0; text-align: center; font-size: 10px; line-height: 16px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000;">220 / 220</div>
+            </div>
           </div>
         </div>
 
         <!-- Кнопки действий игрока -->
-        <div style="display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid rgba(51,212,255,0.25); padding-top: 10px;">
-          <button id="rc-btn-attack" onclick="raidDoAttack()" style="flex: 1.5; margin: 0; padding: 10px; font-size: 14px; font-weight: bold; background: rgba(80,20,20,0.8); border-color: #ff5555; color: #fff;">⚔️ АТАКОВАТЬ</button>
-          <button id="rc-btn-dodge" onclick="raidDoDodge()" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; font-weight: bold; background: rgba(20,60,80,0.8); border-color: #33d4ff; color: #33d4ff;">🛡️ УКЛОНЕНИЕ</button>
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+          <button id="rc-btn-attack" onclick="raidDoAttack()" style="flex: 1.5; margin: 0; padding: 10px; font-size: 14px; font-weight: bold; background: rgba(80,20,20,0.85); border-color: #ff5555; color: #fff;">⚔️ АТАКОВАТЬ</button>
+          <button id="rc-btn-dodge" onclick="raidDoDodge()" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; font-weight: bold; background: rgba(20,60,80,0.85); border-color: #33d4ff; color: #33d4ff;">🛡️ УКЛОНЕНИЕ</button>
         </div>
       </div>
 
-      <!-- Правая часть: Состав отряда (HP + Кнопки Реанимации) + Радиосвязь / Логи -->
-      <div style="flex: 1.3; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+      <!-- ПРАВАЯ ЧАСТЬ: ВКЛАДКИ (РАДИОСВЯЗЬ / ЧАТ ОТРЯДА vs БОЕВОЙ ЖУРНАЛ) -->
+      <div style="flex: 1.2; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--term-dim); background: rgba(0,14,5,0.75); border-radius: 4px; overflow: hidden;">
         
-        <!-- Карточки бойцов отряда -->
-        <div id="rc-squad-status-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto;">
-          <!-- Динамически заполняются карточки с кнопками [ 💉 ОЖИВИТЬ АПТЕЧКОЙ ] -->
+        <!-- Заголовки вкладок -->
+        <div style="display: flex; background: rgba(0,25,12,0.9); border-bottom: 1px solid var(--term-dim);">
+          <button id="rc-tab-chat-btn" class="raid-tab-btn active" onclick="switchRaidTab('chat')" style="flex: 1; margin: 0; padding: 8px 10px; font-size: 11px; font-weight: bold; background: rgba(0,45,20,0.9); border: none; border-bottom: 2px solid var(--term-main); color: var(--term-main);">
+            📻 РАДИОСВЯЗЬ / ЧАТ
+          </button>
+          <button id="rc-tab-logs-btn" class="raid-tab-btn" onclick="switchRaidTab('logs')" style="flex: 1; margin: 0; padding: 8px 10px; font-size: 11px; font-weight: bold; background: transparent; border: none; border-bottom: 2px solid transparent; color: #888;">
+            📜 БОЕВОЙ ЖУРНАЛ <span id="rc-logs-badge" style="display: none; background: #ffaa00; color: #000; font-size: 9px; padding: 1px 4px; border-radius: 6px; margin-left: 2px;">!</span>
+          </button>
         </div>
 
-        <!-- Окно тактического чата и боевых логов -->
-        <div style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--term-dim); background: rgba(0,15,5,0.7); padding: 8px; border-radius: 4px;">
-          <div style="font-size: 11px; color: #888; border-bottom: 1px solid var(--term-dim); padding-bottom: 3px; margin-bottom: 4px; display: flex; justify-content: space-between;">
-            <span>📻 ТАКТИЧЕСКИЙ РАДИОКАНАЛ // БОЕВОЙ ЛОГ</span>
-            <span style="color: #33d4ff;">РЕАЛЬНОЕ ВРЕМЯ</span>
+        <!-- Вкладка 1: Радиосвязь / Чат отряда (только сообщения бойцов!) -->
+        <div id="rc-tab-chat-content" style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px;">
+          <div id="rc-chat-messages" style="flex-grow: 1; overflow-y: auto; font-size: 12px; line-height: 1.45; color: #ddd; word-break: break-word; padding-right: 4px;">
+            <div style="color: #666; font-size: 11px; padding: 6px;">Радиоканал штурмового отряда на связи. Координируйте цели и сообщайте о ранениях!</div>
           </div>
           
-          <div id="rc-chat-log" style="flex-grow: 1; overflow-y: auto; font-size: 12px; line-height: 1.45; color: #ddd; word-break: break-word; padding-right: 4px;">
-            <!-- Сообщения логов боя и реплики бойцов -->
-          </div>
-
           <!-- Быстрые команды радиосвязи -->
           <div style="display: flex; gap: 4px; margin: 6px 0 4px 0; overflow-x: auto; padding-bottom: 2px;">
             <button onclick="sendQuickRaidRadio('🚑 ВРАЧ, НУЖНА АПТЕЧКА!')" style="font-size: 10px; padding: 2px 6px; width: auto; margin: 0; background: rgba(70,10,10,0.7); border-color: #ff6666; color: #ff9999;">🚑 ВРАЧ, АПТЕЧКУ!</button>
@@ -1272,11 +1343,51 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
             <button onclick="sendRaidCombatChat()" style="width: auto; margin: 0; padding: 6px 14px; font-size: 12px; font-weight: bold;">СКАЗАТЬ</button>
           </div>
         </div>
+
+        <!-- Вкладка 2: Боевой журнал (логи ударов, урона, уклонений) -->
+        <div id="rc-tab-logs-content" style="flex-grow: 1; min-height: 0; display: none; flex-direction: column; padding: 8px;">
+          <div id="rc-combat-logs" style="flex-grow: 1; overflow-y: auto; font-size: 11.5px; line-height: 1.45; color: #aaa; word-break: break-word; padding-right: 4px;">
+            <!-- Логи боя поступают сюда -->
+          </div>
+          <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+            <button onclick="clearRaidCombatLogs()" style="width: auto; margin: 0; padding: 2px 8px; font-size: 10px; color: #888;">ОЧИСТИТЬ ЛОГ</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ОВЕРЛЕЙ ТАКТИЧЕСКОГО ПЕРЕРЫВА И ГОЛОСОВАНИЯ МЕЖДУ ВОЛНАМИ -->
+    <div id="rc-intermission-overlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,14,22,0.95); z-index: 105; border-radius: 4px; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;">
+      <div style="font-size: 24px; font-weight: bold; color: #ffd700; margin-bottom: 6px; letter-spacing: 2px; text-shadow: 0 0 12px rgba(255,215,0,0.6);">
+        🏆 ВОЛНА <span id="rc-int-cleared-wave">1</span> ЗАЧИЩЕНА!
+      </div>
+      <div style="font-size: 14px; color: #a0d8ef; margin-bottom: 12px;">
+        ТАКТИЧЕСКИЙ ПЕРЕРЫВ // ГОЛОСОВАНИЕ ОТРЯДА
+      </div>
+      <div style="background: rgba(0,30,40,0.8); border: 1px solid rgba(51,212,255,0.4); padding: 10px 16px; border-radius: 4px; margin-bottom: 14px; max-width: 500px; font-size: 13px;">
+        ⏰ До автоматического решения: <span id="rc-int-timer" style="color: var(--term-warn); font-weight: bold; font-size: 16px;">15</span> сек.
+        <div style="color: #aaa; font-size: 11px; margin-top: 4px;">Все полученные талоны и опыт уже сохранены. При эвакуации вы безопасно вернётесь в жилячейку со всеми трофеями.</div>
+      </div>
+
+      <!-- Статус голосов каждого бойца -->
+      <div id="rc-int-votes-list" style="display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 440px; margin-bottom: 18px;">
+        <!-- Заполняется динамически -->
+      </div>
+
+      <!-- Кнопки выбора голоса -->
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;">
+        <button id="rc-btn-vote-continue" onclick="voteRaidIntermission('continue')" style="width: auto; margin: 0; padding: 12px 24px; font-size: 14px; font-weight: bold; background: rgba(0,70,35,0.85); border-color: #00ff66; color: #fff;">
+          ⚔️ СЛЕДУЮЩАЯ ВОЛНА (<span id="rc-int-next-wave">2</span>/11)
+        </button>
+        <button id="rc-btn-vote-evacuate" onclick="voteRaidIntermission('evacuate')" style="width: auto; margin: 0; padding: 12px 24px; font-size: 14px; font-weight: bold; background: rgba(80,25,25,0.85); border-color: #ff5555; color: #ffcccc;">
+          🚪 ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ
+        </button>
       </div>
     </div>
 
     <!-- Оверлей результатов вылазки (Победа или Вайп) -->
-    <div id="rc-result-overlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,10,15,0.95); z-index: 100; border-radius: 4px; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;">
+    <div id="rc-result-overlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,10,15,0.95); z-index: 110; border-radius: 4px; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;">
       <div id="rc-result-title" style="font-size: 24px; font-weight: bold; margin-bottom: 12px; letter-spacing: 2px;"></div>
       <div id="rc-result-details" style="font-size: 14px; line-height: 1.6; max-width: 600px; margin-bottom: 20px; color: #ddd;"></div>
       <button onclick="closeRaidCombatModal()" style="width: auto; margin: 0; padding: 12px 32px; font-size: 16px; font-weight: bold; border-color: var(--term-main); color: var(--term-main); background: rgba(0,40,10,0.8);">ВЕРНУТЬСЯ НА БАЗУ</button>
@@ -4807,6 +4918,7 @@ socket.on('onlineList', (l) => renderOnlineList(l));
 // ===== КЛИЕНТСКИЙ МОДУЛЬ СОВМЕСТНОЙ ВЫЛАЗКИ (РЕЙД) =====
 let myActiveRaidSquad = null;
 let currentRaidCombat = null;
+let activeRaidTab = 'chat';
 
 function openRaidModal() {
   document.getElementById('raid-modal').style.display = 'flex';
@@ -4849,6 +4961,33 @@ function startRaidSortie() {
   socket.emit('startRaidSortie');
 }
 
+function switchRaidTab(tab) {
+  activeRaidTab = tab;
+  const chatBtn = document.getElementById('rc-tab-chat-btn');
+  const logsBtn = document.getElementById('rc-tab-logs-btn');
+  const chatContent = document.getElementById('rc-tab-chat-content');
+  const logsContent = document.getElementById('rc-tab-logs-content');
+  const badge = document.getElementById('rc-logs-badge');
+
+  if (tab === 'chat') {
+    if (chatBtn) chatBtn.classList.add('active');
+    if (logsBtn) logsBtn.classList.remove('active');
+    if (chatContent) chatContent.style.display = 'flex';
+    if (logsContent) logsContent.style.display = 'none';
+  } else {
+    if (logsBtn) logsBtn.classList.add('active');
+    if (chatBtn) chatBtn.classList.remove('active');
+    if (logsContent) logsContent.style.display = 'flex';
+    if (chatContent) chatContent.style.display = 'none';
+    if (badge) badge.style.display = 'none';
+  }
+}
+
+function clearRaidCombatLogs() {
+  const c = document.getElementById('rc-combat-logs');
+  if (c) c.innerHTML = '<div style="color:#666; font-size:11px; padding:4px;">Лог очищен.</div>';
+}
+
 function sendRaidLobbyChat() {
   let inp = document.getElementById('raid-lobby-chat-input');
   if (!inp) return;
@@ -4858,10 +4997,6 @@ function sendRaidLobbyChat() {
     inp.value = '';
   }
 }
-document.addEventListener('DOMContentLoaded', () => {
-  let li = document.getElementById('raid-lobby-chat-input');
-  if (li) li.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendRaidLobbyChat(); });
-});
 
 function sendRaidCombatChat() {
   let inp = document.getElementById('rc-chat-input');
@@ -4899,13 +5034,109 @@ function reviveRaidTeammate(targetUsername) {
   socket.emit('reviveRaidTeammate', { targetUsername: targetUsername });
 }
 
+function voteRaidIntermission(choice) {
+  socket.emit('voteRaidIntermission', choice);
+  let bCont = document.getElementById('rc-btn-vote-continue');
+  let bEvac = document.getElementById('rc-btn-vote-evacuate');
+  if (choice === 'continue') {
+    if (bCont) { bCont.style.borderWidth = '3px'; bCont.style.boxShadow = '0 0 12px #00ff66'; }
+    if (bEvac) { bEvac.style.opacity = '0.5'; }
+  } else {
+    if (bEvac) { bEvac.style.borderWidth = '3px'; bEvac.style.boxShadow = '0 0 12px #ff5555'; }
+    if (bCont) { bCont.style.opacity = '0.5'; }
+  }
+}
+
 function closeRaidCombatModal() {
   document.getElementById('raid-combat-modal').style.display = 'none';
   document.getElementById('rc-result-overlay').style.display = 'none';
+  document.getElementById('rc-intermission-overlay').style.display = 'none';
   currentRaidCombat = null;
   myActiveRaidSquad = null;
   showScreen('hub-screen');
   updateActiveBackground();
+}
+
+function spawnFloatingText(targetEl, text, color = '#ff3333', isBig = false) {
+  if (!targetEl) return;
+  const floater = document.createElement('div');
+  floater.className = 'raid-floating-text' + (isBig ? ' raid-floating-crit' : '');
+  floater.innerText = text;
+  floater.style.color = color;
+  floater.style.left = (Math.random() * 35 + 20) + '%';
+  floater.style.top = (Math.random() * 20 + 20) + '%';
+  targetEl.appendChild(floater);
+  setTimeout(() => floater.remove(), isBig ? 1100 : 900);
+}
+
+function renderRaidSquadFigures(members) {
+  const stage = document.getElementById('rc-squad-stage');
+  if (!stage) return;
+  stage.innerHTML = '';
+  if (!members || members.length === 0) return;
+
+  let amIDowned = false;
+  if (clientMe) {
+    let myM = members.find(m => m.username === clientMe.username);
+    if (myM && myM.isDowned) amIDowned = true;
+  }
+
+  let attackBtn = document.getElementById('rc-btn-attack');
+  let dodgeBtn = document.getElementById('rc-btn-dodge');
+  if (attackBtn) attackBtn.disabled = amIDowned;
+  if (dodgeBtn) dodgeBtn.disabled = amIDowned;
+
+  members.forEach(m => {
+    let unit = document.createElement('div');
+    unit.className = 'raid-member-unit';
+    unit.id = `rc-member-unit-${m.username}`;
+
+    let isMe = (clientMe && m.username === clientMe.username);
+    let skinId = m.skin || 'skin_1';
+    let eq = m.equipment || {};
+
+    let clothesImg = (eq.clothes && GAME_ITEMS[eq.clothes]) ? `<img src="assets/clothes/${GAME_ITEMS[eq.clothes].iconId || eq.clothes}.png" style="z-index:2;">` : '';
+    let maskImg = (eq.mask && GAME_ITEMS[eq.mask]) ? `<img src="assets/mask/${GAME_ITEMS[eq.mask].iconId || eq.mask}.png" style="z-index:3;">` : '';
+    let weaponImg = (eq.weapon && GAME_ITEMS[eq.weapon]) ? `<img src="assets/weapon/${GAME_ITEMS[eq.weapon].iconId || eq.weapon}.png" style="z-index:4;">` : '';
+
+    let hpPct = Math.max(0, Math.min(100, Math.round((m.hp / m.maxHp) * 100)));
+    let barColor = m.isDowned ? '#ff3333' : (hpPct < 30 ? 'var(--term-warn)' : 'var(--term-main)');
+
+    let reviveActionHtml = '';
+    if (m.isDowned && !amIDowned && !isMe) {
+      reviveActionHtml = `<button onclick="reviveRaidTeammate('${m.username}')" style="width:100%; margin:4px 0 0 0; padding:4px 6px; font-size:10px; background:rgba(0,80,30,0.95); border-color:#00ff66; color:#fff; font-weight:bold; box-shadow:0 0 8px #00ff66;" title="Использовать аптечку из рюкзака">💉 ОЖИВИТЬ</button>`;
+    }
+
+    let statusText = m.isDowned ? '<span style="color:#ff3333; font-weight:bold; font-size:10px;">⚠️ РАНЕН!</span>' : (m.pDodging ? '<span style="color:#33d4ff; font-size:10px;">🛡️ УКЛОНЕНИЕ</span>' : '<span style="color:#aaa; font-size:9.5px;">В БОЮ ⚔️</span>');
+
+    unit.innerHTML = `
+      <div style="text-align:center; margin-bottom:4px; width:100%;">
+        <div style="font-size:11px; font-weight:bold; color:var(--term-warn); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          ${m.username} ${isMe ? '<span style="color:#33d4ff; font-size:9px;">(Вы)</span>' : ''}
+        </div>
+        <div style="font-size:9px; color:#aaa;">Ур.${m.level || 1} • ${m.hp}/${m.maxHp}</div>
+        <div style="width:100%; height:6px; background:#222; border:1px solid #444; border-radius:3px; overflow:hidden; margin-top:2px;">
+          <div style="width:${hpPct}%; height:100%; background:${barColor};"></div>
+        </div>
+      </div>
+      
+      <!-- Фигурка бойца со слоями -->
+      <div id="rc-member-fig-${m.username}" class="raid-char-figure ${m.isDowned ? 'downed' : ''}">
+        <div class="vfx-container" id="rc-vfx-${m.username}"></div>
+        <img src="assets/character/${skinId}.png" style="z-index:1;" onerror="this.src='assets/character/skin_1.png'">
+        ${clothesImg}
+        ${maskImg}
+        ${weaponImg}
+      </div>
+
+      <div style="margin-top:2px; text-align:center; width:100%;">
+        ${statusText}
+        ${reviveActionHtml}
+      </div>
+    `;
+
+    stage.appendChild(unit);
+  });
 }
 
 function renderRaidSquadsList(squads) {
@@ -4931,7 +5162,7 @@ function renderRaidSquadsList(squads) {
     card.style.gap = '8px';
     
     let isFull = sq.memberCount >= sq.maxMembers;
-    let isCombat = sq.status === 'combat';
+    let isCombat = sq.status === 'combat' || sq.status === 'intermission';
     let statusBadge = isCombat ? '<span style="color:#ff5555; font-size:11px;">[В БОЮ]</span>' : (isFull ? '<span style="color:#ffaa00; font-size:11px;">[ПОЛОН]</span>' : '<span style="color:#55ff55; font-size:11px;">[НАБОР]</span>');
     let canJoin = !isFull && !isCombat && (!myActiveRaidSquad || myActiveRaidSquad.id !== sq.id);
     
@@ -4979,7 +5210,7 @@ function renderMyRaidSquad(squad) {
     readyBtn.style.color = myMember.isReady ? 'var(--term-main)' : 'var(--term-warn)';
   }
   
-  // Рендер карточек участников
+  // Рендер карточек участников в лобби
   const membersContainer = document.getElementById('raid-my-squad-members');
   if (membersContainer) {
     membersContainer.innerHTML = '';
@@ -4997,10 +5228,10 @@ function renderMyRaidSquad(squad) {
       
       if (m) {
         let isMLeader = (m.username === squad.leader);
-        let skinSrc = `assets/skins/${m.skin || 'skin_1'}.png`;
+        let skinSrc = `assets/character/${m.skin || 'skin_1'}.png`;
         card.innerHTML = `
           <div style="display:flex; gap:8px; align-items:center;">
-            <img src="${skinSrc}" onerror="this.src='assets/skins/skin_1.png'" style="width:36px; height:36px; object-fit:cover; border-radius:3px; border:1px solid #555;">
+            <img src="${skinSrc}" onerror="this.src='assets/character/skin_1.png'" style="width:36px; height:36px; object-fit:cover; border-radius:3px; border:1px solid #555;">
             <div>
               <div style="font-size:12px; font-weight:bold; color:var(--term-warn);">${m.username} ${isMLeader ? '👑' : ''}</div>
               <div style="font-size:10px; color:#33d4ff;">Ур.${m.level} • ${m.title || 'Заключенный'}</div>
@@ -5048,9 +5279,10 @@ socket.on('raidSortieStarted', (data) => {
   document.getElementById('raid-modal').style.display = 'none';
   document.getElementById('raid-combat-modal').style.display = 'flex';
   document.getElementById('rc-result-overlay').style.display = 'none';
+  document.getElementById('rc-intermission-overlay').style.display = 'none';
   currentRaidCombat = data;
   updateRaidWaveDots(data.currentWave, data.maxWaves);
-  appendRaidLog(`[ВЫЛАЗКА НАЧАТА] Штурмовой отряд вошел в опасный сектор Самосбора! Волна 1/11!`, 'info');
+  appendRaidCombatLog(`[ВЫЛАЗКА НАЧАТА] Штурмовой отряд вошел в опасный сектор Самосбора! Волна 1/11!`);
 });
 
 function updateRaidWaveDots(curWave, maxWaves = 11) {
@@ -5081,6 +5313,11 @@ socket.on('raidCombatTick', (data) => {
   document.getElementById('rc-wave-num').innerText = data.currentWave;
   updateRaidWaveDots(data.currentWave, data.maxWaves);
   
+  // Отрисовка фигур всех членов команды на арене
+  if (data.members) {
+    renderRaidSquadFigures(data.members);
+  }
+
   // Обновление монстра
   let enemy = data.enemy;
   if (enemy) {
@@ -5150,85 +5387,70 @@ socket.on('raidCombatTick', (data) => {
       }
     }
   }
-  
-  // Обновление карточек бойцов отряда
-  const squadListEl = document.getElementById('rc-squad-status-list');
-  if (squadListEl && data.members) {
-    squadListEl.innerHTML = '';
-    let amIDowned = false;
-    if (clientMe) {
-      let myM = data.members.find(m => m.username === clientMe.username);
-      if (myM && myM.isDowned) amIDowned = true;
-    }
-    
-    // Блокировка кнопки атаки если сам тяжело ранен
-    let attackBtn = document.getElementById('rc-btn-attack');
-    let dodgeBtn = document.getElementById('rc-btn-dodge');
-    if (attackBtn) attackBtn.disabled = amIDowned;
-    if (dodgeBtn) dodgeBtn.disabled = amIDowned;
-    
-    data.members.forEach(m => {
-      let row = document.createElement('div');
-      row.className = m.isDowned ? 'downed-card' : '';
-      row.style.background = m.isDowned ? 'rgba(80,0,0,0.6)' : 'rgba(0,30,20,0.6)';
-      row.style.border = m.isDowned ? '1px solid #ff3333' : '1px solid rgba(0,255,100,0.3)';
-      row.style.borderRadius = '4px';
-      row.style.padding = '6px 10px';
-      row.style.display = 'flex';
-      row.style.justifyContent = 'space-between';
-      row.style.alignItems = 'center';
-      row.style.gap = '8px';
-      
-      let isMe = (clientMe && m.username === clientMe.username);
-      let skinSrc = `assets/skins/${m.skin || 'skin_1'}.png`;
-      let hpPercent = Math.max(0, Math.min(100, Math.round((m.hp / m.maxHp) * 100)));
-      
-      let statusHtml = '';
-      if (m.isDowned) {
-        statusHtml = '<span style="color:#ff3333; font-weight:bold; font-size:11px;">⚠️ ТЯЖЕЛО РАНЕН! (0 HP)</span>';
-      } else if (m.pDodging) {
-        statusHtml = '<span style="color:#33d4ff; font-size:11px;">🛡️ УКЛОНЯЕТСЯ</span>';
-      } else {
-        statusHtml = '<span style="color:var(--term-main); font-size:11px;">В БОЮ ⚔️</span>';
+
+  // Обработка VFX эффектов попаданий по врагам и игрокам
+  if (data.vfx && Array.isArray(data.vfx) && data.vfx.length > 0) {
+    const monsterBox = document.getElementById('rc-monster-container');
+    const monsterImg = document.getElementById('rc-monster-img');
+    const monsterVfx = document.getElementById('rc-monster-vfx');
+
+    data.vfx.forEach(v => {
+      if (v.type === 'enemy_hit') {
+        if (monsterImg) {
+          monsterImg.classList.add('avatar-shake');
+          setTimeout(() => { if (monsterImg) monsterImg.classList.remove('avatar-shake'); }, 300);
+        }
+        if (monsterVfx) {
+          const slash = document.createElement('div');
+          slash.className = v.isCrit ? 'vfx-crit' : 'vfx-slash';
+          monsterVfx.appendChild(slash);
+          setTimeout(() => slash.remove(), 400);
+        }
+        spawnFloatingText(monsterBox, (v.isCrit ? '💥 -' : '-') + v.dmg, v.isCrit ? '#ff3300' : '#ff9900', v.isCrit);
+      } else if (v.type === 'player_hit') {
+        const unitEl = document.getElementById(`rc-member-unit-${v.target}`);
+        const figEl = document.getElementById(`rc-member-fig-${v.target}`);
+        const vfxEl = document.getElementById(`rc-vfx-${v.target}`);
+        if (figEl) {
+          figEl.classList.add('avatar-shake');
+          setTimeout(() => { if (figEl) figEl.classList.remove('avatar-shake'); }, 300);
+        }
+        if (vfxEl) {
+          const hit = document.createElement('div');
+          hit.className = 'vfx-player-hit';
+          vfxEl.appendChild(hit);
+          setTimeout(() => hit.remove(), 300);
+        }
+        spawnFloatingText(unitEl || figEl, '-' + v.dmg + ' HP', '#ff3333');
+      } else if (v.type === 'player_dodge') {
+        const unitEl = document.getElementById(`rc-member-unit-${v.target}`);
+        spawnFloatingText(unitEl, '💨 УКЛОНЕНИЕ!', '#33d4ff');
+      } else if (v.type === 'heal') {
+        const unitEl = document.getElementById(`rc-member-unit-${v.target}`);
+        const vfxEl = document.getElementById(`rc-vfx-${v.target}`);
+        if (vfxEl) {
+          const heal = document.createElement('div');
+          heal.className = 'vfx-heal';
+          vfxEl.appendChild(heal);
+          setTimeout(() => heal.remove(), 600);
+        }
+        spawnFloatingText(unitEl, '+' + v.amt + ' HP 💉', '#00ff66');
       }
-      
-      let reviveBtnHtml = '';
-      // Если боец тяжело ранен, а текущий игрок жив и не сам упавший
-      if (m.isDowned && !amIDowned && !isMe) {
-        reviveBtnHtml = `<button onclick="reviveRaidTeammate('${m.username}')" style="width:auto; margin:0; padding:4px 10px; font-size:11px; background:rgba(0,80,30,0.9); border-color:#00ff66; color:#fff; font-weight:bold;" title="Использовать аптечку из рюкзака">💉 ОЖИВИТЬ АПТЕЧКОЙ</button>`;
-      }
-      
-      row.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px;">
-          <img src="${skinSrc}" onerror="this.src='assets/skins/skin_1.png'" style="width:28px; height:28px; border-radius:2px; border:1px solid #555;">
-          <div>
-            <div style="font-size:12px; font-weight:bold; color:var(--term-warn);">${m.username} ${isMe ? '<span style="color:#aaa; font-size:10px;">(Вы)</span>' : ''}</div>
-            <div style="font-size:10px; color:#aaa;">HP: ${m.hp}/${m.maxHp} • ${statusHtml}</div>
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:70px; background:#222; height:8px; border-radius:4px; overflow:hidden;">
-            <div style="width:${hpPercent}%; height:100%; background:${m.isDowned ? '#ff3333' : 'var(--term-main)'};"></div>
-          </div>
-          ${reviveBtnHtml}
-        </div>
-      `;
-      squadListEl.appendChild(row);
     });
   }
   
-  // Обновление логов
+  // Добавление записей в Боевой журнал (отдельная вкладка!)
   if (data.logs && data.logs.length > 0) {
-    data.logs.forEach(l => appendRaidLog(l));
+    data.logs.forEach(l => appendRaidCombatLog(l));
   }
 });
 
-function appendRaidLog(msg, type = 'normal') {
-  const container = document.getElementById('rc-chat-log');
+function appendRaidCombatLog(msg) {
+  const container = document.getElementById('rc-combat-logs');
   if (!container) return;
   const d = document.createElement('div');
   d.style.marginBottom = '3px';
-  d.style.fontSize = '12px';
+  d.style.fontSize = '11.5px';
   d.style.lineHeight = '1.4';
   
   if (msg.includes('ТЯЖЕЛО РАНЕН') || msg.includes('смертельный')) {
@@ -5244,26 +5466,32 @@ function appendRaidLog(msg, type = 'normal') {
     d.style.color = '#33d4ff';
     d.style.fontWeight = 'bold';
   } else {
-    d.style.color = '#ccc';
+    d.style.color = '#aaa';
   }
   
   d.innerText = msg;
   container.appendChild(d);
   container.scrollTop = container.scrollHeight;
+
+  if (activeRaidTab !== 'logs') {
+    const badge = document.getElementById('rc-logs-badge');
+    if (badge) badge.style.display = 'inline';
+  }
 }
 
 function appendRaidChatMessage(cm) {
-  const container = document.getElementById('rc-chat-log');
+  const container = document.getElementById('rc-chat-messages');
   if (!container) return;
   const d = document.createElement('div');
-  d.style.marginBottom = '3px';
-  d.style.background = 'rgba(0,35,45,0.4)';
-  d.style.padding = '2px 6px';
+  d.style.marginBottom = '4px';
+  d.style.background = 'rgba(0,35,45,0.45)';
+  d.style.padding = '3px 8px';
   d.style.borderRadius = '3px';
-  d.style.borderLeft = '2px solid #33d4ff';
+  d.style.borderLeft = '3px solid #33d4ff';
   
   let downedTag = cm.isDowned ? '<span style="color:#ff4444; font-size:10px; margin-right:4px;">[РАНЕН]</span>' : '';
-  d.innerHTML = `<span style="color:#666; font-size:10px;">[${cm.time}]</span> ${downedTag}<span style="color:#33d4ff; font-weight:bold;">${cm.user}:</span> <span style="color:#fff;">${cm.text}</span>`;
+  let lvlTag = cm.level ? `<span style="color:#88e0ff; font-size:10px; margin-right:4px;">[Ур.${cm.level}]</span>` : '';
+  d.innerHTML = `<span style="color:#666; font-size:10px;">[${cm.time}]</span> ${lvlTag}${downedTag}<span style="color:#33d4ff; font-weight:bold;">${cm.user}:</span> <span style="color:#fff;">${cm.text}</span>`;
   container.appendChild(d);
   container.scrollTop = container.scrollHeight;
 }
@@ -5272,30 +5500,104 @@ socket.on('raidChatMessage', (cm) => appendRaidChatMessage(cm));
 
 socket.on('raidTeammateRevived', (d) => {
   playSound('potion');
-  appendRaidLog(`[САНИТАР] 💉 ${d.healer} использовал «${d.item}» и поднял на ноги бойца ${d.target}! (+${d.hp} HP)`, 'heal');
+  appendRaidCombatLog(`[САНИТАР] 💉 ${d.healer} использовал «${d.item}» и поднял на ноги бойца ${d.target}! (+${d.hp} HP)`);
+});
+
+// ===== ГОЛОСОВАНИЕ И ПЕРЕРЫВ МЕЖДУ ВОЛНАМИ =====
+function renderIntermission(data) {
+  const overlay = document.getElementById('rc-intermission-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  
+  document.getElementById('rc-int-cleared-wave').innerText = data.clearedWave;
+  document.getElementById('rc-int-next-wave').innerText = data.nextWave;
+  document.getElementById('rc-int-timer').innerText = data.timer;
+  
+  const votesList = document.getElementById('rc-int-votes-list');
+  if (votesList && data.members) {
+    votesList.innerHTML = '';
+    data.members.forEach(u => {
+      let vote = data.votes ? data.votes[u] : null;
+      let row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.alignItems = 'center';
+      row.style.background = 'rgba(0,30,40,0.6)';
+      row.style.border = '1px solid rgba(51,212,255,0.3)';
+      row.style.padding = '4px 10px';
+      row.style.borderRadius = '3px';
+      row.style.fontSize = '12px';
+
+      let isMe = (clientMe && u === clientMe.username);
+      let voteBadge = '';
+      if (vote === 'continue') {
+        voteBadge = '<span style="color:#00ff66; font-weight:bold;">⚔️ За продолжение</span>';
+      } else if (vote === 'evacuate') {
+        voteBadge = '<span style="color:#ff6666; font-weight:bold;">🚪 За эвакуацию</span>';
+      } else {
+        voteBadge = '<span style="color:#ffaa00;">⏳ Выбирает...</span>';
+      }
+
+      row.innerHTML = `
+        <span style="color:var(--term-warn); font-weight:bold;">${u} ${isMe ? '(Вы)' : ''}</span>
+        ${voteBadge}
+      `;
+      votesList.appendChild(row);
+    });
+  }
+}
+
+socket.on('raidIntermissionStarted', (data) => {
+  playSound('buy');
+  renderIntermission(data);
+});
+
+socket.on('raidIntermissionVotesUpdated', (data) => {
+  renderIntermission(data);
+});
+
+socket.on('raidWaveStarted', (data) => {
+  const overlay = document.getElementById('rc-intermission-overlay');
+  if (overlay) overlay.style.display = 'none';
+  let bCont = document.getElementById('rc-btn-vote-continue');
+  let bEvac = document.getElementById('rc-btn-vote-evacuate');
+  if (bCont) { bCont.style.borderWidth = '1px'; bCont.style.boxShadow = 'none'; bCont.style.opacity = '1'; }
+  if (bEvac) { bEvac.style.borderWidth = '1px'; bEvac.style.boxShadow = 'none'; bEvac.style.opacity = '1'; }
+  appendRaidCombatLog(`[ВОЛНА ${data.currentWave}/11 НАЧАЛАСЬ] В сектор вошел ${data.enemy ? data.enemy.name : 'враг'}!`);
 });
 
 socket.on('raidSortieEnded', (result) => {
   const overlay = document.getElementById('rc-result-overlay');
   const titleEl = document.getElementById('rc-result-title');
   const detailsEl = document.getElementById('rc-result-details');
+  const intermissionOverlay = document.getElementById('rc-intermission-overlay');
+  if (intermissionOverlay) intermissionOverlay.style.display = 'none';
   if (!overlay || !titleEl || !detailsEl) return;
   
   overlay.style.display = 'flex';
   if (result.win) {
     playSound('buy');
-    titleEl.innerText = '🏆 ВЫЛАЗКА УСПЕШНО ЗАВЕРШЕНА!';
-    titleEl.style.color = '#ffd700';
-    let drops = result.droppedItems || {};
-    let dropsList = Object.keys(drops).map(u => `<div>• ${u}: <b>${drops[u]}</b></div>`).join('');
-    detailsEl.innerHTML = `
-      <div style="font-size:16px; color:#55ff99; margin-bottom:8px;">Финальный босс <b>${result.bossName}</b> повержен!</div>
-      <div style="margin-bottom:8px;">Награда отряду: <b>+${result.reward} талонов</b> и <b>+${result.xp} XP</b> каждому бойцу!</div>
-      <div style="background:rgba(0,30,10,0.6); border:1px solid #33ff66; padding:8px; border-radius:4px; margin-top:10px; text-align:left;">
-        <div style="color:#ffd700; font-weight:bold; margin-bottom:4px;">НАЙДЕННЫЙ ТРОФЕЙНЫЙ ЛУТ:</div>
-        ${dropsList || '<div>Материалы и снаряжение доставлены на склад.</div>'}
-      </div>
-    `;
+    if (result.evacuated) {
+      titleEl.innerText = '🚪 УСПЕШНАЯ ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ';
+      titleEl.style.color = '#33d4ff';
+      detailsEl.innerHTML = `
+        <div style="font-size:16px; color:#a0d8ef; margin-bottom:8px;">Отряд принял решение прервать вылазку на волне ${result.clearedWave}.</div>
+        <div style="margin-bottom:8px;">Все заработанные талоны, опыт и трофеи сохранены и доставлены в жилячейку!</div>
+      `;
+    } else {
+      titleEl.innerText = '🏆 ВЫЛАЗКА УСПЕШНО ЗАВЕРШЕНА!';
+      titleEl.style.color = '#ffd700';
+      let drops = result.droppedItems || {};
+      let dropsList = Object.keys(drops).map(u => `<div>• ${u}: <b>${drops[u]}</b></div>`).join('');
+      detailsEl.innerHTML = `
+        <div style="font-size:16px; color:#55ff99; margin-bottom:8px;">Финальный босс <b>${result.bossName}</b> повержен!</div>
+        <div style="margin-bottom:8px;">Награда отряду: <b>+${result.reward} талонов</b> и <b>+${result.xp} XP</b> каждому бойцу!</div>
+        <div style="background:rgba(0,30,10,0.6); border:1px solid #33ff66; padding:8px; border-radius:4px; margin-top:10px; text-align:left;">
+          <div style="color:#ffd700; font-weight:bold; margin-bottom:4px;">НАЙДЕННЫЙ ТРОФЕЙНЫЙ ЛУТ:</div>
+          ${dropsList || '<div>Материалы и снаряжение доставлены на склад.</div>'}
+        </div>
+      `;
+    }
   } else {
     playSound('defeat');
     titleEl.innerText = '💀 ОТРЯД ПОГИБ В БОЮ';
