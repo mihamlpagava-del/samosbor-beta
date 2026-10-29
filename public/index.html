@@ -68,6 +68,10 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
 .door-ascii { white-space: pre; line-height: 1.1; margin-bottom: 20px; }
 .support-controls { position: absolute; top: 8px; left: 10px; z-index: 200; display: flex; gap: 6px; }
 .lang-btn { padding: 4px 10px; font-size: 11px; background: rgba(0, 229, 255, 0.15); color: #00e5ff; border: 1px solid #00c4dd; cursor: pointer; text-shadow: 0 0 5px rgba(0, 229, 255, 0.6); font-family: inherit; letter-spacing: 0.8px; font-weight: bold; transition: 0.15s; border-radius: 2px; }
+
+.telegram-btn { padding: 4px 10px; font-size: 11px; background: rgba(41, 182, 246, 0.15); color: #29b6f6; border: 1px solid #0288d1; cursor: pointer; text-shadow: 0 0 5px rgba(41, 182, 246, 0.6); font-family: inherit; letter-spacing: 0.8px; font-weight: bold; transition: 0.15s; border-radius: 2px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.telegram-btn:hover { background: rgba(41, 182, 246, 0.3); border-color: #29b6f6; box-shadow: 0 0 10px rgba(41, 182, 246, 0.6); transform: translateY(-1px); color: #fff; }
+
 .lang-btn:hover { background: rgba(0, 229, 255, 0.3); border-color: #00e5ff; box-shadow: 0 0 10px rgba(0, 229, 255, 0.6); transform: translateY(-1px); }
 .support-btn { padding: 4px 10px; font-size: 11px; background: rgba(39, 135, 245, 0.15); color: #61b0ff; border: 1px solid #2787f5; cursor: pointer; text-shadow: 0 0 5px rgba(39, 135, 245, 0.6); font-family: inherit; letter-spacing: 0.5px; transition: 0.15s; border-radius: 2px; }
 .support-btn:hover { background: rgba(39, 135, 245, 0.3); border-color: #61b0ff; box-shadow: 0 0 10px rgba(97, 176, 255, 0.5); }
@@ -527,7 +531,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   .terminal-center { width: 100%; max-width: 100%; }
   .combat-q-slot { width: 55px; height: 40px; font-size: 9px; padding: 2px; }
   .support-controls { top: 4px; left: 4px; }
-  .support-btn, .lang-btn { font-size: 10px; padding: 2px 6px; }
+  .support-btn, .lang-btn, .telegram-btn { font-size: 10px; padding: 2px 6px; }
   .donate-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .intro-ascii-side { font-size: 50px; }
   #intro-text-container { font-size: 13px; min-height: 200px; }
@@ -1482,6 +1486,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div class="support-controls">
   <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
+  <a id="btn-telegram-header" class="telegram-btn" href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer" title="Telegram канал Самосбора">
+    <span>✈️</span> <span data-i18n="btn_telegram">ТЕЛЕГРАМ</span>
+  </a>
   <button id="btn-donate" class="support-btn" style="display: none;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
     💙 ПОДДЕРЖАТЬ ПРОЕКТ
   </button>
@@ -1546,6 +1553,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
+    <a id="btn-opt-telegram" class="audio-btn opt-btn" style="color: #29b6f6; text-decoration: none; display: flex; align-items: center; gap: 6px;" href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer">
+    <span>✈️</span> <span data-i18n="opt_telegram">Канал в Telegram</span>
+  </a>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
   <button id="btn-opt-donate" class="audio-btn opt-btn" style="display: none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
   <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
@@ -1604,6 +1614,11 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <input type="password" id="password" placeholder="ПАРОЛЬ" data-i18n-ph="ph_password">
     <button id="login-btn" data-i18n="login_btn">ВОЙТИ</button>
     <div id="auth-error" style="color: var(--term-danger); margin-top:12px; font-size: 14px; min-height: 18px;"></div>
+    <div style="margin-top: 18px; padding-top: 12px; border-top: 1px dashed rgba(41, 182, 246, 0.3); text-align: center;">
+      <a href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer" style="color: #29b6f6; font-size: 12px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
+        <span>✈️</span> <span data-i18n="login_telegram_link">Telegram-канал игры: @samosbor_web</span>
+      </a>
+    </div>
   </div>
 </div>
 
@@ -1750,6 +1765,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <button onclick="document.getElementById('info-modal').style.display='none'">[X]</button>
     </div>
     <button onclick="document.getElementById('info-modal').style.display='none'; startTutorial(true);" style="width: 100%; margin-bottom: 14px; padding: 8px 12px; font-weight: bold; border-color: var(--term-color); color: var(--term-color); background: rgba(0,35,10,0.7); cursor: pointer; letter-spacing: 1px;" data-i18n="btn_start_interactive_tut">🎓 ЗАПУСТИТЬ ИНТЕРАКТИВНОЕ ОБУЧЕНИЕ (ГАЙД ПО КНОПКАМ)</button>
+        <a href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; font-weight: bold; border: 1px solid #0288d1; color: #29b6f6; background: rgba(0,25,45,0.7); text-decoration: none; letter-spacing: 1px; font-size: 12px; border-radius: 3px;">
+      <span>✈️</span> <span data-i18n="info_telegram_banner">ОФИЦИАЛЬНЫЙ TELEGRAM КАНАЛ // @samosbor_web</span>
+    </a>
     <div id="guide-content">
     <h3>= 1. ВВЕДЕНИЕ И ЦЕЛЬ =</h3>
     <p>Вы — один из двадцати трёх заключённых, приговорённых Партией Светлых к «искуплению через труд». Во время спуска вглубь шахты оборвался трос — клеть рухнула на самое дно. Вы выжили и укрылись в первой попавшейся жилячейке.</p>
@@ -2276,6 +2294,10 @@ let cachedGuideRu = null;
 const I18N = {
   ru: {
     btn_donate: "💙 ПОДДЕРЖАТЬ ПРОЕКТ",
+    btn_telegram: "ТЕЛЕГРАМ",
+    opt_telegram: "Канал в Telegram",
+    login_telegram_link: "Telegram-канал игры: @samosbor_web",
+    info_telegram_banner: "ОФИЦИАЛЬНЫЙ TELEGRAM КАНАЛ // @samosbor_web",
     donate_title: "💎 ПОДДЕРЖКА ПРОЕКТА // ГОЛОСА VK",
     donate_desc_1: "Игра «САМОСБОР» создается и поддерживается силами разработчика. Если вам нравится атмосфера Гигахрущевки, вы можете поддержать развитие серверов и обновлений голосами ВКонтакте.",
     donate_desc_2: "⚡ В знак благодарности вы получите внутриигровые талоны снабжения:",
@@ -2500,6 +2522,10 @@ const I18N = {
   },
   en: {
     btn_donate: "💙 SUPPORT PROJECT",
+    btn_telegram: "TELEGRAM",
+    opt_telegram: "Telegram Channel",
+    login_telegram_link: "Official Telegram Channel: @samosbor_web",
+    info_telegram_banner: "OFFICIAL TELEGRAM CHANNEL // @samosbor_web",
     donate_title: "💎 SUPPORT PROJECT // VK VOTES",
     donate_desc_1: "SAMOSBOR is developed and maintained independently. If you enjoy the atmosphere of the Gigakhrushchyovka, you can support server hosting and new updates with VK Votes.",
     donate_desc_2: "⚡ As a token of gratitude, you will receive in-game supply talons:",
