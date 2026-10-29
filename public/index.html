@@ -207,13 +207,18 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .chest-overlay-title { font-size: 11px; font-weight: bold; color: var(--ink-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%; text-align: left; }
 .chest-overlay-close { background: transparent !important; border: 1px solid rgba(0,0,0,0.3) !important; color: #777 !important; padding: 1px 5px !important; font-size: 10px !important; line-height: 1 !important; margin: 0 !important; cursor: pointer; border-radius: 2px; }
 .chest-overlay-close:hover { color: var(--ink-danger) !important; border-color: var(--ink-danger) !important; }
-.chest-act-btn { width: 100%; padding: 6px 4px !important; font-size: 11px !important; font-weight: bold !important; letter-spacing: 0.5px !important; margin: 1px 0 !important; border-radius: 3px !important; cursor: pointer; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: 0.1s; }
-.chest-act-btn[data-action="belt"]  { color: var(--ink-accent); border-color: var(--ink-accent); background: rgba(0,0,0,0.02); }
-.chest-act-btn[data-action="use"]   { color: #003a77; border-color: #003a77; background: rgba(0,0,0,0.02); }
-.chest-act-btn[data-action="equip"] { color: #6a3a00; border-color: #6a3a00; background: rgba(0,0,0,0.02); }
-.chest-act-btn[data-action="drop"]  { color: var(--ink-danger); border-color: var(--ink-danger); background: rgba(0,0,0,0.02); padding: 4px 4px !important; font-size: 10px !important; }
-.chest-act-btn:hover { background: rgba(0,0,0,0.08) !important; transform: scale(1.02); }
+.chest-act-btn { width: 100%; padding: 6px 4px !important; font-size: 11px !important; font-weight: bold !important; letter-spacing: 0.5px !important; margin: 2px 0 !important; border-radius: 3px !important; cursor: pointer; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.12); transition: 0.1s; }
+.chest-act-btn[data-action="belt"]        { color: #165b26 !important; border: 1px solid #237a37 !important; background: rgba(35, 122, 55, 0.08) !important; }
+.chest-act-btn[data-action="use"]         { color: #0b4382 !important; border: 1px solid #1259a8 !important; background: rgba(18, 89, 168, 0.08) !important; }
+.chest-act-btn[data-action="equip"]       { color: #5c3000 !important; border: 1px solid #824706 !important; background: rgba(130, 71, 6, 0.08) !important; }
+.chest-act-btn[data-action="to-storage"]  { color: #4e2d14 !important; border: 1px solid #734522 !important; background: rgba(115, 69, 34, 0.1) !important; }
+.chest-act-btn[data-action="from-storage"]{ color: #165b26 !important; border: 1px solid #237a37 !important; background: rgba(35, 122, 55, 0.08) !important; }
+.chest-act-btn[data-action="sell-market"] { color: #6b3d00 !important; border: 1px solid #9c5c05 !important; background: rgba(220, 140, 0, 0.14) !important; }
+.chest-act-btn[data-action="drop"]        { color: var(--ink-danger) !important; border: 1px solid var(--ink-danger) !important; background: rgba(122, 16, 16, 0.08) !important; padding: 4px 4px !important; font-size: 10px !important; }
+.chest-act-btn[data-action="drop-storage"]{ color: var(--ink-danger) !important; border: 1px solid var(--ink-danger) !important; background: rgba(122, 16, 16, 0.08) !important; padding: 4px 4px !important; font-size: 10px !important; }
+.chest-act-btn:hover { filter: brightness(0.92); transform: scale(1.02); }
 .chest-act-btn:disabled { opacity: 0.45 !important; cursor: not-allowed !important; transform: none !important; }
+.raid-briefing-box b { color: #ffffff; font-weight: 700; text-shadow: 0 0 4px rgba(51, 212, 255, 0.4); }
 
 .chest-item-toggle-btn { margin-top: auto; padding: 3px 8px !important; font-size: 10px !important; font-weight: bold !important; border: 1px dashed rgba(0,0,0,0.35) !important; color: var(--ink-dim) !important; background: rgba(255,255,255,0.5) !important; cursor: pointer; border-radius: 3px; letter-spacing: 0.5px; transition: 0.15s; }
 .chest-item:hover .chest-item-toggle-btn { border-color: var(--ink-color) !important; color: var(--ink-color) !important; background: rgba(255,255,255,0.9) !important; }
@@ -1189,8 +1194,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     </div>
 
     <!-- Тактический брифинг -->
-    <div style="background: rgba(0,25,35,0.6); border: 1px solid rgba(51,212,255,0.35); padding: 10px 14px; margin-bottom: 12px; border-radius: 4px; font-size: 12px; line-height: 1.45; color: #a0d8ef;">
-      <div style="color: #33d4ff; font-weight: bold; margin-bottom: 4px; font-size: 13px;" data-i18n="raid_brief_title">📋 ПРИКАЗ ПО БЛОКУ: СОВМЕСТНАЯ ОПЕРАЦИЯ ЗАЧИСТКИ</div>
+    <div style="background: rgba(0,25,35,0.7); border: 1px solid rgba(51,212,255,0.45); padding: 12px 16px; margin-bottom: 12px; border-radius: 4px; font-size: 12.5px; line-height: 1.55; color: #e1f5fe;" class="raid-briefing-box">
+      <div style="color: #33d4ff; font-weight: bold; margin-bottom: 6px; font-size: 13.5px; letter-spacing: 0.5px; text-shadow: 0 0 8px rgba(51,212,255,0.5);" data-i18n="raid_brief_title">📋 ПРИКАЗ ПО БЛОКУ: СОВМЕСТНАЯ ОПЕРАЦИЯ ЗАЧИСТКИ</div>
       <div data-i18n="raid_brief_target">• <b>Цель:</b> Сформируйте штурмовой отряд (до 4 бойцов) и отразите <b>10 волн монстров</b>. На 11-й волне появится смертоносный <b>АНОМАЛЬНЫЙ БОСС</b>: <span style="color: #33aaff; font-weight: bold;">🔷 Синий Редкий</span> или <span style="color: #c033ff; font-weight: bold;">🔮 Фиолетовый Эпический</span>!</div>
       <div data-i18n="raid_brief_rewards">• <b>Награды:</b> Весь отряд получает <b>общий опыт, талоны и редкий лут</b> за каждого поверженного мутанта.</div>
       <div data-i18n="raid_brief_medic">• <b>Полевая медицина:</b> Если боец потерял все HP, он тяжело ранен. Живой товарищ может реанимировать его <b>армейской аптечкой</b> прямо в бою!</div>
@@ -3805,7 +3810,11 @@ function applyLanguage() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (dict[key] !== undefined) {
-      el.innerText = dict[key];
+      if (typeof dict[key] === 'string' && (dict[key].includes('<') || el.hasAttribute('data-i18n-html'))) {
+        el.innerHTML = dict[key];
+      } else {
+        el.innerText = dict[key];
+      }
     }
   });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
@@ -7382,10 +7391,10 @@ function updateUI(me, sectorPlayers) {
           }
         }
         if (isSafeRoom) {
-          actionBtns += `<button class="chest-act-btn" data-action="to-storage" data-index="${index}" style="color:var(--term-warn); border-color:var(--term-warn); font-weight:bold;">📦 ${isEn ? 'TO STASH' : 'В СУНДУК'}</button>`;
+          actionBtns += `<button class="chest-act-btn" data-action="to-storage" data-index="${index}">📦 ${isEn ? 'TO STASH' : 'В СУНДУК'}</button>`;
         }
         if (item.type !== 'quest') {
-          actionBtns += `<button class="chest-act-btn" data-action="sell-market" data-index="${index}" style="color:#ffd700; border-color:#ffd700;">🏷️ ${isEn ? 'FLEA MARKET' : 'НА БАРАХОЛКУ'}</button>`;
+          actionBtns += `<button class="chest-act-btn" data-action="sell-market" data-index="${index}">🏷️ ${isEn ? 'FLEA MARKET' : 'НА БАРАХОЛКУ'}</button>`;
         }
         actionBtns += `<button class="chest-act-btn" data-action="drop" data-index="${index}">🗑️ ${isEn ? 'DROP' : 'ВЫБРОСИТЬ'}</button>`;
 
@@ -7452,7 +7461,7 @@ function updateUI(me, sectorPlayers) {
           div.dataset.index = index;
 
           let actionBtns = `
-            <button class="chest-act-btn" data-action="from-storage" data-index="${index}" style="color:var(--term-green); border-color:var(--term-green);">🎒 ${isEn ? 'TO BACKPACK' : 'В РЮКЗАК'}</button>
+            <button class="chest-act-btn" data-action="from-storage" data-index="${index}">🎒 ${isEn ? 'TO BACKPACK' : 'В РЮКЗАК'}</button>
             <button class="chest-act-btn" data-action="drop-storage" data-index="${index}">🗑️ ${isEn ? 'DROP' : 'ВЫБРОСИТЬ'}</button>
           `;
 
