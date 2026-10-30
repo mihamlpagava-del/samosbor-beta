@@ -1299,6 +1299,51 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   cursor: pointer;
 }
 
+/* Кнопки голосования в перерыве между волнами рейда */
+.raid-vote-btn {
+  transition: transform 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+.raid-vote-btn:hover:not(:disabled):not(.voted-choice):not(.voted-other) {
+  transform: translateY(-2px);
+  filter: brightness(1.2);
+}
+#rc-btn-vote-continue:hover:not(:disabled):not(.voted-choice):not(.voted-other) {
+  background: rgba(0, 95, 45, 0.95) !important;
+  box-shadow: 0 0 14px rgba(0, 255, 102, 0.6) !important;
+}
+#rc-btn-vote-evacuate:hover:not(:disabled):not(.voted-choice):not(.voted-other) {
+  background: rgba(110, 30, 30, 0.95) !important;
+  box-shadow: 0 0 14px rgba(255, 85, 85, 0.6) !important;
+}
+.raid-vote-btn.voted-choice {
+  border-width: 3px !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+#rc-btn-vote-continue.voted-choice {
+  background: rgba(0, 110, 50, 0.95) !important;
+  border-color: #00ff66 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px #00ff66 !important;
+}
+#rc-btn-vote-evacuate.voted-choice {
+  background: rgba(130, 30, 30, 0.95) !important;
+  border-color: #ff5555 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px #ff5555 !important;
+}
+.raid-vote-btn.voted-other {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  border-color: #555 !important;
+  color: #777 !important;
+  background: rgba(20, 20, 20, 0.6) !important;
+  box-shadow: none !important;
+}
+
 /* ===== С.С.Р.С. ХРОНИКИ ГИГАХРУЩА (INTERACTIVE STORY MODE) ===== */
 .story-terminal-container {
   width: 860px;
@@ -1706,11 +1751,11 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
 
       <!-- Кнопки выбора голоса -->
-      <div style="display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;">
-        <button id="rc-btn-vote-continue" onclick="voteRaidIntermission('continue')" style="width: auto; margin: 0; padding: 12px 24px; font-size: 14px; font-weight: bold; background: rgba(0,70,35,0.85); border-color: #00ff66; color: #fff;">
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 10;">
+        <button id="rc-btn-vote-continue" class="raid-vote-btn" onclick="voteRaidIntermission('continue')" style="width: auto; margin: 0; padding: 12px 24px; font-size: 14px; font-weight: bold; background: rgba(0,70,35,0.85); border: 1px solid #00ff66; color: #fff;">
           ⚔️ СЛЕДУЮЩАЯ ВОЛНА (<span id="rc-int-next-wave">2</span>/11)
         </button>
-        <button id="rc-btn-vote-evacuate" onclick="voteRaidIntermission('evacuate')" style="width: auto; margin: 0; padding: 12px 24px; font-size: 14px; font-weight: bold; background: rgba(80,25,25,0.85); border-color: #ff5555; color: #ffcccc;">
+        <button id="rc-btn-vote-evacuate" class="raid-vote-btn" onclick="voteRaidIntermission('evacuate')" style="width: auto; margin: 0; padding: 12px 24px; font-size: 14px; font-weight: bold; background: rgba(80,25,25,0.85); border: 1px solid #ff5555; color: #ffcccc;">
           🚪 ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ
         </button>
       </div>
@@ -5737,11 +5782,23 @@ function voteRaidIntermission(choice) {
   let bCont = document.getElementById('rc-btn-vote-continue');
   let bEvac = document.getElementById('rc-btn-vote-evacuate');
   if (choice === 'continue') {
-    if (bCont) { bCont.style.borderWidth = '3px'; bCont.style.boxShadow = '0 0 12px #00ff66'; bCont.disabled = true; }
-    if (bEvac) { bEvac.style.opacity = '0.5'; bEvac.disabled = true; }
+    if (bCont) {
+      bCont.className = 'raid-vote-btn voted-choice';
+      bCont.disabled = true;
+    }
+    if (bEvac) {
+      bEvac.className = 'raid-vote-btn voted-other';
+      bEvac.disabled = true;
+    }
   } else {
-    if (bEvac) { bEvac.style.borderWidth = '3px'; bEvac.style.boxShadow = '0 0 12px #ff5555'; bEvac.disabled = true; }
-    if (bCont) { bCont.style.opacity = '0.5'; bCont.disabled = true; }
+    if (bEvac) {
+      bEvac.className = 'raid-vote-btn voted-choice';
+      bEvac.disabled = true;
+    }
+    if (bCont) {
+      bCont.className = 'raid-vote-btn voted-other';
+      bCont.disabled = true;
+    }
   }
 
   // Немедленно обновляем отображение собственного голоса в списке
@@ -5764,6 +5821,16 @@ function closeRaidCombatModal() {
   document.getElementById('raid-combat-modal').style.display = 'none';
   document.getElementById('rc-result-overlay').style.display = 'none';
   document.getElementById('rc-intermission-overlay').style.display = 'none';
+  let bCont = document.getElementById('rc-btn-vote-continue');
+  let bEvac = document.getElementById('rc-btn-vote-evacuate');
+  if (bCont) {
+    bCont.className = 'raid-vote-btn';
+    bCont.disabled = false;
+  }
+  if (bEvac) {
+    bEvac.className = 'raid-vote-btn';
+    bEvac.disabled = false;
+  }
   currentRaidCombat = null;
   myActiveRaidSquad = null;
   renderMyRaidSquad(null);
@@ -6060,6 +6127,16 @@ socket.on('raidSortieStarted', (data) => {
   document.getElementById('raid-combat-modal').style.display = 'flex';
   document.getElementById('rc-result-overlay').style.display = 'none';
   document.getElementById('rc-intermission-overlay').style.display = 'none';
+  let bCont = document.getElementById('rc-btn-vote-continue');
+  let bEvac = document.getElementById('rc-btn-vote-evacuate');
+  if (bCont) {
+    bCont.className = 'raid-vote-btn';
+    bCont.disabled = false;
+  }
+  if (bEvac) {
+    bEvac.className = 'raid-vote-btn';
+    bEvac.disabled = false;
+  }
   currentRaidCombat = data;
   updateRaidWaveDots(data.currentWave, data.maxWaves);
   if (data.members) {
@@ -6353,10 +6430,71 @@ function renderIntermission(data) {
   if (!overlay) return;
   overlay.style.display = 'flex';
   
-  document.getElementById('rc-int-cleared-wave').innerText = data.clearedWave;
-  document.getElementById('rc-int-next-wave').innerText = data.nextWave;
-  document.getElementById('rc-int-timer').innerText = data.timer;
+  const isEn = (currentLang === 'en');
+  let clearedWaveEl = document.getElementById('rc-int-cleared-wave');
+  if (clearedWaveEl) clearedWaveEl.innerText = data.clearedWave;
+  let nextWaveEl = document.getElementById('rc-int-next-wave');
+  if (nextWaveEl) nextWaveEl.innerText = data.nextWave;
+  let timerEl = document.getElementById('rc-int-timer');
+  if (timerEl) timerEl.innerText = data.timer;
   
+  let bCont = document.getElementById('rc-btn-vote-continue');
+  let bEvac = document.getElementById('rc-btn-vote-evacuate');
+  let myVote = (clientMe && data.votes) ? data.votes[clientMe.username] : null;
+
+  if (bCont) {
+    bCont.innerHTML = `${isEn ? '⚔️ NEXT WAVE' : '⚔️ СЛЕДУЮЩАЯ ВОЛНА'} (<span id="rc-int-next-wave">${data.nextWave}</span>/11)`;
+  }
+  if (bEvac) {
+    bEvac.innerHTML = isEn ? '🚪 EVACUATION TO LIVING CELL' : '🚪 ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ';
+  }
+
+  if (myVote === 'continue') {
+    if (bCont) {
+      bCont.className = 'raid-vote-btn voted-choice';
+      bCont.disabled = true;
+    }
+    if (bEvac) {
+      bEvac.className = 'raid-vote-btn voted-other';
+      bEvac.disabled = true;
+    }
+  } else if (myVote === 'evacuate') {
+    if (bEvac) {
+      bEvac.className = 'raid-vote-btn voted-choice';
+      bEvac.disabled = true;
+    }
+    if (bCont) {
+      bCont.className = 'raid-vote-btn voted-other';
+      bCont.disabled = true;
+    }
+  } else {
+    // Еще не голосовал в этой волне — кнопки активны и кликабельны!
+    if (bCont) {
+      bCont.className = 'raid-vote-btn';
+      bCont.disabled = false;
+      bCont.style.borderWidth = '1px';
+      bCont.style.borderColor = '#00ff66';
+      bCont.style.boxShadow = 'none';
+      bCont.style.opacity = '1';
+      bCont.style.background = 'rgba(0,70,35,0.85)';
+      bCont.style.color = '#fff';
+      bCont.style.cursor = 'pointer';
+      bCont.style.pointerEvents = 'auto';
+    }
+    if (bEvac) {
+      bEvac.className = 'raid-vote-btn';
+      bEvac.disabled = false;
+      bEvac.style.borderWidth = '1px';
+      bEvac.style.borderColor = '#ff5555';
+      bEvac.style.boxShadow = 'none';
+      bEvac.style.opacity = '1';
+      bEvac.style.background = 'rgba(80,25,25,0.85)';
+      bEvac.style.color = '#ffcccc';
+      bEvac.style.cursor = 'pointer';
+      bEvac.style.pointerEvents = 'auto';
+    }
+  }
+
   const votesList = document.getElementById('rc-int-votes-list');
   if (votesList && data.members) {
     votesList.innerHTML = '';
@@ -6372,7 +6510,6 @@ function renderIntermission(data) {
       row.style.borderRadius = '3px';
       row.style.fontSize = '12px';
 
-      const isEn = (currentLang === 'en');
       let isMe = (clientMe && u === clientMe.username);
       let voteBadge = '';
       if (vote === 'continue') {
@@ -6411,8 +6548,30 @@ socket.on('raidWaveStarted', (data) => {
   if (overlay) overlay.style.display = 'none';
   let bCont = document.getElementById('rc-btn-vote-continue');
   let bEvac = document.getElementById('rc-btn-vote-evacuate');
-  if (bCont) { bCont.style.borderWidth = '1px'; bCont.style.boxShadow = 'none'; bCont.style.opacity = '1'; }
-  if (bEvac) { bEvac.style.borderWidth = '1px'; bEvac.style.boxShadow = 'none'; bEvac.style.opacity = '1'; }
+  if (bCont) {
+    bCont.className = 'raid-vote-btn';
+    bCont.disabled = false;
+    bCont.style.borderWidth = '1px';
+    bCont.style.borderColor = '#00ff66';
+    bCont.style.boxShadow = 'none';
+    bCont.style.opacity = '1';
+    bCont.style.background = 'rgba(0,70,35,0.85)';
+    bCont.style.color = '#fff';
+    bCont.style.cursor = 'pointer';
+    bCont.style.pointerEvents = 'auto';
+  }
+  if (bEvac) {
+    bEvac.className = 'raid-vote-btn';
+    bEvac.disabled = false;
+    bEvac.style.borderWidth = '1px';
+    bEvac.style.borderColor = '#ff5555';
+    bEvac.style.boxShadow = 'none';
+    bEvac.style.opacity = '1';
+    bEvac.style.background = 'rgba(80,25,25,0.85)';
+    bEvac.style.color = '#ffcccc';
+    bEvac.style.cursor = 'pointer';
+    bEvac.style.pointerEvents = 'auto';
+  }
   appendRaidCombatLog(`[ВОЛНА ${data.currentWave}/11 НАЧАЛАСЬ] В сектор вошел ${data.enemy ? data.enemy.name : 'враг'}!`);
 });
 
