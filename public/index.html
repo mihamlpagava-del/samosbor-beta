@@ -201,13 +201,14 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .item-type { font-size: 10px; color: var(--ink-dim); font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px; }
 
 /* Оверлей быстрых действий на карточке */
-.chest-item-actions-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(246, 240, 226, 0.98); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); display: flex; flex-direction: column; justify-content: center; align-items: stretch; padding: 8px 10px; gap: 5px; z-index: 10; box-sizing: border-box; border-radius: 3px; animation: chestOverlayIn 0.15s ease-out; }
+.chest-item.actions-open { min-height: 180px !important; z-index: 25 !important; }
+.chest-item-actions-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(246, 240, 226, 0.98); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 6px 8px; gap: 3px; z-index: 25; box-sizing: border-box; border-radius: 3px; animation: chestOverlayIn 0.15s ease-out; overflow-y: auto; scrollbar-width: thin; }
 @keyframes chestOverlayIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 .chest-overlay-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 4px; margin-bottom: 2px; }
 .chest-overlay-title { font-size: 11px; font-weight: bold; color: var(--ink-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%; text-align: left; }
 .chest-overlay-close { background: transparent !important; border: 1px solid rgba(0,0,0,0.3) !important; color: #777 !important; padding: 1px 5px !important; font-size: 10px !important; line-height: 1 !important; margin: 0 !important; cursor: pointer; border-radius: 2px; }
 .chest-overlay-close:hover { color: var(--ink-danger) !important; border-color: var(--ink-danger) !important; }
-.chest-act-btn { width: 100%; padding: 6px 4px !important; font-size: 11px !important; font-weight: bold !important; letter-spacing: 0.5px !important; margin: 2px 0 !important; border-radius: 3px !important; cursor: pointer; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.12); transition: 0.1s; }
+.chest-act-btn { width: 100%; padding: 4px 4px !important; font-size: 11px !important; font-weight: bold !important; letter-spacing: 0.3px !important; margin: 1px 0 !important; border-radius: 3px !important; cursor: pointer; box-sizing: border-box; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.12); transition: 0.1s; }
 .chest-act-btn[data-action="belt"]        { color: #165b26 !important; border: 1px solid #237a37 !important; background: rgba(35, 122, 55, 0.08) !important; }
 .chest-act-btn[data-action="use"]         { color: #0b4382 !important; border: 1px solid #1259a8 !important; background: rgba(18, 89, 168, 0.08) !important; }
 .chest-act-btn[data-action="equip"]       { color: #5c3000 !important; border: 1px solid #824706 !important; background: rgba(130, 71, 6, 0.08) !important; }
@@ -2535,7 +2536,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <!-- МОДАЛЬНОЕ ОКНО: ВЫСТАВИТЬ ПРЕДМЕТ НА БАРАХОЛКУ -->
-<div id="market-sell-modal" class="modal-overlay" style="z-index: 85; display: none;">
+<div id="market-sell-modal" class="modal-overlay" style="z-index: 600 !important; display: none;">
   <div class="shop-panel" style="width: 500px; max-width: 95%;">
     <div class="shop-header">
       <span style="color: #ffd700;" data-i18n="market_sell_title">🏷️ ВЫСТАВИТЬ НА БАРАХОЛКУ</span>
@@ -5770,6 +5771,8 @@ function emergencyRaidRetreat() {
   if (confirm(isEn ? 'Are you sure you want to abort the sortie and return to the living cell?' : 'Вы уверены, что хотите завершить вылазку и вернуться в жилячейку?')) {
     socket.emit('leaveRaidSquad');
     closeRaidCombatModal();
+    const intermissionOverlay = document.getElementById('rc-intermission-overlay');
+    if (intermissionOverlay) intermissionOverlay.style.display = 'none';
   }
 }
 
@@ -7833,6 +7836,12 @@ function bindChestButtons() {
       return;
     }
 
+    // Если кликнули внутри оверлея действий (например в пустоту между кнопками), не закрывать меню
+    if (e.target.closest('.chest-item-actions-overlay')) {
+      e.stopPropagation();
+      return;
+    }
+
     // Клик на саму карточку или иконку переключает меню действий
     e.stopPropagation();
     toggleChestItemActions(itemCard);
@@ -8200,6 +8209,12 @@ function updateUI(me, sectorPlayers) {
     }
   } else { if(rp) rp.style.display = 'none'; }
 
+  let sectorNpcBtn = '';
+  if (me.locationNpc) {
+    let nData = me.locationNpc;
+    sectorNpcBtn = `<button onclick="socket.emit('talkToNpc', '${nData.id}');" style="color: ${nData.color || '#00ffaa'}; border-color: ${nData.color || '#00ffaa'}; font-weight:bold; margin-bottom: 6px; box-shadow: 0 0 10px rgba(0,255,170,0.25); width: 100%;">${isEn ? nData.titleEn : nData.titleRu}</button>`;
+  }
+
   let lifterBtn = '';
   if (me.location === 'E4') {
     let curF = me.floor || 0;
@@ -8228,7 +8243,7 @@ function updateUI(me, sectorPlayers) {
   let baseTxt = isEn ? 'TO BASE' : 'НА БАЗУ';
   let enterLog = isEn ? '> Entering the fog...\\n' : '> Входим в туман...\\n';
   if (ec) {
-    ec.innerHTML = `${lifterBtn}<div class="row-2"><button id="btn-farm-slime" onclick="socket.emit('work'); advanceOnboarding(1);" style="color: var(--term-info); border-color: var(--term-info);">${farmTxt}</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">${noteTxt}</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='${enterLog}'; socket.emit('explore'); advanceOnboarding(2);" id="btn-explore-fog" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">${mapTxt}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">${baseTxt}</button></div>`;
+    ec.innerHTML = `${lifterBtn}${sectorNpcBtn}<div class="row-2"><button id="btn-farm-slime" onclick="socket.emit('work'); advanceOnboarding(1);" style="color: var(--term-info); border-color: var(--term-info);">${farmTxt}</button><button onclick="document.getElementById('notebook-modal').style.display='flex';">${noteTxt}</button></div><button onclick="let b=document.getElementById('combat-log'); if(b) b.innerHTML='${enterLog}'; socket.emit('explore'); advanceOnboarding(2);" id="btn-explore-fog" style="color: ${expC}; border-color: ${expC}; font-weight:bold;">${expT}</button><div class="row-2"><button onclick="showScreen('map-screen'); updateActiveBackground(); changeAmbient('map');" style="color: var(--term-warn); border-color: var(--term-warn);">${mapTxt}</button><button onclick="socket.emit('changeLocation', 'safe_room');" style="color: #888; border-color: #444;">${baseTxt}</button></div>`;
   }
   const bfd = document.getElementById('btn-floor-down');
   const bfu = document.getElementById('btn-floor-up');
