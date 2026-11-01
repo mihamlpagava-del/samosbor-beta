@@ -49,27 +49,27 @@
       const px = player.x;
       const py = player.y;
       const angle = player.angle || 0;
-      const dist = 240;
-      const spread = 0.38; // ~44 degrees cone
-      const flicker = 0.94 + Math.sin(tick * 0.18) * 0.06;
+      const dist = 480;
+      const spread = 0.65; // ~75 degrees cone
+      const flicker = 0.96 + Math.sin(tick * 0.16) * 0.04;
 
       ctx.save();
 
-      // 1. Warm/green small ambient halo around player body
-      const haloGrad = ctx.createRadialGradient(px, py, 4, px, py, 48 * flicker);
-      haloGrad.addColorStop(0, 'rgba(136, 255, 158, 0.35)');
-      haloGrad.addColorStop(0.5, 'rgba(31, 224, 68, 0.15)');
+      // 1. Warm/green ambient halo around player body (illuminates room)
+      const haloGrad = ctx.createRadialGradient(px, py, 8, px, py, 150 * flicker);
+      haloGrad.addColorStop(0, 'rgba(136, 255, 158, 0.45)');
+      haloGrad.addColorStop(0.5, 'rgba(31, 224, 68, 0.22)');
       haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = haloGrad;
       ctx.beginPath();
-      ctx.arc(px, py, 48 * flicker, 0, Math.PI * 2);
+      ctx.arc(px, py, 150 * flicker, 0, Math.PI * 2);
       ctx.fill();
 
       // 2. Volumetric Forward Light Cone
-      const coneGrad = ctx.createRadialGradient(px, py, 12, px, py, dist * flicker);
-      coneGrad.addColorStop(0, 'rgba(180, 255, 195, 0.45)');
-      coneGrad.addColorStop(0.25, 'rgba(80, 240, 120, 0.28)');
-      coneGrad.addColorStop(0.65, 'rgba(25, 180, 60, 0.12)');
+      const coneGrad = ctx.createRadialGradient(px, py, 16, px, py, dist * flicker);
+      coneGrad.addColorStop(0, 'rgba(180, 255, 195, 0.55)');
+      coneGrad.addColorStop(0.28, 'rgba(80, 240, 120, 0.32)');
+      coneGrad.addColorStop(0.7, 'rgba(25, 180, 60, 0.16)');
       coneGrad.addColorStop(1, 'rgba(4, 20, 7, 0)');
 
       ctx.fillStyle = coneGrad;
@@ -80,14 +80,14 @@
       ctx.fill();
 
       // 3. Floating Phosphor Dust Motes inside the beam
-      ctx.fillStyle = 'rgba(200, 255, 210, 0.6)';
-      for (let i = 0; i < 7; i++) {
+      ctx.fillStyle = 'rgba(220, 255, 230, 0.65)';
+      for (let i = 0; i < 16; i++) {
         const seed = (tick * 0.04 + i * 1.618) % 1.0;
-        const pDist = 35 + seed * (dist * 0.85);
-        const pAngle = angle + (Math.sin(tick * 0.05 + i * 2) * spread * 0.75);
+        const pDist = 30 + seed * (dist * 0.9);
+        const pAngle = angle + (Math.sin(tick * 0.05 + i * 2) * spread * 0.85);
         const mx = px + Math.cos(pAngle) * pDist;
         const my = py + Math.sin(pAngle) * pDist;
-        const sz = 1.2 + (i % 2) * 0.8;
+        const sz = 1.2 + (i % 2) * 1.0;
         ctx.fillRect(mx, my, sz, sz);
       }
 
@@ -104,16 +104,16 @@
       const ly = lamp.y;
       const seed = lamp.seed || 0;
       const flicker = 0.88 + Math.sin(tick * 0.12 + seed) * 0.08 + (Math.sin(tick * 0.35 + seed * 2) * 0.04);
-      const rad = (lamp.radius || 95) * flicker;
+      const rad = (lamp.radius || 135) * flicker;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
       // 1. Warm radial amber illumination on floor and wall
-      const glowGrad = ctx.createRadialGradient(lx, ly, 4, lx, ly, rad);
-      glowGrad.addColorStop(0, 'rgba(255, 195, 80, 0.50)');
-      glowGrad.addColorStop(0.35, 'rgba(255, 140, 30, 0.25)');
-      glowGrad.addColorStop(0.75, 'rgba(220, 90, 10, 0.08)');
+      const glowGrad = ctx.createRadialGradient(lx, ly, 6, lx, ly, rad);
+      glowGrad.addColorStop(0, 'rgba(255, 205, 95, 0.60)');
+      glowGrad.addColorStop(0.4, 'rgba(255, 145, 35, 0.30)');
+      glowGrad.addColorStop(0.8, 'rgba(220, 90, 10, 0.10)');
       glowGrad.addColorStop(1, 'rgba(4, 20, 7, 0)');
 
       ctx.fillStyle = glowGrad;
@@ -169,34 +169,28 @@
     },
 
     /**
-     * Render Wall Tile using industrial hazard textures
+     * Render Top-Down Heavy Bunker Wall Tile from the 8 sliced textures
      */
-    drawWallTile(ctx, wx, wy, TS, alpha, variant = 'wall_h') {
+    drawWallTile(ctx, wx, wy, TS, alpha, seed = 0) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      const imgPath = `assets/radar/tiles/${variant}.png`;
+      const tx = Math.floor(wx / TS);
+      const ty = Math.floor(wy / TS);
+      const hash = Math.abs(((tx * 92837111) ^ (ty * 68928749) ^ (seed * 49287313)) >>> 0);
+      const wallIdx = hash % 8;
+      const imgPath = `assets/radar/tiles/wall_panel_${wallIdx}.png`;
       const img = this.getImage(imgPath);
 
       if (this.isImageReady(img)) {
         ctx.drawImage(img, wx, wy, TS, TS);
       } else {
-        // Fallback procedural industrial wall with hazard stripes
-        ctx.fillStyle = '#0b2611';
+        // Fallback dark bunker concrete block
+        ctx.fillStyle = '#141e17';
         ctx.fillRect(wx, wy, TS, TS);
-        ctx.strokeStyle = '#1fe044';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(wx + 1, wy + 1, TS - 2, TS - 2);
-
-        // Hazard diagonal stripes
-        ctx.strokeStyle = 'rgba(255, 170, 0, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(wx, wy + 8);
-        ctx.lineTo(wx + TS - 8, wy + TS);
-        ctx.moveTo(wx + 8, wy);
-        ctx.lineTo(wx + TS, wy + TS - 8);
-        ctx.stroke();
+        ctx.strokeStyle = '#274b30';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(wx + 0.5, wy + 0.5, TS - 1, TS - 1);
       }
 
       ctx.restore();

@@ -2159,6 +2159,34 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 
+<!-- МОДАЛЬНОЕ ОКНО ВВОДА КОДА ДОСТУПА К ШЛЮЗУ (ПАРОЛЬ: 2847) -->
+<div id="radar-gate-password-modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 10, 4, 0.92); z-index: 100060; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+  <div style="max-width: 440px; width: 92%; background: #031307; border: 2px solid #1fe044; box-shadow: 0 0 35px rgba(31,224,68,0.45); padding: 26px; color: #88ff9e; font-family: 'Share Tech Mono', monospace; text-align: center;">
+    <div style="color: #1fe044; font-size: 19px; font-weight: bold; margin-bottom: 12px; letter-spacing: 1.5px; text-shadow: 0 0 10px #1fe044;">
+      🔒 ШЛЮЗ БЛОКА // ЗАПРОС КОДА ДОСТУПА
+    </div>
+    <div style="font-size: 13px; line-height: 1.6; margin-bottom: 18px; color: #b7ffc6;">
+      Внимание! Доступ к внешнему сектору ограничен гермопротоколом. Для открытия шлюза введите защитный 4-значный код доступа:
+    </div>
+    
+    <div style="margin-bottom: 18px;">
+      <input id="radar-gate-pass-input" type="password" maxlength="6" placeholder="••••" style="width: 200px; padding: 10px 14px; font-family: 'Share Tech Mono', monospace; font-size: 24px; font-weight: bold; letter-spacing: 10px; text-align: center; background: rgba(0, 20, 8, 0.95); border: 2px solid #1fe044; color: #00ff66; outline: none; box-shadow: 0 0 15px rgba(31,224,68,0.3);" onkeydown="if(event.key==='Enter') submitRadarPassword();" />
+      <div id="radar-gate-pass-err" style="display: none; color: #ff3b30; font-size: 12px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; text-shadow: 0 0 8px #ff3b30;">
+        ДОСТУП ЗАПРЕЩЕН // НЕВЕРНЫЙ КОД
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <button onclick="submitRadarPassword()" style="flex: 1; padding: 12px; background: rgba(31,224,68,0.22); border: 2px solid #1fe044; color: #1fe044; font-weight: bold; cursor: pointer; font-size: 13px; letter-spacing: 1px; font-family: inherit;">
+        [ ВВЕСТИ КОД ]
+      </button>
+      <button onclick="cancelRadarPasswordModal()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.06); border: 1px solid #555555; color: #aaaaaa; font-weight: bold; cursor: pointer; font-size: 12px; letter-spacing: 1px; font-family: inherit;">
+        ОТМЕНА ✕
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ПОЛНОЭКРАННЫЙ РЕЖИМ 2D TOP-DOWN RADAR SHOOTER («РЕЙД: САМОСБОР») -->
 <div id="radar-roguelike-screen" style="display: none; position: fixed; inset: 0; z-index: 99999; background: #020503; overflow: hidden; width: 100vw; height: 100vh;">
   <canvas id="radar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
@@ -10510,6 +10538,49 @@ function stopRaidMusic() {
 }
 
 function openRadarRoguelikeModal() {
+  // Защита шлюза паролем (пароль: 2847)
+  openRadarPasswordModal();
+}
+
+function openRadarPasswordModal() {
+  const modal = document.getElementById('radar-gate-password-modal');
+  const input = document.getElementById('radar-gate-pass-input');
+  const err = document.getElementById('radar-gate-pass-err');
+  if (err) err.style.display = 'none';
+  if (input) {
+    input.value = '';
+    input.style.borderColor = '#1fe044';
+  }
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => { if (input) input.focus(); }, 100);
+  }
+}
+
+function cancelRadarPasswordModal() {
+  const modal = document.getElementById('radar-gate-password-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function submitRadarPassword() {
+  const input = document.getElementById('radar-gate-pass-input');
+  const err = document.getElementById('radar-gate-pass-err');
+  const val = input ? input.value.trim() : '';
+
+  if (val === '2847') {
+    cancelRadarPasswordModal();
+    launchRadarRoguelike();
+  } else {
+    if (err) err.style.display = 'block';
+    if (input) {
+      input.style.borderColor = '#ff3b30';
+      input.value = '';
+      input.focus();
+    }
+  }
+}
+
+function launchRadarRoguelike() {
   console.log('[RadarRoguelike] Opening raid mode...');
   const screen = document.getElementById('radar-roguelike-screen');
   const canvas = document.getElementById('radar-canvas');

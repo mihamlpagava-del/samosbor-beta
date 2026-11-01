@@ -1594,55 +1594,56 @@
       }
       const dctx = this.darknessCanvas.getContext('2d');
 
-      // 1. Fill entire screen with near-pitch darkness
+      // 1. Fill entire screen with moody bunker darkness (0.86 allows faint perception of walls/doors)
       dctx.globalCompositeOperation = 'source-over';
-      dctx.fillStyle = 'rgba(2, 6, 3, 0.985)';
+      dctx.fillStyle = 'rgba(2, 6, 3, 0.86)';
       dctx.fillRect(0, 0, w, h);
 
       // 2. Cut out light sources using destination-out
       dctx.globalCompositeOperation = 'destination-out';
 
-      // 2a. Wall Lanterns
+      // 2a. Wall Lanterns (Wide warm room illumination)
       if (this.lamps) {
         for (const lamp of this.lamps) {
           const lx = lamp.x - cam.x;
           const ly = lamp.y - cam.y;
-          if (lx > -180 && lx < w + 180 && ly > -180 && ly < h + 180) {
-            const lGrad = dctx.createRadialGradient(lx, ly, 8, lx, ly, 170);
+          if (lx > -240 && lx < w + 240 && ly > -240 && ly < h + 240) {
+            const lGrad = dctx.createRadialGradient(lx, ly, 10, lx, ly, 220);
             lGrad.addColorStop(0, 'rgba(0,0,0, 1.0)');
-            lGrad.addColorStop(0.5, 'rgba(0,0,0, 0.75)');
+            lGrad.addColorStop(0.5, 'rgba(0,0,0, 0.85)');
+            lGrad.addColorStop(0.85, 'rgba(0,0,0, 0.4)');
             lGrad.addColorStop(1, 'rgba(0,0,0, 0.0)');
             dctx.fillStyle = lGrad;
             dctx.beginPath();
-            dctx.arc(lx, ly, 170, 0, Math.PI * 2);
+            dctx.arc(lx, ly, 220, 0, Math.PI * 2);
             dctx.fill();
           }
         }
       }
 
-      // 2b. Player Ambient Aura
+      // 2b. Player Ambient Aura (Illuminates the room around player)
       const px = this.player.x - cam.x;
       const py = this.player.y - cam.y;
 
-      const aGrad = dctx.createRadialGradient(px, py, 6, px, py, 62);
+      const aGrad = dctx.createRadialGradient(px, py, 12, px, py, 150);
       aGrad.addColorStop(0, 'rgba(0,0,0, 1.0)');
-      aGrad.addColorStop(0.7, 'rgba(0,0,0, 0.85)');
+      aGrad.addColorStop(0.65, 'rgba(0,0,0, 0.85)');
       aGrad.addColorStop(1, 'rgba(0,0,0, 0.0)');
       dctx.fillStyle = aGrad;
       dctx.beginPath();
-      dctx.arc(px, py, 62, 0, Math.PI * 2);
+      dctx.arc(px, py, 150, 0, Math.PI * 2);
       dctx.fill();
 
-      // 2c. Player Flashlight Cone (Фонарик рассеивает тьму вперед!)
+      // 2c. Player Flashlight Cone (Фонарик рассеивает тьму широким лучом!)
       const pAngle = this.player.angle;
-      const beamDist = 385;
-      const spread = 0.45; // ~52 degree wide volumetric cone
+      const beamDist = 480;
+      const spread = 0.65; // ~75 degree wide volumetric cone
 
-      const fGrad = dctx.createRadialGradient(px, py, 16, px, py, beamDist);
+      const fGrad = dctx.createRadialGradient(px, py, 18, px, py, beamDist);
       fGrad.addColorStop(0, 'rgba(0,0,0, 1.0)');
-      fGrad.addColorStop(0.3, 'rgba(0,0,0, 0.98)');
-      fGrad.addColorStop(0.75, 'rgba(0,0,0, 0.92)');
-      fGrad.addColorStop(0.92, 'rgba(0,0,0, 0.5)');
+      fGrad.addColorStop(0.35, 'rgba(0,0,0, 0.98)');
+      fGrad.addColorStop(0.75, 'rgba(0,0,0, 0.90)');
+      fGrad.addColorStop(0.92, 'rgba(0,0,0, 0.45)');
       fGrad.addColorStop(1, 'rgba(0,0,0, 0.0)');
       dctx.fillStyle = fGrad;
       dctx.beginPath();
@@ -1787,10 +1788,10 @@
       ctx.fillText(`ПАТРОНЫ: ${ammoStr}`, hudX + 14, hudY + 72);
       ctx.fillText(`БРОНЯ: ${this.player.armor} DEF`, hudX + 14, hudY + 90);
 
-      // 3. Tactical Quick Belt (ПОЯС БЫСТРОГО ДОСТУПА) - Bottom Center
+      // 3. Tactical Quick Belt (ПОЯС БЫСТРОГО ДОСТУПА) - Bottom Left
       const beltW = 400;
       const beltH = 52;
-      const beltX = cx - beltW / 2;
+      const beltX = 16;
       const beltY = h - beltH - 16;
 
       ctx.fillStyle = 'rgba(4, 20, 7, 0.92)';
@@ -1852,8 +1853,8 @@
       if (nearbyWounded) {
         const popW = 430;
         const popH = 66;
-        const popX = cx - popW / 2;
-        const popY = beltY - popH - 14;
+        const popX = 16;
+        const popY = beltY - popH - 12;
 
         ctx.fillStyle = 'rgba(30, 10, 0, 0.96)';
         ctx.fillRect(popX, popY, popW, popH);
