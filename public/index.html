@@ -10445,6 +10445,19 @@ let currentRaidTrack = 'explore';
 
 function playRaidMusic(track = 'explore') {
   try {
+    // 1. Обязательно глушим музыку из главного меню и любые амбиенты жилой ячейки
+    if (typeof AMBIENTS !== 'undefined') {
+      Object.values(AMBIENTS).forEach(a => {
+        if (a && typeof a.pause === 'function') {
+          a.pause();
+        }
+      });
+    }
+  } catch (e) {
+    console.error('[RadarRoguelike] Error muting hub ambients:', e);
+  }
+
+  try {
     if (!raidMusicAudio) {
       raidMusicAudio = new Audio('assets/audio/raid_music.mp3');
       raidMusicAudio.loop = true;
@@ -10504,6 +10517,15 @@ function openRadarRoguelikeModal() {
     console.error('[RadarRoguelike] Screen or canvas element not found!');
     return;
   }
+
+  // 1. Сразу глушим музыку главного меню / ячейки
+  try {
+    if (typeof AMBIENTS !== 'undefined') {
+      Object.values(AMBIENTS).forEach(a => {
+        if (a && typeof a.pause === 'function') a.pause();
+      });
+    }
+  } catch (e) {}
 
   // Скрываем главное меню и открываем полноэкранный радарный холст
   const hub = document.getElementById('hub-screen');
@@ -10575,6 +10597,15 @@ function closeRadarRoguelikeModal() {
   }
   showScreen('hub-screen');
   updateActiveBackground();
+
+  // Возобновляем музыку жилой ячейки, если музыка включена
+  try {
+    if (typeof musicEnabled !== 'undefined' && musicEnabled && typeof currentAmbient !== 'undefined' && AMBIENTS && AMBIENTS[currentAmbient]) {
+      AMBIENTS[currentAmbient].play().catch(() => {});
+    }
+  } catch (e) {
+    console.error('[RadarRoguelike] Error resuming hub ambient:', e);
+  }
 }
 
 window.addEventListener('keydown', (e) => {

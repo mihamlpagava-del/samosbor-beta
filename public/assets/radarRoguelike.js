@@ -925,6 +925,9 @@
      */
     finishRaid(won) {
       this.stop();
+      if (typeof stopRaidMusic === 'function') {
+        stopRaidMusic();
+      }
 
       const earnedXP = won ? (this.player.xpEarned + 60) : Math.floor(this.player.xpEarned * 0.4);
       const earnedTalons = won ? (this.player.talonsEarned + 100) : 0; // If dead, all loot is lost!
@@ -1093,17 +1096,31 @@
       for (const e of this.entities) {
         if (e.damageFlashTimer > 0) e.damageFlashTimer--;
 
-        // Visibility relative to radar & fog of war
+        // Visibility relative to Flashlight, player aura & lamps
         const distToPlayer = Math.hypot(px - e.x, py - e.y);
         const angleToE = Math.atan2(e.y - py, e.x - px);
-        let normAng = angleToE < 0 ? angleToE + Math.PI * 2 : angleToE;
-        let diff = Math.abs(normAng - this.radarAngle);
+        let diff = Math.abs(angleToE - this.player.angle);
+        if (diff > Math.PI * 2) diff %= Math.PI * 2;
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
 
-        if (diff < 0.22 || distToPlayer < 220) {
+        // Flashlight beam: 390px range, ~52 deg cone, or 85px ambient aura
+        const inFlashlight = distToPlayer < 390 && diff < 0.48;
+        const inAura = distToPlayer < 85;
+
+        // Check lanterns
+        let inLamp = false;
+        for (const lamp of this.mapData.lamps || []) {
+          if (Math.hypot(lamp.x - e.x, lamp.y - e.y) < (lamp.radius || 150)) {
+            inLamp = true;
+            break;
+          }
+        }
+
+        e.inLightCone = inFlashlight || inAura || inLamp;
+        if (e.inLightCone) {
           e.phosphorAlpha = 1.0;
         } else {
-          e.phosphorAlpha = Math.max(0.04, (e.phosphorAlpha || 1.0) - 0.007);
+          e.phosphorAlpha = Math.max(0.2, (e.phosphorAlpha || 1.0) - 0.02);
         }
 
         // Entity AI Behavior
