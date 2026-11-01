@@ -420,13 +420,17 @@
         ctx.translate(x, y);
         ctx.rotate(angle);
 
+        if (entity.isWounded) {
+          ctx.filter = 'sepia(0.7) hue-rotate(-50deg) saturate(2.5) brightness(0.85)';
+        }
+
         const fIdx = isMoving ? Math.floor(tick * 0.2) % 6 : 0;
         const img = this.getImage(`assets/radar/entities/hero_rifle_f${fIdx}.png`);
 
         if (this.isImageReady(img)) {
           ctx.drawImage(img, -20, -22, 40, 44);
         } else {
-          this.drawPlayerVector(ctx, radius, isDamageFlash, entity, isMoving, tick, '#33d4ff');
+          this.drawPlayerVector(ctx, radius, isDamageFlash, entity, isMoving, tick, entity.isWounded ? '#ff8800' : '#33d4ff');
         }
 
         ctx.restore();
@@ -545,6 +549,17 @@
         ctx.font = 'bold 9px "Share Tech Mono", monospace';
         ctx.textAlign = 'center';
         ctx.fillText(`⚡ ${entity.name} ⚡`, x, barY - 4);
+      } else if (entity.type === 'liquidator') {
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        if (entity.isWounded) {
+          const pulse = (Math.sin(Date.now() * 0.008) > 0) ? '#ffaa00' : '#ff3333';
+          ctx.fillStyle = pulse;
+          ctx.fillText('⚠️ РАНЕН [E]', x, barY - 4);
+        } else if (entity.isLoyalFollower) {
+          ctx.fillStyle = '#00ff66';
+          ctx.fillText('★ НАПАРНИК', x, barY - 4);
+        }
       }
 
       ctx.restore();

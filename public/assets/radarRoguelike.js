@@ -121,12 +121,12 @@
           const isGun = (item.subtype === 'ranged' || eqW.includes('gun') || eqW.includes('pistol') || eqW.includes('rifle') || eqW.includes('shotgun'));
           this.player.baseWeapon = {
             id: eqW,
-            name: typeof getItemDisplayName === 'function' ? getItemDisplayName(item, eqW) : eqW,
+            name: typeof getItemDisplayName === 'function' ? getItemDisplayName(item, eqW) : (item.name || eqW),
             dmg: item.dmg || 28,
             isRanged: isGun,
             ammo: isGun ? 24 : Infinity,
             maxAmmo: isGun ? 24 : Infinity,
-            gunType: eqW.includes('shotgun') ? 'shotgun' : 'pistol'
+            gunType: eqW.includes('shotgun') ? 'shotgun' : (eqW.includes('rifle') ? 'rifle' : 'pistol')
           };
         } else {
           this.player.baseWeapon = {
@@ -148,8 +148,185 @@
         };
       }
 
-      // Start raid with base weapon
-      this.player.weapon = Object.assign({}, this.player.baseWeapon);
+      // Initialize Tactical Belt (ПОЯС)
+      const medkitsFromInv = this.countInventoryMedkits();
+      this.player.belt = {
+        activeSlot: 1,
+        slot1: Object.assign({}, this.player.baseWeapon),
+        slot2: this.getSecondaryWeaponFromBase(),
+        medkits: Math.max(2, Math.min(5, medkitsFromInv)),
+        maxMedkits: 5
+      };
+
+      // Start raid with active weapon from belt
+      this.player.weapon = this.player.belt.slot1;
+    }
+
+    countInventoryMedkits() {
+      let count = 0;
+      if (typeof clientMe !== 'undefined' && clientMe) {
+        if (Array.isArray(clientMe.inventory)) {
+          for (const id of clientMe.inventory) {
+            if (!id) continue;
+            const it = (typeof GAME_ITEMS !== 'undefined') ? GAME_ITEMS[id] : null;
+            if (id.includes('medkit') || id.includes('bandage') || id.includes('stim') || (it && it.type === 'heal')) {
+              count++;
+            }
+          }
+        }
+        if (Array.isArray(clientMe.quickSlots)) {
+          for (const id of clientMe.quickSlots) {
+            if (!id) continue;
+            const it = (typeof GAME_ITEMS !== 'undefined') ? GAME_ITEMS[id] : null;
+            if (id.includes('medkit') || id.includes('bandage') || id.includes('stim') || (it && it.type === 'heal')) {
+              count++;
+            }
+          }
+        }
+      }
+      return Math.max(2, Math.min(5, count));
+    }
+
+    getSecondaryWeaponFromBase() {
+      if (typeof clientMe !== 'undefined' && clientMe && Array.isArray(clientMe.inventory)) {
+        const eqW = (clientMe.equipped && clientMe.equipped.weapon) ? clientMe.equipped.weapon : null;
+        for (const id of clientMe.inventory) {
+          if (!id || id === eqW) continue;
+          const it = (typeof GAME_ITEMS !== 'undefined') ? GAME_ITEMS[id] : null;
+          if (it && (it.subtype === 'ranged' || id.includes('gun') || id.includes('pistol') || id.includes('rifle') || id.includes('shotgun'))) {
+            return {
+              id: id,
+              name: typeof getItemDisplayName === 'function' ? getItemDisplayName(it, id) : (it.name || id),
+              dmg: it.dmg || 34,
+              isRanged: true,
+              ammo: 20,
+              maxAmmo: 20,
+              gunType: id.includes('shotgun') ? 'shotgun' : (id.includes('rifle') ? 'rifle' : 'pistol')
+            };
+          }
+        }
+      }
+      return null;
+    }
+
+    switchBeltSlot(slotNum) {
+      if (!this.player.belt) return;
+      if (slotNum === 1) {
+        if (!this.player.belt.slot1) return;
+        this.player.belt.activeSlot = 1;
+        this.player.weapon = this.player.belt.slot1;
+        if (typeof RadarAudio !== 'undefined') RadarAudio.playWeaponSwitch();
+        this.spawnFloatingNotice(`[1] ${this.player.weapon.name.toUpperCase()}`, '#88ff9e');
+      } else if (slotNum === 2) {
+        if (!this.player.belt.slot2) {
+          this.spawnFloatingNotice('СЛОТ 2 [ПУСТО]', '#888888');
+          if (typeof RadarAudio !== 'undefined') RadarAudio.playBuzzer();
+          return;
+        }
+        this.player.belt.activeSlot = 2;
+        this.player.weapon = this.player.belt.slot2;
+        if (typeof RadarAudio !== 'undefined') RadarAudio.playWeaponSwitch();
+        this.spawnFloatingNotice(`[2] ${this.player.weapon.name.toUpperCase()}`, '#33d4ff');
+      }
+    }
+
+    useBeltMedkit() {
+      // If near wounded NPC, heal them!
+      const nearbyWounded = this.getNearbyWoundedNPC();
+      if (nearbyWounded) {
+        this.healWoundedNPC(nearbyWounded);
+        return;
+      }
+
+      // Otherwise heal player
+      if (!this.player.belt || this.player.belt.medkits <= 0) {
+        this.spawnFloatingNotice('НЕТ АПТЕЧЕК НА ПОЯСЕ!', '#ff3b30');
+        if (typeof RadarAudio !== 'undefined') RadarAudio.playBuzzer();
+        return;
+      }
+
+      if (this.player.hp >= this.player.maxHp) {
+        this.spawnFloatingNotice('ЗДОРОВЬЕ УЖЕ ПОЛНОЕ', '#88ff9e');
+        return;
+      }
+
+      this.player.belt.medkits--;
+      const healAmount = 45;
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmount);
+      if (typeof RadarAudio !== 'undefined') RadarAudio.playHeal();
+      this.spawnFloatingNotice(`+${healAmount} HP [АПТЕЧКА С ПОЯСА]`, '#00ff66');
+
+      for (let i = 0; i < 8; i++) {
+        this.particles.push({
+          x: this.player.x + (Math.random() - 0.5) * 16,
+          y: this.player.y + (Math.random() - 0.5) * 16,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -1.5 - Math.random() * 1.5,
+          color: '#00ff66',
+          alpha: 1.0,
+          sz: 3
+        });
+      }
+    }
+
+    getNearbyWoundedNPC() {
+      for (const e of this.entities) {
+        if (e.type === 'liquidator' && e.isWounded) {
+          if (Math.hypot(this.player.x - e.x, this.player.y - e.y) < 48) {
+            return e;
+          }
+        }
+      }
+      return null;
+    }
+
+    takeWeaponFromNPC(npc) {
+      if (!npc.hasWeapon || !npc.gun) {
+        this.spawnFloatingNotice('У БОЙЦА НЕТ ОРУЖИЯ', '#888888');
+        if (typeof RadarAudio !== 'undefined') RadarAudio.playBuzzer();
+        return;
+      }
+      const takenGun = Object.assign({}, npc.gun);
+      npc.hasWeapon = false;
+      npc.gun = null;
+
+      // Equip into secondary belt slot (or slot 1 if empty)
+      this.player.belt.slot2 = takenGun;
+      this.player.belt.activeSlot = 2;
+      this.player.weapon = this.player.belt.slot2;
+
+      if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
+      this.spawnFloatingNotice(`⚡ ЗАБРАНО ОРУЖИЕ: ${takenGun.name.toUpperCase()} [${takenGun.ammo}]`, '#33d4ff');
+    }
+
+    healWoundedNPC(npc) {
+      if (!this.player.belt || this.player.belt.medkits <= 0) {
+        this.spawnFloatingNotice('НЕТ АПТЕЧЕК НА ПОЯСЕ! [НУЖНА АПТЕЧКА]', '#ff3b30');
+        if (typeof RadarAudio !== 'undefined') RadarAudio.playBuzzer();
+        return;
+      }
+
+      this.player.belt.medkits--;
+      npc.hp = npc.maxHp;
+      npc.isWounded = false;
+      npc.isLoyalFollower = true;
+      this.player.talonsEarned += 30;
+      this.player.xpEarned += 45;
+
+      if (typeof RadarAudio !== 'undefined') RadarAudio.playHeal();
+      this.spawnFloatingNotice(`💚 БОЕЦ СПАСЕН! ТЕПЕРЬ ОН ПРИКРЫВАЕТ ВАС! (+45 XP, +30 ТАЛОНОВ)`, '#00ff66');
+
+      for (let i = 0; i < 12; i++) {
+        this.particles.push({
+          x: npc.x + (Math.random() - 0.5) * 20,
+          y: npc.y + (Math.random() - 0.5) * 20,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -1.5 - Math.random() * 2,
+          color: '#00ff66',
+          alpha: 1.0,
+          sz: 3
+        });
+      }
     }
 
     buildFloor() {
@@ -227,7 +404,14 @@
       });
 
       // Patrol Liquidators (Allies)
+      const liquidatorGuns = [
+        { id: 'ak_carbine', name: 'Автомат АК-74У', dmg: 28, ammo: 45, maxAmmo: 45, isRanged: true, gunType: 'rifle' },
+        { id: 'shotgun', name: 'Дробовик КС-23', dmg: 65, ammo: 14, maxAmmo: 14, isRanged: true, gunType: 'shotgun' },
+        { id: 'pm_gun', name: 'Пистолет Макарова', dmg: 32, ammo: 24, maxAmmo: 24, isRanged: true, gunType: 'pistol' }
+      ];
+
       (this.mapData.patrolSpawns || []).forEach((p, idx) => {
+        const gunPreset = Object.assign({}, liquidatorGuns[idx % liquidatorGuns.length]);
         this.entities.push({
           id: `patrol_${idx}`,
           type: 'liquidator',
@@ -243,6 +427,12 @@
           speed: 1.8,
           hp: 120,
           maxHp: 120,
+          isWounded: false,
+          hasWeapon: true,
+          gun: gunPreset,
+          isLoyalFollower: false,
+          attackCooldown: Math.floor(Math.random() * 20),
+          callForHelpTimer: 0,
           state: 'PATROL',
           stateTimer: 0,
           wanderTarget: { x: p.x, y: p.y },
@@ -258,8 +448,32 @@
         this.keys[e.code] = true;
         this.keys[e.key.toLowerCase()] = true;
 
+        if (e.code === 'Digit1') {
+          const nearbyWounded = this.getNearbyWoundedNPC();
+          if (nearbyWounded && nearbyWounded.hasWeapon) {
+            this.takeWeaponFromNPC(nearbyWounded);
+          } else {
+            this.switchBeltSlot(1);
+          }
+        }
+        if (e.code === 'Digit2') {
+          const nearbyWounded = this.getNearbyWoundedNPC();
+          if (nearbyWounded && this.player.belt && this.player.belt.medkits > 0) {
+            this.healWoundedNPC(nearbyWounded);
+          } else {
+            this.switchBeltSlot(2);
+          }
+        }
+        if (e.code === 'Digit3' || e.code === 'KeyQ') {
+          this.useBeltMedkit();
+        }
+
         if (e.code === 'Escape') {
-          this.exitToCell();
+          if (typeof confirmExitRadarRaid === 'function') {
+            confirmExitRadarRaid();
+          } else {
+            this.exitToCell();
+          }
         }
         if (e.code === 'KeyE' || e.code === 'Space') {
           this.interactNearby();
@@ -469,6 +683,19 @@
     }
 
     interactNearby() {
+      // 0. Nearby Wounded Liquidator
+      const nearbyWounded = this.getNearbyWoundedNPC();
+      if (nearbyWounded) {
+        if (this.player.belt && this.player.belt.medkits > 0) {
+          this.healWoundedNPC(nearbyWounded);
+        } else if (nearbyWounded.hasWeapon) {
+          this.takeWeaponFromNPC(nearbyWounded);
+        } else {
+          this.spawnFloatingNotice('БОЕЦ БЕЗОРУЖЕН И ТРЕБУЕТ АПТЕЧКУ С ПОЯСА!', '#ffaa00');
+        }
+        return;
+      }
+
       // 1. Doors
       for (const d of this.doors) {
         if (Math.hypot(this.player.x - d.x, this.player.y - d.y) < 45) {
@@ -498,7 +725,7 @@
 
     pickupWeapon(drop) {
       drop.pickedUp = true;
-      this.player.weapon = {
+      const newGun = {
         id: drop.gunId,
         name: drop.name,
         dmg: drop.dmg,
@@ -507,8 +734,15 @@
         maxAmmo: drop.maxAmmo,
         gunType: drop.gunType
       };
+      if (this.player.belt) {
+        this.player.belt.slot2 = newGun;
+        this.player.belt.activeSlot = 2;
+        this.player.weapon = this.player.belt.slot2;
+      } else {
+        this.player.weapon = newGun;
+      }
       if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
-      this.spawnFloatingNotice(`⚡ ПОДОБРАН: ${drop.name.toUpperCase()} [${drop.ammo}]`, '#33d4ff');
+      this.spawnFloatingNotice(`⚡ ПОДОБРАН В СЛОТ 2: ${drop.name.toUpperCase()} [${drop.ammo}]`, '#33d4ff');
     }
 
     openCrate(crate) {
@@ -526,7 +760,12 @@
         this.player.talonsEarned += crate.amount || 30;
         this.player.xpEarned += 20;
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + 25);
-        this.spawnFloatingNotice(`+${crate.amount || 30} ТАЛОНОВ, +25 HP`, '#f5a623');
+        if (this.player.belt && this.player.belt.medkits < this.player.belt.maxMedkits) {
+          this.player.belt.medkits++;
+          this.spawnFloatingNotice(`+${crate.amount || 30} ТАЛОНОВ, +25 HP, +1 АПТЕЧКА НА ПОЯС`, '#f5a623');
+        } else {
+          this.spawnFloatingNotice(`+${crate.amount || 30} ТАЛОНОВ, +25 HP`, '#f5a623');
+        }
       }
     }
 
@@ -920,19 +1159,168 @@
                 e.state = 'CHASE';
               }
             } else if (e.state === 'CHASE') {
-              const ang = Math.atan2(py - e.y, px - e.x);
+              // Find closest target between player and active liquidator allies
+              let tgtX = px;
+              let tgtY = py;
+              let tgtDist = distToPlayer;
+              let tgtAlly = null;
+
+              for (const ally of this.entities) {
+                if (ally.type === 'liquidator' && ally.hp > 0) {
+                  const dAlly = Math.hypot(ally.x - e.x, ally.y - e.y);
+                  if (dAlly < tgtDist) {
+                    tgtDist = dAlly;
+                    tgtX = ally.x;
+                    tgtY = ally.y;
+                    tgtAlly = ally;
+                  }
+                }
+              }
+
+              const ang = Math.atan2(tgtY - e.y, tgtX - e.x);
               let moveSpeed = e.speed;
-              if (e.behavior === 'leap_ambush' && distToPlayer < 90) {
+              if (e.behavior === 'leap_ambush' && tgtDist < 90) {
                 moveSpeed *= 1.6; // Rapid lunge!
               }
               e.vx = Math.cos(ang) * moveSpeed;
               e.vy = Math.sin(ang) * moveSpeed;
               e.angle = ang;
 
-              if (distToPlayer < e.radius + this.player.radius + 4) {
-                this.damagePlayer(e.dmg || 18, e.name);
-                e.vx *= -1.5;
-                e.vy *= -1.5;
+              if (tgtAlly) {
+                if (tgtDist < e.radius + tgtAlly.radius + 4) {
+                  tgtAlly.hp = Math.max(0, tgtAlly.hp - (e.dmg || 18));
+                  tgtAlly.damageFlashTimer = 10;
+                  if (tgtAlly.hp <= 45) tgtAlly.isWounded = true;
+                  e.vx *= -1.5;
+                  e.vy *= -1.5;
+                  this.spawnHitParticles(tgtAlly.x, tgtAlly.y, '#33d4ff', 6);
+                  if (typeof RadarAudio !== 'undefined') RadarAudio.playMonsterHurt();
+                }
+              } else {
+                if (distToPlayer < e.radius + this.player.radius + 4) {
+                  this.damagePlayer(e.dmg || 18, e.name);
+                  e.vx *= -1.5;
+                  e.vy *= -1.5;
+                }
+              }
+            }
+          }
+        } else {
+          // Patrol Liquidator AI (Combat & Rescue)
+          if (e.hp <= 45 || e.hp <= e.maxHp * 0.38) {
+            e.isWounded = true;
+            e.vx = 0;
+            e.vy = 0;
+            e.callForHelpTimer = (e.callForHelpTimer || 0) + 1;
+            if (e.callForHelpTimer > 180) {
+              e.callForHelpTimer = 0;
+              this.particles.push({
+                x: e.x - 45,
+                y: e.y - 30,
+                vx: 0,
+                vy: -0.5,
+                text: '⚠️ РАНЕН! БРАТОК, ПОМОГИ!',
+                color: '#ffaa00',
+                alpha: 1.0,
+                isText: true,
+                life: 60
+              });
+            }
+          } else {
+            // Healthy Liquidator: scans for hostiles and engages
+            if (e.attackCooldown > 0) e.attackCooldown--;
+
+            let nearestMonster = null;
+            let minDist = 260;
+            for (const m of this.entities) {
+              if (m.type === 'monster' && m.hp > 0) {
+                const dm = Math.hypot(m.x - e.x, m.y - e.y);
+                if (dm < minDist) {
+                  minDist = dm;
+                  nearestMonster = m;
+                }
+              }
+            }
+
+            if (nearestMonster) {
+              const mAng = Math.atan2(nearestMonster.y - e.y, nearestMonster.x - e.x);
+              e.angle = mAng;
+
+              if (e.hasWeapon && e.gun && e.gun.ammo > 0) {
+                // Keep tactical distance
+                if (minDist < 90) {
+                  e.vx = -Math.cos(mAng) * e.speed;
+                  e.vy = -Math.sin(mAng) * e.speed;
+                } else if (minDist > 170) {
+                  e.vx = Math.cos(mAng) * (e.speed * 0.9);
+                  e.vy = Math.sin(mAng) * (e.speed * 0.9);
+                } else {
+                  e.vx = 0;
+                  e.vy = 0;
+                }
+
+                // Fire at monster!
+                if (e.attackCooldown <= 0) {
+                  e.attackCooldown = (e.gun.gunType === 'shotgun') ? 52 : (e.gun.gunType === 'rifle' ? 24 : 38);
+                  e.gun.ammo--;
+
+                  const spread = (Math.random() - 0.5) * 0.12;
+                  const fireAng = mAng + spread;
+                  this.projectiles.push({
+                    x: e.x + Math.cos(fireAng) * 16,
+                    y: e.y + Math.sin(fireAng) * 16,
+                    vx: Math.cos(fireAng) * 8.5,
+                    vy: Math.sin(fireAng) * 8.5,
+                    damage: e.gun.dmg || 28,
+                    isPlayer: true,
+                    life: 45,
+                    color: '#88ff9e'
+                  });
+
+                  if (typeof RadarAudio !== 'undefined') {
+                    RadarAudio.playGunshot(e.gun.gunType || 'rifle');
+                  }
+                }
+              } else {
+                // Out of ammo or unarmed - retreat from monster
+                e.vx = -Math.cos(mAng) * e.speed;
+                e.vy = -Math.sin(mAng) * e.speed;
+              }
+            } else {
+              // No monsters in sight
+              if (e.isLoyalFollower) {
+                // Follow the player as loyal escort
+                const dPlayer = Math.hypot(px - e.x, py - e.y);
+                if (dPlayer > 70) {
+                  const pAng = Math.atan2(py - e.y, px - e.x);
+                  e.angle = pAng;
+                  e.vx = Math.cos(pAng) * (e.speed * 1.1);
+                  e.vy = Math.sin(pAng) * (e.speed * 1.1);
+                } else {
+                  e.vx = 0;
+                  e.vy = 0;
+                }
+              } else {
+                // Autonomous patrol between waypoints
+                e.stateTimer = (e.stateTimer || 0) - 1;
+                if (e.stateTimer <= 0) {
+                  e.stateTimer = 90 + Math.random() * 120;
+                  e.wanderTarget = {
+                    x: e.homeX + (Math.random() - 0.5) * 180,
+                    y: e.homeY + (Math.random() - 0.5) * 180
+                  };
+                }
+                const dx = e.wanderTarget.x - e.x;
+                const dy = e.wanderTarget.y - e.y;
+                if (Math.hypot(dx, dy) > 8) {
+                  const ang = Math.atan2(dy, dx);
+                  e.vx = Math.cos(ang) * (e.speed * 0.6);
+                  e.vy = Math.sin(ang) * (e.speed * 0.6);
+                  e.angle = ang;
+                } else {
+                  e.vx = 0;
+                  e.vy = 0;
+                }
               }
             }
           }
@@ -1056,8 +1444,8 @@
       const h = this.canvas.height;
       const cam = this.getCameraOffset();
 
-      // CRT Persistence Trail: Slow dark fade
-      ctx.fillStyle = 'rgba(4, 20, 7, 0.05)';
+      // Deep solid darkness background
+      ctx.fillStyle = '#020503';
       ctx.fillRect(0, 0, w, h);
 
       ctx.save();
@@ -1109,10 +1497,7 @@
         }
       }
 
-      // 6. Draw Circular Sonar & Sweep Line
-      this.drawCircularSonar(ctx);
-
-      // 7. Draw Projectiles
+      // 6. Draw Projectiles
       for (const p of this.projectiles) {
         ctx.fillStyle = p.color;
         ctx.beginPath();
@@ -1122,24 +1507,24 @@
         ctx.stroke();
       }
 
-      // 8. Draw Melee Swing Slash Arc
+      // 7. Draw Melee Swing Slash Arc
       if (this.player.isSwinging && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawMeleeSwingArc) {
         SpriteFactory.drawMeleeSwingArc(ctx, this.player.x, this.player.y, this.player.angle, this.player.swingProgress);
       }
 
-      // 9. Draw AI Entities
+      // 8. Draw AI Entities
       for (const e of this.entities) {
         if (typeof SpriteFactory !== 'undefined') {
           SpriteFactory.drawEntity(ctx, e, this.tick);
         }
       }
 
-      // 10. Draw Player
+      // 9. Draw Player
       if (typeof SpriteFactory !== 'undefined') {
         SpriteFactory.drawEntity(ctx, this.player, this.tick);
       }
 
-      // 11. Particles & Floating Text
+      // 10. Particles & Floating Text
       for (const pt of this.particles) {
         ctx.save();
         ctx.globalAlpha = Math.max(0, pt.alpha);
@@ -1156,6 +1541,9 @@
 
       ctx.restore();
 
+      // 11. Dynamic Darkness & Volumetric Flashlight (Тьма отступает при свете фонарика!)
+      this.drawDynamicDarkness(ctx, cam, w, h);
+
       // 12. Draw Tactical HUD & Crosshair
       this.drawRadarHUD(ctx, w, h);
 
@@ -1168,6 +1556,114 @@
       if (this.isCollapsing) {
         this.drawCRTCollapse(ctx, w, h);
       }
+    }
+
+    /**
+     * Dynamic Lighting & Darkness: Darkness covers the block, pierced by player flashlight & lanterns
+     */
+    drawDynamicDarkness(ctx, cam, w, h) {
+      if (!this.darknessCanvas) {
+        this.darknessCanvas = document.createElement('canvas');
+      }
+      if (this.darknessCanvas.width !== w || this.darknessCanvas.height !== h) {
+        this.darknessCanvas.width = w;
+        this.darknessCanvas.height = h;
+      }
+      const dctx = this.darknessCanvas.getContext('2d');
+
+      // 1. Fill entire screen with near-pitch darkness
+      dctx.globalCompositeOperation = 'source-over';
+      dctx.fillStyle = 'rgba(2, 6, 3, 0.985)';
+      dctx.fillRect(0, 0, w, h);
+
+      // 2. Cut out light sources using destination-out
+      dctx.globalCompositeOperation = 'destination-out';
+
+      // 2a. Wall Lanterns
+      if (this.lamps) {
+        for (const lamp of this.lamps) {
+          const lx = lamp.x - cam.x;
+          const ly = lamp.y - cam.y;
+          if (lx > -180 && lx < w + 180 && ly > -180 && ly < h + 180) {
+            const lGrad = dctx.createRadialGradient(lx, ly, 8, lx, ly, 170);
+            lGrad.addColorStop(0, 'rgba(0,0,0, 1.0)');
+            lGrad.addColorStop(0.5, 'rgba(0,0,0, 0.75)');
+            lGrad.addColorStop(1, 'rgba(0,0,0, 0.0)');
+            dctx.fillStyle = lGrad;
+            dctx.beginPath();
+            dctx.arc(lx, ly, 170, 0, Math.PI * 2);
+            dctx.fill();
+          }
+        }
+      }
+
+      // 2b. Player Ambient Aura
+      const px = this.player.x - cam.x;
+      const py = this.player.y - cam.y;
+
+      const aGrad = dctx.createRadialGradient(px, py, 6, px, py, 62);
+      aGrad.addColorStop(0, 'rgba(0,0,0, 1.0)');
+      aGrad.addColorStop(0.7, 'rgba(0,0,0, 0.85)');
+      aGrad.addColorStop(1, 'rgba(0,0,0, 0.0)');
+      dctx.fillStyle = aGrad;
+      dctx.beginPath();
+      dctx.arc(px, py, 62, 0, Math.PI * 2);
+      dctx.fill();
+
+      // 2c. Player Flashlight Cone (Фонарик рассеивает тьму вперед!)
+      const pAngle = this.player.angle;
+      const beamDist = 385;
+      const spread = 0.45; // ~52 degree wide volumetric cone
+
+      const fGrad = dctx.createRadialGradient(px, py, 16, px, py, beamDist);
+      fGrad.addColorStop(0, 'rgba(0,0,0, 1.0)');
+      fGrad.addColorStop(0.3, 'rgba(0,0,0, 0.98)');
+      fGrad.addColorStop(0.75, 'rgba(0,0,0, 0.92)');
+      fGrad.addColorStop(0.92, 'rgba(0,0,0, 0.5)');
+      fGrad.addColorStop(1, 'rgba(0,0,0, 0.0)');
+      dctx.fillStyle = fGrad;
+      dctx.beginPath();
+      dctx.moveTo(px, py);
+      dctx.arc(px, py, beamDist, pAngle - spread, pAngle + spread);
+      dctx.closePath();
+      dctx.fill();
+
+      // Reset darkness context
+      dctx.globalCompositeOperation = 'source-over';
+
+      // 3. Draw the darkness mask over main canvas
+      ctx.drawImage(this.darknessCanvas, 0, 0);
+
+      // 4. Draw volumetric beam haze & floating dust motes
+      this.drawVolumetricBeamHaze(ctx, px, py, pAngle, beamDist, spread);
+    }
+
+    drawVolumetricBeamHaze(ctx, px, py, angle, dist, spread) {
+      ctx.save();
+      const vGrad = ctx.createRadialGradient(px, py, 15, px, py, dist);
+      vGrad.addColorStop(0, 'rgba(136, 255, 158, 0.16)');
+      vGrad.addColorStop(0.4, 'rgba(31, 224, 68, 0.08)');
+      vGrad.addColorStop(0.85, 'rgba(11, 56, 20, 0.03)');
+      vGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = vGrad;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.arc(px, py, dist, angle - spread, angle + spread);
+      ctx.closePath();
+      ctx.fill();
+
+      // Dust motes in the flashlight cone
+      const now = Date.now() * 0.001;
+      ctx.fillStyle = 'rgba(200, 255, 210, 0.35)';
+      for (let i = 0; i < 16; i++) {
+        const d = 30 + ((i * 23 + now * 18) % (dist - 40));
+        const offAng = (Math.sin(now + i) * spread * 0.75);
+        const mx = px + Math.cos(angle + offAng) * d;
+        const my = py + Math.sin(angle + offAng) * d;
+        ctx.fillRect(mx, my, 1.5, 1.5);
+      }
+      ctx.restore();
     }
 
     isCellExplored(tx, ty) {
@@ -1206,33 +1702,6 @@
           }
         }
       }
-    }
-
-    drawCircularSonar(ctx) {
-      const px = this.player.x;
-      const py = this.player.y;
-      const sweepRadius = 420;
-
-      ctx.save();
-      const grad = ctx.createRadialGradient(px, py, 10, px, py, sweepRadius);
-      grad.addColorStop(0, 'rgba(31, 224, 68, 0.22)');
-      grad.addColorStop(1, 'rgba(31, 224, 68, 0.0)');
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.arc(px, py, sweepRadius, this.radarAngle - 0.45, this.radarAngle);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = '#1fe044';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(px + Math.cos(this.radarAngle) * sweepRadius, py + Math.sin(this.radarAngle) * sweepRadius);
-      ctx.stroke();
-
-      ctx.restore();
     }
 
     drawRadarHUD(ctx, w, h) {
@@ -1295,7 +1764,96 @@
       ctx.fillText(`ПАТРОНЫ: ${ammoStr}`, hudX + 14, hudY + 72);
       ctx.fillText(`БРОНЯ: ${this.player.armor} DEF`, hudX + 14, hudY + 90);
 
-      // 3. 5-Second Extraction Zone Gauge & Progress Bar
+      // 3. Tactical Quick Belt (ПОЯС БЫСТРОГО ДОСТУПА) - Bottom Center
+      const beltW = 400;
+      const beltH = 52;
+      const beltX = cx - beltW / 2;
+      const beltY = h - beltH - 16;
+
+      ctx.fillStyle = 'rgba(4, 20, 7, 0.92)';
+      ctx.fillRect(beltX, beltY, beltW, beltH);
+      ctx.strokeStyle = '#1fe044';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(beltX, beltY, beltW, beltH);
+
+      // Slot 1: Primary Weapon
+      const slot1W = 130;
+      const isSlot1 = (this.player.belt && this.player.belt.activeSlot === 1);
+      ctx.fillStyle = isSlot1 ? 'rgba(31, 224, 68, 0.24)' : 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(beltX + 6, beltY + 6, slot1W, 40);
+      ctx.strokeStyle = isSlot1 ? '#1fe044' : 'rgba(31, 224, 68, 0.4)';
+      ctx.strokeRect(beltX + 6, beltY + 6, slot1W, 40);
+
+      ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      ctx.fillStyle = isSlot1 ? '#1fe044' : '#888888';
+      ctx.fillText('[1] ОСНОВНОЕ', beltX + 10, beltY + 20);
+      const s1Name = this.player.belt && this.player.belt.slot1 ? this.player.belt.slot1.name : 'Труба';
+      const s1Ammo = this.player.belt && this.player.belt.slot1 ? (this.player.belt.slot1.isRanged ? `${this.player.belt.slot1.ammo}` : '∞') : '∞';
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`${s1Name.slice(0, 15)} [${s1Ammo}]`, beltX + 10, beltY + 36);
+
+      // Slot 2: Secondary / Looted Weapon
+      const isSlot2 = (this.player.belt && this.player.belt.activeSlot === 2);
+      ctx.fillStyle = isSlot2 ? 'rgba(51, 212, 255, 0.24)' : 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(beltX + 142, beltY + 6, slot1W, 40);
+      ctx.strokeStyle = isSlot2 ? '#33d4ff' : 'rgba(51, 212, 255, 0.4)';
+      ctx.strokeRect(beltX + 142, beltY + 6, slot1W, 40);
+
+      ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      ctx.fillStyle = isSlot2 ? '#33d4ff' : '#888888';
+      ctx.fillText('[2] ЗАПАСНОЕ', beltX + 146, beltY + 20);
+      const s2Name = this.player.belt && this.player.belt.slot2 ? this.player.belt.slot2.name : '[ПУСТО]';
+      const s2Ammo = this.player.belt && this.player.belt.slot2 ? (this.player.belt.slot2.isRanged ? `${this.player.belt.slot2.ammo}` : '∞') : '-';
+      ctx.font = '9px monospace';
+      ctx.fillStyle = this.player.belt && this.player.belt.slot2 ? '#ffffff' : '#666666';
+      ctx.fillText(`${s2Name.slice(0, 15)} [${s2Ammo}]`, beltX + 146, beltY + 36);
+
+      // Slot 3: Quick First-Aid Medkit
+      const slot3W = 112;
+      ctx.fillStyle = 'rgba(0, 45, 20, 0.55)';
+      ctx.fillRect(beltX + 278, beltY + 6, slot3W, 40);
+      ctx.strokeStyle = '#00ff66';
+      ctx.strokeRect(beltX + 278, beltY + 6, slot3W, 40);
+
+      ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#00ff66';
+      ctx.fillText('[3 / Q] ПОЯС', beltX + 282, beltY + 20);
+      const medCount = this.player.belt ? this.player.belt.medkits : 0;
+      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = medCount > 0 ? '#ffea00' : '#ff4444';
+      ctx.fillText(`💉 АПТЕЧКА x${medCount}`, beltX + 282, beltY + 36);
+
+      // 4. Interactive Prompt for Nearby Wounded NPC
+      const nearbyWounded = this.getNearbyWoundedNPC();
+      if (nearbyWounded) {
+        const popW = 430;
+        const popH = 66;
+        const popX = cx - popW / 2;
+        const popY = beltY - popH - 14;
+
+        ctx.fillStyle = 'rgba(30, 10, 0, 0.96)';
+        ctx.fillRect(popX, popY, popW, popH);
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(popX, popY, popW, popH);
+
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 12px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠️ ВПЕРЕДИ РАНЕНЫЙ ЛИКВИДАТОР! ВЫБЕРИТЕ ДЕЙСТВИЕ:', cx, popY + 20);
+
+        ctx.font = '11px monospace';
+        ctx.fillStyle = '#33d4ff';
+        const gunTitle = (nearbyWounded.hasWeapon && nearbyWounded.gun) ? nearbyWounded.gun.name : 'НЕТ ОРУЖИЯ';
+        ctx.fillText(`[1] ЗАБРАТЬ ОРУЖИЕ (${gunTitle})`, cx - 100, popY + 44);
+
+        ctx.fillStyle = (this.player.belt && this.player.belt.medkits > 0) ? '#00ff66' : '#ff5555';
+        ctx.fillText(`[2 / Q] ВЫЛЕЧИТЬ С ПОЯСА (${this.player.belt ? this.player.belt.medkits : 0} шт.)`, cx + 115, popY + 44);
+        ctx.textAlign = 'left';
+      }
+
+      // 5. 5-Second Extraction Zone Gauge & Progress Bar
       if (this.isPlayerInElevator) {
         const holdPct = Math.min(1.0, this.evacHoldTimer / this.evacHoldRequired);
         const holdSecLeft = Math.max(0, this.evacHoldRequired - this.evacHoldTimer).toFixed(1);
@@ -1319,7 +1877,7 @@
         ctx.textAlign = 'left';
       }
 
-      // 4. CRT Scanlines
+      // 6. CRT Scanlines
       ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
       for (let y = 0; y < h; y += 4) {
         ctx.fillRect(0, y, w, 1.5);

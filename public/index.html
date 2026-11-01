@@ -2160,9 +2160,30 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 
 <!-- ПОЛНОЭКРАННЫЙ РЕЖИМ 2D TOP-DOWN RADAR SHOOTER («РЕЙД: САМОСБОР») -->
-<div id="radar-roguelike-screen" style="display: none; position: fixed; inset: 0; z-index: 99999; background: #041407; overflow: hidden; width: 100vw; height: 100vh;">
+<div id="radar-roguelike-screen" style="display: none; position: fixed; inset: 0; z-index: 99999; background: #020503; overflow: hidden; width: 100vw; height: 100vh;">
   <canvas id="radar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
-  <button id="btn-radar-abort" onclick="closeRadarRoguelikeModal()" style="position: absolute; top: 16px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.92); border: 2px solid #1fe044; color: #1fe044; padding: 8px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-shadow: 0 0 8px #1fe044; box-shadow: 0 0 12px rgba(31,224,68,0.4);">[ESC] В ЖИЛЯЧЕЙКУ</button>
+  <button id="btn-radar-abort" onclick="confirmExitRadarRaid()" style="position: absolute; top: 16px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.92); border: 2px solid #1fe044; color: #1fe044; padding: 8px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-shadow: 0 0 8px #1fe044; box-shadow: 0 0 12px rgba(31,224,68,0.4);">[ESC] В ЖИЛЯЧЕЙКУ</button>
+
+  <!-- МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ВЫХОДА / ПРЕДУПРЕЖДЕНИЕ О ПОТЕРЕ ХАБАРА -->
+  <div id="radar-abort-confirm-modal" style="display: none; position: absolute; inset: 0; background: rgba(0, 5, 2, 0.9); z-index: 100005; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="max-width: 520px; width: 90%; background: #041407; border: 2px solid #ff3b30; box-shadow: 0 0 30px rgba(255,59,48,0.6); padding: 26px; color: #88ff9e; font-family: 'Share Tech Mono', monospace; text-align: center;">
+      <div style="color: #ff3b30; font-size: 20px; font-weight: bold; margin-bottom: 14px; letter-spacing: 1px; text-shadow: 0 0 10px #ff3b30;">
+        ⚠️ ДОСРОЧНАЯ ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ
+      </div>
+      <div style="font-size: 13px; line-height: 1.65; margin-bottom: 22px; color: #d0ffd8;">
+        Внимание! Если вы сейчас покинете сектор через аварийный шлюз, вы <b style="color: #ff3b30; text-decoration: underline;">ПОТЕРЯЕТЕ ВЕСЬ НАЙДЕННЫЙ ХАБАР</b>, талоны и собранное в рейде оружие!<br><br>
+        Чтобы безопасно вынести награду в Жилячейку, <b>найдите точку эвакуации [H] (шахта лифта)</b> и удерживайте её в течение <b>5 секунд</b>!
+      </div>
+      <div style="display: flex; gap: 14px; justify-content: center;">
+        <button id="btn-radar-cancel-exit" onclick="cancelExitRadarRaid()" style="flex: 1; padding: 12px; background: rgba(31,224,68,0.18); border: 2px solid #1fe044; color: #1fe044; font-weight: bold; cursor: pointer; font-size: 13px; letter-spacing: 1px;">
+          ◀ ВЕРНУТЬСЯ В РЕЙД
+        </button>
+        <button id="btn-radar-confirm-exit" onclick="forceExitRadarRaid()" style="flex: 1; padding: 12px; background: rgba(255,59,48,0.18); border: 2px solid #ff3b30; color: #ff3b30; font-weight: bold; cursor: pointer; font-size: 12px; letter-spacing: 1px;">
+          СДАТЬСЯ И ВЫЙТИ (ПОТЕРЯТЬ ВСЁ) ✕
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="hub-screen" class="screen">
@@ -2376,6 +2397,18 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     &nbsp;&nbsp;🤝 <b>РЕЙД (Кооператив):</b> Отправить приглашение в совместную вылазку против усиленной элитной твари Тумана с ценным лутом. Оба игрока сражаются одновременно и наносят общий урон!<br>
     &nbsp;&nbsp;🩹 <b>ПОМОЧЬ:</b> Оказать товарищу полевую первую помощь (+15 HP).<br>
     • <b>Случайные события и NPC:</b> Во время вылазок в Туман (28% шанс) вы можете наткнуться на Барыгу с редким оружием, Сталкера Глеба с байками о Самосборе, раненого Ликвидатора или сумасшедшего Ученого с экспериментальной сывороткой, а также найти квестовые тайники с деталями лифта и ключами!</p>
+
+    <h3>= 11. РЕЖИМ РЕЙДА САМОСБОРА (2D TOP-DOWN), ПОЯС И СОЮЗНИКИ =</h3>
+    <p>• <b>Выход в рейд:</b> Кнопка <b>[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]</b> переводит вас в тактический 2D режим реального времени.<br>
+    • <b>Тьма и Фонарик:</b> Сектор погружен во мрак. Направляйте курсор мыши — мощный луч фонарика рассеивает тьму, открывая коридоры, настенные фонари, ящики снабжения и бродячих мутантов.<br>
+    • <b>Тактический пояс быстрого доступа:</b><br>
+    &nbsp;&nbsp;<b>[1]</b> — Основное оружие из экипировки жилячейки или подобранное.<br>
+    &nbsp;&nbsp;<b>[2]</b> — Запасное оружие (найденное в блоке или взятое у бойца).<br>
+    &nbsp;&nbsp;<b>[3] / [Q]</b> — Военная аптечка с пояса (+45 HP вам, или спасение союзника).<br>
+    • <b>Союзники и спасение раненых:</b> Патрульные ликвидаторы ведут огонь по мутантам в коридорах. Если боец ранен (падает на колено и просит о помощи), подойдите и нажмите <b>[E]</b>:<br>
+    &nbsp;&nbsp;<b>[1]</b> — Забрать его оружие во второй слот пояса.<br>
+    &nbsp;&nbsp;<b>[2 / Q]</b> — Дать аптечку с пояса: боец встает на ноги, прикрывает вас как верный напарник в бою, а вы получаете +45 XP и талоны!<br>
+    • <b>Эвакуация:</b> Таймер вылазки — 5 минут. Найдите платформу лифта <b>[ H ]</b> и удерживайте позицию <b>5 секунд</b> для эвакуации всей найденной добычи. При досрочном выходе по <b>[ESC]</b> собранный хабар сгорает!</p>
     </div>
   </div>
 </div>
@@ -4597,6 +4630,28 @@ const TUTORIAL_STEPS_RU = [
       </div>
       <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">Вы готовы к выживанию, Заключенный. Партия верит в ваш долг!</p>
     `
+  },
+  {
+    title: "9. РЕЙД САМОСБОРА (2D TOP-DOWN), ПОЯС И СОЮЗНИКИ",
+    shortName: "9. Рейд Самосбора",
+    content: `
+      <p>Зелёная кнопка <b>[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]</b> запускает тактический 2D режим рейда в реальном времени.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🔦 <b>Тьма и Фонарик:</b> В заброшенном секторе царит кромешная тьма. Направляйте курсор мыши — мощный луч фонарика рассеивает мрак, открывая коридоры, затаившихся мутантов и ящики с ценным хабаром.</div>
+        <div style="margin-top:6px;">⚡ <b>Тактический пояс (Клавиши 1, 2, 3/Q):</b>
+          <br>• <b>[1]</b> — Основное оружие (из экипировки жилячейки или подобранное).
+          <br>• <b>[2]</b> — Запасное оружие (найденное в ящиках или снятое с раненого).
+          <br>• <b>[3] / [Q]</b> — Быстрая военная аптечка с пояса (лечит вас на +45 HP или спасает союзника).
+        </div>
+        <div style="margin-top:6px;">🤝 <b>Союзники и Раненые ликвидаторы:</b> Патрульные бойцы прочесывают блок и стреляют по монстрам. Если боец тяжело ранен (падает на колено с криком о помощи), подойдите вплотную и нажмите <b>[E]</b>:
+          <br>• <b>[1] Забрать оружие:</b> Переложить его пушку в свой пояс.
+          <br>• <b>[2 / Q] Дать аптечку с пояса:</b> Союзник полностью исцеляется, становится верным напарником (следует за вами и прикрывает спину!), а вы получаете <b>+45 XP</b> и талоны!
+        </div>
+        <div style="margin-top:6px;">🚁 <b>Эвакуация (5 минут):</b> Ищите на карте шахту эвакуации <b>[ H ]</b> и удерживайте её <b>5 секунд</b>, чтобы сохранить всю найденную добычу. При досрочном выходе через <b>[ESC]</b> весь хабар сгорает!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Совет: держите на поясе минимум одну аптечку — она может спасти вам жизнь или дать верного стрелка-напарника!</p>
+    `
   }
 ];
 
@@ -4726,6 +4781,28 @@ const TUTORIAL_STEPS_EN = [
         <div style="margin-top:6px;">👹 <b>Boss Battle:</b> Activating the elevator provokes the floor guardian. Defeat the monster and ride the lift downward!</div>
       </div>
       <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">You are ready for duty, Prisoner. The Party counts on your resilience!</p>
+    `
+  },
+  {
+    title: "9. SAMOSBOR RAID (2D TOP-DOWN), BELT & ALLIES",
+    shortName: "9. Samosbor Raid",
+    content: `
+      <p>The green button <b>[ ⚠️ EXIT LIVING CELL ]</b> launches the real-time 2D top-down raid roguelike mode.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🔦 <b>Darkness & Flashlight:</b> Pitch-black darkness covers the abandoned sector. Aim your mouse — your flashlight beam cuts through the shadows, revealing corridors, stalking mutants, and loot crates.</div>
+        <div style="margin-top:6px;">⚡ <b>Tactical Belt (Keys 1, 2, 3/Q):</b>
+          <br>• <b>[1]</b> — Primary Weapon (equipped in cell or picked up).
+          <br>• <b>[2]</b> — Secondary / Backup Weapon (looted or taken from wounded).
+          <br>• <b>[3] / [Q]</b> — Fast Belt Medkit (heals you +45 HP or rescues a wounded ally).
+        </div>
+        <div style="margin-top:6px;">🤝 <b>Allies & Wounded Liquidators:</b> Patrolmen patrol sectors and shoot mutants. If an ally is downed and wounded, walk up and press <b>[E]</b>:
+          <br>• <b>[1] Take Weapon:</b> Claim their firearm into your belt secondary slot.
+          <br>• <b>[2 / Q] Give Belt Medkit:</b> Completely heals the ally, makes them your loyal escort bodyguard, and grants you <b>+45 XP</b> and talons!
+        </div>
+        <div style="margin-top:6px;">🚁 <b>Evacuation (5 minutes):</b> Locate extraction shaft <b>[ H ]</b> and hold it for <b>5 seconds</b> to safely secure all looted gear. Quitting early with <b>[ESC]</b> forfeits raid loot!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Always pack at least one medkit on your belt before heading into the raid!</p>
     `
   }
 ];
@@ -4863,65 +4940,125 @@ function renderOnboardingStep() {
 
   const isEn = (currentLang === 'en');
   if (onboardingStep === 1) {
+    let exitBtn = document.getElementById('btn-exit-cell');
+    if (exitBtn) exitBtn.classList.add('onboarding-target-pulse');
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 1/8) — RAID MODE' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 1/8) — РЕЙД: САМОСБОР'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.45;">${isEn 
+        ? '👉 <b>[EXIT LIVING CELL]:</b> Launches real-time 2D top-down raid! Sweep your flashlight to cut through pitch-black darkness, loot weapons & crates, rescue wounded liquidators with belt medkits, and extract through lift shaft [H] (5 sec)!' 
+        : '👉 <b>[ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ]:</b> Главная кнопка тактического 2D рейда! В секторе царит тьма — направляйте фонарик, чтобы видеть мутантов и ящики снабжения. Спасайте раненых союзников аптечкой с пояса и эвакуируйтесь через шахту [H] (5 сек)!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '📖 Full Guide' : '📖 Полный справочник'}</button>
+        <button onclick="advanceOnboarding(1)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+      </div>
+    `;
+  } else if (onboardingStep === 2) {
+    let invBtn = document.getElementById('open-chest-btn');
+    if (invBtn) invBtn.classList.add('onboarding-target-pulse');
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 2/8) — INVENTORY & BELT' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 2/8) — ИНВЕНТАРЬ И ПОЯС'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.45;">${isEn 
+        ? '👉 <b>[INVENTORY / DOSSIER]:</b> Equip gas masks, armor, and weapons. Items placed on your Quick Belt (medkits, stims) carry over into the Top-Down raid on keys [1], [2], [3/Q]!' 
+        : '👉 <b>[ИНВЕНТАРЬ / ДЕЛО]:</b> Надевайте противогазы, броню и оружие. Аптечки и стимуляторы, перенесенные на пояс, берутся с собой в Top-Down рейд на клавиши [1], [2], [3/Q]!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="onboardingStep=1; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
+        <button onclick="advanceOnboarding(2)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+      </div>
+    `;
+  } else if (onboardingStep === 3) {
+    let craftBtn = document.getElementById('open-craft-btn');
+    if (craftBtn) craftBtn.classList.add('onboarding-target-pulse');
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 3/8) — WORKBENCH & CRAFT' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 3/8) — ВЕРСТАК И УЛУЧШЕНИЯ'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.45;">${isEn 
+        ? '👉 <b>[WORKBENCH]:</b> Upgrade gas masks, suits, and weapon elements (Fire, Shock, Bleed) using extra scrap and materials before venturing into sectors!' 
+        : '👉 <b>[ВЕРСТАК]:</b> Улучшайте защиту противогаза, прочность костюмов и напитывайте оружие стихиями (Огонь, Электро, Кровотечение) за счет разбора лишних вещей!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="onboardingStep=2; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
+        <button onclick="advanceOnboarding(3)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+      </div>
+    `;
+  } else if (onboardingStep === 4) {
+    let shopBtn = document.getElementById('open-shop-btn');
+    if (shopBtn) shopBtn.classList.add('onboarding-target-pulse');
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 4/8) — SUPPLY DISPENSER' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 4/8) — РАСПРЕДЕЛИТЕЛЬ'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.45;">${isEn 
+        ? '👉 <b>[DISPENSER / SHOP]:</b> Spend earned talons on ammo, replacement filters, military first-aid medkits, and food rations.' 
+        : '👉 <b>[РАСПРЕДЕЛИТЕЛЬ]:</b> Тратьте заработанные талоны на свежие фильтры, армейские аптечки, патроны и концентраты пайков.'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="onboardingStep=3; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
+        <button onclick="advanceOnboarding(4)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+      </div>
+    `;
+  } else if (onboardingStep === 5) {
     let mapBtn = document.getElementById('open-map-btn');
     if (mapBtn) mapBtn.classList.add('onboarding-target-pulse');
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 1/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 1/5)'}</span>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 5/8) — FLOOR MAP & SECTORS' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 5/8) — КАРТА ЭТАЖА И ВЫЛАЗКИ'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
       <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>Welcome to Gigakhrushch!</b> You are safe in your living cell. Tap <b>[FLOOR MAP]</b> to step into sector corridors!' 
-        : '👉 <b>Добро пожаловать в Гигахрущ!</b> Вы в безопасности в жилячейке. Нажмите <b>[КАРТА ЭТАЖА]</b>, чтобы выйти в коридоры блока!'}</div>
-      <div style="margin-top:6px; display:flex; justify-content:flex-end; gap:8px;">
-        <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '📖 Full Guide Book' : '📖 Полный справочник'}</button>
+        ? '👉 <b>[FLOOR MAP]:</b> Navigate sectors A0 through E4, solve airlock hacking puzzles, trade with 20 block NPCs, and collect parts for Ded Makar’s lift!' 
+        : '👉 <b>[КАРТА ЭТАЖА]:</b> Исследуйте сектора от A0 до E4, взламывайте гермодвери, общайтесь с 20 жителями (Клавдия, Михалыч) и собирайте детали для грузового лифта!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="onboardingStep=4; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
+        <button onclick="advanceOnboarding(5)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
       </div>
     `;
-  } else if (onboardingStep === 2) {
-    let farmBtn = document.getElementById('btn-farm-slime');
-    if (farmBtn) farmBtn.classList.add('onboarding-target-pulse');
+  } else if (onboardingStep === 6) {
+    let chatBtn = document.getElementById('open-chat-btn');
+    if (chatBtn) chatBtn.classList.add('onboarding-target-pulse');
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 2/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 2/5)'}</span>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 6/8) — GLOBAL CHAT' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 6/8) — ОБЩИЙ ЧАТ'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
       <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>Biomass Harvesting:</b> Tap <b>[HARVEST SLIME]</b> to scrape nutritious slime from the walls for food and talons!' 
-        : '👉 <b>Сбор биомассы:</b> Нажмите <b>[ФАРМ СЛИЗИ]</b>, чтобы собрать со стен питательную слизь для еды и талонов!'}</div>
+        ? '👉 <b>[GLOBAL CHAT]:</b> Real-time radio network with other survivors. When someone mentions you or writes, the button blinks with unread notifications!' 
+        : '👉 <b>[ОБЩИЙ ЧАТ / СЕТЬ]:</b> Радиосеть между жильцами Гигахруща. При получении новых сообщений кнопка мигает красным счетчиком уведомлений!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="onboardingStep=5; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
+        <button onclick="advanceOnboarding(6)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+      </div>
     `;
-  } else if (onboardingStep === 3) {
-    let expBtn = document.getElementById('btn-explore-fog');
-    if (expBtn) expBtn.classList.add('onboarding-target-pulse');
+  } else if (onboardingStep === 7) {
+    let raidBtn = document.getElementById('open-raid-btn');
+    if (raidBtn) raidBtn.classList.add('onboarding-target-pulse');
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 3/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 3/5)'}</span>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 7/8) — CO-OP SQUADS' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 7/8) — СОВМЕСТНЫЕ ВЫЛАЗКИ'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
       <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>Expedition:</b> Now tap <b>[EXPEDITION INTO FOG]</b>! Look for supply caches, repair parts, and friendly block NPCs!' 
-        : '👉 <b>Вылазка:</b> Теперь нажмите <b>[ВЫЛАЗКА В ТУМАН]</b>! Ищите тайники, запчасти для лифта и дружественных жителей блока!'}</div>
-    `;
-  } else if (onboardingStep === 4) {
-    banner.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 4/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 4/5)'}</span>
-        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
-      </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '🎯 <b>Combat Masterclass:</b> In battle, hit <b>[AIMED ATTACK]</b> inside the <span style="color:#00ff66; font-weight:bold;">green zone</span> for guaranteed <b>DOUBLE CRIT (x2)</b>! Use belt medkits and dodge incoming attacks.' 
-        : '🎯 <b>Тактика боя:</b> В бою нажимайте атаку в <span style="color:#00ff66; font-weight:bold;">зелёной зоне</span> прицела для <b>ДВОЙНОГО КРИТИЧЕСКОГО УРОНА (x2)</b>! Используйте аптечки с пояса и уклоняйтесь от ударов.'}</div>
-      <div style="margin-top:6px; display:flex; justify-content:flex-end;">
-        <button onclick="advanceOnboarding(4)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:12px;">${isEn ? 'CONTINUE ▶' : 'ПРОДОЛЖИТЬ ▶'}</button>
+        ? '👉 <b>[CO-OP SORTIES]:</b> Team up with up to 4 players to battle through 11 deadly monster waves and giant floor bosses with special VFX & mechanics!' 
+        : '👉 <b>[СОВМЕСТНАЯ ВЫЛАЗКА]:</b> Собирайте отряд до 4 ликвидаторов для сражения против 11 волн тварей Самосбора и гигантских боссов этажей со спец-приемами!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="onboardingStep=6; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
+        <button onclick="advanceOnboarding(7)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
       </div>
     `;
-  } else if (onboardingStep === 5) {
+  } else if (onboardingStep === 8) {
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
         <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING COMPLETE!' : 'КУРС МОЛОДОГО БОЙЦА ЗАВЕРШЕН!'}</span>
       </div>
       <div style="line-height:1.45;">${isEn 
-        ? '🏆 <b>Your Primary Goals:</b><br>• Reach Sector <b>E4</b> and repair the freight elevator with Ded Makar (requires 3 parts: Repair Kit, Buttons, Wire).<br>• Team up in <b>[CO-OP SORTIES]</b> to defeat 11 monster waves and epic bosses!<br>• Sell rare loot on the <b>Flea Market</b> and talk to all 20 block NPCs.' 
-        : '🏆 <b>Ваши главные цели:</b><br>• Добраться до сектора <b>E4</b> и починить грузовой лифт у Деда Макара (нужны 3 детали: Ремкомплект, Кнопки, Провод).<br>• Собирайте отряды в <b>[СОВМЕСТНЫЕ ВЫЛАЗКИ]</b> для битвы с 11 волнами и эпическими боссами!<br>• Торгуйте на <b>Барахолке</b> и общайтесь с 20 жителями блока в комнатах.'}</div>
+        ? '🏆 <b>You are prepared for Gigakhrushch!</b><br>• Enter 2D raids with <b>[EXIT LIVING CELL]</b> to find weapons and save liquidators.<br>• Reach Sector <b>E4</b> and repair the freight elevator with Ded Makar.<br>• Trade on the <b>Flea Market</b> and talk to all 20 block NPCs.' 
+        : '🏆 <b>Вы готовы к выживанию в Гигахруще!</b><br>• Выходите в 2D рейд по кнопке <b>[ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ]</b> за оружием и спасением бойцов.<br>• Доберитесь до сектора <b>E4</b> и почините грузовой лифт у Деда Макара.<br>• Торгуйте на <b>Барахолке</b> и общайтесь с 20 жителями блока.'}</div>
       <div style="margin-top:8px; display:flex; justify-content:flex-end; gap:8px;">
         <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:4px 12px; font-size:12px; cursor:pointer;">${isEn ? '📖 Open Full Guide' : '📖 Открыть Полный Гайд'}</button>
         <button onclick="finishOnboarding()" style="background:var(--term-main); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:12px;">${isEn ? 'I AM READY, TO SURVIVAL! ✓' : 'Я ГОТОВ, В БОЙ! ✓'}</button>
@@ -10302,6 +10439,35 @@ function renderAchievementsList() {
 
 // ===== ТАКТИЧЕСКИЙ РЕЖИМ: РАДАР-РОГАЛИК («РЕЙД: САМОСБОР») =====
 let radarRoguelikeGame = null;
+let raidMusicAudio = null;
+
+function playRaidMusic() {
+  try {
+    if (!raidMusicAudio) {
+      raidMusicAudio = new Audio('assets/audio/raid_music.mp3');
+      raidMusicAudio.loop = true;
+      raidMusicAudio.volume = 0.55;
+    }
+    raidMusicAudio.currentTime = 0;
+    const playPromise = raidMusicAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.log('[RadarRoguelike] Autoplay prevented, waiting for interaction:', err);
+      });
+    }
+  } catch (e) {
+    console.error('[RadarRoguelike] Error playing raid music:', e);
+  }
+}
+
+function stopRaidMusic() {
+  if (raidMusicAudio) {
+    try {
+      raidMusicAudio.pause();
+      raidMusicAudio.currentTime = 0;
+    } catch (e) {}
+  }
+}
 
 function openRadarRoguelikeModal() {
   console.log('[RadarRoguelike] Opening raid mode...');
@@ -10319,6 +10485,15 @@ function openRadarRoguelikeModal() {
     hub.classList.remove('active-screen');
   }
   screen.style.display = 'block';
+
+  // Запускаем фоновую музыку рейда
+  playRaidMusic();
+
+  // Предупреждение при попытке перезагрузить страницу
+  window.onbeforeunload = function(e) {
+    e.preventDefault();
+    return "Вы находитесь в опасном рейде! При перезагрузке весь найденный хабар будет потерян!";
+  };
 
   try {
     if (!radarRoguelikeGame) {
@@ -10341,9 +10516,33 @@ function openRadarRoguelikeModal() {
   }
 }
 
+function confirmExitRadarRaid() {
+  const modal = document.getElementById('radar-abort-confirm-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+function cancelExitRadarRaid() {
+  const modal = document.getElementById('radar-abort-confirm-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+function forceExitRadarRaid() {
+  cancelExitRadarRaid();
+  closeRadarRoguelikeModal();
+}
+
 function closeRadarRoguelikeModal() {
   const screen = document.getElementById('radar-roguelike-screen');
   if (screen) screen.style.display = 'none';
+  
+  cancelExitRadarRaid();
+  stopRaidMusic();
+  window.onbeforeunload = null;
+
   if (radarRoguelikeGame) {
     radarRoguelikeGame.stop();
   }
@@ -10355,7 +10554,13 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.code === 'Escape') {
     const screen = document.getElementById('radar-roguelike-screen');
     if (screen && screen.style.display === 'block') {
-      closeRadarRoguelikeModal();
+      const modal = document.getElementById('radar-abort-confirm-modal');
+      if (modal && modal.style.display === 'flex') {
+        cancelExitRadarRaid();
+      } else {
+        confirmExitRadarRaid();
+      }
+      e.preventDefault();
     }
   }
 });
