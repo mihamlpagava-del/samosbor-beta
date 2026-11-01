@@ -63,6 +63,9 @@
         isPlayer: true,
         damageFlashTimer: 0,
         isDead: false,
+        deathTick: 0,
+        isShooting: false,
+        shootProgress: 0,
         isSwinging: false,
         swingProgress: 0,
         // Equipped weapon from base inventory
@@ -359,7 +362,11 @@
       this.player.talonsEarned = 0;
       this.player.xpEarned = 0;
       this.player.isDead = false;
+      this.player.deathTick = 0;
+      this.player.isShooting = false;
+      this.player.shootProgress = 0;
       this.player.isSwinging = false;
+      this.player.swingProgress = 0;
       this.isCollapsing = false;
       this.collapseProgress = 0;
 
@@ -622,6 +629,8 @@
         }
 
         weapon.ammo--;
+        this.player.isShooting = true;
+        this.player.shootProgress = 0;
 
         // Procedural Gunshot Audio
         if (typeof RadarAudio !== 'undefined') {
@@ -813,20 +822,28 @@
       this.radarAngle += this.radarSpeed;
       if (this.radarAngle >= Math.PI * 2) this.radarAngle -= Math.PI * 2;
 
-      // 3. Melee swing animation decay
+      // 3. Attack animation decays
       if (this.player.isSwinging) {
         this.player.swingProgress += 0.16;
         if (this.player.swingProgress >= 1.0) {
           this.player.isSwinging = false;
         }
       }
+      if (this.player.isShooting) {
+        this.player.shootProgress += 0.25;
+        if (this.player.shootProgress >= 1.0) {
+          this.player.isShooting = false;
+        }
+      }
 
-      // 4. Player Input Movement & Inertia
+      // 4. Player Input Movement & Inertia (only if alive)
       let moveX = 0, moveY = 0;
-      if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['w']) moveY -= 1;
-      if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) moveY += 1;
-      if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) moveX -= 1;
-      if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) moveX += 1;
+      if (!this.player.isDead) {
+        if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['w']) moveY -= 1;
+        if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) moveY += 1;
+        if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) moveX -= 1;
+        if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) moveX += 1;
+      }
 
       if (moveX !== 0 && moveY !== 0) {
         moveX *= 0.7071;
@@ -879,9 +896,13 @@
       // 10. Check Player Death
       if (this.player.hp <= 0 && !this.player.isDead) {
         this.player.isDead = true;
-        this.isCollapsing = true;
+        this.player.deathTick = 0;
+        this.isCollapsing = false;
         if (typeof RadarAudio !== 'undefined') RadarAudio.playPlayerHurt();
-        setTimeout(() => this.finishRaid(false), 1400);
+        setTimeout(() => this.finishRaid(false), 1600);
+      }
+      if (this.player.isDead) {
+        this.player.deathTick = (this.player.deathTick || 0) + 1;
       }
     }
 
@@ -981,11 +1002,16 @@
             <div style="color: ${won ? '#ffd700' : '#888'}; margin-bottom: 6px;">ТАЛОНЫ: ${won ? `+${talons}` : 'ПОТЕРЯНЫ (0)'}</div>
             <div style="color: #1fe044;">ОПЫТ (XP): +${xp}</div>
           </div>
-          <button onclick="document.getElementById('raid-summary-modal').style.display='none'; closeRadarRoguelikeModal();" style="width: 100%; padding: 10px; font-family: inherit; font-size: 14px; font-weight: bold; background: rgba(31,224,68,0.2); border: 2px solid #1fe044; color: #1fe044; cursor: pointer;">
-            ВЕРНУТЬСЯ В ЖИЛЯЧЕЙКУ
+          <button id="btn-return-living-cell" onclick="document.getElementById('raid-summary-modal').style.display='none'; closeRadarRoguelikeModal();" style="width: 100%; padding: 12px; font-family: inherit; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; background: rgba(31,224,68,0.22); border: 2px solid #1fe044; color: #1fe044; cursor: pointer; box-shadow: 0 0 15px rgba(31,224,68,0.4); text-transform: uppercase;">
+            🚪 ВЕРНУТЬСЯ В ЖИЛ-ЯЧЕЙКУ
           </button>
         </div>
       `;
+
+      setTimeout(() => {
+        const btn = document.getElementById('btn-return-living-cell');
+        if (btn) btn.focus();
+      }, 50);
     }
 
     /**

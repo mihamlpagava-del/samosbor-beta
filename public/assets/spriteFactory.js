@@ -212,8 +212,8 @@
 
       const img = this.getImage('assets/radar/tiles/elevator_pad.png');
       if (this.isImageReady(img)) {
-        // Center the 64x64 or 96x96 extraction pad over the elevator tile
-        const padSize = 64;
+        // Center the 84x84 extraction airlock chamber over the elevator tile
+        const padSize = 84;
         ctx.drawImage(img, x + w / 2 - padSize / 2, y + h / 2 - padSize / 2, padSize, padSize);
       } else {
         // Fallback platform
@@ -379,80 +379,89 @@
 
       // 1. Draw Player
       if (entity.isPlayer) {
-        // Flashlight beam forward towards aim angle
-        this.drawVolumetricFlashlight(ctx, entity, tick);
-
-        // Calculate 8-direction octant from aim/facing angle
-        // 0: East, 1: South-East, 2: South, 3: South-West, 4: West, 5: North-West, 6: North, 7: North-East
-        const normAngle = (angle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        const octant = Math.round(normAngle / (Math.PI / 4)) % 8;
-
-        // Weapon type
-        let weaponType = 'melee';
-        if (entity.weapon && entity.weapon.isRanged) {
-          const gt = entity.weapon.gunType || 'pistol';
-          if (gt === 'shotgun') weaponType = 'shotgun';
-          else if (gt === 'rifle' || gt === 'ak') weaponType = 'rifle';
-          else weaponType = 'pistol';
-        }
-
-        // Walk frames
-        const walkStep2 = isMoving ? Math.floor(tick * 0.28) % 2 : 0;
-        const walkStep3 = isMoving ? Math.floor(tick * 0.28) % 3 : 0;
-
-        let dirKey = 's_0';
-        switch (octant) {
-          case 0: dirKey = `e_${walkStep2}`; break;
-          case 1: dirKey = 'se_0'; break;
-          case 2: dirKey = `s_${walkStep3}`; break;
-          case 3: dirKey = 'sw_0'; break;
-          case 4: dirKey = `w_${walkStep2}`; break;
-          case 5: dirKey = 'nw_0'; break;
-          case 6: dirKey = `n_${walkStep2}`; break;
-          case 7: dirKey = 'ne_0'; break;
-        }
-
-        let spritePath = `assets/radar/player/hero_${weaponType}_${dirKey}.png`;
-        let img = this.getImage(spritePath);
-        if (!this.isImageReady(img)) {
-          spritePath = `assets/radar/player/hero_${dirKey}.png`;
-          img = this.getImage(spritePath);
-        }
-
-        // Hop & Squash-stretch walk cycle ("скукоживается чуть и подпрыгивает")
-        let hopY = 0;
-        let scaleX = 1.0;
-        let scaleY = 1.0;
-
-        if (isMoving) {
-          const phase = tick * 0.38;
-          const bounce = Math.abs(Math.sin(phase)); // 0 to 1
-          hopY = -bounce * 4.8; // podprygivaet
-          // Skukozhivaetsia on foot plant (bounce near 0), stretches at apex
-          const squash = (0.45 - bounce) * 0.12;
-          scaleX = 1.0 + squash;
-          scaleY = 1.0 - squash;
-        } else {
-          // Gentle breathing idle
-          const breath = Math.sin(tick * 0.08) * 0.025;
-          scaleX = 1.0 - breath * 0.5;
-          scaleY = 1.0 + breath;
+        // Flashlight beam forward towards aim angle (only when alive)
+        if (!entity.isDead) {
+          this.drawVolumetricFlashlight(ctx, entity, tick);
         }
 
         ctx.save();
-        ctx.translate(x, y + hopY);
-        ctx.scale(scaleX, scaleY);
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        let img = null;
+
+        if (entity.isDead) {
+          // DEATH ANIMATION: 6 frames
+          const deathFrame = Math.min(5, Math.floor((entity.deathTick || 0) * 0.12));
+          img = this.getImage(`assets/radar/player/hero_death_${deathFrame}.png`);
+        } else {
+          // Determine active weapon archetype: bat, knife, pistol, rifle, shotgun
+          let wType = 'bat';
+          if (entity.weapon) {
+            if (entity.weapon.isRanged) {
+              const gt = entity.weapon.gunType || 'pistol';
+              if (gt === 'shotgun') wType = 'shotgun';
+              else if (gt === 'rifle' || gt === 'ak') wType = 'rifle';
+              else wType = 'pistol';
+            } else {
+              const wid = (entity.weapon.id || '').toLowerCase();
+              if (wid.includes('knife') || wid.includes('blade') || wid.includes('zatochka')) {
+                wType = 'knife';
+              } else {
+                wType = 'bat';
+              }
+            }
+          }
+
+          if (entity.isSwinging) {
+            // MELEE ATTACK
+            if (wType === 'knife') {
+              const fIdx = Math.min(7, Math.floor((entity.swingProgress || 0) * 8));
+              img = this.getImage(`assets/radar/player/hero_knife_attack_${fIdx}.png`);
+            } else {
+              const fIdx = Math.min(6, Math.floor((entity.swingProgress || 0) * 7));
+              img = this.getImage(`assets/radar/player/hero_bat_strike_${fIdx}.png`);
+            }
+          } else if (entity.isShooting) {
+            // FIREARM SHOT & MUZZLE FLASH
+            if (wType === 'shotgun') {
+              const fIdx = Math.min(4, Math.floor((entity.shootProgress || 0) * 5));
+              img = this.getImage(`assets/radar/player/hero_shotgun_shot_${fIdx}.png`);
+            } else if (wType === 'rifle') {
+              const fIdx = Math.min(3, Math.floor((entity.shootProgress || 0) * 4));
+              img = this.getImage(`assets/radar/player/hero_rifle_shot_${fIdx}.png`);
+            } else {
+              const fIdx = Math.min(3, Math.floor((entity.shootProgress || 0) * 4));
+              img = this.getImage(`assets/radar/player/hero_pistol_shot_${fIdx}.png`);
+            }
+          } else if (isMoving) {
+            // 6-FRAME WALK CYCLE
+            const walkFrame = Math.floor(tick * 0.22) % 6;
+            img = this.getImage(`assets/radar/player/hero_${wType}_walk_${walkFrame}.png`);
+          } else {
+            // IDLE WITH WEAPON
+            img = this.getImage(`assets/radar/player/hero_${wType}_walk_0.png`);
+          }
+        }
+
+        // Hop & subtle squash walk cycle
+        if (isMoving && !entity.isDead) {
+          const phase = tick * 0.36;
+          const bounce = Math.abs(Math.sin(phase));
+          const squash = (0.4 - bounce) * 0.08;
+          ctx.scale(1.0 + squash, 1.0 - squash);
+        }
 
         if (isDamageFlash) {
           ctx.filter = 'brightness(3) drop-shadow(0 0 8px #ffffff)';
         }
 
         if (this.isImageReady(img)) {
-          // Render centered 80x80 sprite cleanly
-          const drawSize = 52;
-          ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+          // 100x100 canvas, centered with pivot at (34, 50)
+          const sz = 80;
+          const scale = sz / 100;
+          ctx.drawImage(img, -34 * scale, -50 * scale, sz, sz);
         } else {
-          // Fallback procedural player
           this.drawPlayerVector(ctx, radius, isDamageFlash, entity, isMoving, tick);
         }
 
@@ -462,22 +471,19 @@
       else if (entity.type === 'liquidator') {
         ctx.save();
         ctx.translate(x, y);
-
-        const isFacingLeft = Math.cos(angle) < 0;
-        if (isFacingLeft) {
-          ctx.scale(-1, 1);
-        }
+        ctx.rotate(angle);
 
         if (entity.isWounded) {
           ctx.filter = 'sepia(0.7) hue-rotate(-50deg) saturate(2.5) brightness(0.85)';
         }
 
-        const walkStep = isMoving ? Math.floor(tick * 0.25) % 2 : 0;
-        const img = this.getImage(`assets/radar/player/hero_rifle_e_${walkStep}.png`);
+        const walkStep = isMoving ? Math.floor(tick * 0.22) % 6 : 0;
+        const img = this.getImage(`assets/radar/player/hero_rifle_walk_${walkStep}.png`);
 
         if (this.isImageReady(img)) {
-          const drawSize = 48;
-          ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+          const sz = 74;
+          const scale = sz / 100;
+          ctx.drawImage(img, -34 * scale, -50 * scale, sz, sz);
         } else {
           this.drawPlayerVector(ctx, radius, isDamageFlash, entity, isMoving, tick, entity.isWounded ? '#ff8800' : '#33d4ff');
         }
