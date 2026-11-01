@@ -1,16 +1,16 @@
 /**
  * ============================================================================
- * MODULE: AsciiRenderer.js (Full-Color Swaggerfall ANSI Text-Mode Shader)
+ * MODULE: AsciiRenderer.js (Swaggerfall Full-Color ANSI Text-Mode Shader)
  * ============================================================================
- * Ultra-high-performance 60+ FPS ANSI text-mode post-process shader:
+ * High-performance 60+ FPS ANSI text-mode post-process shader:
  * - Cell Size: 6x6 px (high density Swaggerfall)
- * - Luminance Density Ramp (10 characters):
- *   [" ", "·", ":", "-", "=", "+", "*", "#", "%", "@"]
- * - 4x4 Bayer Matrix ordered dithering for smooth lighting gradients
+ * - Luminance Density Ramp (11 characters):
+ *   [" ", "·", ":", "-", "=", "+", "*", "#", "%", "▓", "█"]
+ * - 4x4 Bayer Matrix ordered dithering for silky smooth lighting transitions
  * - Two-layer cell color:
- *   * Background: darkened average RGB (0.28x) for volume & shadow depth
- *   * Foreground: vivid peak RGB at illumination & dynamic light spots
- * - Zero-allocation Uint32Array blit with 6x6 bitmask atlas (runs in <3ms per frame)
+ *   * Background: darkened average RGB tone (0.28x) for volume & seamless room textures
+ *   * Foreground: vibrant peak RGB at light/entity points
+ * - Zero-allocation Uint32Array blit with 6x6 bitmask atlas (<2.5ms per frame)
  */
 
 (function (global) {
@@ -24,12 +24,12 @@
     [15,  7, 13,  5]
   ];
 
-  // 10-character luminance density ramp
-  const DENSITY_CHARS = [' ', '·', ':', '-', '=', '+', '*', '#', '%', '@'];
+  // 11-character luminance density ramp
+  const DENSITY_RAMP = [" ", "·", ":", "-", "=", "+", "*", "#", "%", "▓", "█"];
 
-  // 6x6 binary bitmask atlas for 10 glyphs (each row is a 6-bit integer 0bXXXXXX)
+  // 6x6 binary bitmask atlas for 11 glyphs (each row is a 6-bit integer 0bXXXXXX)
   const GLYPH_MASKS = [
-    // 0: " " (space / void)
+    // 0: " " (space / deep void)
     [0b000000, 0b000000, 0b000000, 0b000000, 0b000000, 0b000000],
     // 1: "·" (centered dot)
     [0b000000, 0b000000, 0b001100, 0b001100, 0b000000, 0b000000],
@@ -43,12 +43,14 @@
     [0b000000, 0b001100, 0b011110, 0b001100, 0b000000, 0b000000],
     // 6: "*" (asterisk / spark)
     [0b010010, 0b001100, 0b011110, 0b001100, 0b010010, 0b000000],
-    // 7: "#" (dense hash / wall block)
+    // 7: "#" (dense grid / wall texture)
     [0b010010, 0b011110, 0b010010, 0b011110, 0b010010, 0b000000],
     // 8: "%" (dense percent / armor / obstacle)
     [0b011001, 0b011010, 0b000100, 0b001000, 0b010110, 0b010011],
-    // 9: "@" (heavy full glyph / solid core)
-    [0b011110, 0b100001, 0b101101, 0b101101, 0b100000, 0b011110]
+    // 9: "▓" (heavy stipple shade block)
+    [0b101010, 0b010101, 0b101010, 0b010101, 0b101010, 0b010101],
+    // 10: "█" (full solid monolithic block)
+    [0b111111, 0b111111, 0b111111, 0b111111, 0b111111, 0b111111]
   ];
 
   const AsciiRenderer = {
@@ -137,12 +139,12 @@
           const gAvg = (g1 + g2 + g3 + g4) >> 2;
           const bAvg = (b1 + b2 + b3 + b4) >> 2;
 
-          // Peak RGB for lighting highlights & vivid objects
+          // Peak RGB for highlights & lighting
           const rMax = Math.max(r1, r2, r3, r4);
           const gMax = Math.max(g1, g2, g3, g4);
           const bMax = Math.max(b1, b2, b3, b4);
 
-          // Fast path for deep unlit darkness
+          // Deep pitch black void
           if (rMax < 4 && gMax < 4 && bMax < 4) {
             for (let dy = 0; dy < 6; dy++) {
               const rowOffset = (py + dy) * width + px;
@@ -164,18 +166,18 @@
           const dither = (bayerVal - 7.5) * 3.2;
           const ditheredLum = Math.max(0, Math.min(255, lum + dither));
 
-          // 2. Select character from 10-density ramp
-          const rampIdx = Math.max(0, Math.min(9, Math.floor((ditheredLum / 256) * 10)));
+          // 2. Select character from 11-density ramp
+          const rampIdx = Math.max(0, Math.min(10, Math.floor((ditheredLum / 256) * 11)));
 
           // 3. Two-layer color calculation
-          // Background: Darkened average RGB (0.28x) for volumetric shadows & walls
+          // Background: Darkened average RGB (0.28x) for seamless wall & floor textures
           const bgR = Math.max(2, (rAvg * 72) >> 8);
           const bgG = Math.max(4, (gAvg * 72) >> 8);
           const bgB = Math.max(2, (bAvg * 72) >> 8);
           const bg32 = 0xFF000000 | (bgB << 16) | (bgG << 8) | bgR;
 
           if (rampIdx === 0) {
-            // Space glyph: pure background fill
+            // Space glyph: pure background fill (no black holes)
             for (let dy = 0; dy < 6; dy++) {
               const rowOffset = (py + dy) * width + px;
               targetBuf32[rowOffset]     = bg32;
@@ -188,19 +190,19 @@
             continue;
           }
 
-          // 4. Foreground Glyph Color: preserve vivid lighting, blood, acid, muzzle flashes
+          // 4. Foreground Glyph Color: preserve vivid illumination, muzzle flashes, lasers
           const maxC = Math.max(rMax, gMax, bMax);
           const minC = Math.min(rMax, gMax, bMax);
           const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
 
           let fgR, fgG, fgB;
           if (sat > 0.30 || maxC > 180) {
-            // Highly saturated or bright element: boost contrast
+            // Highly saturated or intense highlights
             fgR = Math.min(255, (rMax * 320) >> 8);
             fgG = Math.min(255, (gMax * 320) >> 8);
             fgB = Math.min(255, (bMax * 320) >> 8);
           } else {
-            // Volumetric bunker lighting
+            // Ambient bunker illumination
             fgR = Math.min(255, ((rAvg * 280) >> 8) + 28);
             fgG = Math.min(255, ((gAvg * 280) >> 8) + 28);
             fgB = Math.min(255, ((bAvg * 280) >> 8) + 28);

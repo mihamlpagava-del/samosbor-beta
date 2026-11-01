@@ -458,6 +458,12 @@
           const gun = guns[i % guns.length];
           weaponDrops.push({
             id: 'drop_' + gun.id,
+            gunId: gun.id,
+            name: gun.name || 'Огнестрельное оружие',
+            dmg: gun.dmg || 34,
+            ammo: gun.ammo || 20,
+            maxAmmo: gun.maxAmmo || 20,
+            gunType: gun.gunType || 'rifle',
             x: cx * TS + TS / 2,
             y: (cy + 1) * TS + TS / 2,
             tileX: cx,

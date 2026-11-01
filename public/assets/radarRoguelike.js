@@ -219,7 +219,8 @@
         this.player.belt.activeSlot = 1;
         this.player.weapon = this.player.belt.slot1;
         if (typeof RadarAudio !== 'undefined') RadarAudio.playWeaponSwitch();
-        this.spawnFloatingNotice(`[1] ${this.player.weapon.name.toUpperCase()}`, '#88ff9e');
+        const wName = (this.player.weapon && this.player.weapon.name) ? String(this.player.weapon.name) : 'ОРУЖИЕ';
+        this.spawnFloatingNotice(`[1] ${wName.toUpperCase()}`, '#88ff9e');
       } else if (slotNum === 2) {
         if (!this.player.belt.slot2) {
           this.spawnFloatingNotice('СЛОТ 2 [ПУСТО]', '#888888');
@@ -229,7 +230,8 @@
         this.player.belt.activeSlot = 2;
         this.player.weapon = this.player.belt.slot2;
         if (typeof RadarAudio !== 'undefined') RadarAudio.playWeaponSwitch();
-        this.spawnFloatingNotice(`[2] ${this.player.weapon.name.toUpperCase()}`, '#33d4ff');
+        const wName = (this.player.weapon && this.player.weapon.name) ? String(this.player.weapon.name) : 'ОРУЖИЕ';
+        this.spawnFloatingNotice(`[2] ${wName.toUpperCase()}`, '#33d4ff');
       }
     }
 
@@ -299,7 +301,8 @@
       this.player.weapon = this.player.belt.slot2;
 
       if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
-      this.spawnFloatingNotice(`⚡ ЗАБРАНО ОРУЖИЕ: ${takenGun.name.toUpperCase()} [${takenGun.ammo}]`, '#33d4ff');
+      const gunTitle = (takenGun && takenGun.name) ? String(takenGun.name) : 'Огнестрел';
+      this.spawnFloatingNotice(`⚡ ЗАБРАНО ОРУЖИЕ: ${gunTitle.toUpperCase()} [${takenGun.ammo || 20}]`, '#33d4ff');
     }
 
     healWoundedNPC(npc) {
@@ -546,14 +549,20 @@
       this.canvas.height = window.innerHeight;
     }
 
-    loop() {
+    loop(timestamp) {
       if (!this.isRunning) return;
       this.tick++;
 
-      this.update();
-      this.render();
+      try {
+        this.update(timestamp);
+        this.render();
+      } catch (error) {
+        console.error("Non-fatal loop error:", error);
+      }
 
-      this.animFrameId = requestAnimationFrame(this.loop);
+      if (this.isRunning) {
+        this.animFrameId = requestAnimationFrame(this.loop.bind(this));
+      }
     }
 
     /**
@@ -741,16 +750,30 @@
     }
 
     pickupWeapon(drop) {
+      if (!drop) return;
+      if (drop.pickedUp) return;
+      const weapon = drop.weapon || drop;
+      if (!weapon) return;
       drop.pickedUp = true;
+
+      const weaponId = (weapon.id || weapon.type || weapon.gunId || weapon.name || '').toUpperCase();
+      const gName = weapon.name || weapon.title || weaponId || 'Огнестрельное оружие';
+      const gAmmo = (weapon.ammo !== undefined) ? weapon.ammo : (drop.ammo || 20);
+      const gMaxAmmo = (weapon.maxAmmo !== undefined) ? weapon.maxAmmo : (drop.maxAmmo || 20);
+      const gDmg = weapon.dmg || drop.dmg || 34;
+      const gType = weapon.gunType || drop.gunType || 'rifle';
+      const gId = weaponId || 'GUN';
+
       const newGun = {
-        id: drop.gunId,
-        name: drop.name,
-        dmg: drop.dmg,
+        id: gId,
+        name: gName,
+        dmg: gDmg,
         isRanged: true,
-        ammo: drop.ammo,
-        maxAmmo: drop.maxAmmo,
-        gunType: drop.gunType
+        ammo: gAmmo,
+        maxAmmo: gMaxAmmo,
+        gunType: gType
       };
+
       if (this.player.belt) {
         this.player.belt.slot2 = newGun;
         this.player.belt.activeSlot = 2;
@@ -758,8 +781,14 @@
       } else {
         this.player.weapon = newGun;
       }
+
       if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
-      this.spawnFloatingNotice(`⚡ ПОДОБРАН В СЛОТ 2: ${drop.name.toUpperCase()} [${drop.ammo}]`, '#33d4ff');
+      const displayName = String(gName).toUpperCase();
+      this.spawnFloatingNotice(`⚡ ПОДОБРАН В СЛОТ 2: ${displayName} [${gAmmo}]`, '#33d4ff');
+    }
+
+    pickWeapon(weapon) {
+      return this.pickupWeapon(weapon);
     }
 
     openCrate(crate) {
@@ -1887,7 +1916,7 @@
       const tlX = 16;
       const tlY = 16;
       const tlW = 340;
-      const tlH = 88;
+      const tlH = 92;
 
       ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';
       ctx.fillRect(tlX, tlY, tlW, tlH);
@@ -1895,33 +1924,36 @@
       ctx.lineWidth = 1.5;
       ctx.strokeRect(tlX, tlY, tlW, tlH);
 
+      // Title bar header tab
+      ctx.fillStyle = 'rgba(31, 224, 68, 0.16)';
+      ctx.fillRect(tlX + 1, tlY + 1, tlW - 2, 22);
+
+      ctx.font = 'bold 11px "Share Tech Mono", monospace';
+      ctx.fillStyle = this.samosborActive ? '#ff3b30' : '#1fe044';
+      ctx.fillText('[ РАДАР-ДЕТЕКТОР РУ-4 ]', tlX + 14, tlY + 16);
+
       // Timer Display (5:00 countdown)
       const mins = Math.floor(this.levelTimeLeft / 60);
       const secs = Math.floor(this.levelTimeLeft % 60);
       const timeStr = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
 
       ctx.font = 'bold 12px "Share Tech Mono", monospace';
-      ctx.fillStyle = this.samosborActive ? '#ff3b30' : '#1fe044';
-      ctx.fillText('┌─[ РАДАР-ДЕТЕКТОР РУ-4 ]─────────────────────┐', tlX + 10, tlY + 18);
-
       ctx.fillStyle = this.samosborActive ? '#ff0033' : (this.levelTimeLeft < 60 ? '#ffaa00' : '#1fe044');
-      ctx.fillText(this.samosborActive ? '│ САМОСБОР: ПРОРЫВ БЛОКА! ⚠️' : `│ САМОСБОР ЧЕРЕЗ: ${timeStr}`, tlX + 10, tlY + 36);
+      ctx.fillText(this.samosborActive ? 'САМОСБОР: ПРОРЫВ БЛОКА! ⚠️' : `САМОСБОР ЧЕРЕЗ: ${timeStr}`, tlX + 14, tlY + 42);
 
+      ctx.font = '11px monospace';
       ctx.fillStyle = '#88ff9e';
       const sectorName = (this.currentRoomName || 'ЖИЛАЯ ЯЧЕЙКА №556').toUpperCase();
-      ctx.fillText(`│ СЕКТОР: ${sectorName.slice(0, 26)}`, tlX + 10, tlY + 54);
-      ctx.fillText(`│ ТАЛОНЫ: ${this.player.talonsEarned}  |  XP: +${this.player.xpEarned}`, tlX + 10, tlY + 70);
-
-      ctx.fillStyle = this.samosborActive ? '#ff3b30' : '#1fe044';
-      ctx.fillText('└─────────────────────────────────────────────┘', tlX + 10, tlY + 84);
+      ctx.fillText(`СЕКТОР: ${sectorName.slice(0, 26)}`, tlX + 14, tlY + 60);
+      ctx.fillText(`ТАЛОНЫ: ${this.player.talonsEarned}  |  XP: +${this.player.xpEarned}`, tlX + 14, tlY + 78);
 
       // 2. Bottom-Right CRT Telemetry Panel
       const hudW = 310;
-      const hudH = 100;
+      const hudH = 104;
       const hudX = w - hudW - 16;
       const hudY = h - hudH - 16;
 
-      ctx.fillStyle = 'rgba(4, 20, 7, 0.9)';
+      ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';
       ctx.fillRect(hudX, hudY, hudW, hudH);
       ctx.strokeStyle = '#1fe044';
       ctx.lineWidth = 1.5;
@@ -1936,78 +1968,79 @@
 
       ctx.font = 'bold 12px "Share Tech Mono", monospace';
       ctx.fillStyle = this.player.hp < 30 ? '#ff3b30' : '#1fe044';
-      ctx.fillText(`HP: ${segBar} ${this.player.hp}/${this.player.maxHp}`, hudX + 14, hudY + 28);
+      ctx.fillText(`HP: ${segBar} ${this.player.hp}/${this.player.maxHp}`, hudX + 16, hudY + 26);
 
       // Active Weapon & Ammo Telemetry
       const weapon = this.player.weapon;
-      const wName = weapon ? weapon.name : 'Кулаки';
+      const wName = weapon ? String(weapon.name) : 'Кулаки';
       const ammoStr = (weapon && weapon.isRanged) ? `${weapon.ammo}/${weapon.maxAmmo}` : 'БЕСКОНЕЧНО (БЛИЖНИЙ БОЙ)';
 
       ctx.font = '11px monospace';
       ctx.fillStyle = '#88ff9e';
-      ctx.fillText(`ОРУЖИЕ: ${wName}`, hudX + 14, hudY + 52);
-      ctx.fillText(`ПАТРОНЫ: ${ammoStr}`, hudX + 14, hudY + 72);
-      ctx.fillText(`БРОНЯ: ${this.player.armor} DEF`, hudX + 14, hudY + 90);
+      ctx.fillText(`ОРУЖИЕ: ${wName.slice(0, 22)}`, hudX + 16, hudY + 50);
+      ctx.fillText(`ПАТРОНЫ: ${ammoStr}`, hudX + 16, hudY + 70);
+      ctx.fillText(`БРОНЯ: ${this.player.armor} DEF`, hudX + 16, hudY + 90);
 
       // 3. Tactical Quick Belt (ПОЯС БЫСТРОГО ДОСТУПА) - Bottom Left
-      const beltW = 400;
-      const beltH = 52;
+      const beltW = 490;
+      const beltH = 56;
       const beltX = 16;
       const beltY = h - beltH - 16;
 
-      ctx.fillStyle = 'rgba(4, 20, 7, 0.92)';
+      ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';
       ctx.fillRect(beltX, beltY, beltW, beltH);
       ctx.strokeStyle = '#1fe044';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(beltX, beltY, beltW, beltH);
 
-      // Slot 1: Primary Weapon
-      const slot1W = 130;
+      // Slot 1: Primary Weapon (Extra wide so full weapon name fits cleanly)
+      const slot1W = 194;
       const isSlot1 = (this.player.belt && this.player.belt.activeSlot === 1);
       ctx.fillStyle = isSlot1 ? 'rgba(31, 224, 68, 0.24)' : 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(beltX + 6, beltY + 6, slot1W, 40);
+      ctx.fillRect(beltX + 6, beltY + 6, slot1W, 44);
       ctx.strokeStyle = isSlot1 ? '#1fe044' : 'rgba(31, 224, 68, 0.4)';
-      ctx.strokeRect(beltX + 6, beltY + 6, slot1W, 40);
+      ctx.strokeRect(beltX + 6, beltY + 6, slot1W, 44);
 
       ctx.font = 'bold 10px "Share Tech Mono", monospace';
       ctx.fillStyle = isSlot1 ? '#1fe044' : '#888888';
-      ctx.fillText('[1] ОСНОВНОЕ', beltX + 10, beltY + 20);
-      const s1Name = this.player.belt && this.player.belt.slot1 ? this.player.belt.slot1.name : 'Труба';
+      ctx.fillText('[1] ОСНОВНОЕ', beltX + 12, beltY + 22);
+      const s1Name = this.player.belt && this.player.belt.slot1 ? String(this.player.belt.slot1.name) : 'Труба';
       const s1Ammo = this.player.belt && this.player.belt.slot1 ? (this.player.belt.slot1.isRanged ? `${this.player.belt.slot1.ammo}` : '∞') : '∞';
-      ctx.font = '9px monospace';
+      ctx.font = '10px monospace';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(`${s1Name.slice(0, 15)} [${s1Ammo}]`, beltX + 10, beltY + 36);
+      ctx.fillText(`${s1Name.slice(0, 20)} [${s1Ammo}]`, beltX + 12, beltY + 40);
 
       // Slot 2: Secondary / Looted Weapon
+      const slot2W = 152;
       const isSlot2 = (this.player.belt && this.player.belt.activeSlot === 2);
       ctx.fillStyle = isSlot2 ? 'rgba(51, 212, 255, 0.24)' : 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(beltX + 142, beltY + 6, slot1W, 40);
+      ctx.fillRect(beltX + 206, beltY + 6, slot2W, 44);
       ctx.strokeStyle = isSlot2 ? '#33d4ff' : 'rgba(51, 212, 255, 0.4)';
-      ctx.strokeRect(beltX + 142, beltY + 6, slot1W, 40);
+      ctx.strokeRect(beltX + 206, beltY + 6, slot2W, 44);
 
       ctx.font = 'bold 10px "Share Tech Mono", monospace';
       ctx.fillStyle = isSlot2 ? '#33d4ff' : '#888888';
-      ctx.fillText('[2] ЗАПАСНОЕ', beltX + 146, beltY + 20);
-      const s2Name = this.player.belt && this.player.belt.slot2 ? this.player.belt.slot2.name : '[ПУСТО]';
+      ctx.fillText('[2] ЗАПАСНОЕ', beltX + 212, beltY + 22);
+      const s2Name = this.player.belt && this.player.belt.slot2 ? String(this.player.belt.slot2.name) : '[ПУСТО]';
       const s2Ammo = this.player.belt && this.player.belt.slot2 ? (this.player.belt.slot2.isRanged ? `${this.player.belt.slot2.ammo}` : '∞') : '-';
-      ctx.font = '9px monospace';
+      ctx.font = '10px monospace';
       ctx.fillStyle = this.player.belt && this.player.belt.slot2 ? '#ffffff' : '#666666';
-      ctx.fillText(`${s2Name.slice(0, 15)} [${s2Ammo}]`, beltX + 146, beltY + 36);
+      ctx.fillText(`${s2Name.slice(0, 16)} [${s2Ammo}]`, beltX + 212, beltY + 40);
 
       // Slot 3: Quick First-Aid Medkit
-      const slot3W = 112;
+      const slot3W = 120;
       ctx.fillStyle = 'rgba(0, 45, 20, 0.55)';
-      ctx.fillRect(beltX + 278, beltY + 6, slot3W, 40);
+      ctx.fillRect(beltX + 364, beltY + 6, slot3W, 44);
       ctx.strokeStyle = '#00ff66';
-      ctx.strokeRect(beltX + 278, beltY + 6, slot3W, 40);
+      ctx.strokeRect(beltX + 364, beltY + 6, slot3W, 44);
 
       ctx.font = 'bold 10px "Share Tech Mono", monospace';
       ctx.fillStyle = '#00ff66';
-      ctx.fillText('[3 / Q] ПОЯС', beltX + 282, beltY + 20);
+      ctx.fillText('[3 / Q] ПОЯС', beltX + 370, beltY + 22);
       const medCount = this.player.belt ? this.player.belt.medkits : 0;
       ctx.font = 'bold 10px monospace';
       ctx.fillStyle = medCount > 0 ? '#ffea00' : '#ff4444';
-      ctx.fillText(`💉 АПТЕЧКА x${medCount}`, beltX + 282, beltY + 36);
+      ctx.fillText(`💉 АПТЕЧКА x${medCount}`, beltX + 370, beltY + 40);
 
       // 4. Interactive Prompt for Nearby Wounded NPC
       const nearbyWounded = this.getNearbyWoundedNPC();

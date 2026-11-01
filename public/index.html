@@ -2214,8 +2214,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
-<div id="hub-screen" class="screen">
-  <div class="panel" style="width: 550px; max-width: 95%;">
+<div id="hub-screen" class="screen" style="align-items: flex-start; padding-left: clamp(16px, 4vw, 48px);">
+  <div class="panel" style="width: 520px; max-width: 95%;">
     <h2 style="font-size: 20px; margin-top: 0; letter-spacing: 2px;" data-i18n="hub_title">ЖИЛЯЧЕЙКА</h2>
     <div class="stats" id="hub-stats-panel" style="position:relative;">
       <div><span data-i18n="lbl_level">УРОВЕНЬ:</span> <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
@@ -5224,7 +5224,26 @@ socket.on('connect_error', (err) => {
   if (errEl) errEl.innerHTML = '<span style="color:var(--term-danger);">' + (currentLang === 'en' ? 'Game server connection error!' : 'Ошибка подключения к серверу игры!') + '</span>';
 });
 
-function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen')); document.getElementById(id).classList.add('active-screen'); }
+function applyVFX(containerId, vfxClass) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = vfxClass;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active-screen');
+    s.style.display = '';
+  });
+  const target = document.getElementById(id);
+  if (target) {
+    target.style.display = '';
+    target.classList.add('active-screen');
+  }
+}
 function formatTime(sec) { let h = Math.floor(sec/3600).toString().padStart(2,'0'); let m = Math.floor((sec%3600)/60).toString().padStart(2,'0'); let s = (sec%60).toString().padStart(2,'0'); return `${h}:${m}:${s}`; }
 
 function getItemStatBadges(item) {
@@ -10665,6 +10684,11 @@ function closeRadarRoguelikeModal() {
 
   if (radarRoguelikeGame) {
     radarRoguelikeGame.stop();
+  }
+
+  const hub = document.getElementById('hub-screen');
+  if (hub) {
+    hub.style.display = '';
   }
   showScreen('hub-screen');
   updateActiveBackground();
