@@ -872,3 +872,4 @@
 
   global.RadarRoguelikeEngine = RadarRoguelikeEngine;
 })(typeof window !== 'undefined' ? window : this);
+

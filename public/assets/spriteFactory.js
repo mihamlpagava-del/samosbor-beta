@@ -342,3 +342,4 @@
 
   global.SpriteFactory = SpriteFactory;
 })(typeof window !== 'undefined' ? window : this);
+
