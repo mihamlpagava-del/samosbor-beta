@@ -1,0 +1,720 @@
+{
+  "heroes": {
+    "hero_melee": [
+      "assets/radar/entities/hero_melee_f0.png",
+      "assets/radar/entities/hero_melee_f1.png",
+      "assets/radar/entities/hero_melee_f2.png",
+      "assets/radar/entities/hero_melee_f3.png",
+      "assets/radar/entities/hero_melee_f4.png",
+      "assets/radar/entities/hero_melee_f5.png",
+      "assets/radar/entities/hero_melee_f6.png",
+      "assets/radar/entities/hero_melee_f7.png",
+      "assets/radar/entities/hero_melee_f8.png",
+      "assets/radar/entities/hero_melee_f9.png"
+    ],
+    "hero_pistol": [
+      "assets/radar/entities/hero_pistol_f0.png",
+      "assets/radar/entities/hero_pistol_f1.png",
+      "assets/radar/entities/hero_pistol_f2.png",
+      "assets/radar/entities/hero_pistol_f3.png",
+      "assets/radar/entities/hero_pistol_f4.png",
+      "assets/radar/entities/hero_pistol_f5.png",
+      "assets/radar/entities/hero_pistol_f6.png",
+      "assets/radar/entities/hero_pistol_f7.png",
+      "assets/radar/entities/hero_pistol_f8.png",
+      "assets/radar/entities/hero_pistol_f9.png"
+    ],
+    "hero_rifle": [
+      "assets/radar/entities/hero_rifle_f0.png",
+      "assets/radar/entities/hero_rifle_f1.png",
+      "assets/radar/entities/hero_rifle_f2.png",
+      "assets/radar/entities/hero_rifle_f3.png",
+      "assets/radar/entities/hero_rifle_f4.png",
+      "assets/radar/entities/hero_rifle_f5.png",
+      "assets/radar/entities/hero_rifle_f6.png",
+      "assets/radar/entities/hero_rifle_f7.png",
+      "assets/radar/entities/hero_rifle_f8.png",
+      "assets/radar/entities/hero_rifle_f9.png"
+    ],
+    "hero_shotgun": [
+      "assets/radar/entities/hero_shotgun_f0.png",
+      "assets/radar/entities/hero_shotgun_f1.png",
+      "assets/radar/entities/hero_shotgun_f2.png",
+      "assets/radar/entities/hero_shotgun_f3.png",
+      "assets/radar/entities/hero_shotgun_f4.png",
+      "assets/radar/entities/hero_shotgun_f5.png",
+      "assets/radar/entities/hero_shotgun_f6.png",
+      "assets/radar/entities/hero_shotgun_f7.png",
+      "assets/radar/entities/hero_shotgun_f8.png",
+      "assets/radar/entities/hero_shotgun_f9.png"
+    ]
+  },
+  "monsters": {
+    "mold_crawler": {
+      "id": "mold_crawler",
+      "name": "Плесень-ползун",
+      "tier": "common",
+      "hp": 45,
+      "maxHp": 45,
+      "dmg": 12,
+      "speed": 2.4,
+      "radius": 12,
+      "behavior": "wander_skitter",
+      "color": "#88ff44",
+      "sprite": "assets/radar/entities/mold_crawler.png",
+      "frames": [
+        "assets/radar/entities/mold_crawler_f0.png",
+        "assets/radar/entities/mold_crawler_f1.png",
+        "assets/radar/entities/mold_crawler_f2.png",
+        "assets/radar/entities/mold_crawler_f3.png",
+        "assets/radar/entities/mold_crawler_f4.png"
+      ]
+    },
+    "slime_slug": {
+      "id": "slime_slug",
+      "name": "Слизневик",
+      "tier": "common",
+      "hp": 65,
+      "maxHp": 65,
+      "dmg": 16,
+      "speed": 1.5,
+      "radius": 14,
+      "behavior": "acid_trail",
+      "color": "#66ff66",
+      "sprite": "assets/radar/entities/slime_slug.png",
+      "frames": [
+        "assets/radar/entities/slime_slug_f0.png",
+        "assets/radar/entities/slime_slug_f1.png",
+        "assets/radar/entities/slime_slug_f2.png",
+        "assets/radar/entities/slime_slug_f3.png",
+        "assets/radar/entities/slime_slug_f4.png"
+      ]
+    },
+    "rust_parasite": {
+      "id": "rust_parasite",
+      "name": "Ржавый паразит",
+      "tier": "common",
+      "hp": 50,
+      "maxHp": 50,
+      "dmg": 14,
+      "speed": 2.2,
+      "radius": 12,
+      "behavior": "wander_skitter",
+      "color": "#ff7733",
+      "sprite": "assets/radar/entities/rust_parasite.png",
+      "frames": [
+        "assets/radar/entities/rust_parasite_f0.png",
+        "assets/radar/entities/rust_parasite_f1.png",
+        "assets/radar/entities/rust_parasite_f2.png",
+        "assets/radar/entities/rust_parasite_f3.png",
+        "assets/radar/entities/rust_parasite_f4.png"
+      ]
+    },
+    "plague_rat": {
+      "id": "plague_rat",
+      "name": "Чумная крыса",
+      "tier": "common",
+      "hp": 35,
+      "maxHp": 35,
+      "dmg": 10,
+      "speed": 2.9,
+      "radius": 10,
+      "behavior": "fast_chase",
+      "color": "#cc4444",
+      "sprite": "assets/radar/entities/plague_rat.png",
+      "frames": [
+        "assets/radar/entities/plague_rat_f0.png",
+        "assets/radar/entities/plague_rat_f1.png",
+        "assets/radar/entities/plague_rat_f2.png",
+        "assets/radar/entities/plague_rat_f3.png",
+        "assets/radar/entities/plague_rat_f4.png"
+      ]
+    },
+    "samosbor_maggot": {
+      "id": "samosbor_maggot",
+      "name": "Личинка Самосбора",
+      "tier": "common",
+      "hp": 55,
+      "maxHp": 55,
+      "dmg": 15,
+      "speed": 1.6,
+      "radius": 13,
+      "behavior": "wriggle",
+      "color": "#ffeeaa",
+      "sprite": "assets/radar/entities/samosbor_maggot.png",
+      "frames": [
+        "assets/radar/entities/samosbor_maggot_f0.png",
+        "assets/radar/entities/samosbor_maggot_f1.png",
+        "assets/radar/entities/samosbor_maggot_f2.png",
+        "assets/radar/entities/samosbor_maggot_f3.png"
+      ]
+    },
+    "pipe_eater": {
+      "id": "pipe_eater",
+      "name": "Трубный трупоед",
+      "tier": "common",
+      "hp": 70,
+      "maxHp": 70,
+      "dmg": 18,
+      "speed": 1.8,
+      "radius": 13,
+      "behavior": "corridor_lurker",
+      "color": "#bb5555",
+      "sprite": "assets/radar/entities/pipe_eater.png",
+      "frames": [
+        "assets/radar/entities/pipe_eater_f0.png",
+        "assets/radar/entities/pipe_eater_f1.png",
+        "assets/radar/entities/pipe_eater_f2.png",
+        "assets/radar/entities/pipe_eater_f3.png",
+        "assets/radar/entities/pipe_eater_f4.png"
+      ]
+    },
+    "mad_inmate": {
+      "id": "mad_inmate",
+      "name": "Обезумевший жилец",
+      "tier": "common",
+      "hp": 60,
+      "maxHp": 60,
+      "dmg": 16,
+      "speed": 2.1,
+      "radius": 13,
+      "behavior": "melee_rusher",
+      "color": "#ffaa55",
+      "sprite": "assets/radar/entities/mad_inmate.png",
+      "frames": [
+        "assets/radar/entities/mad_inmate_f0.png",
+        "assets/radar/entities/mad_inmate_f1.png",
+        "assets/radar/entities/mad_inmate_f2.png",
+        "assets/radar/entities/mad_inmate_f3.png",
+        "assets/radar/entities/mad_inmate_f4.png"
+      ]
+    },
+    "mad_liquidator": {
+      "id": "mad_liquidator",
+      "name": "Обезумевший ликвидатор",
+      "tier": "veteran",
+      "hp": 110,
+      "maxHp": 110,
+      "dmg": 24,
+      "speed": 1.9,
+      "radius": 14,
+      "behavior": "patrol_melee",
+      "color": "#ffcc00",
+      "sprite": "assets/radar/entities/mad_liquidator.png",
+      "frames": [
+        "assets/radar/entities/mad_liquidator_f0.png",
+        "assets/radar/entities/mad_liquidator_f1.png",
+        "assets/radar/entities/mad_liquidator_f2.png",
+        "assets/radar/entities/mad_liquidator_f3.png",
+        "assets/radar/entities/mad_liquidator_f4.png"
+      ]
+    },
+    "fog_drowner": {
+      "id": "fog_drowner",
+      "name": "Туманный утопленник",
+      "tier": "veteran",
+      "hp": 85,
+      "maxHp": 85,
+      "dmg": 20,
+      "speed": 1.4,
+      "radius": 13,
+      "behavior": "stealth_chase",
+      "color": "#33ddff",
+      "sprite": "assets/radar/entities/fog_drowner.png",
+      "frames": [
+        "assets/radar/entities/fog_drowner_f0.png",
+        "assets/radar/entities/fog_drowner_f1.png",
+        "assets/radar/entities/fog_drowner_f2.png",
+        "assets/radar/entities/fog_drowner_f3.png",
+        "assets/radar/entities/fog_drowner_f4.png"
+      ]
+    },
+    "eyeless_guard": {
+      "id": "eyeless_guard",
+      "name": "Безглазый конвоир",
+      "tier": "veteran",
+      "hp": 130,
+      "maxHp": 130,
+      "dmg": 28,
+      "speed": 1.7,
+      "radius": 14,
+      "behavior": "patrol_heavy",
+      "color": "#8888aa",
+      "sprite": "assets/radar/entities/eyeless_guard.png",
+      "frames": [
+        "assets/radar/entities/eyeless_guard_f0.png",
+        "assets/radar/entities/eyeless_guard_f1.png",
+        "assets/radar/entities/eyeless_guard_f2.png",
+        "assets/radar/entities/eyeless_guard_f3.png",
+        "assets/radar/entities/eyeless_guard_f4.png"
+      ]
+    },
+    "worm_growth": {
+      "id": "worm_growth",
+      "name": "Червеобразный нарост",
+      "tier": "common",
+      "hp": 90,
+      "maxHp": 90,
+      "dmg": 22,
+      "speed": 0.8,
+      "radius": 15,
+      "behavior": "acid_spurt",
+      "color": "#ff3344",
+      "sprite": "assets/radar/entities/worm_growth.png",
+      "frames": [
+        "assets/radar/entities/worm_growth_f0.png",
+        "assets/radar/entities/worm_growth_f1.png",
+        "assets/radar/entities/worm_growth_f2.png",
+        "assets/radar/entities/worm_growth_f3.png",
+        "assets/radar/entities/worm_growth_f4.png"
+      ]
+    },
+    "meat_cultist": {
+      "id": "meat_cultist",
+      "name": "Мясной культист",
+      "tier": "veteran",
+      "hp": 95,
+      "maxHp": 95,
+      "dmg": 25,
+      "speed": 2.0,
+      "radius": 13,
+      "behavior": "melee_rusher",
+      "color": "#cc2222",
+      "sprite": "assets/radar/entities/meat_cultist.png",
+      "frames": [
+        "assets/radar/entities/meat_cultist_f0.png",
+        "assets/radar/entities/meat_cultist_f1.png",
+        "assets/radar/entities/meat_cultist_f2.png",
+        "assets/radar/entities/meat_cultist_f3.png"
+      ]
+    },
+    "adept_chernobog": {
+      "id": "adept_chernobog",
+      "name": "Адепт Чернобога",
+      "tier": "veteran",
+      "hp": 105,
+      "maxHp": 105,
+      "dmg": 26,
+      "speed": 1.9,
+      "radius": 13,
+      "behavior": "stealth_chase",
+      "color": "#9966cc",
+      "sprite": "assets/radar/entities/adept_chernobog.png",
+      "frames": [
+        "assets/radar/entities/adept_chernobog_f0.png",
+        "assets/radar/entities/adept_chernobog_f1.png",
+        "assets/radar/entities/adept_chernobog_f2.png",
+        "assets/radar/entities/adept_chernobog_f3.png",
+        "assets/radar/entities/adept_chernobog_f4.png"
+      ]
+    },
+    "rebar_spider": {
+      "id": "rebar_spider",
+      "name": "Паук-арматурщик",
+      "tier": "elite",
+      "hp": 160,
+      "maxHp": 160,
+      "dmg": 34,
+      "speed": 2.7,
+      "radius": 18,
+      "behavior": "leap_ambush",
+      "color": "#ff4422",
+      "sprite": "assets/radar/entities/rebar_spider.png",
+      "frames": [
+        "assets/radar/entities/rebar_spider_f0.png",
+        "assets/radar/entities/rebar_spider_f1.png"
+      ]
+    },
+    "fog_hound": {
+      "id": "fog_hound",
+      "name": "Гончая тумана",
+      "tier": "veteran",
+      "hp": 80,
+      "maxHp": 80,
+      "dmg": 22,
+      "speed": 3.1,
+      "radius": 14,
+      "behavior": "fast_chase",
+      "color": "#ee5533",
+      "sprite": "assets/radar/entities/fog_hound.png",
+      "frames": [
+        "assets/radar/entities/fog_hound_f0.png",
+        "assets/radar/entities/fog_hound_f1.png",
+        "assets/radar/entities/fog_hound_f2.png"
+      ]
+    },
+    "mutated_welder": {
+      "id": "mutated_welder",
+      "name": "Мутировавший сварщик",
+      "tier": "veteran",
+      "hp": 140,
+      "maxHp": 140,
+      "dmg": 30,
+      "speed": 1.6,
+      "radius": 14,
+      "behavior": "fire_melee",
+      "color": "#ff9900",
+      "sprite": "assets/radar/entities/mutated_welder.png",
+      "frames": [
+        "assets/radar/entities/mutated_welder_f0.png",
+        "assets/radar/entities/mutated_welder_f1.png",
+        "assets/radar/entities/mutated_welder_f2.png",
+        "assets/radar/entities/mutated_welder_f3.png",
+        "assets/radar/entities/mutated_welder_f4.png"
+      ]
+    },
+    "pig_snout": {
+      "id": "pig_snout",
+      "name": "Свинорыл",
+      "tier": "veteran",
+      "hp": 150,
+      "maxHp": 150,
+      "dmg": 32,
+      "speed": 2.2,
+      "radius": 15,
+      "behavior": "charge_slam",
+      "color": "#dd7755",
+      "sprite": "assets/radar/entities/pig_snout.png",
+      "frames": [
+        "assets/radar/entities/pig_snout_f0.png",
+        "assets/radar/entities/pig_snout_f1.png",
+        "assets/radar/entities/pig_snout_f2.png",
+        "assets/radar/entities/pig_snout_f3.png"
+      ]
+    },
+    "necro_plumber": {
+      "id": "necro_plumber",
+      "name": "Некро-сантехник",
+      "tier": "veteran",
+      "hp": 120,
+      "maxHp": 120,
+      "dmg": 26,
+      "speed": 1.8,
+      "radius": 14,
+      "behavior": "melee_rusher",
+      "color": "#55aa77",
+      "sprite": "assets/radar/entities/necro_plumber.png",
+      "frames": [
+        "assets/radar/entities/necro_plumber_f0.png",
+        "assets/radar/entities/necro_plumber_f1.png",
+        "assets/radar/entities/necro_plumber_f2.png",
+        "assets/radar/entities/necro_plumber_f3.png"
+      ]
+    },
+    "infected_liquidator": {
+      "id": "infected_liquidator",
+      "name": "Зараженный ликвидатор",
+      "tier": "veteran",
+      "hp": 125,
+      "maxHp": 125,
+      "dmg": 26,
+      "speed": 1.8,
+      "radius": 14,
+      "behavior": "patrol_melee",
+      "color": "#eecc00",
+      "sprite": "assets/radar/entities/infected_liquidator.png",
+      "frames": [
+        "assets/radar/entities/infected_liquidator_f0.png",
+        "assets/radar/entities/infected_liquidator_f1.png",
+        "assets/radar/entities/infected_liquidator_f2.png",
+        "assets/radar/entities/infected_liquidator_f3.png",
+        "assets/radar/entities/infected_liquidator_f4.png"
+      ]
+    },
+    "toxic_spitter": {
+      "id": "toxic_spitter",
+      "name": "Токсичный плевун",
+      "tier": "veteran",
+      "hp": 90,
+      "maxHp": 90,
+      "dmg": 24,
+      "speed": 1.5,
+      "radius": 14,
+      "behavior": "ranged_spit",
+      "color": "#00ff66",
+      "sprite": "assets/radar/entities/toxic_spitter.png",
+      "frames": [
+        "assets/radar/entities/toxic_spitter_f0.png",
+        "assets/radar/entities/toxic_spitter_f1.png",
+        "assets/radar/entities/toxic_spitter_f2.png",
+        "assets/radar/entities/toxic_spitter_f3.png",
+        "assets/radar/entities/toxic_spitter_f4.png"
+      ]
+    },
+    "armored_butcher": {
+      "id": "armored_butcher",
+      "name": "Бронированный мясник",
+      "tier": "elite",
+      "hp": 220,
+      "maxHp": 220,
+      "dmg": 38,
+      "speed": 1.4,
+      "radius": 16,
+      "behavior": "heavy_tank",
+      "color": "#cc3322",
+      "sprite": "assets/radar/entities/armored_butcher.png",
+      "frames": [
+        "assets/radar/entities/armored_butcher_f0.png",
+        "assets/radar/entities/armored_butcher_f1.png",
+        "assets/radar/entities/armored_butcher_f2.png",
+        "assets/radar/entities/armored_butcher_f3.png"
+      ]
+    },
+    "slime_hive": {
+      "id": "slime_hive",
+      "name": "Ходячий улей слизи",
+      "tier": "elite",
+      "hp": 260,
+      "maxHp": 260,
+      "dmg": 28,
+      "speed": 1.1,
+      "radius": 18,
+      "behavior": "hive_spawn",
+      "color": "#66ee33",
+      "sprite": "assets/radar/entities/slime_hive.png",
+      "frames": [
+        "assets/radar/entities/slime_hive_f0.png",
+        "assets/radar/entities/slime_hive_f1.png",
+        "assets/radar/entities/slime_hive_f2.png"
+      ]
+    },
+    "concrete_preacher": {
+      "id": "concrete_preacher",
+      "name": "Проповедник бетона",
+      "tier": "elite",
+      "hp": 175,
+      "maxHp": 175,
+      "dmg": 32,
+      "speed": 1.7,
+      "radius": 14,
+      "behavior": "curse_aura",
+      "color": "#aa8866",
+      "sprite": "assets/radar/entities/concrete_preacher.png",
+      "frames": [
+        "assets/radar/entities/concrete_preacher_f0.png",
+        "assets/radar/entities/concrete_preacher_f1.png",
+        "assets/radar/entities/concrete_preacher_f2.png"
+      ]
+    },
+    "twisted_deserter": {
+      "id": "twisted_deserter",
+      "name": "Искаженный дезертир",
+      "tier": "veteran",
+      "hp": 115,
+      "maxHp": 115,
+      "dmg": 25,
+      "speed": 2.0,
+      "radius": 13,
+      "behavior": "ranged_burst",
+      "color": "#88aa55",
+      "sprite": "assets/radar/entities/twisted_deserter.png",
+      "frames": [
+        "assets/radar/entities/twisted_deserter_f0.png",
+        "assets/radar/entities/twisted_deserter_f1.png",
+        "assets/radar/entities/twisted_deserter_f2.png",
+        "assets/radar/entities/twisted_deserter_f3.png"
+      ]
+    },
+    "flesh_amalgam": {
+      "id": "flesh_amalgam",
+      "name": "Амальгама плоти",
+      "tier": "elite",
+      "hp": 240,
+      "maxHp": 240,
+      "dmg": 36,
+      "speed": 1.5,
+      "radius": 16,
+      "behavior": "heavy_tank",
+      "color": "#dd4444",
+      "sprite": "assets/radar/entities/flesh_amalgam.png",
+      "frames": [
+        "assets/radar/entities/flesh_amalgam_f0.png",
+        "assets/radar/entities/flesh_amalgam_f1.png",
+        "assets/radar/entities/flesh_amalgam_f2.png",
+        "assets/radar/entities/flesh_amalgam_f3.png",
+        "assets/radar/entities/flesh_amalgam_f4.png"
+      ]
+    },
+    "giant_centipede": {
+      "id": "giant_centipede",
+      "name": "Гигантская сколопендра",
+      "tier": "boss",
+      "hp": 480,
+      "maxHp": 480,
+      "dmg": 44,
+      "speed": 2.3,
+      "radius": 24,
+      "behavior": "boss_charge",
+      "color": "#cc2244",
+      "sprite": "assets/radar/entities/giant_centipede.png",
+      "frames": [
+        "assets/radar/entities/giant_centipede_f0.png"
+      ]
+    },
+    "biomech_guardian": {
+      "id": "biomech_guardian",
+      "name": "Биомеханический страж",
+      "tier": "elite",
+      "hp": 260,
+      "maxHp": 260,
+      "dmg": 38,
+      "speed": 1.6,
+      "radius": 16,
+      "behavior": "armored_gunner",
+      "color": "#44aacc",
+      "sprite": "assets/radar/entities/biomech_guardian.png",
+      "frames": [
+        "assets/radar/entities/biomech_guardian_f0.png",
+        "assets/radar/entities/biomech_guardian_f1.png",
+        "assets/radar/entities/biomech_guardian_f2.png",
+        "assets/radar/entities/biomech_guardian_f3.png"
+      ]
+    },
+    "filter_devourer": {
+      "id": "filter_devourer",
+      "name": "Пожиратель фильтров",
+      "tier": "veteran",
+      "hp": 135,
+      "maxHp": 135,
+      "dmg": 24,
+      "speed": 2.2,
+      "radius": 14,
+      "behavior": "filter_drain",
+      "color": "#558877",
+      "sprite": "assets/radar/entities/filter_devourer.png",
+      "frames": [
+        "assets/radar/entities/filter_devourer_f0.png",
+        "assets/radar/entities/filter_devourer_f1.png",
+        "assets/radar/entities/filter_devourer_f2.png",
+        "assets/radar/entities/filter_devourer_f3.png"
+      ]
+    },
+    "shadow_samosbor": {
+      "id": "shadow_samosbor",
+      "name": "Тень Самосбора",
+      "tier": "elite",
+      "hp": 140,
+      "maxHp": 140,
+      "dmg": 30,
+      "speed": 2.5,
+      "radius": 13,
+      "behavior": "stealth_phantom",
+      "color": "#222233",
+      "sprite": "assets/radar/entities/shadow_samosbor.png",
+      "frames": [
+        "assets/radar/entities/shadow_samosbor_f0.png",
+        "assets/radar/entities/shadow_samosbor_f1.png",
+        "assets/radar/entities/shadow_samosbor_f2.png"
+      ]
+    },
+    "conjoined_twins": {
+      "id": "conjoined_twins",
+      "name": "Сросшиеся близнецы",
+      "tier": "elite",
+      "hp": 190,
+      "maxHp": 190,
+      "dmg": 34,
+      "speed": 1.7,
+      "radius": 15,
+      "behavior": "double_strike",
+      "color": "#cc8877",
+      "sprite": "assets/radar/entities/conjoined_twins.png",
+      "frames": [
+        "assets/radar/entities/conjoined_twins_f0.png",
+        "assets/radar/entities/conjoined_twins_f1.png",
+        "assets/radar/entities/conjoined_twins_f2.png"
+      ]
+    },
+    "cement_priest": {
+      "id": "cement_priest",
+      "name": "Жрец кровавого цемента",
+      "tier": "boss",
+      "hp": 550,
+      "maxHp": 550,
+      "dmg": 46,
+      "speed": 1.6,
+      "radius": 18,
+      "behavior": "boss_curse",
+      "color": "#ee2222",
+      "sprite": "assets/radar/entities/cement_priest.png",
+      "frames": [
+        "assets/radar/entities/cement_priest_f0.png",
+        "assets/radar/entities/cement_priest_f1.png",
+        "assets/radar/entities/cement_priest_f2.png",
+        "assets/radar/entities/cement_priest_f3.png",
+        "assets/radar/entities/cement_priest_f4.png"
+      ]
+    },
+    "flesh_architect": {
+      "id": "flesh_architect",
+      "name": "Архитектор плоти",
+      "tier": "boss",
+      "hp": 680,
+      "maxHp": 680,
+      "dmg": 50,
+      "speed": 1.4,
+      "radius": 22,
+      "behavior": "boss_summon",
+      "color": "#dd4466",
+      "sprite": "assets/radar/entities/flesh_architect.png",
+      "frames": [
+        "assets/radar/entities/flesh_architect_f0.png",
+        "assets/radar/entities/flesh_architect_f1.png",
+        "assets/radar/entities/flesh_architect_f2.png"
+      ]
+    },
+    "fog_abomination": {
+      "id": "fog_abomination",
+      "name": "Истинный обитатель тумана",
+      "tier": "boss",
+      "hp": 900,
+      "maxHp": 900,
+      "dmg": 60,
+      "speed": 1.5,
+      "radius": 28,
+      "behavior": "boss_colossal",
+      "color": "#33ddaa",
+      "sprite": "assets/radar/entities/fog_abomination.png",
+      "frames": [
+        "assets/radar/entities/fog_abomination_f0.png",
+        "assets/radar/entities/fog_abomination_f1.png",
+        "assets/radar/entities/fog_abomination_f2.png"
+      ]
+    }
+  },
+  "tiles": {
+    "floor_metal": "assets/radar/tiles/floor_metal.png",
+    "floor_grate": "assets/radar/tiles/floor_grate.png",
+    "floor_hazard": "assets/radar/tiles/floor_hazard.png",
+    "floor_mesh": "assets/radar/tiles/floor_mesh.png",
+    "floor_stripes": "assets/radar/tiles/floor_stripes.png",
+    "floor_dark": "assets/radar/tiles/floor_dark.png",
+    "floor_panel_cross": "assets/radar/tiles/floor_panel_cross.png",
+    "floor_panel_steel": "assets/radar/tiles/floor_panel_steel.png",
+    "floor_panel_vent": "assets/radar/tiles/floor_panel_vent.png",
+    "wall_h": "assets/radar/tiles/wall_h.png",
+    "wall_h_hazard": "assets/radar/tiles/wall_h_hazard.png",
+    "wall_v": "assets/radar/tiles/wall_v.png",
+    "wall_corner": "assets/radar/tiles/wall_corner.png",
+    "wall_t_junction": "assets/radar/tiles/wall_t_junction.png",
+    "door_blast": "assets/radar/tiles/door_blast.png",
+    "elevator_pad": "assets/radar/tiles/elevator_pad.png",
+    "crate_wood": "assets/radar/tiles/crate_wood.png",
+    "barrel_blue": "assets/radar/tiles/barrel_blue.png",
+    "crate_supply": "assets/radar/tiles/crate_supply.png",
+    "crate_tech": "assets/radar/tiles/crate_tech.png",
+    "barrel_fuel": "assets/radar/tiles/barrel_fuel.png",
+    "crate_ammo": "assets/radar/tiles/crate_ammo.png",
+    "crate_med": "assets/radar/tiles/crate_med.png",
+    "safe_vault": "assets/radar/tiles/safe_vault.png",
+    "server_rack": "assets/radar/tiles/server_rack.png",
+    "terminal_crt": "assets/radar/tiles/terminal_crt.png",
+    "terminal_crt_2": "assets/radar/tiles/terminal_crt_2.png",
+    "sign_samosbor": "assets/radar/tiles/sign_samosbor.png",
+    "wall_lamp": "assets/radar/tiles/wall_lamp.png",
+    "wall_lamp_amber": "assets/radar/tiles/wall_lamp_amber.png",
+    "wall_lamp_amber_2": "assets/radar/tiles/wall_lamp_amber_2.png",
+    "pipes_corner": "assets/radar/tiles/pipes_corner.png",
+    "pipes_straight": "assets/radar/tiles/pipes_straight.png"
+  }
+}

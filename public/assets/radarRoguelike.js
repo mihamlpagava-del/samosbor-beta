@@ -190,19 +190,18 @@
       this.weaponDrops = this.mapData.weaponDrops || [];
       this.doors = this.mapData.doors || [];
       this.elevator = this.mapData.elevator || { x: 500, y: 500, w: 32, h: 32 };
+      this.lamps = this.mapData.lamps || [];
 
-      // Initialize Entities (Diverse Monster Archetypes)
+      // Initialize Entities (33 Monster Archetypes from manifest / levelGen)
       this.entities = [];
       (this.mapData.mutantSpawns || []).forEach((m, idx) => {
-        let type = 'mutant_slime';
-        if (m.archetype === 'creeper') type = 'creeper';
-        else if (m.archetype === 'spitter') type = 'spitter';
-        else if (m.archetype === 'brute') type = 'brute';
-
         this.entities.push({
           id: `mutant_${idx}`,
-          type: type,
+          type: 'monster',
+          monsterId: m.monsterId || m.archetype || 'mold_crawler',
+          archetype: m.archetype || m.monsterId || 'mold_crawler',
           name: m.name || 'Мутант',
+          tier: m.tier || 'common',
           x: m.x,
           y: m.y,
           homeX: m.x,
@@ -214,12 +213,16 @@
           speed: m.speed || 1.6,
           hp: m.hp || 50,
           maxHp: m.maxHp || 50,
+          dmg: m.dmg || 18,
+          behavior: m.behavior || 'wander_skitter',
+          color: m.color || '#ff3b30',
           state: 'IDLE_WANDER',
           stateTimer: Math.random() * 60,
           wanderTarget: { x: m.x, y: m.y },
           damageFlashTimer: 0,
           phosphorAlpha: 0.1,
-          lastSpitTime: 0
+          lastSpitTime: 0,
+          lastSpawnTime: 0
         });
       });
 
@@ -788,6 +791,24 @@
           this.fogVisible[sty][stx] = 1;
         }
       }
+
+      // 3. Wall Lanterns Ambient Illumination ("Фонари")
+      if (this.lamps) {
+        for (const lamp of this.lamps) {
+          const ltx = lamp.tileX;
+          const lty = lamp.tileY;
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const tx = ltx + dx;
+              const ty = lty + dy;
+              if (tx >= 0 && tx < W && ty >= 0 && ty < H) {
+                this.fogExplored[ty][tx] = 1;
+                this.fogVisible[ty][tx] = 1;
+              }
+            }
+          }
+        }
+      }
     }
 
     isTileSolid(worldX, worldY, radius = 8) {
@@ -842,8 +863,9 @@
 
         // Entity AI Behavior
         if (e.type !== 'liquidator') {
-          if (e.type === 'spitter') {
-            // Spitter worm: keeps distance (160..240px) and spits acid projectiles
+          const isSpitter = (e.behavior === 'ranged_spit' || e.behavior === 'acid_spurt' || e.archetype === 'spitter' || e.archetype === 'toksichniy_plevun');
+          if (isSpitter) {
+            // Spitter worm / toxic spitter: keeps distance (160..240px) and spits acid projectiles
             if (distToPlayer < 260) {
               const ang = Math.atan2(py - e.y, px - e.x);
               e.angle = ang;
@@ -856,7 +878,7 @@
               }
 
               // Spit acid projectile
-              if (now - (e.lastSpitTime || 0) > 2200) {
+              if (now - (e.lastSpitTime || 0) > 2100) {
                 e.lastSpitTime = now;
                 if (typeof RadarAudio !== 'undefined') RadarAudio.playAcidSpit();
                 this.projectiles.push({
@@ -864,7 +886,7 @@
                   y: e.y + Math.sin(ang) * 16,
                   vx: Math.cos(ang) * 7.5,
                   vy: Math.sin(ang) * 7.5,
-                  damage: 16,
+                  damage: e.dmg || 20,
                   isPlayer: false,
                   life: 45,
                   color: '#88ff00'
@@ -893,17 +915,22 @@
                 e.vx = 0; e.vy = 0;
               }
 
-              if (distToPlayer < (e.type === 'creeper' ? 240 : 190)) {
+              const aggroDist = (e.tier === 'boss' || e.tier === 'elite' || e.behavior === 'leap_ambush') ? 260 : 190;
+              if (distToPlayer < aggroDist) {
                 e.state = 'CHASE';
               }
             } else if (e.state === 'CHASE') {
               const ang = Math.atan2(py - e.y, px - e.x);
-              e.vx = Math.cos(ang) * e.speed;
-              e.vy = Math.sin(ang) * e.speed;
+              let moveSpeed = e.speed;
+              if (e.behavior === 'leap_ambush' && distToPlayer < 90) {
+                moveSpeed *= 1.6; // Rapid lunge!
+              }
+              e.vx = Math.cos(ang) * moveSpeed;
+              e.vy = Math.sin(ang) * moveSpeed;
               e.angle = ang;
 
               if (distToPlayer < e.radius + this.player.radius + 4) {
-                this.damagePlayer(e.type === 'brute' ? 24 : 14, e.name);
+                this.damagePlayer(e.dmg || 18, e.name);
                 e.vx *= -1.5;
                 e.vy *= -1.5;
               }
@@ -1044,6 +1071,17 @@
         if (this.isCellExplored(door.tileX, door.tileY)) {
           if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDoorTile) {
             SpriteFactory.drawDoorTile(ctx, door, this.tileSize, 1.0);
+          }
+        }
+      }
+
+      // 2b. Draw Wall Lanterns ("Фонари") with warm amber glow
+      if (this.lamps) {
+        for (const lamp of this.lamps) {
+          if (this.isCellExplored(lamp.tileX, lamp.tileY)) {
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawWallLamp) {
+              SpriteFactory.drawWallLamp(ctx, lamp, this.tileSize, this.tick, 1.0);
+            }
           }
         }
       }
