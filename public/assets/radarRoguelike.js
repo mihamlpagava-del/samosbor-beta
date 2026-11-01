@@ -333,8 +333,11 @@
     }
 
     buildFloor() {
+      const pLvl = (typeof clientMe !== 'undefined' && clientMe && clientMe.level) ? clientMe.level : (this.player.level || 1);
+      this.player.level = pLvl;
+
       if (typeof LevelGen !== 'undefined') {
-        this.mapData = LevelGen.generate();
+        this.mapData = LevelGen.generate(pLvl);
       } else {
         return;
       }
@@ -373,21 +376,17 @@
       this.crates = this.mapData.lootCrates || [];
       this.weaponDrops = this.mapData.weaponDrops || [];
       this.doors = this.mapData.doors || [];
-      this.elevator = this.mapData.elevator || { x: 500, y: 500, w: 32, h: 32 };
+      this.elevator = this.mapData.elevator || { x: 500, y: 500, w: 64, h: 64 };
       this.lamps = this.mapData.lamps || [];
 
-      // Initialize Entities (33 Monster Archetypes from manifest / levelGen)
+      // Initialize Entities (Dynamic Bestiary Scaled to Player Level)
       this.entities = [];
-      (this.mapData.mutantSpawns || []).forEach((m, idx) => {
-        this.entities.push({
+      const mutants = this.mapData.mutants || this.mapData.mutantSpawns || [];
+      mutants.forEach((m, idx) => {
+        this.entities.push(Object.assign({
           id: `mutant_${idx}`,
           type: 'monster',
-          monsterId: m.monsterId || m.archetype || 'mold_crawler',
-          archetype: m.archetype || m.monsterId || 'mold_crawler',
           name: m.name || 'Мутант',
-          tier: m.tier || 'common',
-          x: m.x,
-          y: m.y,
           homeX: m.x,
           homeY: m.y,
           radius: m.radius || 13,
@@ -405,26 +404,20 @@
           wanderTarget: { x: m.x, y: m.y },
           damageFlashTimer: 0,
           phosphorAlpha: 0.1,
+          lastAttackTime: 0,
           lastSpitTime: 0,
-          lastSpawnTime: 0
-        });
+          leapCooldown: 0,
+          isMimicDisguised: m.behavior === 'radar_disguise'
+        }, m));
       });
 
       // Patrol Liquidators (Allies)
-      const liquidatorGuns = [
-        { id: 'ak_carbine', name: 'Автомат АК-74У', dmg: 28, ammo: 45, maxAmmo: 45, isRanged: true, gunType: 'rifle' },
-        { id: 'shotgun', name: 'Дробовик КС-23', dmg: 65, ammo: 14, maxAmmo: 14, isRanged: true, gunType: 'shotgun' },
-        { id: 'pm_gun', name: 'Пистолет Макарова', dmg: 32, ammo: 24, maxAmmo: 24, isRanged: true, gunType: 'pistol' }
-      ];
-
-      (this.mapData.patrolSpawns || []).forEach((p, idx) => {
-        const gunPreset = Object.assign({}, liquidatorGuns[idx % liquidatorGuns.length]);
-        this.entities.push({
+      const allies = this.mapData.allies || this.mapData.patrolSpawns || [];
+      allies.forEach((p, idx) => {
+        this.entities.push(Object.assign({
           id: `patrol_${idx}`,
           type: 'liquidator',
-          name: `Патрульный [Ликвидатор ${idx + 1}]`,
-          x: p.x,
-          y: p.y,
+          name: p.name || `Ликвидатор [Патруль ${idx + 1}]`,
           homeX: p.x,
           homeY: p.y,
           radius: 13,
@@ -432,20 +425,19 @@
           vx: 0,
           vy: 0,
           speed: 1.8,
-          hp: 120,
-          maxHp: 120,
+          hp: p.hp || 140,
+          maxHp: p.maxHp || 140,
           isWounded: false,
           hasWeapon: true,
-          gun: gunPreset,
+          gun: { id: 'pm_gun', name: 'Пистолет Макарова', dmg: 28, ammo: 30, maxAmmo: 30, isRanged: true, gunType: 'pistol' },
           isLoyalFollower: false,
-          attackCooldown: Math.floor(Math.random() * 20),
-          callForHelpTimer: 0,
+          attackCooldown: 10,
           state: 'PATROL',
           stateTimer: 0,
           wanderTarget: { x: p.x, y: p.y },
           damageFlashTimer: 0,
-          phosphorAlpha: 0.3
-        });
+          phosphorAlpha: 1.0
+        }, p));
       });
     }
 
@@ -484,6 +476,12 @@
         }
         if (e.code === 'KeyE' || e.code === 'Space') {
           this.interactNearby();
+        }
+        if (e.code === 'F2') {
+          if (typeof AsciiRenderer !== 'undefined') {
+            AsciiRenderer.enabled = !AsciiRenderer.enabled;
+            this.spawnFloatingNotice(`ANSI ШЕЙДЕР: ${AsciiRenderer.enabled ? 'ВКЛ' : 'ВЫКЛ'}`, '#1fe044');
+          }
         }
       });
 
@@ -683,11 +681,21 @@
       const idx = this.entities.indexOf(monster);
       if (idx !== -1) {
         this.entities.splice(idx, 1);
-        const bounty = (monster.type === 'brute') ? 35 : ((monster.type === 'spitter') ? 25 : 15);
-        const xp = bounty + 10;
+        const cost = monster.cost || 2;
+        const bounty = 10 + cost * 4;
+        const xp = 15 + cost * 5;
         this.player.talonsEarned += bounty;
         this.player.xpEarned += xp;
         this.spawnFloatingNotice(`+${bounty} ТАЛОНОВ, +${xp} XP`, '#ffd700');
+
+        // Slime split on death
+        if (monster.behavior === 'slime_split' && typeof Progression !== 'undefined' && Progression.createSlimeChildren) {
+          const children = Progression.createSlimeChildren(monster);
+          for (const child of children) {
+            this.entities.push(child);
+            this.spawnHitParticles(child.x, child.y, '#33cc55', 6);
+          }
+        }
       }
     }
 
@@ -1151,107 +1159,176 @@
 
         // Entity AI Behavior
         if (e.type !== 'liquidator') {
-          const isSpitter = (e.behavior === 'ranged_spit' || e.behavior === 'acid_spurt' || e.archetype === 'spitter' || e.archetype === 'toksichniy_plevun');
-          if (isSpitter) {
-            // Spitter worm / toxic spitter: keeps distance (160..240px) and spits acid projectiles
-            if (distToPlayer < 260) {
-              const ang = Math.atan2(py - e.y, px - e.x);
-              e.angle = ang;
-              if (distToPlayer < 140) {
-                // Back up
-                e.vx = -Math.cos(ang) * e.speed;
-                e.vy = -Math.sin(ang) * e.speed;
-              } else {
-                e.vx = 0; e.vy = 0;
-              }
+          // --- TIER 1-3 DYNAMIC BEHAVIORS ---
 
-              // Spit acid projectile
-              if (now - (e.lastSpitTime || 0) > 2100) {
-                e.lastSpitTime = now;
-                if (typeof RadarAudio !== 'undefined') RadarAudio.playAcidSpit();
+          // 1. Spore Turret (Stationary Spore Pod)
+          if (e.behavior === 'turret_spore') {
+            e.vx = 0;
+            e.vy = 0;
+            e.sporeCooldown = (e.sporeCooldown || 0) + 1;
+            if (e.sporeCooldown > 110 && distToPlayer < 380) {
+              e.sporeCooldown = 0;
+              const sAng = Math.atan2(py - e.y, px - e.x);
+              if (typeof RadarAudio !== 'undefined') RadarAudio.playAcidSpit();
+              this.projectiles.push({
+                x: e.x + Math.cos(sAng) * 16,
+                y: e.y + Math.sin(sAng) * 16,
+                vx: Math.cos(sAng) * 5.5,
+                vy: Math.sin(sAng) * 5.5,
+                damage: e.dmg || 22,
+                isPlayer: false,
+                life: 60,
+                color: '#bb44ee'
+              });
+            }
+          }
+          // 2. Rogue Liquidator (Ranged Shotgun Operator)
+          else if (e.behavior === 'ranged_shotgun') {
+            const ang = Math.atan2(py - e.y, px - e.x);
+            e.angle = ang;
+            if (distToPlayer < 140) {
+              e.vx = -Math.cos(ang) * e.speed;
+              e.vy = -Math.sin(ang) * e.speed;
+            } else if (distToPlayer > 220) {
+              e.vx = Math.cos(ang) * e.speed;
+              e.vy = Math.sin(ang) * e.speed;
+            } else {
+              e.vx = 0; e.vy = 0;
+            }
+
+            e.shotgunCooldown = (e.shotgunCooldown || 0) + 1;
+            if (e.shotgunCooldown > 95 && distToPlayer < 280) {
+              e.shotgunCooldown = 0;
+              if (typeof RadarAudio !== 'undefined') RadarAudio.playGunshot('shotgun');
+              for (let s = -1; s <= 1; s++) {
+                const spreadAng = ang + s * 0.16;
                 this.projectiles.push({
                   x: e.x + Math.cos(ang) * 16,
                   y: e.y + Math.sin(ang) * 16,
-                  vx: Math.cos(ang) * 7.5,
-                  vy: Math.sin(ang) * 7.5,
-                  damage: e.dmg || 20,
+                  vx: Math.cos(spreadAng) * 9.5,
+                  vy: Math.sin(spreadAng) * 9.5,
+                  damage: 14,
                   isPlayer: false,
-                  life: 45,
-                  color: '#88ff00'
+                  life: 40,
+                  color: '#ff6600'
                 });
               }
             }
-          } else {
-            // Standard Chase / Wander logic
-            if (e.state === 'IDLE_WANDER') {
-              e.stateTimer--;
-              if (e.stateTimer <= 0) {
-                e.stateTimer = 60 + Math.random() * 90;
-                e.wanderTarget = {
-                  x: e.homeX + (Math.random() - 0.5) * 160,
-                  y: e.homeY + (Math.random() - 0.5) * 160
-                };
-              }
-              const dx = e.wanderTarget.x - e.x;
-              const dy = e.wanderTarget.y - e.y;
-              if (Math.hypot(dx, dy) > 8) {
-                const ang = Math.atan2(dy, dx);
-                e.vx = Math.cos(ang) * (e.speed * 0.6);
-                e.vy = Math.sin(ang) * (e.speed * 0.6);
-                e.angle = ang;
-              } else {
-                e.vx = 0; e.vy = 0;
-              }
-
-              const aggroDist = (e.tier === 'boss' || e.tier === 'elite' || e.behavior === 'leap_ambush') ? 260 : 190;
-              if (distToPlayer < aggroDist) {
-                e.state = 'CHASE';
-              }
-            } else if (e.state === 'CHASE') {
-              // Find closest target between player and active liquidator allies
-              let tgtX = px;
-              let tgtY = py;
-              let tgtDist = distToPlayer;
-              let tgtAlly = null;
-
-              for (const ally of this.entities) {
-                if (ally.type === 'liquidator' && ally.hp > 0) {
-                  const dAlly = Math.hypot(ally.x - e.x, ally.y - e.y);
-                  if (dAlly < tgtDist) {
-                    tgtDist = dAlly;
-                    tgtX = ally.x;
-                    tgtY = ally.y;
-                    tgtAlly = ally;
-                  }
-                }
-              }
-
-              const ang = Math.atan2(tgtY - e.y, tgtX - e.x);
-              let moveSpeed = e.speed;
-              if (e.behavior === 'leap_ambush' && tgtDist < 90) {
-                moveSpeed *= 1.6; // Rapid lunge!
-              }
-              e.vx = Math.cos(ang) * moveSpeed;
-              e.vy = Math.sin(ang) * moveSpeed;
+          }
+          // 3. Black Slime (Leaves slowing acid puddle)
+          else if (e.behavior === 'slime_split') {
+            if (this.tick % 45 === 0) {
+              this.particles.push({
+                x: e.x,
+                y: e.y,
+                vx: 0,
+                vy: 0,
+                sz: 7,
+                color: '#33cc55',
+                alpha: 0.8,
+                isAcidPuddle: true,
+                life: 250
+              });
+            }
+            // Standard Chase / Wander
+            if (distToPlayer < 200) e.state = 'CHASE';
+            if (e.state === 'CHASE') {
+              const ang = Math.atan2(py - e.y, px - e.x);
+              e.vx = Math.cos(ang) * e.speed;
+              e.vy = Math.sin(ang) * e.speed;
               e.angle = ang;
-
-              if (tgtAlly) {
-                if (tgtDist < e.radius + tgtAlly.radius + 4) {
-                  tgtAlly.hp = Math.max(0, tgtAlly.hp - (e.dmg || 18));
-                  tgtAlly.damageFlashTimer = 10;
-                  if (tgtAlly.hp <= 45) tgtAlly.isWounded = true;
-                  e.vx *= -1.5;
-                  e.vy *= -1.5;
-                  this.spawnHitParticles(tgtAlly.x, tgtAlly.y, '#33d4ff', 6);
-                  if (typeof RadarAudio !== 'undefined') RadarAudio.playMonsterHurt();
-                }
-              } else {
-                if (distToPlayer < e.radius + this.player.radius + 4) {
-                  this.damagePlayer(e.dmg || 18, e.name);
-                  e.vx *= -1.5;
-                  e.vy *= -1.5;
-                }
+              if (distToPlayer < e.radius + this.player.radius + 4) {
+                this.damagePlayer(e.dmg || 10, e.name);
+                e.vx *= -1.5; e.vy *= -1.5;
               }
+            }
+          }
+          // 4. Voice Mimic (Disguised radar blip)
+          else if (e.behavior === 'radar_disguise') {
+            if (e.isMimicDisguised) {
+              if (distToPlayer < 130 || e.damageFlashTimer > 0) {
+                e.isMimicDisguised = false;
+                e.state = 'CHASE';
+                this.spawnFloatingNotice('ИМИТАТОР РАСКРЫТ!', '#ff3366');
+                if (typeof RadarAudio !== 'undefined') RadarAudio.playMonsterHurt();
+              } else {
+                // Calm wander
+                e.vx = Math.cos(e.angle) * 0.8;
+                e.vy = Math.sin(e.angle) * 0.8;
+              }
+            } else {
+              // Rapid charge
+              const ang = Math.atan2(py - e.y, px - e.x);
+              const sprintSpd = e.sprintSpeed || 3.6;
+              e.vx = Math.cos(ang) * sprintSpd;
+              e.vy = Math.sin(ang) * sprintSpd;
+              e.angle = ang;
+              if (distToPlayer < e.radius + this.player.radius + 4) {
+                this.damagePlayer(e.dmg || 24, e.name);
+                e.vx *= -1.5; e.vy *= -1.5;
+              }
+            }
+          }
+          // 5. Six-Legged Horror (Flanking AI & Leaps)
+          else if (e.behavior === 'leap_flank') {
+            e.leapCooldown = (e.leapCooldown || 0) + 1;
+            const ang = Math.atan2(py - e.y, px - e.x);
+
+            if (e.leapCooldown > 130 && distToPlayer < 220) {
+              // Leap strike!
+              e.leapCooldown = 0;
+              e.vx = Math.cos(ang) * 8.5;
+              e.vy = Math.sin(ang) * 8.5;
+              this.spawnFloatingNotice('ПРЫЖОК!', '#ff0044');
+            } else {
+              // Flank around player
+              const flankAng = ang + Math.PI / 4;
+              e.vx = Math.cos(flankAng) * e.speed;
+              e.vy = Math.sin(flankAng) * e.speed;
+            }
+            e.angle = ang;
+            if (distToPlayer < e.radius + this.player.radius + 5) {
+              this.damagePlayer(e.dmg || 44, e.name);
+              e.vx *= -1.5; e.vy *= -1.5;
+            }
+          }
+          // 6. Feral Inhabitant (Rushes towards flashlight beam)
+          else if (e.behavior === 'rush_flashlight') {
+            if (e.inLightCone) {
+              e.state = 'CHASE';
+              const ang = Math.atan2(py - e.y, px - e.x);
+              e.vx = Math.cos(ang) * (e.speed * 1.55); // Rapid sprint into the light!
+              e.vy = Math.sin(ang) * (e.speed * 1.55);
+              e.angle = ang;
+            } else if (distToPlayer < 180) {
+              e.state = 'CHASE';
+              const ang = Math.atan2(py - e.y, px - e.x);
+              e.vx = Math.cos(ang) * e.speed;
+              e.vy = Math.sin(ang) * e.speed;
+              e.angle = ang;
+            } else {
+              e.vx = 0; e.vy = 0;
+            }
+
+            if (distToPlayer < e.radius + this.player.radius + 4) {
+              this.damagePlayer(e.dmg || 14, e.name);
+              e.vx *= -1.5; e.vy *= -1.5;
+            }
+          }
+          // 7. General Fallback AI
+          else {
+            if (distToPlayer < 220) e.state = 'CHASE';
+            if (e.state === 'CHASE') {
+              const ang = Math.atan2(py - e.y, px - e.x);
+              e.vx = Math.cos(ang) * e.speed;
+              e.vy = Math.sin(ang) * e.speed;
+              e.angle = ang;
+              if (distToPlayer < e.radius + this.player.radius + 4) {
+                this.damagePlayer(e.dmg || 18, e.name);
+                e.vx *= -1.5; e.vy *= -1.5;
+              }
+            } else {
+              e.vx = 0; e.vy = 0;
             }
           }
         } else {
@@ -1488,26 +1565,35 @@
      * Master Render
      */
     render() {
-      const ctx = this.ctx;
       const w = this.canvas.width;
       const h = this.canvas.height;
       const cam = this.getCameraOffset();
 
-      // Deep solid darkness background
-      ctx.fillStyle = '#020503';
-      ctx.fillRect(0, 0, w, h);
+      // Determine target context for world rendering (supports Swaggerfall ANSI text-mode shader)
+      let worldCtx = this.ctx;
+      let offscreenCanvas = null;
 
-      ctx.save();
-      ctx.translate(-cam.x, -cam.y);
+      if (typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+        const off = AsciiRenderer.getOffscreen(w, h);
+        worldCtx = off.ctx;
+        offscreenCanvas = off.canvas;
+      }
+
+      // Deep solid darkness background
+      worldCtx.fillStyle = '#020503';
+      worldCtx.fillRect(0, 0, w, h);
+
+      worldCtx.save();
+      worldCtx.translate(-cam.x, -cam.y);
 
       // 1. Draw Map Tiles with Fog of War
-      this.drawTilesWithFog(ctx, cam, w, h);
+      this.drawTilesWithFog(worldCtx, cam, w, h);
 
       // 2. Draw Airtight Doors
       for (const door of this.doors) {
         if (this.isCellExplored(door.tileX, door.tileY)) {
           if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDoorTile) {
-            SpriteFactory.drawDoorTile(ctx, door, this.tileSize, 1.0);
+            SpriteFactory.drawDoorTile(worldCtx, door, this.tileSize, this.tick, 1.0);
           }
         }
       }
@@ -1517,7 +1603,7 @@
         for (const lamp of this.lamps) {
           if (this.isCellExplored(lamp.tileX, lamp.tileY)) {
             if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawWallLamp) {
-              SpriteFactory.drawWallLamp(ctx, lamp, this.tileSize, this.tick, 1.0);
+              SpriteFactory.drawWallLamp(worldCtx, lamp, this.tileSize, this.tick, 1.0);
             }
           }
         }
@@ -1527,7 +1613,7 @@
       for (const crate of this.crates) {
         if (this.isCellExplored(crate.tileX, crate.tileY)) {
           if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawLootCrate) {
-            SpriteFactory.drawLootCrate(ctx, crate, this.tileSize, this.tick, crate.phosphorAlpha || 0.8);
+            SpriteFactory.drawLootCrate(worldCtx, crate, this.tileSize, this.tick, crate.phosphorAlpha || 0.8);
           }
         }
       }
@@ -1535,75 +1621,79 @@
       // 4. Draw Dropped Firearms
       for (const drop of this.weaponDrops) {
         if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDroppedWeapon) {
-          SpriteFactory.drawDroppedWeapon(ctx, drop, this.tileSize, this.tick, drop.phosphorAlpha || 0.8);
+          SpriteFactory.drawDroppedWeapon(worldCtx, drop, this.tileSize, this.tick, drop.phosphorAlpha || 0.8);
         }
       }
 
       // 5. Draw Extraction Elevator Shaft
       if (this.elevator && this.isCellExplored(this.elevator.tileX, this.elevator.tileY)) {
         if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawElevatorShaft) {
-          SpriteFactory.drawElevatorShaft(ctx, this.elevator, this.tileSize, this.tick, 1.0);
+          SpriteFactory.drawElevatorShaft(worldCtx, this.elevator, this.tileSize, this.tick, 1.0);
         }
       }
 
       // 6. Draw Projectiles
       for (const p of this.projectiles) {
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
+        worldCtx.fillStyle = p.color || '#ffeedd';
+        worldCtx.beginPath();
+        worldCtx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        worldCtx.fill();
+        worldCtx.strokeStyle = '#ffffff';
+        worldCtx.stroke();
       }
 
       // 7. Draw Melee Swing Slash Arc
       if (this.player.isSwinging && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawMeleeSwingArc) {
-        SpriteFactory.drawMeleeSwingArc(ctx, this.player.x, this.player.y, this.player.angle, this.player.swingProgress);
+        SpriteFactory.drawMeleeSwingArc(worldCtx, this.player.x, this.player.y, this.player.angle, this.player.swingProgress);
       }
 
       // 8. Draw AI Entities
       for (const e of this.entities) {
         if (typeof SpriteFactory !== 'undefined') {
-          SpriteFactory.drawEntity(ctx, e, this.tick);
+          SpriteFactory.drawEntity(worldCtx, e, this.tick);
         }
       }
 
       // 9. Draw Player
       if (typeof SpriteFactory !== 'undefined') {
-        SpriteFactory.drawEntity(ctx, this.player, this.tick);
+        SpriteFactory.drawEntity(worldCtx, this.player, this.tick);
       }
 
       // 10. Particles & Floating Text
       for (const pt of this.particles) {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, pt.alpha);
+        worldCtx.save();
+        worldCtx.globalAlpha = Math.max(0, pt.alpha);
         if (pt.isText) {
-          ctx.fillStyle = pt.color;
-          ctx.font = 'bold 12px "Share Tech Mono", monospace';
-          ctx.fillText(pt.text, pt.x, pt.y);
+          worldCtx.fillStyle = pt.color;
+          worldCtx.font = 'bold 12px "Share Tech Mono", monospace';
+          worldCtx.fillText(pt.text, pt.x, pt.y);
         } else {
-          ctx.fillStyle = pt.color;
-          ctx.fillRect(pt.x, pt.y, pt.sz, pt.sz);
+          worldCtx.fillStyle = pt.color;
+          worldCtx.fillRect(pt.x, pt.y, pt.sz, pt.sz);
         }
-        ctx.restore();
+        worldCtx.restore();
       }
 
-      ctx.restore();
+      worldCtx.restore();
 
-      // 11. Dynamic Darkness & Volumetric Flashlight (Тьма отступает при свете фонарика!)
-      this.drawDynamicDarkness(ctx, cam, w, h);
+      // 11. Dynamic Darkness & Volumetric Flashlight
+      this.drawDynamicDarkness(worldCtx, cam, w, h);
 
-      // 12. Draw Tactical HUD & Crosshair
-      this.drawRadarHUD(ctx, w, h);
+      // 12. Full-Color Swaggerfall (ANSI Text-Mode) Shader Post-Process!
+      if (offscreenCanvas && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+        AsciiRenderer.render(offscreenCanvas, this.ctx, w, h);
+      }
 
-      // 13. Draw Tactical CRT Crosshair at mouse position
+      // 13. Draw Tactical HUD & Crosshair on display context
+      this.drawRadarHUD(this.ctx, w, h);
+
       if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawCrosshair) {
-        SpriteFactory.drawCrosshair(ctx, this.mouse.x, this.mouse.y, this.tick, this.mouse.isOverEnemy);
+        SpriteFactory.drawCrosshair(this.ctx, this.mouse.x, this.mouse.y, this.tick, this.mouse.isOverEnemy);
       }
 
       // 14. CRT Collapse on Game Over / Victory
       if (this.isCollapsing) {
-        this.drawCRTCollapse(ctx, w, h);
+        this.drawCRTCollapse(this.ctx, w, h);
       }
     }
 

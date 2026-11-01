@@ -1,175 +1,183 @@
 /**
  * ============================================================================
- * MODULE: spriteFactory.js (Top-Down Radar Roguelike Sprite & Lighting Factory)
+ * MODULE: spriteFactory.js (Procedural Tactical Top-Down Renderer for Samosbor)
  * ============================================================================
- * High-performance 2D canvas renderer supporting:
- * - Real sliced sprite rendering for 4 Hero weapon classes & 33 Monster archetypes
- * - Procedural Volumetric Flashlight cone with floating phosphor dust motes (Image 1 reference)
- * - Wall-mounted warm amber lanterns ("Фонари") with dynamic radial glow & flicker
- * - Sliced environment tiles (Hazard walls, metal floors, grates, vents, blast doors)
- * - Helipad extraction platform with circular 'H' symbol & animated green chevron ring
- * - Sliced supply crates (ammo, medical, tech, rations) & dropped firearms
- * - Overhead CRT health bars, tactical crosshair, melee swing arcs, and CRT decay
+ * Pure procedural vector and geometric rendering designed specifically for the
+ * Full-Color Swaggerfall ANSI Text-Mode Shader:
+ * - High-contrast volumetric bunker blast walls with dual bevels & bolted plates
+ * - Distinct floor plates with rivets, blood splatters, and toxic acid puddles
+ * - Airtight blast doors with locking wheels & status illumination
+ * - Cargo elevator extraction platform with pulsing hazard borders
+ * - Dedicated representations for Tier 1-3 Samosbor Bestiary
+ * - Zero dependency on obsolete raster graphics
  */
 
 (function (global) {
   'use strict';
 
   const SpriteFactory = {
-    images: {},
-    manifest: null,
-
     /**
-     * Lazy-load or retrieve an image asset
-     */
-    getImage(path) {
-      if (!path) return null;
-      if (!this.images[path]) {
-        const img = new Image();
-        img.src = path;
-        this.images[path] = img;
-      }
-      return this.images[path];
-    },
-
-    /**
-     * Check if an image is fully loaded and ready to draw
-     */
-    isImageReady(img) {
-      return img && img.complete && img.naturalWidth > 0;
-    },
-
-    /**
-     * Render Volumetric Flashlight Cone (from Image 1 mockup reference)
-     * Projects a glowing green beam forward from player hands with floating dust motes
+     * Render Volumetric Flashlight Beam & Ambient Illumination Aura
      */
     drawVolumetricFlashlight(ctx, player, tick) {
       if (!ctx || !player) return;
 
-      const px = player.x;
-      const py = player.y;
-      const angle = player.angle || 0;
-      const dist = 480;
-      const spread = 0.65; // ~75 degrees cone
-      const flicker = 0.96 + Math.sin(tick * 0.16) * 0.04;
+      const px = 0;
+      const py = 0;
+      const angle = 0; // Relative to rotated player container
+
+      const beamDist = 480;
+      const spread = 0.65; // ~75 degrees
 
       ctx.save();
 
-      // 1. Warm/green ambient halo around player body (illuminates room)
-      const haloGrad = ctx.createRadialGradient(px, py, 8, px, py, 150 * flicker);
-      haloGrad.addColorStop(0, 'rgba(136, 255, 158, 0.45)');
-      haloGrad.addColorStop(0.5, 'rgba(31, 224, 68, 0.22)');
-      haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = haloGrad;
-      ctx.beginPath();
-      ctx.arc(px, py, 150 * flicker, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 2. Volumetric Forward Light Cone
-      const coneGrad = ctx.createRadialGradient(px, py, 16, px, py, dist * flicker);
-      coneGrad.addColorStop(0, 'rgba(180, 255, 195, 0.55)');
-      coneGrad.addColorStop(0.28, 'rgba(80, 240, 120, 0.32)');
-      coneGrad.addColorStop(0.7, 'rgba(25, 180, 60, 0.16)');
-      coneGrad.addColorStop(1, 'rgba(4, 20, 7, 0)');
+      // 1. Forward directional beam cone
+      const coneGrad = ctx.createRadialGradient(px, py, 18, px, py, beamDist);
+      coneGrad.addColorStop(0, 'rgba(180, 255, 200, 0.45)');
+      coneGrad.addColorStop(0.35, 'rgba(40, 224, 80, 0.25)');
+      coneGrad.addColorStop(0.75, 'rgba(20, 140, 50, 0.10)');
+      coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = coneGrad;
       ctx.beginPath();
       ctx.moveTo(px, py);
-      ctx.arc(px, py, dist * flicker, angle - spread, angle + spread);
+      ctx.arc(px, py, beamDist, angle - spread, angle + spread);
       ctx.closePath();
       ctx.fill();
 
-      // 3. Floating Phosphor Dust Motes inside the beam
-      ctx.fillStyle = 'rgba(220, 255, 230, 0.65)';
-      for (let i = 0; i < 16; i++) {
-        const seed = (tick * 0.04 + i * 1.618) % 1.0;
-        const pDist = 30 + seed * (dist * 0.9);
-        const pAngle = angle + (Math.sin(tick * 0.05 + i * 2) * spread * 0.85);
-        const mx = px + Math.cos(pAngle) * pDist;
-        const my = py + Math.sin(pAngle) * pDist;
-        const sz = 1.2 + (i % 2) * 1.0;
-        ctx.fillRect(mx, my, sz, sz);
-      }
+      // 2. Wide 360-degree ambient aura around the player (radius 150px)
+      const auraGrad = ctx.createRadialGradient(px, py, 6, px, py, 150);
+      auraGrad.addColorStop(0, 'rgba(140, 255, 170, 0.32)');
+      auraGrad.addColorStop(0.5, 'rgba(31, 224, 68, 0.16)');
+      auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.arc(px, py, 150, 0, Math.PI * 2);
+      ctx.fill();
 
       ctx.restore();
     },
 
     /**
-     * Render Wall-mounted Lantern with Warm Amber Light ("Фонари")
+     * Render Industrial Bulkhead Wall Lantern ("Фонарь") with warm amber halo
      */
     drawWallLamp(ctx, lamp, TS, tick, alpha = 1.0) {
       if (!ctx || !lamp) return;
 
       const lx = lamp.x;
       const ly = lamp.y;
-      const seed = lamp.seed || 0;
-      const flicker = 0.88 + Math.sin(tick * 0.12 + seed) * 0.08 + (Math.sin(tick * 0.35 + seed * 2) * 0.04);
-      const rad = (lamp.radius || 135) * flicker;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      // 1. Warm radial amber illumination on floor and wall
-      const glowGrad = ctx.createRadialGradient(lx, ly, 6, lx, ly, rad);
-      glowGrad.addColorStop(0, 'rgba(255, 205, 95, 0.60)');
-      glowGrad.addColorStop(0.4, 'rgba(255, 145, 35, 0.30)');
-      glowGrad.addColorStop(0.8, 'rgba(220, 90, 10, 0.10)');
-      glowGrad.addColorStop(1, 'rgba(4, 20, 7, 0)');
+      // 1. Warm amber volumetric halo (radius 220px)
+      const flicker = 0.94 + Math.sin(tick * 0.15 + (lamp.x % 17)) * 0.06;
+      const rad = 220 * flicker;
 
-      ctx.fillStyle = glowGrad;
+      const grad = ctx.createRadialGradient(lx, ly, 6, lx, ly, rad);
+      grad.addColorStop(0, 'rgba(255, 195, 75, 0.48)');
+      grad.addColorStop(0.35, 'rgba(255, 150, 30, 0.22)');
+      grad.addColorStop(0.75, 'rgba(180, 80, 10, 0.08)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(lx, ly, rad, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Wall lamp fixture sprite
-      const lampImg = this.getImage('assets/radar/tiles/wall_lamp.png');
-      if (this.isImageReady(lampImg)) {
-        ctx.drawImage(lampImg, lx - 8, ly - 8, 16, 16);
-      } else {
-        // Fallback procedural lamp fixture
-        ctx.fillStyle = '#ffaa33';
-        ctx.beginPath();
-        ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
+      // 2. Bulkhead lantern cage fixture
+      ctx.fillStyle = '#ffaa33';
+      ctx.beginPath();
+      ctx.arc(lx, ly, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Protective cage ribs
+      ctx.strokeStyle = '#553311';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(lx - 5, ly);
+      ctx.lineTo(lx + 5, ly);
+      ctx.moveTo(lx, ly - 5);
+      ctx.lineTo(lx, ly + 5);
+      ctx.stroke();
 
       ctx.restore();
     },
 
     /**
-     * Render Floor Tile using sliced industrial textures
+     * Render Bunker Floor Tile
      */
     drawFloorTile(ctx, wx, wy, TS, alpha, seed = 0) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      // Deterministic pseudo-random Soviet bunker floor panel selection
       const tx = Math.floor(wx / TS);
       const ty = Math.floor(wy / TS);
       const hash = Math.abs(((tx * 73856093) ^ (ty * 19349663) ^ (seed * 83492791)) >>> 0);
-      const tileIndex = hash % 16;
-      const imgPath = `assets/radar/tiles/floor_panel_${tileIndex}.png`;
-      const img = this.getImage(imgPath);
+      const variant = hash % 8;
 
-      if (this.isImageReady(img)) {
-        ctx.drawImage(img, wx, wy, TS, TS);
-      } else {
-        // Fallback dark metal tile
-        ctx.fillStyle = '#061609';
-        ctx.fillRect(wx, wy, TS, TS);
-        ctx.strokeStyle = '#0b3814';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(wx + 0.5, wy + 0.5, TS - 1, TS - 1);
+      // Base bunker steel floor color
+      let baseColor = '#0f1814';
+      if (variant === 0 || variant === 1) baseColor = '#131e19';
+      else if (variant === 2) baseColor = '#111a15';
+      else if (variant === 3) baseColor = '#0c1410';
+
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(wx, wy, TS, TS);
+
+      // Subtle panel frame
+      ctx.strokeStyle = '#1b2a22';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(wx + 0.5, wy + 0.5, TS - 1, TS - 1);
+
+      // Corner rivets
+      ctx.fillStyle = '#2d4236';
+      ctx.fillRect(wx + 2, wy + 2, 2, 2);
+      ctx.fillRect(wx + TS - 4, wy + 2, 2, 2);
+      ctx.fillRect(wx + 2, wy + TS - 4, 2, 2);
+      ctx.fillRect(wx + TS - 4, wy + TS - 4, 2, 2);
+
+      // Floor variation details
+      if (variant === 4) {
+        // Ventilation grille slots
+        ctx.fillStyle = '#080d0a';
+        for (let g = 8; g < TS - 6; g += 5) {
+          ctx.fillRect(wx + 6, wy + g, TS - 12, 2);
+        }
+      } else if (variant === 5) {
+        // Blood spatter
+        ctx.fillStyle = 'rgba(160, 20, 25, 0.7)';
+        ctx.beginPath();
+        ctx.arc(wx + TS * 0.45, wy + TS * 0.55, 5, 0, Math.PI * 2);
+        ctx.arc(wx + TS * 0.65, wy + TS * 0.35, 3, 0, Math.PI * 2);
+        ctx.arc(wx + TS * 0.3, wy + TS * 0.7, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (variant === 6) {
+        // Toxic neon-green acid puddle
+        ctx.fillStyle = 'rgba(40, 240, 80, 0.65)';
+        ctx.beginPath();
+        ctx.arc(wx + TS * 0.5, wy + TS * 0.5, 6, 0, Math.PI * 2);
+        ctx.arc(wx + TS * 0.7, wy + TS * 0.6, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (variant === 7) {
+        // Warning hazard threshold stripe on one edge
+        ctx.fillStyle = '#d4af37';
+        ctx.fillRect(wx + 2, wy + 2, TS - 4, 4);
+        ctx.fillStyle = '#111111';
+        for (let hx = wx + 4; hx < wx + TS - 6; hx += 8) {
+          ctx.fillRect(hx, wy + 2, 4, 4);
+        }
       }
 
       ctx.restore();
     },
 
     /**
-     * Render Top-Down Heavy Bunker Wall Tile from the 8 sliced textures
+     * Render Heavy Monolithic Bunker Wall Tile
      */
     drawWallTile(ctx, wx, wy, TS, alpha, seed = 0) {
       ctx.save();
@@ -178,72 +186,60 @@
       const tx = Math.floor(wx / TS);
       const ty = Math.floor(wy / TS);
       const hash = Math.abs(((tx * 92837111) ^ (ty * 68928749) ^ (seed * 49287313)) >>> 0);
-      const wallIdx = hash % 8;
-      const imgPath = `assets/radar/tiles/wall_panel_${wallIdx}.png`;
-      const img = this.getImage(imgPath);
+      const wallStyle = hash % 4;
 
-      if (this.isImageReady(img)) {
-        ctx.drawImage(img, wx, wy, TS, TS);
-      } else {
-        // Fallback dark bunker concrete block
-        ctx.fillStyle = '#141e17';
-        ctx.fillRect(wx, wy, TS, TS);
-        ctx.strokeStyle = '#274b30';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(wx + 0.5, wy + 0.5, TS - 1, TS - 1);
-      }
+      // Base solid concrete block
+      ctx.fillStyle = '#1c2821';
+      ctx.fillRect(wx, wy, TS, TS);
 
-      ctx.restore();
-    },
-
-    /**
-     * Render Evacuation Helipad / Elevator Platform
-     */
-    drawElevatorShaft(ctx, elevator, TS, tick, alpha = 1.0) {
-      if (!ctx || !elevator) return;
-
-      const x = elevator.x;
-      const y = elevator.y;
-      const w = elevator.w || TS;
-      const h = elevator.h || TS;
-
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
-
-      const img = this.getImage('assets/radar/tiles/elevator_pad.png');
-      if (this.isImageReady(img)) {
-        // Center the 84x84 extraction airlock chamber over the elevator tile
-        const padSize = 84;
-        ctx.drawImage(img, x + w / 2 - padSize / 2, y + h / 2 - padSize / 2, padSize, padSize);
-      } else {
-        // Fallback platform
-        ctx.fillStyle = '#061c0c';
-        ctx.fillRect(x - 16, y - 16, w + 32, h + 32);
-        ctx.strokeStyle = '#1fe044';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x - 16, y - 16, w + 32, h + 32);
-
-        // Central 'H' mark
-        ctx.fillStyle = '#1fe044';
-        ctx.font = 'bold 22px "Share Tech Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('H', x + w / 2, y + h / 2);
-      }
-
-      // Animated green chevron border pulsing
-      const pulse = 0.5 + Math.sin(tick * 0.12) * 0.5;
-      ctx.strokeStyle = `rgba(31, 224, 68, ${0.4 + pulse * 0.5})`;
+      // Outer bevel border: top-left highlight, bottom-right shadow
+      ctx.strokeStyle = '#385244';
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(x + w / 2, y + h / 2, 28 + pulse * 4, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.strokeRect(wx + 1, wy + 1, TS - 2, TS - 2);
+
+      // Inner structural plate
+      ctx.fillStyle = '#24342b';
+      ctx.fillRect(wx + 4, wy + 4, TS - 8, TS - 8);
+
+      // Structural reinforced features
+      if (wallStyle === 0) {
+        // Horizontal girder ribbing
+        ctx.fillStyle = '#3a5244';
+        ctx.fillRect(wx + 4, wy + 10, TS - 8, 3);
+        ctx.fillRect(wx + 4, wy + 20, TS - 8, 3);
+      } else if (wallStyle === 1) {
+        // Vertical girder ribbing
+        ctx.fillStyle = '#3a5244';
+        ctx.fillRect(wx + 10, wy + 4, 3, TS - 8);
+        ctx.fillRect(wx + 20, wy + 4, 3, TS - 8);
+      } else if (wallStyle === 2) {
+        // Reinforced corner pillar with X-struts
+        ctx.strokeStyle = '#3d594a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(wx + 6, wy + 6);
+        ctx.lineTo(wx + TS - 6, wy + TS - 6);
+        ctx.moveTo(wx + TS - 6, wy + 6);
+        ctx.lineTo(wx + 6, wy + TS - 6);
+        ctx.stroke();
+      } else {
+        // Central bolted armored plate
+        ctx.fillStyle = '#1a2620';
+        ctx.fillRect(wx + 8, wy + 8, TS - 16, TS - 16);
+      }
+
+      // Heavy corner bolts
+      ctx.fillStyle = '#82a894';
+      ctx.fillRect(wx + 2, wy + 2, 2.5, 2.5);
+      ctx.fillRect(wx + TS - 4.5, wy + 2, 2.5, 2.5);
+      ctx.fillRect(wx + 2, wy + TS - 4.5, 2.5, 2.5);
+      ctx.fillRect(wx + TS - 4.5, wy + TS - 4.5, 2.5, 2.5);
 
       ctx.restore();
     },
 
     /**
-     * Render Airtight Blast Door ("Гермодверь")
+     * Render Airtight Hermetic Blast Door ("Гермодверь")
      */
     drawDoorTile(ctx, door, TS, tick, alpha = 1.0) {
       if (!ctx || !door) return;
@@ -256,388 +252,432 @@
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      const img = this.getImage('assets/radar/tiles/door_blast.png');
-      if (this.isImageReady(img)) {
-        if (door.isOpen) {
-          ctx.globalAlpha *= 0.35;
-          ctx.drawImage(img, x, y, w, h);
-        } else {
-          ctx.drawImage(img, x, y, w, h);
-        }
-      } else {
-        // Fallback procedural blast door
-        ctx.fillStyle = door.isOpen ? 'rgba(11, 40, 18, 0.4)' : '#1a1005';
+      if (door.isOpen) {
+        // OPEN DOOR: Recessed sliding plates into wall frame
+        ctx.fillStyle = 'rgba(6, 26, 12, 0.5)';
         ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = door.isOpen ? '#1fe044' : '#ffaa00';
+        ctx.strokeStyle = '#1fe044';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+
+        // Green pathway lights
+        ctx.fillStyle = '#1fe044';
+        ctx.fillRect(x + 2, y + h / 2 - 2, 4, 4);
+        ctx.fillRect(x + w - 6, y + h / 2 - 2, 4, 4);
+      } else {
+        // CLOSED BLAST DOOR: Heavy reinforced steel with locking wheel & hazard stripes
+        ctx.fillStyle = '#261b10';
+        ctx.fillRect(x, y, w, h);
+
+        ctx.strokeStyle = '#ff9900';
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+
+        // Hazard warning border
+        ctx.fillStyle = '#ffaa00';
+        for (let d = 2; d < w - 4; d += 8) {
+          ctx.fillRect(x + d, y + 2, 4, 3);
+          ctx.fillRect(x + d, y + h - 5, 4, 3);
+        }
+
+        // Central locking wheel
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        ctx.strokeStyle = '#ffcc00';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(cx - 7, cy);
+        ctx.lineTo(cx + 7, cy);
+        ctx.moveTo(cx, cy - 7);
+        ctx.lineTo(cx, cy + 7);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ff3b30'; // Red lock indicator
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       ctx.restore();
     },
 
     /**
-     * Render Supply Crate
+     * Render Cargo Elevator Extraction Zone
+     */
+    drawElevatorShaft(ctx, elevator, TS, tick, alpha = 1.0) {
+      if (!ctx || !elevator) return;
+
+      const x = elevator.x;
+      const y = elevator.y;
+      const w = elevator.w || TS * 2;
+      const h = elevator.h || TS * 2;
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      // 1. Teal decontamination base
+      ctx.fillStyle = '#0a2324';
+      ctx.fillRect(x, y, w, h);
+
+      // 2. Yellow-black hazard perimeter
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+
+      // 3. Central lift platform
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+
+      ctx.fillStyle = '#10383a';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pulsing teal evacuation circle
+      const pulse = 0.5 + Math.sin(tick * 0.12) * 0.5;
+      ctx.strokeStyle = `rgba(0, 229, 255, ${0.4 + pulse * 0.6})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 24 + pulse * 3, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Bold 'H' / Elevator Symbol
+      ctx.fillStyle = '#00e5ff';
+      ctx.font = 'bold 22px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('H', cx, cy);
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Loot Supply Crate
      */
     drawLootCrate(ctx, crate, TS, tick, alpha = 1.0) {
       if (!ctx || !crate || crate.opened) return;
 
       const x = crate.x;
       const y = crate.y;
-      const type = crate.type || 'ammo';
-
-      let imgName = 'crate_ammo';
-      if (type === 'med') imgName = 'crate_med';
-      else if (type === 'tech') imgName = 'crate_tech';
-      else if (type === 'ration') imgName = 'crate_wood';
+      const type = crate.type || 'crate_ammo';
 
       ctx.save();
-      ctx.globalAlpha = Math.max(0.1, Math.min(1.0, alpha));
+      ctx.globalAlpha = Math.max(0.2, Math.min(1.0, alpha));
 
-      const img = this.getImage(`assets/radar/tiles/${imgName}.png`);
-      if (this.isImageReady(img)) {
-        ctx.drawImage(img, x - 14, y - 14, 28, 28);
-      } else {
-        // Fallback procedural crate
-        ctx.fillStyle = type === 'ammo' ? '#0a2210' : '#221505';
-        ctx.fillRect(x - 10, y - 10, 20, 20);
-        ctx.strokeStyle = type === 'ammo' ? '#1fe044' : '#f5a623';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(x - 10, y - 10, 20, 20);
+      let bodyColor = '#1e3020';
+      let frameColor = '#3b82f6';
+      let label = 'SUPPLY';
+
+      if (type === 'crate_ammo') {
+        bodyColor = '#1c2814';
+        frameColor = '#22c55e';
+        label = 'AMMO';
+      } else if (type === 'crate_med') {
+        bodyColor = '#2d1418';
+        frameColor = '#ef4444';
+        label = 'MED';
+      } else if (type === 'crate_tech') {
+        bodyColor = '#2c2210';
+        frameColor = '#f59e0b';
+        label = 'TECH';
       }
 
-      // Pulsing glow indicator
-      const pulse = 0.5 + Math.sin(tick * 0.15 + crate.id) * 0.5;
-      ctx.strokeStyle = type === 'med' ? '#ff3344' : '#f5a623';
+      // Container Box (22x22)
+      ctx.fillStyle = bodyColor;
+      ctx.fillRect(x - 11, y - 11, 22, 22);
+
+      ctx.strokeStyle = frameColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 11, y - 11, 22, 22);
+
+      // Stencil Label
+      ctx.fillStyle = frameColor;
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label[0], x, y);
+
+      // Subtle pulse
+      const pulse = Math.sin(tick * 0.15) * 2;
+      ctx.strokeStyle = frameColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(x, y, 14 + pulse * 2, 0, Math.PI * 2);
+      ctx.arc(x, y, 14 + pulse, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.restore();
     },
 
     /**
-     * Render Dropped Weapon on the floor
+     * Render Dropped Weapon on Floor
      */
     drawDroppedWeapon(ctx, drop, TS, tick, alpha = 1.0) {
       if (!ctx || !drop || drop.pickedUp) return;
 
       const x = drop.x;
       const y = drop.y;
-      const pulse = Math.sin(tick * 0.12) * 2;
+      const pulse = Math.sin(tick * 0.14) * 2;
 
       ctx.save();
-      ctx.globalAlpha = Math.max(0.1, Math.min(1.0, alpha));
+      ctx.globalAlpha = Math.max(0.2, Math.min(1.0, alpha));
 
-      // Amber glow outline
-      ctx.fillStyle = 'rgba(255, 170, 0, 0.2)';
+      // Amber halo
+      ctx.fillStyle = 'rgba(255, 170, 0, 0.25)';
       ctx.beginPath();
-      ctx.arc(x, y, 16 + pulse, 0, Math.PI * 2);
+      ctx.arc(x, y, 15 + pulse, 0, Math.PI * 2);
       ctx.fill();
 
-      // Gun silhouette
-      ctx.strokeStyle = '#ffaa00';
+      // Gun shape
+      ctx.strokeStyle = '#ffb703';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(x - 8, y);
-      ctx.lineTo(x + 10, y);
-      ctx.lineTo(x + 10, y + 4);
-      ctx.lineTo(x + 4, y + 4);
-      ctx.lineTo(x + 4, y + 8);
+      ctx.lineTo(x + 8, y);
+      ctx.lineTo(x + 8, y + 4);
+      ctx.lineTo(x + 3, y + 4);
+      ctx.lineTo(x + 3, y + 8);
       ctx.stroke();
 
-      ctx.fillStyle = '#ffcc00';
-      ctx.font = 'bold 9px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#ffb703';
+      ctx.font = 'bold 8px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(drop.name || 'ОГНЕСТРЕЛ', x, y - 14);
+      ctx.fillText(drop.weapon ? drop.weapon.name.slice(0, 12) : 'ОРУЖИЕ', x, y - 13);
 
       ctx.restore();
     },
 
     /**
-     * Render Main Entities: Player, Allies, and 33 Monster Archetypes
+     * Render Main Entities: Player, Allies, and Tier 1-3 Samosbor Bestiary
      */
-    drawEntity(ctx, entity, tick, options = {}) {
+    drawEntity(ctx, entity, tick) {
       if (!ctx || !entity) return;
 
       const x = entity.x || 0;
       const y = entity.y || 0;
       const radius = entity.radius || 13;
       const angle = entity.angle || 0;
-      const vx = entity.vx || 0;
-      const vy = entity.vy || 0;
-      const speed = Math.hypot(vx, vy);
-      const isMoving = speed > 0.08;
-
-      const phosphorAlpha = Math.max(0.1, Math.min(1.0, entity.phosphorAlpha !== undefined ? entity.phosphorAlpha : 1.0));
+      const isFlash = entity.damageFlashTimer && entity.damageFlashTimer > 0;
 
       ctx.save();
-      ctx.globalAlpha = phosphorAlpha;
 
-      const isDamageFlash = entity.damageFlashTimer && entity.damageFlashTimer > 0;
-
-      // 1. Draw Player
+      // 1. PLAYER
       if (entity.isPlayer) {
-        // Flashlight beam forward towards aim angle (only when alive)
+        // Flashlight cone
         if (!entity.isDead) {
           this.drawVolumetricFlashlight(ctx, entity, tick);
         }
 
-        ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-
-        let img = null;
 
         if (entity.isDead) {
-          // DEATH ANIMATION: 6 frames
-          const deathFrame = Math.min(5, Math.floor((entity.deathTick || 0) * 0.12));
-          img = this.getImage(`assets/radar/player/hero_death_${deathFrame}.png`);
+          // Dead body collapsed on floor
+          ctx.fillStyle = '#7a1c1c';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, radius * 1.3, radius * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#3a0c0c';
+          ctx.beginPath();
+          ctx.arc(radius * 0.8, 0, radius * 0.5, 0, Math.PI * 2);
+          ctx.fill();
         } else {
-          // Determine active weapon archetype: bat, knife, pistol, rifle, shotgun
-          let wType = 'bat';
-          if (entity.weapon) {
-            if (entity.weapon.isRanged) {
-              const gt = entity.weapon.gunType || 'pistol';
-              if (gt === 'shotgun') wType = 'shotgun';
-              else if (gt === 'rifle' || gt === 'ak') wType = 'rifle';
-              else wType = 'pistol';
-            } else {
-              const wid = (entity.weapon.id || '').toLowerCase();
-              if (wid.includes('knife') || wid.includes('blade') || wid.includes('zatochka')) {
-                wType = 'knife';
-              } else {
-                wType = 'bat';
-              }
-            }
-          }
+          // Tactical operator token
+          const bodyColor = isFlash ? '#ffffff' : '#14381b';
+          const armorColor = isFlash ? '#ffffff' : '#22592d';
+          const visorColor = isFlash ? '#ffffff' : '#1fe044';
 
-          if (entity.isSwinging) {
-            // MELEE ATTACK
-            if (wType === 'knife') {
-              const fIdx = Math.min(7, Math.floor((entity.swingProgress || 0) * 8));
-              img = this.getImage(`assets/radar/player/hero_knife_attack_${fIdx}.png`);
-            } else {
-              const fIdx = Math.min(6, Math.floor((entity.swingProgress || 0) * 7));
-              img = this.getImage(`assets/radar/player/hero_bat_strike_${fIdx}.png`);
-            }
-          } else if (entity.isShooting) {
-            // FIREARM SHOT & MUZZLE FLASH
-            if (wType === 'shotgun') {
-              const fIdx = Math.min(4, Math.floor((entity.shootProgress || 0) * 5));
-              img = this.getImage(`assets/radar/player/hero_shotgun_shot_${fIdx}.png`);
-            } else if (wType === 'rifle') {
-              const fIdx = Math.min(3, Math.floor((entity.shootProgress || 0) * 4));
-              img = this.getImage(`assets/radar/player/hero_rifle_shot_${fIdx}.png`);
-            } else {
-              const fIdx = Math.min(3, Math.floor((entity.shootProgress || 0) * 4));
-              img = this.getImage(`assets/radar/player/hero_pistol_shot_${fIdx}.png`);
-            }
-          } else if (isMoving) {
-            // 6-FRAME WALK CYCLE
-            const walkFrame = Math.floor(tick * 0.22) % 6;
-            img = this.getImage(`assets/radar/player/hero_${wType}_walk_${walkFrame}.png`);
-          } else {
-            // IDLE WITH WEAPON
-            img = this.getImage(`assets/radar/player/hero_${wType}_walk_0.png`);
+          // Body circle
+          ctx.fillStyle = bodyColor;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = visorColor;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Visor / aiming chevron
+          ctx.fillStyle = visorColor;
+          ctx.beginPath();
+          ctx.moveTo(radius * 0.8, 0);
+          ctx.lineTo(radius * 0.2, -radius * 0.45);
+          ctx.lineTo(radius * 0.35, 0);
+          ctx.lineTo(radius * 0.2, radius * 0.45);
+          ctx.closePath();
+          ctx.fill();
+
+          // Weapon barrel pointing forward
+          ctx.strokeStyle = '#d4d4d4';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(radius * 0.6, 3);
+          ctx.lineTo(radius * 1.5, 3);
+          ctx.stroke();
+
+          // Muzzle flash on firearm shot
+          if (entity.isShooting) {
+            ctx.fillStyle = '#ffee44';
+            ctx.beginPath();
+            ctx.arc(radius * 1.6, 3, 6, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
-
-        // Hop & subtle squash walk cycle
-        if (isMoving && !entity.isDead) {
-          const phase = tick * 0.36;
-          const bounce = Math.abs(Math.sin(phase));
-          const squash = (0.4 - bounce) * 0.08;
-          ctx.scale(1.0 + squash, 1.0 - squash);
-        }
-
-        if (isDamageFlash) {
-          ctx.filter = 'brightness(3) drop-shadow(0 0 8px #ffffff)';
-        }
-
-        if (this.isImageReady(img)) {
-          // 100x100 canvas, centered with pivot at (34, 50)
-          const sz = 80;
-          const scale = sz / 100;
-          ctx.drawImage(img, -34 * scale, -50 * scale, sz, sz);
-        } else {
-          this.drawPlayerVector(ctx, radius, isDamageFlash, entity, isMoving, tick);
-        }
-
-        ctx.restore();
       }
-      // 2. Draw Patrol Liquidator (Ally)
+      // 2. ALLY LIQUIDATOR
       else if (entity.type === 'liquidator') {
-        ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
 
-        if (entity.isWounded) {
-          ctx.filter = 'sepia(0.7) hue-rotate(-50deg) saturate(2.5) brightness(0.85)';
-        }
+        const allyColor = isFlash ? '#ffffff' : (entity.isWounded ? '#ff9900' : '#00ccff');
 
-        const walkStep = isMoving ? Math.floor(tick * 0.22) % 6 : 0;
-        const img = this.getImage(`assets/radar/player/hero_rifle_walk_${walkStep}.png`);
+        ctx.fillStyle = '#0f2938';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
 
-        if (this.isImageReady(img)) {
-          const sz = 74;
-          const scale = sz / 100;
-          ctx.drawImage(img, -34 * scale, -50 * scale, sz, sz);
-        } else {
-          this.drawPlayerVector(ctx, radius, isDamageFlash, entity, isMoving, tick, entity.isWounded ? '#ff8800' : '#33d4ff');
-        }
+        ctx.strokeStyle = allyColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-        ctx.restore();
+        // Visor
+        ctx.fillStyle = allyColor;
+        ctx.beginPath();
+        ctx.arc(radius * 0.4, 0, radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Weapon
+        ctx.strokeStyle = '#aaaaaa';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(radius * 0.5, 3);
+        ctx.lineTo(radius * 1.3, 3);
+        ctx.stroke();
       }
-      // 3. Draw Monster (From 33 Monster Archetypes)
+      // 3. BESTIARY MONSTER
       else {
-        ctx.save();
         ctx.translate(x, y);
 
-        // Top-down isometric orientation: flip horizontally when facing left, don't rotate upside-down
-        const isFacingLeft = Math.cos(angle) < 0;
-        if (isFacingLeft) {
-          ctx.scale(-1, 1);
-        }
+        const bId = entity.id || entity.archetype || '';
+        const isDisguised = entity.isMimicDisguised;
 
-        let mId = entity.monsterId || entity.archetype || 'mold_crawler';
-        const ruAliases = {
-          cherveobrazniy_narost: 'worm_growth',
-          myasnoy_kultist: 'meat_cultist',
-          svinoryl: 'pig_snout',
-          nekro_santehnik: 'necro_plumber',
-          toksichniy_plevun: 'toxic_spitter',
-          amalgama_ploti: 'flesh_amalgam',
-          biomeh_strazh: 'biomech_guardian'
-        };
-        if (ruAliases[mId]) {
-          mId = ruAliases[mId];
-        }
+        if (isDisguised) {
+          // Voice mimic disguised as friendly blip
+          ctx.fillStyle = '#0f2938';
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#00e5ff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else if (bId.includes('slime')) {
+          // Black Slime: pulsating amorphous bio-blob
+          const wobble = Math.sin(tick * 0.2 + (entity.x % 10)) * 2;
+          ctx.fillStyle = isFlash ? '#ffffff' : '#22c55e';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, radius + wobble, radius - wobble * 0.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#15803d';
+          ctx.lineWidth = 2;
+          ctx.stroke();
 
-        // Animate frames _f0, _f1, _f2, _f3
-        const animSpeed = isMoving ? 0.22 : 0.09;
-        const fIdx = Math.floor(tick * animSpeed) % 4;
-        let img = this.getImage(`assets/radar/entities/${mId}_f${fIdx}.png`);
-        if (!this.isImageReady(img)) {
-          img = this.getImage(`assets/radar/entities/${mId}.png`);
-        }
+          // Toxic core
+          ctx.fillStyle = '#14532d';
+          ctx.beginPath();
+          ctx.arc(wobble * 0.5, 0, radius * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (bId.includes('spore') || bId.includes('pseudoflesh')) {
+          // Spore Pod / Pseudoflesh: pulsating stationary purple turret
+          const pulse = Math.sin(tick * 0.15) * 2;
+          ctx.fillStyle = isFlash ? '#ffffff' : '#9333ea';
+          ctx.beginPath();
+          ctx.arc(0, 0, radius + pulse, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
 
-        if (this.isImageReady(img)) {
-          if (isDamageFlash) {
-            ctx.filter = 'brightness(3) drop-shadow(0 0 10px #ffffff)';
+          // Spore nozzles
+          ctx.fillStyle = '#581c87';
+          for (let ang = 0; ang < Math.PI * 2; ang += Math.PI / 2) {
+            ctx.beginPath();
+            ctx.arc(Math.cos(ang) * (radius * 0.6), Math.sin(ang) * (radius * 0.6), 3, 0, Math.PI * 2);
+            ctx.fill();
           }
-          const sz = Math.max(38, radius * 2.8);
-          // Organic bobbing walk cycle
-          const bob = isMoving ? Math.sin(tick * 0.3) * 2.0 : Math.sin(tick * 0.08) * 0.8;
-          ctx.drawImage(img, -sz / 2, -sz / 2 + bob, sz, sz);
+        } else if (bId.includes('rogue_liquidator')) {
+          // Rogue Liquidator: heavy armored renegade with shotgun
+          ctx.rotate(angle);
+          ctx.fillStyle = isFlash ? '#ffffff' : '#332014';
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#ea580c';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // Shotgun barrel
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(radius * 0.5, 2);
+          ctx.lineTo(radius * 1.5, 2);
+          ctx.stroke();
+        } else if (bId.includes('six_legged') || entity.behavior === 'leap_flank') {
+          // Six-Legged Horror: sprawling crimson monstrosity
+          ctx.fillStyle = isFlash ? '#ffffff' : '#b91c1c';
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // 6 sprawling legs
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 6; i++) {
+            const legAng = (i / 6) * Math.PI * 2 + Math.sin(tick * 0.2 + i) * 0.2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(legAng) * radius, Math.sin(legAng) * radius);
+            ctx.lineTo(Math.cos(legAng) * (radius * 1.7), Math.sin(legAng) * (radius * 1.7));
+            ctx.stroke();
+          }
         } else {
-          // Fallback procedural monster
-          this.drawMonsterVector(ctx, radius, isDamageFlash, entity, tick);
+          // Feral Inhabitant / Standard Mutant: jagged aggressive stalker
+          ctx.fillStyle = isFlash ? '#ffffff' : (entity.color || '#f97316');
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Glowing predatory eyes
+          ctx.fillStyle = '#ff0033';
+          ctx.beginPath();
+          ctx.arc(radius * 0.4, -radius * 0.3, 2, 0, Math.PI * 2);
+          ctx.arc(radius * 0.4, radius * 0.3, 2, 0, Math.PI * 2);
+          ctx.fill();
         }
 
-        ctx.restore();
-      }
+        // Draw Health Bar above wounded enemy
+        if (entity.hp < entity.maxHp && entity.hp > 0) {
+          const barW = 24;
+          const barH = 3;
+          const pct = Math.max(0, entity.hp / entity.maxHp);
 
-      // Overhead floating health bar
-      this.drawOverheadHealthBar(ctx, entity, x, y, radius, isDamageFlash);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(-barW / 2, -radius - 10, barW, barH);
 
-      ctx.restore();
-    },
-
-    /**
-     * Fallback vector drawing for player
-     */
-    drawPlayerVector(ctx, r, isFlash, entity, isMoving, tick, baseColor = '#1fe044') {
-      const color = isFlash ? '#ffffff' : baseColor;
-
-      // Backpack / O2 tanks
-      ctx.fillStyle = '#0a2210';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(-r * 0.7, -r * 0.8, r * 1.4, r * 0.5, 3);
-      ctx.fill();
-      ctx.stroke();
-
-      // Shoulders / Armor
-      ctx.fillStyle = isFlash ? '#ffffff' : '#0e3a18';
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Helmet visor
-      ctx.fillStyle = '#88ff9e';
-      ctx.beginPath();
-      ctx.ellipse(0, 2, r * 0.55, r * 0.35, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Gun / Weapon forward
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(r * 0.3, 0);
-      ctx.lineTo(r * 0.3, r + 8);
-      ctx.stroke();
-    },
-
-    /**
-     * Fallback vector drawing for monsters
-     */
-    drawMonsterVector(ctx, r, isFlash, entity, tick) {
-      const color = isFlash ? '#ffffff' : (entity.color || '#ff3b30');
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    },
-
-    /**
-     * Overhead Floating CRT Health Bar
-     */
-    drawOverheadHealthBar(ctx, entity, x, y, radius, isFlash) {
-      if (entity.isDead || (entity.hp <= 0)) return;
-
-      const maxHp = entity.maxHp || 100;
-      const hp = Math.max(0, entity.hp);
-      const pct = Math.min(1.0, hp / maxHp);
-
-      const barW = Math.max(26, radius * 2.2);
-      const barH = 4;
-      const barX = x - barW / 2;
-      const barY = y - radius - 14;
-
-      ctx.save();
-      ctx.fillStyle = '#220000';
-      ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-
-      let fillCol = entity.isPlayer ? '#1fe044' : (entity.type === 'liquidator' ? '#33d4ff' : '#ff3b30');
-      if (entity.tier === 'boss') fillCol = '#cc22ff';
-      if (isFlash) fillCol = '#ffffff';
-
-      ctx.fillStyle = fillCol;
-      ctx.fillRect(barX, barY, Math.floor(barW * pct), barH);
-
-      // Boss name tag
-      if (entity.tier === 'boss') {
-        ctx.fillStyle = '#ff88ff';
-        ctx.font = 'bold 9px "Share Tech Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`⚡ ${entity.name} ⚡`, x, barY - 4);
-      } else if (entity.type === 'liquidator') {
-        ctx.font = 'bold 9px monospace';
-        ctx.textAlign = 'center';
-        if (entity.isWounded) {
-          const pulse = (Math.sin(Date.now() * 0.008) > 0) ? '#ffaa00' : '#ff3333';
-          ctx.fillStyle = pulse;
-          ctx.fillText('⚠️ РАНЕН [E]', x, barY - 4);
-        } else if (entity.isLoyalFollower) {
-          ctx.fillStyle = '#00ff66';
-          ctx.fillText('★ НАПАРНИК', x, barY - 4);
+          ctx.fillStyle = pct > 0.4 ? '#22c55e' : '#ef4444';
+          ctx.fillRect(-barW / 2, -radius - 10, barW * pct, barH);
         }
       }
 
@@ -645,66 +685,53 @@
     },
 
     /**
-     * Tactical CRT Crosshair
+     * Render Tactical Crosshair
      */
-    drawCrosshair(ctx, screenX, screenY, tick, isTargetEnemy) {
-      if (!ctx) return;
-
-      const size = 16;
-      const pulse = Math.sin(tick * 0.15) * 1.5;
-      const color = isTargetEnemy ? '#ff3b30' : '#1fe044';
+    drawCrosshair(ctx, mx, my, tick, isOverEnemy) {
+      if (!ctx || mx === undefined || my === undefined) return;
 
       ctx.save();
+      const color = isOverEnemy ? '#ff3b30' : '#1fe044';
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = isTargetEnemy ? 12 : 6;
 
-      // Outer targeting brackets
+      const sz = 8;
+      const gap = 3;
+
       ctx.beginPath();
-      ctx.arc(screenX, screenY, size + pulse, 0, Math.PI * 2);
+      ctx.moveTo(mx - sz - gap, my);
+      ctx.lineTo(mx - gap, my);
+      ctx.moveTo(mx + gap, my);
+      ctx.lineTo(mx + sz + gap, my);
+      ctx.moveTo(mx, my - sz - gap);
+      ctx.lineTo(mx, my - gap);
+      ctx.moveTo(mx, my + gap);
+      ctx.lineTo(mx, my + sz + gap);
       ctx.stroke();
 
-      // Crosshair tick marks
       ctx.beginPath();
-      ctx.moveTo(screenX - size - 6, screenY);
-      ctx.lineTo(screenX - 4, screenY);
-      ctx.moveTo(screenX + 4, screenY);
-      ctx.lineTo(screenX + size + 6, screenY);
-      ctx.moveTo(screenX, screenY - size - 6);
-      ctx.lineTo(screenX, screenY - 4);
-      ctx.moveTo(screenX, screenY + 4);
-      ctx.lineTo(screenX, screenY + size + 6);
-      ctx.stroke();
-
-      // Center aiming dot
+      ctx.arc(mx, my, 1.5, 0, Math.PI * 2);
       ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
     },
 
     /**
-     * Melee Slash Arc VFX
+     * Render Melee Swing Slash Arc
      */
-    drawMeleeSwingArc(ctx, x, y, angle, progress) {
+    drawMeleeSwingArc(ctx, px, py, angle, progress) {
       if (!ctx) return;
       ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
+      const radius = 54;
+      const arcSpread = 1.2;
+      const startAngle = angle - arcSpread * 0.5 + arcSpread * progress;
 
-      const arcDist = 32;
-      const arcWidth = 0.8;
-      const p = Math.max(0, Math.min(1.0, progress));
-
-      ctx.strokeStyle = `rgba(136, 255, 158, ${1.0 - p})`;
-      ctx.lineWidth = 4 * (1.0 - p);
+      ctx.strokeStyle = `rgba(31, 224, 68, ${1.0 - progress})`;
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(0, 0, arcDist, -arcWidth + p * 1.6, arcWidth);
+      ctx.arc(px, py, radius, startAngle - 0.4, startAngle + 0.4);
       ctx.stroke();
-
       ctx.restore();
     }
   };
