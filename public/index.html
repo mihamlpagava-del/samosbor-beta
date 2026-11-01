@@ -8350,7 +8350,7 @@ function updateUI(me, sectorPlayers) {
   if (chestC) chestC.innerHTML = '';
 
   updateWorkbenchDropdowns();
-  if (false && me.inventory) {
+  if (me.inventory) {
     me.inventory.forEach((itemId, index) => {
       const item = GAME_ITEMS[itemId];
       if (!item) return;
@@ -8482,8 +8482,6 @@ function updateUI(me, sectorPlayers) {
     }
   }
 
-  if (wSel && curWVal) wSel.value = curWVal;
-  if (mSel && curMVal) mSel.value = curMVal;
   updateModPreview();
   renderAssemblyRecipes();
   bindQuickSlotClicks();
