@@ -752,17 +752,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
-.tutorial-dot {
-  background: rgba(0, 30, 10, 0.8);
-  border: 1px solid var(--term-dim);
-  color: var(--term-dim);
-  padding: 3px 8px;
-  font-size: 11px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: 0.15s;
-  user-select: none;
-}
+.tutorial-dot { padding: 4px 10px; font-size: 11px; border: 1px solid var(--term-dim); border-radius: 3px; cursor: pointer; color: var(--term-dim); transition: 0.15s; background: rgba(0,0,0,0.5); white-space: nowrap; font-weight: bold; }
 .tutorial-dot:hover {
   border-color: var(--term-color);
   color: #fff;
@@ -1323,6 +1313,114 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   cursor: default !important;
   pointer-events: none !important;
 }
+
+/* Мигание кнопки ОБЩИЙ ЧАТ при новом сообщении */
+@keyframes chatBtnPulse {
+  0% {
+    box-shadow: 0 0 5px #00ff66, inset 0 0 6px #00ff66;
+    border-color: #00ff66;
+    color: #ffffff;
+    background: rgba(0, 90, 30, 0.85);
+  }
+  50% {
+    box-shadow: 0 0 18px #ffd700, inset 0 0 12px #ffd700;
+    border-color: #ffd700;
+    color: #ffd700;
+    background: rgba(100, 70, 0, 0.95);
+  }
+  100% {
+    box-shadow: 0 0 5px #00ff66, inset 0 0 6px #00ff66;
+    border-color: #00ff66;
+    color: #ffffff;
+    background: rgba(0, 90, 30, 0.85);
+  }
+}
+
+/* Кнопка быстрого выхода из жилячейки в процедурный радар-рейд */
+.btn-primary-radar {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 2px solid #1fe044;
+  background: rgba(4, 20, 7, 0.85);
+  color: #1fe044;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px #1fe044;
+  cursor: pointer;
+  border-radius: 4px;
+  animation: emergencyBlink 2.2s infinite ease-in-out;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.btn-primary-radar:hover {
+  background: rgba(31, 224, 68, 0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(31, 224, 68, 0.7);
+}
+@keyframes emergencyBlink {
+  0%, 100% {
+    border-color: #1fe044;
+    box-shadow: 0 0 10px rgba(31, 224, 68, 0.4), inset 0 0 8px rgba(31, 224, 68, 0.2);
+    color: #1fe044;
+    text-shadow: 0 0 8px #1fe044;
+  }
+  50% {
+    border-color: #ffaa00;
+    box-shadow: 0 0 18px rgba(255, 170, 0, 0.65), inset 0 0 10px rgba(255, 170, 0, 0.25);
+    color: #ffaa00;
+    text-shadow: 0 0 10px #ffaa00;
+  }
+}
+
+.chat-btn-blinking {
+  animation: chatBtnPulse 1.05s ease-in-out infinite !important;
+  font-weight: bold !important;
+  letter-spacing: 0.5px;
+}
+
+/* Всплывающие уведомления чата */
+#chat-toast-container {
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.chat-toast-msg {
+  background: rgba(3, 20, 10, 0.95);
+  border: 1px solid #00ff66;
+  box-shadow: 0 0 14px rgba(0, 255, 102, 0.4);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  max-width: 360px;
+  word-break: break-word;
+  animation: toastFadeIn 0.3s ease-out forwards;
+  pointer-events: auto;
+  cursor: pointer;
+}
+@keyframes toastFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Вспышка экрана при спецприеме босса */
+.crit-screen-flash {
+  animation: critScreenFlashAnim 0.4s ease-out !important;
+}
+@keyframes critScreenFlashAnim {
+  0% { filter: brightness(1) drop-shadow(0 0 0 red); }
+  35% { filter: brightness(2.1) saturate(1.8) drop-shadow(0 0 35px #ff2200); }
+  100% { filter: none; }
+}
 #rc-btn-vote-continue.voted-choice {
   background: rgba(0, 110, 50, 0.95) !important;
   border-color: #00ff66 !important;
@@ -1483,6 +1581,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </head>
 <body class="crt-enabled">
 <div id="achievements-toast-container"></div>
+<div id="chat-toast-container"></div>
 <div id="bg-layer" style="background-image: url('assets/locations/bg_safe_room.png');"></div>
 <div id="transition-overlay"><div id="trans-ascii" class="door-ascii"></div><div id="trans-text" class="flicker">ЗАГРУЗКА...</div></div>
 
@@ -1734,7 +1833,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     </div>
 
     <!-- ОВЕРЛЕЙ ТАКТИЧЕСКОГО ПЕРЕРЫВА И ГОЛОСОВАНИЯ МЕЖДУ ВОЛНАМИ -->
-    <div id="rc-intermission-overlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,14,22,0.95); z-index: 105; border-radius: 4px; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;">
+    <div id="rc-intermission-overlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,14,22,0.95); z-index: 500; pointer-events: auto; border-radius: 4px; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;">
       <div style="font-size: 24px; font-weight: bold; color: #ffd700; margin-bottom: 6px; letter-spacing: 2px; text-shadow: 0 0 12px rgba(255,215,0,0.6);">
         🏆 ВОЛНА <span id="rc-int-cleared-wave">1</span> ЗАЧИЩЕНА!
       </div>
@@ -1752,7 +1851,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
 
       <!-- Кнопки выбора голоса -->
-      <div style="display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 10;">
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 510; pointer-events: auto;">
         <button id="rc-btn-vote-continue" class="raid-vote-btn" onclick="voteRaidIntermission('continue')" style="width: auto; margin: 0; padding: 12px 24px; font-size: 14px; font-weight: bold; background: rgba(0,70,35,0.85); border: 1px solid #00ff66; color: #fff;">
           ⚔️ СЛЕДУЮЩАЯ ВОЛНА (<span id="rc-int-next-wave">2</span>/11)
         </button>
@@ -2063,6 +2162,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div id="hub-error" style="color: var(--term-danger); margin-top: 5px; font-size: 13px; min-height: 18px;"></div>
     </div>
     <div class="game-controls" style="margin-top: 15px;">
+      <button id="btn-exit-cell" class="btn-primary-radar" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell">⚡ ВЫЙТИ ИЗ ЖИЛ ЯЧЕЙКИ</button>
       <div class="row-2"><button id="open-notebook-btn" data-i18n="btn_notebook">БЛОКНОТ</button><button id="open-chest-btn" data-i18n="btn_chest">СУНДУК</button></div>
       <div class="row-2"><button id="open-shop-btn" data-i18n="btn_shop">РАСПРЕДЕЛИТЕЛЬ</button><button id="open-craft-btn" data-i18n="btn_craft">ВЕРСТАК</button></div>
       <div class="row-2"><button id="open-chat-btn" data-i18n="btn_chat">СЕТЬ</button><button id="open-leaderboard-btn" data-i18n="btn_leaderboard">РЕЙТИНГ</button></div>
@@ -2125,9 +2225,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
       <div class="game-controls" id="explore-controls"></div>
       <div class="game-controls" id="combat-controls" style="display: none;">
-        <div id="aim-bar-container" style="display:none; width: 100%; height: 20px; border: 1px solid var(--term-danger); position: relative; background: #111;">
-          <div style="position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(51, 255, 0, 0.3); border-left: 1px solid var(--term-green); border-right: 1px solid var(--term-green);"></div>
-          <div id="aim-cursor" style="position: absolute; left: 0%; width: 4px; height: 100%; background: #fff;"></div>
+        <div id="aim-bar-container" style="display:none; width: 100%; height: 22px; border: 1px solid var(--term-danger); position: relative; background: #0c0c0c; border-radius: 3px; overflow: hidden; box-shadow: inset 0 0 6px #000; margin-bottom: 6px;">
+          <div id="aim-sweet-spot" style="position: absolute; left: 40%; width: 20%; height: 100%; background: rgba(51, 255, 0, 0.45); border-left: 2px solid #00ff66; border-right: 2px solid #00ff66; box-shadow: 0 0 10px rgba(0, 255, 102, 0.7); z-index: 1;"></div>
+          <div id="aim-cursor" style="position: absolute; left: 0%; width: 4px; height: 100%; background: #ffffff; box-shadow: 0 0 8px #ffffff; z-index: 3;"></div>
         </div>
         <div class="row-2">
           <button id="btn-attack" style="color: var(--term-danger); border-color: var(--term-danger); font-weight: bold;" onclick="toggleAimAttack()" data-i18n="btn_aim_attack">ПРИЦЕЛЬНАЯ АТАКА</button>
@@ -2135,7 +2235,24 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         </div>
       </div>
     </div>
-    <div id="enemy-battle-avatar" class="combat-avatar">
+    <div id="enemy-battle-avatar" class="combat-avatar" style="position: relative; overflow: visible;">
+      <!-- ЭЛТ-шкала здоровья противника над головой -->
+      <div id="enemy-head-crt-gauge" class="monster-crt-gauge" style="display: none; position: absolute; top: -62px; left: 50%; transform: translateX(-50%); width: 220px; z-index: 25; box-shadow: 0 0 14px rgba(0,255,102,0.35);">
+        <div class="monster-crt-scanlines"></div>
+        <div class="monster-crt-header">
+          <span id="ui-enemy-crt-name" class="monster-crt-title" style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ВРАГ</span>
+          <span id="ui-enemy-crt-badge" class="monster-crt-badge">БИОМАССА</span>
+        </div>
+        <div class="monster-crt-hp-row">
+          <span class="monster-crt-label">ОЦЕНКА БИОМАССЫ</span>
+          <span id="ui-enemy-crt-hp-text" class="monster-crt-hp-digits">100 / 100 HP</span>
+        </div>
+        <div class="monster-crt-bar-track">
+          <div id="ui-enemy-crt-hp-bar" class="monster-crt-bar-fill" style="width: 100%;"></div>
+          <div class="monster-crt-bar-grid"></div>
+        </div>
+      </div>
+
       <img id="enemy-sprite" src="" style="z-index: 5; display: none;" alt="">
       <img id="enemy-clothes" class="avatar-layer" style="z-index: 6; display: none;" src="" alt="">
       <img id="enemy-mask" class="avatar-layer" style="z-index: 7; display: none;" src="" alt="">
@@ -2417,27 +2534,42 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         </div>
         <div id="assembly-recipes-container"></div>
       </div>
-      <div style="flex: 1; min-width: 260px;">
-        <h3 style="color: var(--term-warn); border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px;" data-i18n="craft_modding">= МОДИФИКАЦИЯ ОРУЖИЯ =</h3>
+      <div style="flex: 1; min-width: 280px;">
+        <!-- Вкладки типов верстака: Оружие / Одежда / Противогаз -->
+        <div style="display: flex; gap: 4px; border-bottom: 1px solid var(--term-dim); margin-bottom: 10px;">
+          <button id="wb-tab-weapon" class="shop-tab-btn active" type="button" onclick="switchWorkbenchMode('weapon')" style="flex: 1; padding: 6px 4px; font-size: 11px; margin: 0; font-weight: bold;">
+            ⚔️ <span data-i18n="wb_tab_weapon">ОРУЖИЕ</span>
+          </button>
+          <button id="wb-tab-clothes" class="shop-tab-btn" type="button" onclick="switchWorkbenchMode('clothes')" style="flex: 1; padding: 6px 4px; font-size: 11px; margin: 0; font-weight: bold;">
+            🦺 <span data-i18n="wb_tab_clothes">ОДЕЖДА</span>
+          </button>
+          <button id="wb-tab-mask" class="shop-tab-btn" type="button" onclick="switchWorkbenchMode('mask')" style="flex: 1; padding: 6px 4px; font-size: 11px; margin: 0; font-weight: bold;">
+            🎭 <span data-i18n="wb_tab_mask">ПРОТИВОГАЗ</span>
+          </button>
+        </div>
+
+        <h3 id="craft-mod-header-title" style="color: var(--term-warn); border-bottom: 1px dashed var(--term-warn); padding-bottom: 5px; margin-top: 0;" data-i18n="craft_modding">= МОДИФИКАЦИЯ ОРУЖИЯ =</h3>
+        <div id="craft-mod-hint" style="font-size: 11px; color: #88ffaa; margin-bottom: 8px;">Выберите оружие и стихийный материал для наделения уроном.</div>
+
         <select id="mod-weapon-select" onchange="updateModPreview()" style="width: 100%; margin-bottom: 8px; background: #000; color: #fff; padding: 6px; border: 1px solid var(--term-dim); font-family: inherit;"><option value="">-- ВЫБЕРИТЕ ОРУЖИЕ --</option></select>
         <select id="mod-mat-select" onchange="updateModPreview()" style="width: 100%; margin-bottom: 12px; background: #000; color: #fff; padding: 6px; border: 1px solid var(--term-dim); font-family: inherit;"><option value="">-- ВЫБЕРИТЕ СТИХИЮ / МАТЕРИАЛ --</option></select>
 
         <!-- 3 ВИЗУАЛЬНЫХ СЛОТА ВЕРСТАКА (СИНТЕЗ) -->
         <div class="craft-slots-wrapper" style="margin: 10px 0 14px 0; background: rgba(0, 0, 0, 0.7); border: 1px dashed var(--term-dim); padding: 8px; border-radius: 4px;">
-          <div style="font-size: 11px; color: var(--term-warn); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;" data-i18n="craft_workbench_title">⚙️ Визуальный верстак:</div>
+          <div id="craft-slot-header-label" style="font-size: 11px; color: var(--term-warn); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;" data-i18n="craft_workbench_title">⚙️ Визуальный верстак:</div>
           <div style="display: flex; align-items: stretch; justify-content: space-between; gap: 6px;">
-            <!-- СЛОТ 1: ОРУЖИЕ -->
+            <!-- СЛОТ 1: ОСНОВНОЙ ПРЕДМЕТ -->
             <div id="craft-slot-weapon" style="flex: 1; min-height: 95px; background: #050a05; border: 1px solid #1a3a1a; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; box-sizing: border-box; transition: 0.2s;">
-              <div style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_1">[ СЛОТ 1: ОРУЖИЕ ]</div>
+              <div id="craft-slot1-lbl" style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_1">[ СЛОТ 1: ОСНОВА ]</div>
               <img id="slot-weapon-img" src="" style="width: 32px; height: 32px; object-fit: contain; display: none; margin-bottom: 3px;">
               <div id="slot-weapon-text" style="font-size: 11px; color: #777;" data-i18n="slot_empty_dash">-- пусто --</div>
             </div>
 
             <div style="font-size: 16px; color: var(--term-dim); font-weight: bold; flex-shrink: 0; display: flex; align-items: center;">+</div>
 
-            <!-- СЛОТ 2: СТИХИЯ/МАТЕРИАЛ -->
+            <!-- СЛОТ 2: ДОНОР / МАТЕРИАЛ -->
             <div id="craft-slot-mat" style="flex: 1; min-height: 95px; background: #050a05; border: 1px solid #1a3a1a; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; box-sizing: border-box; transition: 0.2s;">
-              <div style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_2">[ СЛОТ 2: СТИХИЯ ]</div>
+              <div id="craft-slot2-lbl" style="font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_2">[ СЛОТ 2: ДОНОР ]</div>
               <img id="slot-mat-img" src="" style="width: 32px; height: 32px; object-fit: contain; display: none; margin-bottom: 3px;">
               <div id="slot-mat-text" style="font-size: 11px; color: #777;" data-i18n="slot_empty_dash">-- пусто --</div>
             </div>
@@ -2446,7 +2578,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
             <!-- СЛОТ 3: ИТОГ -->
             <div id="craft-slot-result" style="flex: 1.15; min-height: 95px; background: #070d07; border: 1px solid var(--term-dim); border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; box-sizing: border-box; transition: 0.2s;">
-              <div style="font-size: 9px; color: var(--term-warn); margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_3">[ СЛОТ 3: РЕЗУЛЬТАТ ]</div>
+              <div id="craft-slot3-lbl" style="font-size: 9px; color: var(--term-warn); margin-bottom: 3px; font-weight: bold;" data-i18n="craft_slot_3">[ СЛОТ 3: РЕЗУЛЬТАТ ]</div>
               <img id="slot-result-img" src="" style="width: 34px; height: 34px; object-fit: contain; display: none; margin-bottom: 3px;">
               <div id="slot-result-text" style="font-size: 11px; color: #777;" data-i18n="slot_result_dash">-- ожидание --</div>
             </div>
@@ -2772,6 +2904,7 @@ const I18N = {
     lbl_rooms: "Секторов:",
     lbl_rating: "Рейтинг:",
     lbl_loc_backpack: "РЮКЗАК:",
+    btn_exit_cell: "⚡ ВЫЙТИ ИЗ ЖИЛ ЯЧЕЙКИ",
     btn_notebook: "📓 ДНЕВНИК",
     btn_chest: "🎒 ИНВЕНТАРЬ / ДЕЛО",
     btn_shop: "🛒 ТОРГОВЕЦ",
@@ -3012,6 +3145,7 @@ const I18N = {
     lbl_loc_backpack: "BACKPACK:",
     btn_notebook: "📓 DIARY",
     btn_chest: "🎒 DOSSIER / INVENTORY",
+    btn_exit_cell: "⚡ EXIT LIVING CELL",
     btn_shop: "🛒 TRADER",
     btn_craft: "⚒️ WORKBENCH",
     btn_chat: "💬 GLOBAL CHAT",
@@ -4296,6 +4430,11 @@ function applyLanguage() {
   if (typeof myActiveRaidSquad !== 'undefined' && myActiveRaidSquad && typeof renderMyRaidSquad === 'function') {
     renderMyRaidSquad(myActiveRaidSquad);
   }
+  let chatBtn = document.getElementById('open-chat-btn');
+  if (chatBtn && typeof unreadChatMessagesCount !== 'undefined' && unreadChatMessagesCount > 0) {
+    let baseTxt = (currentLang === 'en') ? '💬 GLOBAL CHAT' : '💬 ОБЩИЙ ЧАТ';
+    chatBtn.innerHTML = `${baseTxt} <span style="background:#ff2222; color:#fff; font-size:11px; padding:1px 6px; border-radius:10px; font-weight:bold; margin-left:6px; box-shadow:0 0 6px #ff2222;">${unreadChatMessagesCount}</span>`;
+  }
 }
 
 function toggleLanguage() {
@@ -4312,108 +4451,127 @@ const TUTORIAL_STEPS_RU = [
     title: "1. ЖИЛЯЧЕЙКА И ЖИЗНЕННЫЕ ПОКАЗАТЕЛИ",
     shortName: "1. База & Статусы",
     content: `
-      <p><b>Жилячейка</b> — ваше единственное надёжное убежище от смертоносного Самосбора. Пока вы находитесь на базе, ваши раны исцеляются, а фильтр противогаза <b>бесплатно восстанавливается до 100%</b>.</p>
+      <p><b>Жилячейка</b> — ваше персональное герметичное убежище от смертоносного Самосбора. Пока вы находитесь на базе, ваши раны исцеляются, а фильтр противогаза <b>бесплатно восстанавливается до 100%</b>.</p>
       
       <div class="tutorial-highlight-box">
-        <div>💚 <b>Здоровье (HP):</b> Если здоровье упадет до 0 в бою или от тумана — вы потеряете сознание, эвакуируетесь в Жилячейку и потеряете 50% талонов.</div>
-        <div style="margin-top:6px;">💨 <b>Фильтр противогаза:</b> Расходуется при каждой вылазке в туман. При уровне ниже 10% вылазки блокируются! В бою свежий фильтр даёт колоссальный бонус к скорости атаки.</div>
-        <div style="margin-top:6px;">🍗 <b>Голод (Сытость):</b> Постепенно падает со временем. На 0% вы начнете терять здоровье каждую минуту! Ешьте слизь или тушенку.</div>
-        <div style="margin-top:6px;">☣️ <b>Заражение (Токсичность):</b> Накапливается от ударов тварей тумана. При 100% сбрасывается и вызывает случайную необратимую <b>Мутацию</b>.</div>
+        <div>💚 <b>Здоровье (HP):</b> Если здоровье упадет до 0 в бою или от токсинов тумана — вы потеряете сознание, будете эвакуированы в Жилячейку и потеряете 50% свободных талонов.</div>
+        <div style="margin-top:6px;">💨 <b>Фильтр противогаза:</b> Расходуется при каждой вылазке в туман. При уровне ниже 10% вылазки блокируются! На базе фильтр заряжается бесплатно. В бою свежий фильтр дает существенный прирост к скорости действий.</div>
+        <div style="margin-top:6px;">🍗 <b>Голод (Сытость):</b> Постепенно снижается во времени. При 0% вы начнете терять здоровье каждую минуту! Ешьте слизевые брикеты, концентраты или сухпайки.</div>
+        <div style="margin-top:6px;">☣️ <b>Заражение (Токсичность):</b> Накапливается от ударов мутантов. При 100% вызывает необратимую <b>Мутацию</b>, меняющую характеристики. Снижайте заражение антидотами и визитами к фельдшеру.</div>
       </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Совет: всегда возвращайтесь в жилячейку для передышки перед опасными спусками!</p>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Совет: всегда возвращайтесь в жилячейку для бесплатной передышки перед опасными рейдами!</p>
     `
   },
   {
-    title: "2. СУНДУК, ВЕЩМЕШОК И БЫСТРЫЕ СЛОТЫ",
-    shortName: "2. Склад & Пояс",
+    title: "2. ЛИЧНОЕ ДЕЛО, БЫСТРЫЙ ПОЯС И БАРАХОЛКА",
+    shortName: "2. Инвентарь & Пояс",
     content: `
-      <p>Кнопка <b>[🎒 ИНВЕНТАРЬ / ДЕЛО]</b> (Сундук) открывает дело заключенного, склад и слоты экипировки.</p>
+      <p>Кнопка <b>[🎒 ИНВЕНТАРЬ / ДЕЛО]</b> открывает личное дело заключенного, слоты экипировки и склад базы.</p>
       
       <div class="tutorial-highlight-box">
-        <div>🛡️ <b>Слоты экипировки:</b> Вы можете надеть <i>Противогаз</i> (защита от токсинов), <i>Броню</i> (снижение урона), <i>Оружие</i> (увеличение атаки) и <i>Рюкзак</i> (расширяет объем сундука с 12 до 24+ слотов).</div>
-        <div style="margin-top:6px;">⚠️ <b>Требования уровня (Красная рамка):</b> Предметы выше вашего текущего уровня обведены <span style="color:var(--term-danger); font-weight:bold;">красным цветом</span>. Их нельзя надеть, пока вы не прокачаете уровень в боях.</div>
-        <div style="margin-top:6px;">⚡ <b>Пояс быстрого доступа:</b> Нажмите «На пояс» на любой аптечке, пище или спецсредстве (электрошокер, метательный нож). Предметы с пояса активируются <b>мгновенно прямо во время боя</b>!</div>
+        <div>🛡️ <b>Слоты экипировки:</b> <i>Противогаз</i> (защита от токсинов), <i>Броня</i> (снижение входящего урона), <i>Оружие</i> (сила атаки) и <i>Вещмешок</i> (расширяет рюкзак до 24+ ячеек).</div>
+        <div style="margin-top:6px;">⚡ <b>Пояс быстрого доступа:</b> Нажмите «На пояс» на любой аптечке, пище или шокере. Предметы с пояса активируются <b>мгновенно прямо в бою</b> в один клик!</div>
+        <div style="margin-top:6px;">🏷️ <b>Барахолка между игроками:</b> Любой предмет из рюкзака можно выставить на общеигровую Барахолку (кнопка «НА БАРАХОЛКУ») по вашей цене в талонах!</div>
+        <div style="margin-top:6px;">⚠️ <b>Требования уровня:</b> Вещи выше вашего уровня имеют красную рамку — прокачивайте уровень в вылазках, чтобы надеть их.</div>
       </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Совет: следите за вместимостью склада — когда он переполнен, новый лут подобрать не удастся!</p>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Совет: держите на поясе минимум одну военную аптечку на случай тяжелого ранения в бою.</p>
     `
   },
   {
-    title: "3. ВЕРСТАК, СИНТЕЗ И МОДИФИКАЦИИ ОРУЖИЯ",
-    shortName: "3. Верстак & Крафт",
+    title: "3. КАРТА ЭТАЖА И ВЗЛОМ ГЕРМОДВЕРЕЙ",
+    shortName: "3. Карта & Взлом",
     content: `
-      <p>Кнопка <b>[⚒️ ВЕРСТАК]</b> открывает терминал крафта расходников и стихийной модификации оружия.</p>
+      <p>Кнопка <b>[🗺️ КАРТА ЭТАЖА]</b> открывает сеточную карту коридоров от <b>A0</b> до <b>E4</b>.</p>
       
       <div class="tutorial-highlight-box">
-        <div>🔧 <b>Сборка расходников:</b> Из найденного хлама создавайте <i>Военные аптечки</i> (+60 HP), <i>Тяжелые вентили</i>, <i>Электрошокеры</i> и <i>Автосборщиков</i>.</div>
-        <div style="margin-top:6px;">✨ <b>Стихийный синтез оружия:</b> Выберите оружие без модификаций и соедините его с реагентом в визуальных слотах верстака:</div>
-        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+        <div>🚪 <b>Запертые гермозатворы:</b> Проход во многие сектора преграждают заблокированные двери. Чтобы открыть путь, решите мини-игру (подбор частоты, фаз реле, перемычек проводов) или примените найденный спец-ключ (Болторез, Ключ-карту, Жетон ВОХР).</div>
+        <div style="margin-top:6px;">📖 <b>Дневник и Пароли:</b> Все найденные вами записки комендантов, памятки ликвидаторов и коды доступа автоматически заносятся в <b>[📓 ДНЕВНИК]</b>.</div>
+        <div style="margin-top:6px;">🎯 <b>Ключевая цель:</b> Сектор <b>E4</b> подсвечен на карте синим цветом — там находится шахта грузового лифта на следующий этаж!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Подсказка: разведывайте соседние сектора — в тупиках часто спрятаны богатые схроны снабжения.</p>
+    `
+  },
+  {
+    title: "4. ОБИТАТЕЛИ БЛОКОВ (20 СЮЖЕТНЫХ NPC)",
+    shortName: "4. Персонажи (NPC)",
+    content: `
+      <p>В коридорах и комнатах Гигахруща выживают <b>20 уникальных сюжетных персонажей</b>. Вы можете встретить их случайно в тумане или найти на стационарных постах:</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>👩‍⚕️ <b>Фельдшер Клавдия (Медпункт):</b> Бесплатно лечит тяжелые раны, продает армейские аптечки и антидоты.</div>
+        <div style="margin-top:5px;">🍲 <b>Тётя Валя (Пищеблок):</b> Наливает горячую похлебку (+50 HP) и меняет сырую слизь на питательные брикеты.</div>
+        <div style="margin-top:5px;">🪠 <b>Капитан Михалыч (Коллектор):</b> Затягивает броню (+2 Брони), меняет слизь на чистую воду и продает тяжелые ключи.</div>
+        <div style="margin-top:5px;">🎯 <b>Снайпер Анна «Сова» (Вышка):</b> Проводит уроки меткости (+4 к урону) и продает оптику ПСО-1.</div>
+        <div style="margin-top:5px;">🔥 <b>Огнемётчик Борис (Пожарный отсек):</b> Закаляет оружие огнем (+3 к урону) и продает огнесмесь.</div>
+        <div style="margin-top:5px;">📻 <b>Радист Маяк & 🧗 Проводник Ерофей:</b> Делятся тайными маршрутами в обход монстров и координатами схронов.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Обращайте внимание на цветные кнопки диалога с NPC в верхней части экрана сектора!</p>
+    `
+  },
+  {
+    title: "5. ВЫЛАЗКИ В ТУМАН И ПРИЦЕЛЬНЫЙ БОЙ",
+    shortName: "5. В туман & Бой",
+    content: `
+      <p>Красная кнопка <b>[ВЫЛАЗКА В ТУМАН]</b> отправляет вас на разведку сектора, где таятся твари Самосбора и ценный хабар.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🎯 <b>Прицельная атака (Крит x2):</b> В режиме боя нажимайте кнопку атаки в момент, когда индикатор скользит по <span style="color:var(--term-green); font-weight:bold;">зелёной зоне</span> — вы нанесете сокрушительный <b>ДВОЙНОЙ КРИТИЧЕСКИЙ УДАР</b>!</div>
+        <div style="margin-top:6px;">🛡️ <b>Уклонение:</b> Дает 75% шанс полностью избежать урона от атаки монстра. После успешного уворота ваш следующий удар станет критическим.</div>
+        <div style="margin-top:6px;">⏱️ <b>Кулдауны и Тактика:</b> Атака имеет перезарядку 1.2 с, уклонение — 2.5 с. Грамотно чередуйте защиту и нападение!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Следите за полоской фильтра — в густом тумане без воздуха выжить невозможно!</p>
+    `
+  },
+  {
+    title: "6. СОВМЕСТНЫЕ ВЫЛАЗКИ (РЕЙДЫ ДО 4 ИГРОКОВ)",
+    shortName: "6. Рейды & Кооп",
+    content: `
+      <p>Кнопка <b>[⚔️ СОВМЕСТНАЯ ВЫЛАЗКА]</b> в жилячейке открывает тактический штаб кооперативных рейдов.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>👥 <b>Штурмовой отряд:</b> Создайте свой отряд или присоединитесь к открытому лобби (до 4 бойцов). Доступен и режим <i>«Быстрая вылазка (Соло)»</i>!</div>
+        <div style="margin-top:6px;">🌊 <b>11 волн и Аномальный Босс:</b> Отразите 10 волн мутантов. На 11-й волне появляется смертоносный Синий Редкий или Фиолетовый Эпический босс с уникальным ценным дропом.</div>
+        <div style="margin-top:6px;">💉 <b>Полевая медицина:</b> Если товарищ пал в бою, он тяжело ранен. Живой соратник может реанимировать его армейской аптечкой прямо во время битвы!</div>
+        <div style="margin-top:6px;">🚪 <b>Тактические перерывы:</b> После каждой зачищенной волны отряд голосует: идти на следующую волну или безопасно эвакуироваться на базу со всеми трофеями.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Командная игра позволяет быстрее фармить редкие компоненты и опыт!</p>
+    `
+  },
+  {
+    title: "7. ВЕРСТАК, СИНТЕЗ И МОДИФИКАЦИИ ОРУЖИЯ",
+    shortName: "7. Верстак & Крафт",
+    content: `
+      <p>Кнопка <b>[⚒️ ВЕРСТАК]</b> на базе позволяет собирать полезные предметы и зачаровывать оружие стихиями.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🔧 <b>Сборка экипировки:</b> Крафтите армейские аптечки (+60 HP), бронежилеты, респираторы, электрошокеры и роботов-сборщиков из найденного лома, проводов и химикатов.</div>
+        <div style="margin-top:6px;">✨ <b>Элементный синтез оружия:</b> Положите базовое оружие и модификатор в ячейки синтеза:</div>
+        <div style="padding-left:14px; margin-top:5px; line-height: 1.5;">
           🔥 <b>+ Химикаты:</b> Стихия ОГНЯ (<b>+15% урона</b>)<br>
-          ⚡ <b>+ Электроника:</b> Стихия ЭЛЕКТРО (<b>+10% урона</b>)<br>
+          ⚡ <b>+ Электроника:</b> Стихия ШОКА (<b>+10% урона</b>)<br>
           🩸 <b>+ Кусок металла:</b> КРОВОТЕЧЕНИЕ (<b>+5% урона</b>)
         </div>
       </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Стихийный урон критически важен в сражениях против толстокожих рейд-боссов!</p>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Элементный урон критически важен в битвах с бронированными боссами этажей!</p>
     `
   },
   {
-    title: "4. ДОБЫЧА СЛИЗИ И РОБОТ-СБОРЩИК",
-    shortName: "4. Добыча & Робот",
+    title: "8. ГЛАВНАЯ ЦЕЛЬ: ЛИФТЁР В E4 И СПУСК В БЕЗДНУ",
+    shortName: "8. Лифт E4 & Босс",
     content: `
-      <p>Выживание в Гигахрущевке требует ресурсов и калорий. Вы можете добывать их вручную и автоматизировать сбор:</p>
+      <p>Ваша глобальная миссия — пробиться сквозь блоки и ярусы этажей к тайне 30-го этажа (логову Чернобога).</p>
       
       <div class="tutorial-highlight-box">
-        <div>💧 <b>Фарм слизи:</b> Нажатие на кнопку <b>[ФАРМ СЛИЗИ]</b> на любой локации позволяет соскребать биомассу со стен. Слизь утоляет голод и используется в синтезе медикаментов.</div>
-        <div style="margin-top:6px;">⛏️ <b>Инструменты добычи:</b> Наличие в сундуке <i>Скребка</i> (+1), <i>Пневмонасоса</i> (+3) или <i>Экстрактора</i> (+7) многократно умножает выработку слизи за один клик.</div>
-        <div style="margin-top:6px;">🤖 <b>Автосборщик (Робот):</b> Скрафтите робота на верстаке или купите у торговца. Перейдите в любой сектор и нажмите <b>[УСТАНОВИТЬ]</b>. Робот будет пассивно копить талоны (до 250 шт.) даже пока вы офлайн!</div>
-      </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Не забывайте регулярно обходить роботов и собирать накопленные талоны!</p>
-    `
-  },
-  {
-    title: "5. КАРТА ЭТАЖА И ВЗЛОМ ГЕРМОДВЕРЕЙ",
-    shortName: "5. Карта & Взлом",
-    content: `
-      <p>Кнопка <b>[🗺️ ВЫХОД В БЛОК]</b> открывает интерактивную карту этажа с секторами от <b>A0</b> до <b>E4</b>.</p>
-      
-      <div class="tutorial-highlight-box">
-        <div>🚪 <b>Запертые гермодвери:</b> Проход во многие сектора преграждают системы блокировки Самосбора. Чтобы открыть дверь, решите мини-игру (подбор кода, фазы реле, калибровка частоты) либо используйте найденный сюжетный ключ (Болторез, Ключ-карту).</div>
-        <div style="margin-top:6px;">📖 <b>Дневник и Подсказки:</b> Кнопка <b>[📓 ДНЕВНИК]</b> хранит все найденные вами записки комендантов, памятки ликвидаторов и пароли от гермодверей.</div>
-        <div style="margin-top:6px;">📡 <b>Радар сектора:</b> В локациях вы можете встретить других выживших заключенных — доступно PvP, полевая помощь и кооперативные рейды!</div>
-      </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Сектор E4 всегда подсвечен синим цветом — это ключевая цель каждого этажа.</p>
-    `
-  },
-  {
-    title: "6. ВЫХОД В ТУМАН И БОЕВАЯ СИСТЕМА",
-    shortName: "6. В туман & Бой",
-    content: `
-      <p>Красная кнопка <b>[ВЫЛАЗКА В ТУМАН]</b> отправляет вас на поиски тайников, где вы неизбежно столкнетесь с порождениями Самосбора.</p>
-      
-      <div class="tutorial-highlight-box">
-        <div>🎯 <b>Прицельная атака (Крит):</b> Запустите шкалу прицеливания и нажмите кнопку в момент, когда курсор окажется в <span style="color:var(--term-green); font-weight:bold;">зелёной зоне</span> — вы нанесете гарантированный <b>ДВОЙНОЙ КРИТИЧЕСКИЙ УДАР</b>! Но при промахе враг контратакует.</div>
-        <div style="margin-top:6px;">💨 <b>Уклонение:</b> 75% шанс увернуться от атаки противника. В случае успеха ваш следующий удар гарантированно станет критическим.</div>
-        <div style="margin-top:6px;">💊 <b>Быстрые слоты пояса:</b> В пылу боя нажимайте ячейки быстрого доступа под вашим аватаром, чтобы мгновенно выпить лекарство или метнуть шокер во врага.</div>
-      </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Следите за остатком фильтра противогаза — без него в тумане не выжить!</p>
-    `
-  },
-  {
-    title: "7. ГЛАВНАЯ ЦЕЛЬ: ЛИФТЁР В E4 И БОСС ЭТАЖА",
-    shortName: "7. Лифт E4 & Босс",
-    content: `
-      <p>Ваша глобальная цель — пробиться через все этажи Гигахрущевки к 30-му этажу (Чернобогу).</p>
-      
-      <div class="tutorial-highlight-box">
-        <div>👴 <b>Слепой Лифтёр (Дед Макар):</b> Добравшись до сектора <b>E4</b>, поговорите со старым лифтёром. Он ждёт того, кто починит грузовой лифт. Для ремонта нужны 3 детали:</div>
-        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+        <div>👴 <b>Слепой Лифтёр (Дед Макар):</b> Добравшись до сектора <b>E4</b>, поговорите с лифтёром. Чтобы запустить разбитый подъемник, найдите на этаже 3 детали:</div>
+        <div style="padding-left:14px; margin-top:5px; line-height: 1.5;">
           🧰 <b>Ремкомплект лифта</b><br>
           🎛️ <b>Блок кнопок</b><br>
           🔌 <b>Провод генератора</b>
         </div>
-        <div style="margin-top:6px;">Ищите эти детали в тайниках тумана на текущем этаже и тащите лифтёру.</div>
-        <div style="margin-top:6px;">👹 <b>Рейд-Босс этажа:</b> При запуске лифта пробуждается ужасный страж этажа. Одолейте его и жмите кнопку перехода вниз!</div>
+        <div style="margin-top:6px;">Сдайте детали старику в диалоге — лебедка загудит, и откроется кнопка пуска клети.</div>
+        <div style="margin-top:6px;">👹 <b>Битва со Стражем этажа:</b> При пуске лифта на вас нападет главный босс яруса. Сокрушите его и спускайтесь на следующий этаж!</div>
       </div>
-      <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">Вы готовы к службе и выживанию, Заключенный. Партия верит в вас!</p>
+      <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">Вы готовы к выживанию, Заключенный. Партия верит в ваш долг!</p>
     `
   }
 ];
@@ -4423,108 +4581,127 @@ const TUTORIAL_STEPS_EN = [
     title: "1. LIVING CELL & VITAL STATS",
     shortName: "1. Base & Stats",
     content: `
-      <p><b>Living Cell</b> is your only safe haven from the horrors of Samosbor. Resting here heals your injuries and <b>restores your gas mask filter to 100% for free</b>.</p>
+      <p><b>Living Cell</b> is your hermetic shelter from the deadly Samosbor. Resting on base heals your injuries, and your gas mask filter is <b>recharged to 100% for free</b>.</p>
       
       <div class="tutorial-highlight-box">
-        <div>💚 <b>Health (HP):</b> If HP drops to 0 during combat or exploration, you collapse, get evacuated to your Living Cell, and lose 50% of your talons.</div>
-        <div style="margin-top:6px;">💨 <b>Gas Mask Filter:</b> Drained on every foray into the fog. If it falls below 10%, expeditions are blocked! In combat, a clean filter grants a major attack speed boost.</div>
-        <div style="margin-top:6px;">🍗 <b>Satiety (Hunger):</b> Slowly drops over time. At 0%, you start losing HP every minute! Eat slime briquettes or canned rations.</div>
-        <div style="margin-top:6px;">☣️ <b>Toxicity (Infection):</b> Accumulates from beast strikes. At 100%, it resets and triggers a permanent <b>Mutation</b>.</div>
+        <div>💚 <b>Health (HP):</b> If HP drops to 0 in combat or from mist toxins, you collapse, get evacuated to your Living Cell, and lose 50% of your talons.</div>
+        <div style="margin-top:6px;">💨 <b>Gas Mask Filter:</b> Depletes during fog expeditions. If it falls below 10%, expeditions are blocked! At base, it recharges to 100% for free.</div>
+        <div style="margin-top:6px;">🍗 <b>Satiety (Hunger):</b> Gradually drops over time. At 0%, you lose HP every minute! Eat slime briquettes, protein paste, or military rations.</div>
+        <div style="margin-top:6px;">☣️ <b>Toxicity (Infection):</b> Accumulates from beast strikes. At 100%, it triggers a permanent <b>Mutation</b>. Cleanse infection with antidotes or by visiting the paramedic.</div>
       </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Always return to your cell to rest before undertaking dangerous descents!</p>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Always return to your cell to rest before undertaking dangerous sorties!</p>
     `
   },
   {
-    title: "2. CHEST, INVENTORY & QUICK BELT SLOTS",
-    shortName: "2. Storage & Belt",
+    title: "2. DOSSIER, QUICK BELT & FLEA MARKET",
+    shortName: "2. Dossier & Belt",
     content: `
-      <p>Click <b>[🎒 DOSSIER / INVENTORY]</b> (Chest) in your cell to manage gear, storage, and equipment.</p>
+      <p>Click <b>[🎒 DOSSIER / INVENTORY]</b> to access your personal record, gear slots, and base stash.</p>
       
       <div class="tutorial-highlight-box">
-        <div>🛡️ <b>Equipment Slots:</b> Equip <i>Gas Masks</i> (toxin defense), <i>Armor</i> (damage reduction), <i>Weapons</i> (attack bonus), and <i>Backpacks</i> (expands storage from 12 to 24+ slots).</div>
-        <div style="margin-top:6px;">⚠️ <b>Level Requirements (Red Outline):</b> Items above your current level are marked with a <span style="color:var(--term-danger); font-weight:bold;">red outline</span>. You can equip them once you level up in combat.</div>
-        <div style="margin-top:6px;">⚡ <b>Quick Belt:</b> Click "To Belt" on any medkit, ration, or combat utility (stunner, throwing knife). Belt items can be activated <b>instantly during combat</b>!</div>
+        <div>🛡️ <b>Equipment Slots:</b> Equip <i>Gas Masks</i> (toxin defense), <i>Armor</i> (damage reduction), <i>Weapons</i> (attack strength), and <i>Backpacks</i> (expands storage up to 24+ slots).</div>
+        <div style="margin-top:6px;">⚡ <b>Quick Belt:</b> Click "To Belt" on any medkit, food, or stunner. Belt items can be activated <b>instantly during battle</b> with a single click!</div>
+        <div style="margin-top:6px;">🏷️ <b>Player Flea Market:</b> Any non-quest item in your pack can be listed on the public Flea Market (button «FLEA MARKET») for your chosen price in talons!</div>
+        <div style="margin-top:6px;">⚠️ <b>Level Requirements:</b> Items above your level are outlined in red — level up in combat to equip them.</div>
       </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Keep an eye on storage capacity — when full, new loot cannot be stored!</p>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Keep at least one military medkit on your belt for emergencies in combat.</p>
     `
   },
   {
-    title: "3. WORKBENCH, SYNTHESIS & WEAPON MODS",
-    shortName: "3. Bench & Craft",
+    title: "3. FLOOR MAP & AIRLOCK HACKING",
+    shortName: "3. Map & Hacking",
     content: `
-      <p>Click <b>[⚒️ WORKBENCH]</b> to access crafting recipes and elemental weapon modifications.</p>
+      <p>Click <b>[🗺️ FLOOR MAP]</b> in your cell to view the sector grid ranging from <b>A0</b> to <b>E4</b>.</p>
       
       <div class="tutorial-highlight-box">
-        <div>🔧 <b>Item Assembly:</b> Craft <i>Military Medkits</i> (+60 HP), <i>Heavy Valves</i>, <i>Stunners</i>, and <i>Harvesters</i> from scrap metal, chemicals, and wires found in the fog.</div>
-        <div style="margin-top:6px;">✨ <b>Elemental Weapon Synthesis:</b> Place an unmodded weapon and a reagent into the workbench synthesis slots:</div>
-        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+        <div>🚪 <b>Locked Airlocks:</b> Many sectors are sealed by Samosbor lockdown protocols. Solve mini-games (frequency tuning, phase relays, wire bridges) or use keycards, boltcutters, and VOKhR tokens.</div>
+        <div style="margin-top:6px;">📖 <b>Notebook & Passwords:</b> All discovered commander notes, passwords, and lore entries are automatically logged in your <b>[📓 NOTEBOOK]</b>.</div>
+        <div style="margin-top:6px;">🎯 <b>Key Objective:</b> Sector <b>E4</b> is highlighted in blue on the map — that is where the freight elevator to the lower levels is located!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Tip: Explore dead ends — they often hide rich supply caches and blueprints.</p>
+    `
+  },
+  {
+    title: "4. BLOCK INHABITANTS (20 STORY NPCS)",
+    shortName: "4. Story NPCs",
+    content: `
+      <p>Surviving across the sectors are <b>20 unique interactive NPCs</b>. Encounter them spontaneously in the fog or at designated stations:</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>👩‍⚕️ <b>Medic Klavdiya (Medbay):</b> Bandages wounds (+100 HP) and sells field medical kits and antidotes.</div>
+        <div style="margin-top:5px;">🍲 <b>Aunt Valya (Cafeteria):</b> Serves hot nutrient stew (+50 HP) and trades raw slime for protein bricks.</div>
+        <div style="margin-top:5px;">🪠 <b>Captain Mikhalych (Sewer):</b> Welds armor plates (+2 Armor), purifies water, and sells heavy pipe wrenches.</div>
+        <div style="margin-top:5px;">🎯 <b>Sniper Anna 'Owl' (Watchtower):</b> Teaches precision shooting (+4 damage) and sells PSO-1 rifle optics.</div>
+        <div style="margin-top:5px;">🔥 <b>Flamethrower Boris (Stairwell):</b> Flames your weapon for bonus fire damage (+3 dmg) and crafts heat shields.</div>
+        <div style="margin-top:5px;">📻 <b>Radio Mayak & 🧗 Guide Erofey:</b> Reveal bypass tunnels around monsters and secret cache coordinates.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Look out for colored dialogue buttons at the top of sector exploration screens!</p>
+    `
+  },
+  {
+    title: "5. FOG EXPEDITIONS & AIMED COMBAT",
+    shortName: "5. Fog & Combat",
+    content: `
+      <p>The red button <b>[EXPEDITION INTO FOG]</b> sends you searching for caches, where you will face mutated horrors.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🎯 <b>Aimed Critical Strike:</b> Tap the attack button when the slider hits the <span style="color:var(--term-green); font-weight:bold;">green target zone</span> to land a guaranteed <b>DOUBLE CRITICAL STRIKE (x2)</b>!</div>
+        <div style="margin-top:6px;">🛡️ <b>Dodge:</b> 75% chance to evade an incoming enemy blow completely. A successful dodge guarantees a critical hit on your next attack.</div>
+        <div style="margin-top:6px;">⏱️ <b>Cooldowns:</b> Attack has a 1.2s cooldown, dodge has 2.5s. Balance defense and offense carefully!</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Watch your gas mask gauge — entering deep fog without a filter is fatal!</p>
+    `
+  },
+  {
+    title: "6. CO-OP RAIDS (UP TO 4 PLAYERS)",
+    shortName: "6. Co-op Raids",
+    content: `
+      <p>The <b>[⚔️ CO-OP SORTIE]</b> button in your cell opens the tactical strike squad headquarters.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>👥 <b>Strike Squad:</b> Create your own squad or join an open lobby (up to 4 fighters). Solo sorties are also supported!</div>
+        <div style="margin-top:6px;">🌊 <b>11 Waves & Anomaly Boss:</b> Repel 10 waves of mutants. On wave 11, a deadly Rare Blue or Epic Violet Boss awakens with high-grade loot.</div>
+        <div style="margin-top:6px;">💉 <b>Field Medicine:</b> Downed teammates can be revived right in the heat of battle with a military medkit from your backpack!</div>
+        <div style="margin-top:6px;">🚪 <b>Tactical Intermission:</b> After each cleared wave, vote to proceed to the next wave or safely evacuate back to base with all trophies.</div>
+      </div>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Squad cooperation allows much faster harvesting of high-tier blueprints and talons!</p>
+    `
+  },
+  {
+    title: "7. WORKBENCH, SYNTHESIS & WEAPON MODS",
+    shortName: "7. Bench & Craft",
+    content: `
+      <p>Click <b>[⚒️ WORKBENCH]</b> in your cell to craft advanced supplies and infuse weapons with elemental power.</p>
+      
+      <div class="tutorial-highlight-box">
+        <div>🔧 <b>Item Assembly:</b> Assemble medkits, body armor, filters, shockers, and harvester robots from scrap metal and electronics.</div>
+        <div style="margin-top:6px;">✨ <b>Elemental Weapon Synthesis:</b> Place a base weapon and a reagent into the synthesis bench:</div>
+        <div style="padding-left:14px; margin-top:5px; line-height: 1.5;">
           🔥 <b>+ Chemicals:</b> FIRE Element (<b>+15% damage</b>)<br>
           ⚡ <b>+ Electronics:</b> SHOCK Element (<b>+10% damage</b>)<br>
           🩸 <b>+ Scrap Metal:</b> BLEEDING (<b>+5% damage</b>)
         </div>
       </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Elemental damage is critical for bringing down thick-skinned floor bosses!</p>
+      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Elemental damage is crucial for penetrating thick-armored floor bosses!</p>
     `
   },
   {
-    title: "4. SLIME HARVESTING & HARVESTER ROBOT",
-    shortName: "4. Harvest & Bot",
+    title: "8. MAIN GOAL: ELEVATOR IN E4 & THE ABYSS",
+    shortName: "8. Elevator E4",
     content: `
-      <p>Surviving in the Gigakhrushchyovka demands food and resources. Collect them manually or automate the process:</p>
+      <p>Your ultimate mission is to break through the blocks and descend all the way to Floor 30 (Chernobog's Lair).</p>
       
       <div class="tutorial-highlight-box">
-        <div>💧 <b>Harvest Slime:</b> Clicking <b>[HARVEST SLIME]</b> in any sector scrapes nutritious biomass from the walls. Slime restores hunger and is used in medicine crafting.</div>
-        <div style="margin-top:6px;">⛏️ <b>Harvesting Tools:</b> Carrying a <i>Scraper</i> (+1), <i>Pneumo Pump</i> (+3), or <i>Extractor</i> (+7) multiplies harvest yield per click.</div>
-        <div style="margin-top:6px;">🤖 <b>Harvester Robot:</b> Craft a bot on the workbench or purchase one from a vendor. Enter any sector and click <b>[INSTALL]</b>. It passively gathers supply talons (up to 250) even while you are offline!</div>
-      </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Remember to check on your harvester robots regularly to collect gathered talons!</p>
-    `
-  },
-  {
-    title: "5. SECTOR MAP & AIRLOCK HACKING",
-    shortName: "5. Map & Hacking",
-    content: `
-      <p>Click <b>[🗺️ FLOOR MAP]</b> in your cell to view the sector grid ranging from <b>A0</b> to <b>E4</b>.</p>
-      
-      <div class="tutorial-highlight-box">
-        <div>🚪 <b>Locked Airlocks:</b> Many passages are sealed by Samosbor emergency locks. Solve the cipher minigame (keypad codes, relay phases, frequency tuning) or apply a quest key (bolt cutters, keycards).</div>
-        <div style="margin-top:6px;">📖 <b>Diary & Hints:</b> Click <b>[📓 DIARY]</b> to view all collected notes from guards, liquidator manuals, and blast door passwords.</div>
-        <div style="margin-top:6px;">📡 <b>Sector Radar:</b> Detect other inmates in your sector — engage in PvP duels, provide first aid, or team up for co-op raids!</div>
-      </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Sector E4 is highlighted in blue — it is the primary objective of each floor.</p>
-    `
-  },
-  {
-    title: "6. FORAY INTO FOG & COMBAT SYSTEM",
-    shortName: "6. Fog & Combat",
-    content: `
-      <p>Clicking the red <b>[EXPEDITION INTO FOG]</b> button sends you into the mist to find caches and fight Samosbor abominations.</p>
-      
-      <div class="tutorial-highlight-box">
-        <div>🎯 <b>Aimed Attack (Crit):</b> Start the aim bar and hit the attack button right as the cursor enters the <span style="color:var(--term-green); font-weight:bold;">green sweet spot</span> to land a guaranteed <b>DOUBLE CRITICAL STRIKE</b>! Miss, and the enemy counters.</div>
-        <div style="margin-top:6px;">💨 <b>Dodge:</b> 75% chance to evade an incoming enemy blow. Successfully dodging guarantees your next strike will be critical.</div>
-        <div style="margin-top:6px;">💊 <b>Quick Belt Slots:</b> In battle, tap your belt slots next to your character avatar to instantly heal or shock your foe.</div>
-      </div>
-      <p style="color:var(--term-warn); font-size:12px; margin-bottom:0;">💡 Monitor your filter gauge closely — without it, the fog is lethal!</p>
-    `
-  },
-  {
-    title: "7. PRIMARY OBJECTIVE: E4 LIFT & FLOOR BOSS",
-    shortName: "7. E4 Lift & Boss",
-    content: `
-      <p>Your ultimate goal is to navigate through all floors of the Gigakhrushchyovka down to floor 30 (Chernobog).</p>
-      
-      <div class="tutorial-highlight-box">
-        <div>👴 <b>Blind Lift Operator (Ded Makar):</b> Head to sector <b>E4</b> and talk to old Ded Makar. He is waiting for someone to fix the elevator with 3 key parts:</div>
-        <div style="padding-left:12px; margin-top:5px; line-height: 1.5;">
+        <div>👴 <b>Blind Lift Operator (Ded Makar):</b> Reach sector <b>E4</b> and talk to Makar. To repair the elevator, find 3 parts on this floor:</div>
+        <div style="padding-left:14px; margin-top:5px; line-height: 1.5;">
           🧰 <b>Lift Repair Kit</b><br>
           🎛️ <b>Button Block</b><br>
-          🔌 <b>Generator Cable</b>
+          🔌 <b>Generator Wire</b>
         </div>
-        <div style="margin-top:6px;">Search fog caches across the current floor and bring the parts back to Makar.</div>
-        <div style="margin-top:6px;">👹 <b>Floor Raid Boss:</b> Activating the elevator awakens the giant floor guardian. Slay it, then descend to the next floor!</div>
+        <div style="margin-top:6px;">Deliver the parts to Makar in dialogue — the cables will tighten, enabling descent.</div>
+        <div style="margin-top:6px;">👹 <b>Boss Battle:</b> Activating the elevator provokes the floor guardian. Defeat the monster and ride the lift downward!</div>
       </div>
-      <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">You are now briefed for duty and survival, Inmate. The Party is watching!</p>
+      <p style="color:var(--term-green); font-weight:bold; margin-bottom:0;">You are ready for duty, Prisoner. The Party counts on your resilience!</p>
     `
   }
 ];
@@ -4620,14 +4797,13 @@ let onboardingStep = 0;
 let onboardingActive = false;
 
 function checkAutoTutorial() {
-  const done = localStorage.getItem('samosbor_onboarding_done');
+  const done = localStorage.getItem('samosbor_onboarding_v2_done');
   if (!done) {
-    setTimeout(startInteractiveOnboarding, 600);
+    setTimeout(startInteractiveOnboarding, 500);
   }
 }
 
 function startInteractiveOnboarding() {
-  if (onboardingActive) return;
   onboardingActive = true;
   onboardingStep = 1;
   renderOnboardingStep();
@@ -4635,7 +4811,7 @@ function startInteractiveOnboarding() {
 
 function finishOnboarding() {
   onboardingActive = false;
-  localStorage.setItem('samosbor_onboarding_done', 'true');
+  localStorage.setItem('samosbor_onboarding_v2_done', 'true');
   localStorage.setItem('samosbor_tutorial_completed', 'true');
   const banner = document.getElementById('onboarding-guide-banner');
   if (banner) banner.remove();
@@ -4664,56 +4840,67 @@ function renderOnboardingStep() {
   const isEn = (currentLang === 'en');
   if (onboardingStep === 1) {
     let mapBtn = document.getElementById('open-map-btn');
-    let farmBtn = document.getElementById('btn-farm-slime');
-    let target = null;
-    let text = '';
-    if (farmBtn && farmBtn.offsetParent !== null) {
-      target = farmBtn;
-      text = isEn 
-        ? '👉 <b>STEP 1/3:</b> Tap <b>[HARVEST SLIME]</b> to collect initial biomass from walls for talons!'
-        : '👉 <b>ШАГ 1/3:</b> Нажмите <b>[ФАРМ СЛИЗИ]</b>, чтобы собрать со стен биомассу для талонов и выживания!';
-    } else if (mapBtn && mapBtn.offsetParent !== null) {
-      target = mapBtn;
-      text = isEn
-        ? '👉 <b>STEP 1/3:</b> Tap <b>[ENTER BLOCK]</b> to leave your living cell and step into sector corridors!'
-        : '👉 <b>ШАГ 1/3:</b> Нажмите <b>[ВЫХОД В БЛОК]</b>, чтобы выйти из жилячейки в коридоры этажа!';
-    } else {
-      text = isEn
-        ? '👉 <b>STEP 1/3:</b> Prepare for duty. Move into the sector to begin survival operations!'
-        : '👉 <b>ШАГ 1/3:</b> Выходите в сектор блока, чтобы приступить к выживанию!';
-    }
-    if (target) target.classList.add('onboarding-target-pulse');
-
+    if (mapBtn) mapBtn.classList.add('onboarding-target-pulse');
     banner.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'INTERACTIVE TRAINING' : 'ОБУЧЕНИЕ ВЫЖИВАНИЮ'}</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 1/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 1/5)'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
-      <div style="line-height:1.4;">${text}</div>
+      <div style="line-height:1.45;">${isEn 
+        ? '👉 <b>Welcome to Gigakhrushch!</b> You are safe in your living cell. Tap <b>[FLOOR MAP]</b> to step into sector corridors!' 
+        : '👉 <b>Добро пожаловать в Гигахрущ!</b> Вы в безопасности в жилячейке. Нажмите <b>[КАРТА ЭТАЖА]</b>, чтобы выйти в коридоры блока!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:flex-end; gap:8px;">
+        <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '📖 Full Guide Book' : '📖 Полный справочник'}</button>
+      </div>
     `;
   } else if (onboardingStep === 2) {
+    let farmBtn = document.getElementById('btn-farm-slime');
+    if (farmBtn) farmBtn.classList.add('onboarding-target-pulse');
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 2/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 2/5)'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.45;">${isEn 
+        ? '👉 <b>Biomass Harvesting:</b> Tap <b>[HARVEST SLIME]</b> to scrape nutritious slime from the walls for food and talons!' 
+        : '👉 <b>Сбор биомассы:</b> Нажмите <b>[ФАРМ СЛИЗИ]</b>, чтобы собрать со стен питательную слизь для еды и талонов!'}</div>
+    `;
+  } else if (onboardingStep === 3) {
     let expBtn = document.getElementById('btn-explore-fog');
     if (expBtn) expBtn.classList.add('onboarding-target-pulse');
     banner.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'INTERACTIVE TRAINING' : 'ОБУЧЕНИЕ ВЫЖИВАНИЮ'}</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 3/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 3/5)'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
-      <div style="line-height:1.4;">${isEn 
-        ? '👉 <b>STEP 2/3:</b> Great! Now tap <b>[EXPEDITION INTO FOG]</b> to explore the sector and hunt for caches!' 
-        : '👉 <b>ШАГ 2/3:</b> Отлично! Теперь нажмите <b>[ВЫЛАЗКА В ТУМАН]</b> для поиска припасов и деталей лифта!'}</div>
+      <div style="line-height:1.45;">${isEn 
+        ? '👉 <b>Expedition:</b> Now tap <b>[EXPEDITION INTO FOG]</b>! Look for supply caches, repair parts, and friendly block NPCs!' 
+        : '👉 <b>Вылазка:</b> Теперь нажмите <b>[ВЫЛАЗКА В ТУМАН]</b>! Ищите тайники, запчасти для лифта и дружественных жителей блока!'}</div>
     `;
-  } else if (onboardingStep === 3) {
+  } else if (onboardingStep === 4) {
     banner.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'INTERACTIVE TRAINING' : 'ОБУЧЕНИЕ ВЫЖИВАНИЮ'}</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 4/5)' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 4/5)'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
-      <div style="line-height:1.4;">${isEn
-        ? '🎯 <b>STEP 3/3:</b> In combat, hit <b>[AIMED ATTACK]</b> inside the green zone for <b>DOUBLE CRIT</b>! Your main floor objective: sector <b>E4</b> with the elevator. Watch your filter!'
-        : '🎯 <b>ШАГ 3/3:</b> В бою нажимайте <b>[ПРИЦЕЛ]</b> в зеленой зоне для <b>КРИТИЧЕСКОГО УРОНА (x2)</b>! Ваша главная цель на этаже — сектор <b>E4</b> с лифтом на нижние этажи. Следите за фильтром!'}</div>
-      <div style="margin-top:6px; text-align:right;">
-        <button onclick="finishOnboarding()" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 12px; cursor:pointer; font-size:12px;">${isEn ? 'GOT IT, TO BATTLE! ✓' : 'ПОНЯТНО, В БОЙ! ✓'}</button>
+      <div style="line-height:1.45;">${isEn 
+        ? '🎯 <b>Combat Masterclass:</b> In battle, hit <b>[AIMED ATTACK]</b> inside the <span style="color:#00ff66; font-weight:bold;">green zone</span> for guaranteed <b>DOUBLE CRIT (x2)</b>! Use belt medkits and dodge incoming attacks.' 
+        : '🎯 <b>Тактика боя:</b> В бою нажимайте атаку в <span style="color:#00ff66; font-weight:bold;">зелёной зоне</span> прицела для <b>ДВОЙНОГО КРИТИЧЕСКОГО УРОНА (x2)</b>! Используйте аптечки с пояса и уклоняйтесь от ударов.'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:flex-end;">
+        <button onclick="advanceOnboarding(4)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:12px;">${isEn ? 'CONTINUE ▶' : 'ПРОДОЛЖИТЬ ▶'}</button>
+      </div>
+    `;
+  } else if (onboardingStep === 5) {
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING COMPLETE!' : 'КУРС МОЛОДОГО БОЙЦА ЗАВЕРШЕН!'}</span>
+      </div>
+      <div style="line-height:1.45;">${isEn 
+        ? '🏆 <b>Your Primary Goals:</b><br>• Reach Sector <b>E4</b> and repair the freight elevator with Ded Makar (requires 3 parts: Repair Kit, Buttons, Wire).<br>• Team up in <b>[CO-OP SORTIES]</b> to defeat 11 monster waves and epic bosses!<br>• Sell rare loot on the <b>Flea Market</b> and talk to all 20 block NPCs.' 
+        : '🏆 <b>Ваши главные цели:</b><br>• Добраться до сектора <b>E4</b> и починить грузовой лифт у Деда Макара (нужны 3 детали: Ремкомплект, Кнопки, Провод).<br>• Собирайте отряды в <b>[СОВМЕСТНЫЕ ВЫЛАЗКИ]</b> для битвы с 11 волнами и эпическими боссами!<br>• Торгуйте на <b>Барахолке</b> и общайтесь с 20 жителями блока в комнатах.'}</div>
+      <div style="margin-top:8px; display:flex; justify-content:flex-end; gap:8px;">
+        <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:4px 12px; font-size:12px; cursor:pointer;">${isEn ? '📖 Open Full Guide' : '📖 Открыть Полный Гайд'}</button>
+        <button onclick="finishOnboarding()" style="background:var(--term-main); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:12px;">${isEn ? 'I AM READY, TO SURVIVAL! ✓' : 'Я ГОТОВ, В БОЙ! ✓'}</button>
       </div>
     `;
   }
@@ -5498,6 +5685,40 @@ function renderChatHistory(h) {
   b.scrollTop = b.scrollHeight;
 }
 
+let unreadChatMessagesCount = 0;
+
+function showChatNotificationToast(m) {
+  const container = document.getElementById('chat-toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'chat-toast-msg';
+  toast.innerHTML = `<div style="font-size:10px; color:#33d4ff; font-weight:bold; margin-bottom:2px;">💬 ОБЩИЙ ЧАТ • ${m.user}</div><div style="color:#eee; font-size:11px;">${m.text}</div>`;
+  toast.onclick = () => {
+    document.getElementById('chat-modal').style.display = 'flex';
+    clearChatNotifications();
+    toast.remove();
+  };
+  container.appendChild(toast);
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-10px)';
+      setTimeout(() => toast.remove(), 400);
+    }
+  }, 4000);
+}
+
+function clearChatNotifications() {
+  unreadChatMessagesCount = 0;
+  let btn = document.getElementById('open-chat-btn');
+  if (btn) {
+    btn.classList.remove('chat-btn-blinking');
+    let isEn = (currentLang === 'en');
+    btn.innerHTML = isEn ? '💬 GENERAL CHAT' : '💬 ОБЩИЙ ЧАТ';
+  }
+}
+
 function appendChatMessage(m, autoScroll = true) {
   const b = document.getElementById('chat-messages');
   if (!b) return;
@@ -5515,6 +5736,25 @@ function appendChatMessage(m, autoScroll = true) {
   div.innerHTML = `<span style="color:#666; font-size:11px;">[${m.time || '12:00'}]</span> ${userBadge}${userTitle}<span style="color:${nameColor}; font-weight:bold; cursor:pointer;" onclick="mentionUser('${m.user}')">${m.user}:</span> <span style="color:#eee;">${m.text}</span>`;
   b.appendChild(div);
   if (autoScroll) b.scrollTop = b.scrollHeight;
+
+  // Оповещение и мигание кнопки ОБЩИЙ ЧАТ, если окно чата закрыто
+  if (autoScroll && m) {
+    let chatM = document.getElementById('chat-modal');
+    let isChatOpen = (chatM && chatM.style.display === 'flex');
+    let isMe = (clientMe && m.user === clientMe.username);
+    if (!isChatOpen && !isMe) {
+      unreadChatMessagesCount++;
+      let btn = document.getElementById('open-chat-btn');
+      if (btn) {
+        btn.classList.add('chat-btn-blinking');
+        let isEn = (currentLang === 'en');
+        let baseTxt = isEn ? '💬 GENERAL CHAT' : '💬 ОБЩИЙ ЧАТ';
+        btn.innerHTML = `${baseTxt} <span style="background:#ff3333; color:#fff; font-size:10px; padding:1px 6px; border-radius:8px; font-weight:bold; margin-left:4px;">${unreadChatMessagesCount}</span>`;
+      }
+      showChatNotificationToast(m);
+      playSound('buy');
+    }
+  }
 }
 
 function mentionUser(nick) {
@@ -6123,7 +6363,12 @@ function renderMyRaidSquad(squad) {
 }
 
 socket.on('raidSquadsList', (squads) => renderRaidSquadsList(squads));
-socket.on('myRaidSquad', (sq) => renderMyRaidSquad(sq));
+socket.on('myRaidSquad', (sq) => {
+  renderMyRaidSquad(sq);
+  if (sq && sq.members && document.getElementById('raid-combat-modal').style.display === 'flex') {
+    renderRaidSquadFigures(sq.members);
+  }
+});
 
 socket.on('raidSortieStarted', (data) => {
   document.getElementById('raid-modal').style.display = 'none';
@@ -6142,8 +6387,9 @@ socket.on('raidSortieStarted', (data) => {
   }
   currentRaidCombat = data;
   updateRaidWaveDots(data.currentWave, data.maxWaves);
-  if (data.members) {
-    renderRaidSquadFigures(data.members);
+  let raidMembers = (data && data.members) || (data && data.squad && data.squad.members) || (myActiveRaidSquad && myActiveRaidSquad.members);
+  if (raidMembers) {
+    renderRaidSquadFigures(raidMembers);
   }
   appendRaidCombatLog(`[ВЫЛАЗКА НАЧАТА] Штурмовой отряд вошел в опасный сектор Самосбора! Волна 1/11!`);
 });
@@ -6432,6 +6678,7 @@ function renderIntermission(data) {
   const overlay = document.getElementById('rc-intermission-overlay');
   if (!overlay) return;
   overlay.style.display = 'flex';
+  const resOverlay = document.getElementById('rc-result-overlay'); if (resOverlay) resOverlay.style.display = 'none';
   
   const isEn = (currentLang === 'en');
   let clearedWaveEl = document.getElementById('rc-int-cleared-wave');
@@ -6574,6 +6821,10 @@ socket.on('raidWaveStarted', (data) => {
     bEvac.style.color = '#ffcccc';
     bEvac.style.cursor = 'pointer';
     bEvac.style.pointerEvents = 'auto';
+  }
+  let raidMembers = (data && data.members) || (data && data.squad && data.squad.members) || (myActiveRaidSquad && myActiveRaidSquad.members);
+  if (raidMembers) {
+    renderRaidSquadFigures(raidMembers);
   }
   appendRaidCombatLog(`[ВОЛНА ${data.currentWave}/11 НАЧАЛАСЬ] В сектор вошел ${data.enemy ? data.enemy.name : 'враг'}!`);
 });
@@ -6762,15 +7013,49 @@ socket.on('transition', (data) => {
 socket.on('vfxFarm', (amt) => { const c = document.getElementById('hub-stats-panel'); if(!c) return; const s = document.createElement('div'); s.className = 'slime-vfx'; s.innerText = `+${amt||1} ${currentLang === 'en' ? 'SLIME' : 'СЛИЗЬ'}`; s.style.left = (Math.random()*80+10)+'%'; c.appendChild(s); setTimeout(()=>s.remove(),1000); });
 socket.on('vfxHeal', () => applyVFX('player-vfx-container', 'vfx-heal'));
 
+let currentCombatEnemyMaxHp = 100;
+let currentCombatEnemyName = 'ВРАГ';
+
 socket.on('combatStart', (data) => {
   changeAmbient('combat');
   let cl = document.getElementById('combat-log');
   let eName = data.enemy.isPlayer ? data.enemy.name : getDisplayMonsterName(data.enemy.name);
+  currentCombatEnemyName = eName;
+  currentCombatEnemyMaxHp = data.enemy.maxHp || data.enemy.hp || 100;
   if(cl) cl.innerHTML = (currentLang === 'en' ? `> ENCOUNTER: ${eName}!\n` : `> ВСТРЕЧА: ${eName}!\n`);
   playSound('roar');
   document.getElementById('explore-controls').style.display = 'none';
   document.getElementById('combat-controls').style.display = 'flex';
   let eba = document.getElementById('enemy-battle-avatar'); if (eba) eba.style.display = 'flex';
+
+  // ЭЛТ-шкала над головой врага
+  let gaugeEl = document.getElementById('enemy-head-crt-gauge');
+  if (gaugeEl) {
+    gaugeEl.style.display = 'block';
+    let nEl = document.getElementById('ui-enemy-crt-name');
+    let bEl = document.getElementById('ui-enemy-crt-badge');
+    let tEl = document.getElementById('ui-enemy-crt-hp-text');
+    let barEl = document.getElementById('ui-enemy-crt-hp-bar');
+    if (nEl) nEl.innerText = eName;
+    let badgeTxt = 'ОБЫЧНЫЙ';
+    if (data.enemy.isBoss || (data.enemy.name && data.enemy.name.includes('БОСС'))) badgeTxt = 'БОСС';
+    else if (data.enemy.tier === 'rare_blue') badgeTxt = 'РЕДКИЙ';
+    else if (data.enemy.tier === 'epic_purple') badgeTxt = 'ЭПИЧЕСКИЙ';
+    else if (data.enemy.isPlayer) badgeTxt = 'ДУЭЛЬ';
+    if (bEl) bEl.innerText = badgeTxt;
+    if (tEl) tEl.innerText = `${data.enemy.hp} / ${currentCombatEnemyMaxHp} HP`;
+    if (barEl) {
+      barEl.style.width = '100%';
+      if (badgeTxt === 'БОСС') {
+        barEl.style.background = 'linear-gradient(90deg, #ff1100 0%, #ff8800 60%, #ffd700 100%)';
+        barEl.style.boxShadow = '0 0 12px rgba(255, 60, 0, 0.8)';
+      } else {
+        barEl.style.background = 'linear-gradient(90deg, #ff2244 0%, #ffaa00 45%, #00ff66 100%)';
+        barEl.style.boxShadow = '0 0 8px rgba(0, 255, 102, 0.7)';
+      }
+    }
+  }
+
   let es = document.getElementById('enemy-sprite');
   let ec = document.getElementById('enemy-clothes');
   let em = document.getElementById('enemy-mask');
@@ -6829,7 +7114,17 @@ socket.on('combatTick', (data) => {
     cl.innerHTML += trLogs.join('\n') + '\n';
     cl.scrollTop = cl.scrollHeight;
   }
-  if (data.enemyHp !== undefined) { let e = document.getElementById('ui-enemy-hp'); if(e) e.innerText = data.enemyHp; }
+  if (data.enemyHp !== undefined) {
+    let e = document.getElementById('ui-enemy-hp');
+    if(e) e.innerText = data.enemyHp;
+    let curMax = data.enemyMaxHp || currentCombatEnemyMaxHp || 100;
+    currentCombatEnemyMaxHp = curMax;
+    let pct = Math.max(0, Math.min(100, Math.round((data.enemyHp / curMax) * 100)));
+    let tEl = document.getElementById('ui-enemy-crt-hp-text');
+    let barEl = document.getElementById('ui-enemy-crt-hp-bar');
+    if (tEl) tEl.innerText = `${data.enemyHp} / ${curMax} HP`;
+    if (barEl) barEl.style.width = pct + '%';
+  }
   if (data.sounds) data.sounds.forEach(s => playSound(s));
   if (data.vfx) data.vfx.forEach(v => {
     if (v === 'enemy_hit') applyVFX('enemy-vfx-container', 'vfx-slash');
@@ -6838,6 +7133,13 @@ socket.on('combatTick', (data) => {
     if (v === 'player_dodge') { let p = document.getElementById('player-battle-avatar'); if(p) { p.classList.add('avatar-shake'); setTimeout(()=>p.classList.remove('avatar-shake'),300); } }
     if (v === 'heal') applyVFX('player-vfx-container', 'vfx-heal');
     if (v === 'explosion') applyVFX('enemy-vfx-container', 'vfx-explosion');
+    if (v === 'boss_special' || v === 'enemy_special') {
+      applyVFX('player-vfx-container', 'vfx-crit');
+      let p = document.getElementById('player-battle-avatar');
+      if (p) { p.classList.add('avatar-shake'); setTimeout(() => p.classList.remove('avatar-shake'), 450); }
+      let cs = document.getElementById('combat-screen');
+      if (cs) { cs.classList.add('crit-screen-flash'); setTimeout(() => cs.classList.remove('crit-screen-flash'), 400); }
+    }
   });
 });
 
@@ -6853,6 +7155,8 @@ socket.on('combatEnd', (data) => {
   document.getElementById('combat-controls').style.display = 'none';
   document.getElementById('explore-controls').style.display = 'flex';
   document.getElementById('enemy-hp-bar').style.display = 'none';
+  let gaugeEl = document.getElementById('enemy-head-crt-gauge');
+  if (gaugeEl) gaugeEl.style.display = 'none';
   isAiming = false; clearInterval(aimInterval);
   document.getElementById('aim-bar-container').style.display = 'none';
   document.getElementById('btn-attack').innerText = (currentLang === 'en' ? 'AIMED ATTACK' : 'ПРИЦЕЛЬНАЯ АТАКА');
@@ -8045,22 +8349,12 @@ function updateUI(me, sectorPlayers) {
   if (sellC) sellC.innerHTML = '';
   if (chestC) chestC.innerHTML = '';
 
-  let wSel = document.getElementById('mod-weapon-select');
-  let mSel = document.getElementById('mod-mat-select');
-  let curWVal = wSel ? wSel.value : '';
-  let curMVal = mSel ? mSel.value : '';
-  if(wSel) wSel.innerHTML = `<option value="">${isEn ? '-- WEAPON --' : '-- ВЫБЕРИТЕ ОРУЖИЕ --'}</option>`;
-  if(mSel) mSel.innerHTML = `<option value="">${isEn ? '-- MATERIAL --' : '-- ВЫБЕРИТЕ СТИХИЮ / МАТЕРИАЛ --'}</option>`;
-
-  if (me.inventory) {
+  updateWorkbenchDropdowns();
+  if (false && me.inventory) {
     me.inventory.forEach((itemId, index) => {
       const item = GAME_ITEMS[itemId];
       if (!item) return;
       let dName = getItemDisplayName(item, itemId);
-      if (item.type === 'weapon' && wSel && !item.isFire && !item.isElectro && !item.isBleed)
-        wSel.innerHTML += `<option value="${index}">${dName}</option>`;
-      if (item.type === 'material' && mSel && (itemId === 'mat_chem' || itemId === 'mat_electro' || itemId === 'mat_scrap'))
-        mSel.innerHTML += `<option value="${index}">${dName}</option>`;
 
       const iconName = item.iconId || itemId;
       const iconPath = `assets/icons/${iconName}.png`;
@@ -9032,6 +9326,113 @@ function doCraftAssembly(itemId) {
   }
 }
 
+
+let currentWorkbenchMode = 'weapon';
+
+function switchWorkbenchMode(mode) {
+  currentWorkbenchMode = mode;
+  ['weapon', 'clothes', 'mask'].forEach(m => {
+    let tab = document.getElementById(`wb-tab-${m}`);
+    if (tab) tab.classList.toggle('active', m === mode);
+  });
+  updateWorkbenchDropdowns();
+  updateModPreview();
+}
+
+function updateWorkbenchDropdowns() {
+  const isEn = (currentLang === 'en');
+  let wSel = document.getElementById('mod-weapon-select');
+  let mSel = document.getElementById('mod-mat-select');
+  let headerTitle = document.getElementById('craft-mod-header-title');
+  let hint = document.getElementById('craft-mod-hint');
+  let slot1Lbl = document.getElementById('craft-slot1-lbl');
+  let slot2Lbl = document.getElementById('craft-slot2-lbl');
+  let slot3Lbl = document.getElementById('craft-slot3-lbl');
+  let btn = document.getElementById('btn-do-mod');
+
+  if (!wSel || !mSel) return;
+  const me = (typeof clientMe !== 'undefined' && clientMe) ? clientMe : null;
+  if (!me) return;
+
+  let curWVal = wSel.value;
+  let curMVal = mSel.value;
+
+  if (currentWorkbenchMode === 'weapon') {
+    if (headerTitle) headerTitle.innerText = isEn ? '= WEAPON MODIFICATION =' : '= МОДИФИКАЦИЯ ОРУЖИЯ =';
+    if (hint) hint.innerText = isEn ? 'Select weapon and elemental material to infuse.' : 'Выберите оружие и стихийный материал для наделения уроном.';
+    if (slot1Lbl) slot1Lbl.innerText = isEn ? '[ SLOT 1: BASE ]' : '[ СЛОТ 1: ОСНОВА ]';
+    if (slot2Lbl) slot2Lbl.innerText = isEn ? '[ SLOT 2: ELEMENT ]' : '[ СЛОТ 2: СТИХИЯ ]';
+    if (slot3Lbl) slot3Lbl.innerText = isEn ? '[ SLOT 3: RESULT ]' : '[ СЛОТ 3: РЕЗУЛЬТАТ ]';
+    if (btn) btn.innerText = isEn ? 'MOD WEAPON' : 'МОДИФИЦИРОВАТЬ ОРУЖИЕ';
+
+    wSel.innerHTML = `<option value="">${isEn ? '-- SELECT WEAPON --' : '-- ВЫБЕРИТЕ ОРУЖИЕ --'}</option>`;
+    mSel.innerHTML = `<option value="">${isEn ? '-- SELECT ELEMENT / MATERIAL --' : '-- ВЫБЕРИТЕ СТИХИЮ / МАТЕРИАЛ --'}</option>`;
+
+    if (me.inventory) {
+      me.inventory.forEach((itemId, idx) => {
+        let item = GAME_ITEMS[itemId];
+        if (!item) return;
+        let dName = getItemDisplayName(item, itemId);
+        if (item.type === 'weapon' && !item.isFire && !item.isElectro && !item.isBleed) {
+          wSel.innerHTML += `<option value="${idx}">${dName}</option>`;
+        }
+        if (item.type === 'material' && (itemId === 'mat_chem' || itemId === 'mat_electro' || itemId === 'mat_scrap')) {
+          mSel.innerHTML += `<option value="${idx}">${dName}</option>`;
+        }
+      });
+    }
+  } else if (currentWorkbenchMode === 'clothes') {
+    if (headerTitle) headerTitle.innerText = isEn ? '= ARMOR UPGRADE =' : '= УЛУЧШЕНИЕ БРОНИ И ОДЕЖДЫ =';
+    if (hint) hint.innerText = isEn ? 'Select clothes to upgrade and sacrifice another piece of clothing.' : 'Выберите одежду для улучшения и вторую одежду, которая пойдет на перешив.';
+    if (slot1Lbl) slot1Lbl.innerText = isEn ? '[ SLOT 1: ARMOR ]' : '[ СЛОТ 1: ОДЕЖДА ]';
+    if (slot2Lbl) slot2Lbl.innerText = isEn ? '[ SLOT 2: DONOR CLOTHES ]' : '[ СЛОТ 2: ДОНОР-ОДЕЖДА ]';
+    if (slot3Lbl) slot3Lbl.innerText = isEn ? '[ SLOT 3: UPGRADED ]' : '[ СЛОТ 3: УЛУЧШЕНИЕ ]';
+    if (btn) btn.innerText = isEn ? 'UPGRADE ARMOR' : 'УЛУЧШИТЬ ОДЕЖДУ';
+
+    wSel.innerHTML = `<option value="">${isEn ? '-- SELECT CLOTHES TO UPGRADE --' : '-- ВЫБЕРИТЕ ОДЕЖДУ ДЛЯ УЛУЧШЕНИЯ --'}</option>`;
+    mSel.innerHTML = `<option value="">${isEn ? '-- SELECT DONOR CLOTHES --' : '-- ВЫБЕРИТЕ ОДЕЖДУ-ДОНОРА --'}</option>`;
+
+    if (me.inventory) {
+      me.inventory.forEach((itemId, idx) => {
+        let item = GAME_ITEMS[itemId];
+        if (!item) return;
+        let dName = getItemDisplayName(item, itemId);
+        if (item.type === 'clothes') {
+          wSel.innerHTML += `<option value="${idx}">${dName} [Слот ${idx + 1}]</option>`;
+          mSel.innerHTML += `<option value="${idx}">${dName} [Слот ${idx + 1}]</option>`;
+        }
+      });
+    }
+  } else if (currentWorkbenchMode === 'mask') {
+    if (headerTitle) headerTitle.innerText = isEn ? '= GAS MASK UPGRADE =' : '= УЛУЧШЕНИЕ ПРОТИВОГАЗА =';
+    if (hint) hint.innerText = isEn ? 'Select a gas mask to upgrade and clothing to sacrifice for filter seals.' : 'Выберите противогаз и одежду, из которой будут изготовлены прокладки и уплотнители фильтра.';
+    if (slot1Lbl) slot1Lbl.innerText = isEn ? '[ SLOT 1: GAS MASK ]' : '[ СЛОТ 1: ПРОТИВОГАЗ ]';
+    if (slot2Lbl) slot2Lbl.innerText = isEn ? '[ SLOT 2: DONOR CLOTHES ]' : '[ СЛОТ 2: ДОНОР-ОДЕЖДА ]';
+    if (slot3Lbl) slot3Lbl.innerText = isEn ? '[ SLOT 3: UPGRADED ]' : '[ СЛОТ 3: УЛУЧШЕНИЕ ]';
+    if (btn) btn.innerText = isEn ? 'UPGRADE GAS MASK' : 'УЛУЧШИТЬ ПРОТИВОГАЗ';
+
+    wSel.innerHTML = `<option value="">${isEn ? '-- SELECT GAS MASK --' : '-- ВЫБЕРИТЕ ПРОТИВОГАЗ ДЛЯ УЛУЧШЕНИЯ --'}</option>`;
+    mSel.innerHTML = `<option value="">${isEn ? '-- SELECT DONOR CLOTHES --' : '-- ВЫБЕРИТЕ ОДЕЖДУ-ДОНОРА --'}</option>`;
+
+    if (me.inventory) {
+      me.inventory.forEach((itemId, idx) => {
+        let item = GAME_ITEMS[itemId];
+        if (!item) return;
+        let dName = getItemDisplayName(item, itemId);
+        if (item.type === 'mask') {
+          wSel.innerHTML += `<option value="${idx}">${dName} [Слот ${idx + 1}]</option>`;
+        }
+        if (item.type === 'clothes') {
+          mSel.innerHTML += `<option value="${idx}">${dName} [Слот ${idx + 1}]</option>`;
+        }
+      });
+    }
+  }
+
+  if (curWVal && wSel.querySelector(`option[value="${curWVal}"]`)) wSel.value = curWVal;
+  if (curMVal && mSel.querySelector(`option[value="${curMVal}"]`)) mSel.value = curMVal;
+}
+
 function updateModPreview() {
   const wSel = document.getElementById('mod-weapon-select');
   const mSel = document.getElementById('mod-mat-select');
@@ -9062,11 +9463,12 @@ function updateModPreview() {
     mItem = GAME_ITEMS[mId];
   }
 
-  // Слот 1: Оружие
+  // Слот 1: Основной предмет (Оружие / Одежда / Противогаз)
   if (wItem) {
     let icon = wItem.iconId || wId;
     if (imgW) { imgW.src = `assets/icons/${icon}.png`; imgW.style.display = 'block'; }
-    if (txtW) txtW.innerHTML = `<span style="color:${wItem.color || '#fff'}; font-weight:bold; font-size:11px;">${getItemDisplayName(wItem, wId)}</span><br><span class="item-stat-badge stat-dmg">⚔️ ${wItem.dmg || 0}</span>`;
+    let statText = (wItem.dmg !== undefined) ? `⚔️ ${wItem.dmg}` : `🛡️ ${wItem.def || 0}`;
+    if (txtW) txtW.innerHTML = `<span style="color:${wItem.color || '#fff'}; font-weight:bold; font-size:11px;">${getItemDisplayName(wItem, wId)}</span><br><span class="item-stat-badge stat-dmg">${statText}</span>`;
     if (slotW) slotW.style.borderColor = 'var(--term-info)';
   } else {
     if (imgW) imgW.style.display = 'none';
@@ -9074,17 +9476,21 @@ function updateModPreview() {
     if (slotW) slotW.style.borderColor = '#1a3a1a';
   }
 
-  // Слот 2: Стихия / Материал
+  // Слот 2: Стихия или одежда-донор
   if (mItem) {
     let icon = mItem.iconId || mId;
     if (imgM) { imgM.src = `assets/icons/${icon}.png`; imgM.style.display = 'block'; }
-    let elName = '';
-    if (mId === 'mat_chem') elName = '🔥 ' + (isEn ? 'Fire (+15% dmg)' : 'Огонь (+15% ур.)');
-    else if (mId === 'mat_electro') elName = '⚡ ' + (isEn ? 'Electro (+10% dmg)' : 'Электро (+10% ур.)');
-    else if (mId === 'mat_scrap') elName = '🩸 ' + (isEn ? 'Bleed (+5% dmg)' : 'Кровоток (+5% ур.)');
-    else elName = getItemDisplayName(mItem, mId);
+    let subTxt = '';
+    if (currentWorkbenchMode === 'weapon') {
+      if (mId === 'mat_chem') subTxt = '🔥 ' + (isEn ? 'Fire (+15% dmg)' : 'Огонь (+15% ур.)');
+      else if (mId === 'mat_electro') subTxt = '⚡ ' + (isEn ? 'Electro (+10% dmg)' : 'Электро (+10% ур.)');
+      else if (mId === 'mat_scrap') subTxt = '🩸 ' + (isEn ? 'Bleed (+5% dmg)' : 'Кровоток (+5% ур.)');
+      else subTxt = getItemDisplayName(mItem, mId);
+    } else {
+      subTxt = isEn ? 'Sacrifice for parts' : 'Пожертвовать на перешив';
+    }
 
-    if (txtM) txtM.innerHTML = `<span style="color:${mItem.color || '#fff'}; font-weight:bold; font-size:11px;">${getItemDisplayName(mItem, mId)}</span><br><small style="color:var(--term-warn); font-size:10px;">${elName}</small>`;
+    if (txtM) txtM.innerHTML = `<span style="color:${mItem.color || '#fff'}; font-weight:bold; font-size:11px;">${getItemDisplayName(mItem, mId)}</span><br><small style="color:var(--term-warn); font-size:10px;">${subTxt}</small>`;
     if (slotM) slotM.style.borderColor = 'var(--term-warn)';
   } else {
     if (imgM) imgM.style.display = 'none';
@@ -9092,27 +9498,53 @@ function updateModPreview() {
     if (slotM) slotM.style.borderColor = '#1a3a1a';
   }
 
-  // Слот 3: Результат синтеза
+  // Слот 3: Результат
   if (wItem && mItem) {
-    let elSuffix = '';
-    if (mId === 'mat_chem') elSuffix = '_fire';
-    else if (mId === 'mat_electro') elSuffix = '_electro';
-    else if (mId === 'mat_scrap') elSuffix = '_bleed';
-
-    let resId = wId + elSuffix;
-    let resItem = GAME_ITEMS[resId];
-    if (resItem) {
-      let icon = resItem.iconId || resId;
-      if (imgR) { imgR.src = `assets/icons/${icon}.png`; imgR.style.display = 'block'; }
-      let rBadges = getItemStatBadges(resItem);
-      if (txtR) txtR.innerHTML = `<span style="color:${resItem.color || '#ffaa00'}; font-weight:bold; font-size:11px;">${getItemDisplayName(resItem, resId)}</span>${rBadges}`;
-      if (slotR) { slotR.style.borderColor = 'var(--term-warn)'; slotR.style.boxShadow = '0 0 12px rgba(255,176,0,0.3)'; }
-      if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-    } else {
+    if ((currentWorkbenchMode === 'clothes' || currentWorkbenchMode === 'mask') && wIdx === mIdx) {
       if (imgR) imgR.style.display = 'none';
-      if (txtR) txtR.innerHTML = `<span style="color:var(--term-danger); font-size:11px;">${isEn ? 'Cannot combine' : 'Несовместимо'}</span>`;
+      if (txtR) txtR.innerHTML = `<span style="color:var(--term-danger); font-size:11px;">${isEn ? 'Cannot sacrifice same item!' : 'Нельзя жертвовать ту же вещь!'}</span>`;
       if (slotR) { slotR.style.borderColor = 'var(--term-danger)'; slotR.style.boxShadow = 'none'; }
       if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+      return;
+    }
+
+    if (currentWorkbenchMode === 'weapon') {
+      let elSuffix = '';
+      if (mId === 'mat_chem') elSuffix = '_fire';
+      else if (mId === 'mat_electro') elSuffix = '_electro';
+      else if (mId === 'mat_scrap') elSuffix = '_bleed';
+
+      let resId = wId + elSuffix;
+      let resItem = GAME_ITEMS[resId];
+      if (resItem) {
+        let icon = resItem.iconId || resId;
+        if (imgR) { imgR.src = `assets/icons/${icon}.png`; imgR.style.display = 'block'; }
+        let rBadges = getItemStatBadges(resItem);
+        if (txtR) txtR.innerHTML = `<span style="color:${resItem.color || '#ffaa00'}; font-weight:bold; font-size:11px;">${getItemDisplayName(resItem, resId)}</span>${rBadges}`;
+        if (slotR) { slotR.style.borderColor = 'var(--term-warn)'; slotR.style.boxShadow = '0 0 12px rgba(255,176,0,0.3)'; }
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+      } else {
+        if (imgR) imgR.style.display = 'none';
+        if (txtR) txtR.innerHTML = `<span style="color:var(--term-danger); font-size:11px;">${isEn ? 'Cannot combine' : 'Несовместимо'}</span>`;
+        if (slotR) { slotR.style.borderColor = 'var(--term-danger)'; slotR.style.boxShadow = 'none'; }
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+      }
+    } else {
+      // Режим улучшения одежды или противогаза
+      let icon = wItem.iconId || wId;
+      if (imgR) { imgR.src = `assets/icons/${icon}.png`; imgR.style.display = 'block'; }
+      let curRarity = wItem.rarity || 'common';
+      let nextTierName = 'UNCOMMON';
+      let tierColor = '#1fe044';
+      if (curRarity === 'common') { nextTierName = 'НЕОБЫЧНЫЙ'; tierColor = '#1fe044'; }
+      else if (curRarity === 'uncommon') { nextTierName = 'РЕДКИЙ'; tierColor = '#33d4ff'; }
+      else if (curRarity === 'rare') { nextTierName = 'ЭПИЧЕСКИЙ'; tierColor = '#bf55ec'; }
+      else { nextTierName = 'ЛЕГЕНДАРНЫЙ'; tierColor = '#ffd700'; }
+
+      let boostedDef = (wItem.def || 0) + 4;
+      if (txtR) txtR.innerHTML = `<span style="color:${tierColor}; font-weight:bold; font-size:11px;">${getItemDisplayName(wItem, wId)} [+${nextTierName}]</span><br><span class="item-stat-badge stat-def">🛡️ ${boostedDef} DEF (+4)</span>`;
+      if (slotR) { slotR.style.borderColor = tierColor; slotR.style.boxShadow = `0 0 14px ${tierColor}`; }
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
     }
   } else {
     if (imgR) imgR.style.display = 'none';
@@ -9122,43 +9554,20 @@ function updateModPreview() {
   }
 }
 
-function toggleAimAttack() {
-  const isEn = (currentLang === 'en');
-  if (!isAiming) {
-    isAiming = true;
-    document.getElementById('aim-bar-container').style.display = 'block';
-    document.getElementById('btn-attack').innerText = isEn ? 'STRIKE!' : 'УДАР!';
-    aimPos = 0; aimDir = 1;
-    aimInterval = setInterval(() => {
-      aimPos += aimDir * 5;
-      if (aimPos >= 100) { aimPos = 100; aimDir = -1; }
-      if (aimPos <= 0) { aimPos = 0; aimDir = 1; }
-      let ac = document.getElementById('aim-cursor'); if(ac) ac.style.left = aimPos + '%';
-    }, 30);
-  } else {
-    clearInterval(aimInterval); isAiming = false;
-    document.getElementById('aim-bar-container').style.display = 'none';
-    document.getElementById('btn-attack').innerText = isEn ? 'AIMED ATTACK' : 'ПРИЦЕЛЬНАЯ АТАКА';
-    if (aimPos >= 40 && aimPos <= 60) socket.emit('combatAction', 'aimed_success');
-    else socket.emit('combatAction', 'aimed_fail');
-  }
-}
-
-function applyVFX(targetId, vfxClass) {
-  const c = document.getElementById(targetId); if(!c) return;
-  const el = document.createElement('div'); el.className = vfxClass; c.appendChild(el);
-  setTimeout(() => el.remove(), 600);
-}
-
 function sendModRequest() {
   let w = document.getElementById('mod-weapon-select').value;
   let m = document.getElementById('mod-mat-select').value;
   const isEn = (currentLang === 'en');
   if (w === "" || m === "") {
-    socket.emit('terminalError', isEn ? 'SELECT WEAPON AND MATERIAL' : 'ВЫБЕРИТЕ ОРУЖИЕ И МАТЕРИАЛ');
+    socket.emit('terminalError', isEn ? 'SELECT BOTH ITEMS' : 'ВЫБЕРИТЕ ОБА ПРЕДМЕТА');
     return;
   }
-  socket.emit('modWeapon', { wIdx: parseInt(w), mIdx: parseInt(m) });
+
+  if (currentWorkbenchMode === 'weapon') {
+    socket.emit('modWeapon', { wIdx: parseInt(w), mIdx: parseInt(m) });
+  } else {
+    socket.emit('upgradeGear', { targetIdx: parseInt(w), donorIdx: parseInt(m), type: currentWorkbenchMode });
+  }
 
   let slotR = document.getElementById('craft-slot-result');
   let st = document.getElementById('craft-mod-status');
@@ -9171,7 +9580,7 @@ function sendModRequest() {
     st.style.background = 'rgba(0,255,100,0.15)';
     st.style.border = '1px solid var(--term-green)';
     st.style.color = 'var(--term-green)';
-    st.innerText = isEn ? '⚡ Weapon modified successfully!' : '⚡ Модификация оружия успешно выполнена!';
+    st.innerText = isEn ? '⚡ Operation completed successfully!' : '⚡ Операция успешно выполнена!';
     setTimeout(() => { if (st) st.style.display = 'none'; }, 2500);
   }
 }
@@ -9237,6 +9646,7 @@ if (closeCraftBtn) {
 }
 
 document.getElementById('open-chat-btn').onclick = () => { 
+  clearChatNotifications();
   document.getElementById('chat-modal').style.display = 'flex'; 
   updateActiveBackground();
   let m = document.getElementById('chat-messages'); 
@@ -9800,9 +10210,51 @@ function renderAchievementsList() {
   container.innerHTML = html;
 }
 
+
+// ===== ТАКТИЧЕСКИЙ РЕЖИМ: РАДАР-РОГАЛИК =====
+let radarRoguelikeGame = null;
+function openRadarRoguelikeModal() {
+  const modal = document.getElementById('radar-roguelike-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const canvas = document.getElementById('radar-canvas');
+  if (!radarRoguelikeGame) {
+    if (typeof RadarRoguelikeEngine !== 'undefined') {
+      radarRoguelikeGame = new RadarRoguelikeEngine();
+      radarRoguelikeGame.init(canvas, () => {
+        closeRadarRoguelikeModal();
+      });
+      radarRoguelikeGame.start();
+    }
+  } else {
+    radarRoguelikeGame.start();
+  }
+}
+
+function closeRadarRoguelikeModal() {
+  const modal = document.getElementById('radar-roguelike-modal');
+  if (modal) modal.style.display = 'none';
+  if (radarRoguelikeGame) {
+    radarRoguelikeGame.stop();
+  }
+  showScreen('hub-screen');
+  updateActiveBackground();
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.code === 'Escape') {
+    const rm = document.getElementById('radar-roguelike-modal');
+    if (rm && rm.style.display === 'flex') {
+      closeRadarRoguelikeModal();
+    }
+  }
+});
+
 window.addEventListener('DOMContentLoaded', applyLanguage);
 applyLanguage();
 </script>
 <script src="assets/samosborQuestEngine.js"></script>
+<script src="assets/spriteFactory.js"></script>
+<script src="assets/radarRoguelike.js"></script>
 </body>
 </html>
