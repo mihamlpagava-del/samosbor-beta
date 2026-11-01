@@ -262,3 +262,4 @@
 
   global.Progression = Progression;
 })(typeof window !== 'undefined' ? window : this);
+

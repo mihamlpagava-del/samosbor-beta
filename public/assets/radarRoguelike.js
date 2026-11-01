@@ -953,30 +953,39 @@
      * End of Raid: Death vs Evacuation
      */
     finishRaid(won) {
-      this.stop();
-      if (typeof stopRaidMusic === 'function') {
-        stopRaidMusic();
-      }
-
-      const earnedXP = won ? (this.player.xpEarned + 60) : Math.floor(this.player.xpEarned * 0.4);
-      const earnedTalons = won ? (this.player.talonsEarned + 100) : 0; // If dead, all loot is lost!
-
-      // Credit rewards to player account
-      if (typeof clientMe !== 'undefined' && clientMe) {
-        clientMe.xp = (clientMe.xp || 0) + earnedXP;
-        if (won) {
-          clientMe.talons = (clientMe.talons || 0) + earnedTalons;
+      try {
+        this.stop();
+        if (typeof stopRaidMusic === 'function') {
+          stopRaidMusic();
         }
-      }
 
-      // Show summary popup
-      this.showRaidSummaryModal(won, earnedTalons, earnedXP);
+        const earnedXP = won ? (this.player.xpEarned + 60) : Math.floor(this.player.xpEarned * 0.4);
+        const earnedTalons = won ? (this.player.talonsEarned + 100) : 0; // If dead, all loot is lost!
 
-      if (typeof socket !== 'undefined' && socket) {
-        socket.emit('terminalError', won
-          ? `🏆 ЭВАКУАЦИЯ УСПЕШНА! Сохранено талонов: +${earnedTalons}, получено: +${earnedXP} XP.`
-          : `☠️ ЛИКВИДАТОР ПОГИБ. Все найденные талоны потеряны. Получено опыта: +${earnedXP} XP.`
-        );
+        // Credit rewards to player account
+        if (typeof clientMe !== 'undefined' && clientMe) {
+          clientMe.xp = (clientMe.xp || 0) + earnedXP;
+          if (won) {
+            clientMe.talons = (clientMe.talons || 0) + earnedTalons;
+          }
+        }
+
+        // Show summary popup
+        this.showRaidSummaryModal(won, earnedTalons, earnedXP);
+
+        if (typeof socket !== 'undefined' && socket && socket.connected) {
+          try {
+            socket.emit('terminalError', won
+              ? `🏆 ЭВАКУАЦИЯ УСПЕШНА! Сохранено талонов: +${earnedTalons}, получено: +${earnedXP} XP.`
+              : `☠️ ЛИКВИДАТОР ПОГИБ. Все найденные талоны потеряны. Получено опыта: +${earnedXP} XP.`
+            );
+          } catch (e) {}
+        }
+      } catch (err) {
+        console.error('[RadarRoguelike] finishRaid error:', err);
+        if (typeof closeRadarRoguelikeModal === 'function') {
+          closeRadarRoguelikeModal();
+        }
       }
     }
 
@@ -986,15 +995,15 @@
         modal = document.createElement('div');
         modal.id = 'raid-summary-modal';
         modal.className = 'modal-overlay';
-        modal.style.zIndex = '100050';
-        modal.style.background = 'rgba(0, 8, 4, 0.94)';
-        modal.style.display = 'flex';
-        modal.style.justifyContent = 'center';
-        modal.style.alignItems = 'center';
         document.body.appendChild(modal);
-      } else {
-        modal.style.display = 'flex';
       }
+      modal.style.position = 'fixed';
+      modal.style.inset = '0';
+      modal.style.zIndex = '100050';
+      modal.style.background = 'rgba(0, 8, 4, 0.94)';
+      modal.style.display = 'flex';
+      modal.style.justifyContent = 'center';
+      modal.style.alignItems = 'center';
 
       const headerColor = won ? '#1fe044' : '#ff3b30';
       const title = won ? '🏆 УСПЕШНАЯ ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ!' : '☠️ ВЫЛАЗКА ПРОВАЛЕНА // ЛИКВИДАТОР ПОГИБ';
@@ -1010,16 +1019,24 @@
             <div style="color: ${won ? '#ffd700' : '#888'}; margin-bottom: 6px;">ТАЛОНЫ: ${won ? `+${talons}` : 'ПОТЕРЯНЫ (0)'}</div>
             <div style="color: #1fe044;">ОПЫТ (XP): +${xp}</div>
           </div>
-          <button id="btn-return-living-cell" onclick="document.getElementById('raid-summary-modal').style.display='none'; closeRadarRoguelikeModal();" style="width: 100%; padding: 12px; font-family: inherit; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; background: rgba(31,224,68,0.22); border: 2px solid #1fe044; color: #1fe044; cursor: pointer; box-shadow: 0 0 15px rgba(31,224,68,0.4); text-transform: uppercase;">
+          <button id="btn-return-living-cell" style="width: 100%; padding: 14px; font-family: inherit; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; background: rgba(31,224,68,0.22); border: 2px solid #1fe044; color: #1fe044; cursor: pointer; box-shadow: 0 0 15px rgba(31,224,68,0.4); text-transform: uppercase;">
             🚪 ВЕРНУТЬСЯ В ЖИЛ-ЯЧЕЙКУ
           </button>
         </div>
       `;
 
-      setTimeout(() => {
-        const btn = document.getElementById('btn-return-living-cell');
-        if (btn) btn.focus();
-      }, 50);
+      const doReturn = () => {
+        modal.style.display = 'none';
+        if (typeof closeRadarRoguelikeModal === 'function') {
+          closeRadarRoguelikeModal();
+        }
+      };
+
+      const btn = document.getElementById('btn-return-living-cell');
+      if (btn) {
+        btn.onclick = doReturn;
+        setTimeout(() => btn.focus(), 50);
+      }
     }
 
     /**
@@ -1126,6 +1143,14 @@
       const px = this.player.x;
       const py = this.player.y;
       const now = Date.now();
+
+      if (this.player.isDead) {
+        for (const e of this.entities) {
+          e.vx = 0;
+          e.vy = 0;
+        }
+        return;
+      }
 
       for (const e of this.entities) {
         if (e.damageFlashTimer > 0) e.damageFlashTimer--;
@@ -1460,6 +1485,7 @@
     }
 
     damagePlayer(amount, source = 'Удар мутанта') {
+      if (this.player.isDead || this.player.hp <= 0) return;
       if (this.player.damageFlashTimer > 0) return;
       const actualDmg = Math.max(5, amount - Math.floor(this.player.armor * 0.35));
       this.player.hp = Math.max(0, this.player.hp - actualDmg);
@@ -1479,6 +1505,14 @@
           alpha: 1.0,
           sz: 2.5
         });
+      }
+
+      if (this.player.hp <= 0 && !this.player.isDead) {
+        this.player.isDead = true;
+        this.player.deathTick = 0;
+        this.isCollapsing = false;
+        if (typeof RadarAudio !== 'undefined') RadarAudio.playPlayerHurt();
+        setTimeout(() => this.finishRaid(false), 1500);
       }
     }
 
@@ -1849,26 +1883,37 @@
       const cx = w / 2;
       const cy = h / 2;
 
-      // 1. Top-Left Status Panel
-      ctx.fillStyle = 'rgba(4, 20, 7, 0.9)';
-      ctx.fillRect(16, 16, 330, 80);
+      // 1. Top-Left Status Panel (РАДАР-ДЕТЕКТОР РУ-4)
+      const tlX = 16;
+      const tlY = 16;
+      const tlW = 340;
+      const tlH = 88;
+
+      ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';
+      ctx.fillRect(tlX, tlY, tlW, tlH);
       ctx.strokeStyle = this.samosborActive ? '#ff3b30' : '#1fe044';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(16, 16, 330, 80);
+      ctx.strokeRect(tlX, tlY, tlW, tlH);
 
       // Timer Display (5:00 countdown)
       const mins = Math.floor(this.levelTimeLeft / 60);
       const secs = Math.floor(this.levelTimeLeft % 60);
       const timeStr = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
 
+      ctx.font = 'bold 12px "Share Tech Mono", monospace';
+      ctx.fillStyle = this.samosborActive ? '#ff3b30' : '#1fe044';
+      ctx.fillText('┌─[ РАДАР-ДЕТЕКТОР РУ-4 ]─────────────────────┐', tlX + 10, tlY + 18);
+
       ctx.fillStyle = this.samosborActive ? '#ff0033' : (this.levelTimeLeft < 60 ? '#ffaa00' : '#1fe044');
-      ctx.font = 'bold 13px "Share Tech Mono", monospace';
-      ctx.fillText(this.samosborActive ? '⚠️ САМОСБОР ПРОРВАЛ БЛОК!' : `⏰ ДО САМОСБОРА: ${timeStr}`, 28, 36);
+      ctx.fillText(this.samosborActive ? '│ САМОСБОР: ПРОРЫВ БЛОКА! ⚠️' : `│ САМОСБОР ЧЕРЕЗ: ${timeStr}`, tlX + 10, tlY + 36);
 
       ctx.fillStyle = '#88ff9e';
-      ctx.font = '11px monospace';
-      ctx.fillText(`СЕКТОР: [ ${this.currentRoomName.toUpperCase()} ]`, 28, 56);
-      ctx.fillText(`ДОБЫЧА: +${this.player.talonsEarned} ТАЛОНОВ | +${this.player.xpEarned} XP`, 28, 76);
+      const sectorName = (this.currentRoomName || 'ЖИЛАЯ ЯЧЕЙКА №556').toUpperCase();
+      ctx.fillText(`│ СЕКТОР: ${sectorName.slice(0, 26)}`, tlX + 10, tlY + 54);
+      ctx.fillText(`│ ТАЛОНЫ: ${this.player.talonsEarned}  |  XP: +${this.player.xpEarned}`, tlX + 10, tlY + 70);
+
+      ctx.fillStyle = this.samosborActive ? '#ff3b30' : '#1fe044';
+      ctx.fillText('└─────────────────────────────────────────────┘', tlX + 10, tlY + 84);
 
       // 2. Bottom-Right CRT Telemetry Panel
       const hudW = 310;
