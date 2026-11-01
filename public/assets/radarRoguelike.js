@@ -476,6 +476,17 @@
           this.useBeltMedkit();
         }
 
+        if (this.player.isDead || this.player.hp <= 0) {
+          if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape' || e.code === 'KeyE') {
+            if (typeof handleRadarFleeCell === 'function') {
+              handleRadarFleeCell();
+            } else {
+              this.finishRaid(false);
+            }
+            return;
+          }
+        }
+
         if (e.code === 'Escape') {
           if (typeof confirmExitRadarRaid === 'function') {
             confirmExitRadarRaid();
@@ -535,6 +546,14 @@
 
         this.canvas.addEventListener('mousedown', (e) => {
           if (!this.isRunning) return;
+          if (this.player.isDead || this.player.hp <= 0) {
+            if (typeof handleRadarFleeCell === 'function') {
+              handleRadarFleeCell();
+            } else {
+              this.finishRaid(false);
+            }
+            return;
+          }
           if (e.button === 0) {
             this.mouse.isDown = true;
             this.handlePlayerAttack();
@@ -1068,6 +1087,8 @@
         if (typeof clientMe !== 'undefined' && clientMe) {
           clientMe.xp = (clientMe.xp || 0) + earnedXP;
           if (won) {
+            clientMe.hp = clientMe.maxHp || 100;
+            if (clientMe.stats) clientMe.stats.hp = clientMe.stats.maxHp || 100;
             clientMe.talons = (clientMe.talons || 0) + earnedTalons;
             clientMe.roomsCleared = (clientMe.roomsCleared || 0) + 1;
             if (lootItems.length > 0) {
@@ -1078,6 +1099,9 @@
                 }
               }
             }
+          } else {
+            clientMe.hp = 0;
+            if (clientMe.stats) clientMe.stats.hp = 0;
           }
           clientMe.monstersKilled = (clientMe.monstersKilled || 0) + kills;
 
@@ -1086,6 +1110,10 @@
             clientMe.xp -= (clientMe.level || 1) * 100;
             clientMe.level = (clientMe.level || 1) + 1;
             if (clientMe.stats) clientMe.stats.maxHp = (clientMe.stats.maxHp || 100) + 10;
+            if (won) {
+              clientMe.hp = clientMe.stats.maxHp;
+              if (clientMe.stats) clientMe.stats.hp = clientMe.stats.maxHp;
+            }
           }
         }
 
@@ -1887,10 +1915,62 @@
         SpriteFactory.drawCrosshair(this.ctx, crosshairX, crosshairY, this.tick, this.mouse.isOverEnemy);
       }
 
-      // 14. CRT Collapse on Game Over / Victory
+      // 14. Death / Wounded Screen Banner
+      if (this.player.isDead || this.player.hp <= 0) {
+        this.drawDeathWoundedCanvas(this.ctx, w, h);
+      }
+
+      // 15. CRT Collapse on Game Over / Victory
       if (this.isCollapsing) {
         this.drawCRTCollapse(this.ctx, w, h);
       }
+    }
+
+    drawDeathWoundedCanvas(ctx, w, h) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 2, 2, 0.85)';
+      ctx.fillRect(0, 0, w, h);
+
+      const bannerW = Math.min(520, w * 0.92);
+      const bannerH = 150;
+      const bannerX = (w - bannerW) / 2;
+      const bannerY = (h - bannerH) / 2;
+
+      ctx.fillStyle = 'rgba(24, 4, 4, 0.96)';
+      ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
+      ctx.strokeStyle = '#ff3b30';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff3b30';
+      ctx.font = 'bold 24px "Share Tech Mono", monospace';
+      ctx.shadowColor = '#ff3b30';
+      ctx.shadowBlur = 14;
+      ctx.fillText('⚠️ ВЫ РАНЕНЫ! ⚠️', w / 2, bannerY + 42);
+
+      ctx.fillStyle = '#e8d0d0';
+      ctx.font = '12.5px "Share Tech Mono", monospace';
+      ctx.shadowBlur = 0;
+      ctx.fillText('Критическое повреждение систем жизнеобеспечения.', w / 2, bannerY + 66);
+
+      const btnW = bannerW - 50;
+      const btnH = 46;
+      const btnX = (w - btnW) / 2;
+      const btnY = bannerY + 84;
+
+      ctx.fillStyle = 'rgba(255, 59, 48, 0.28)';
+      ctx.fillRect(btnX, btnY, btnW, btnH);
+      ctx.strokeStyle = '#ff3b30';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(btnX, btnY, btnW, btnH);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px "Share Tech Mono", monospace';
+      ctx.shadowColor = '#ff3b30';
+      ctx.shadowBlur = 8;
+      ctx.fillText('🏃 БЕЖАТЬ В ЖИЛ-ЯЧЕЙКУ [КЛИК]', w / 2, btnY + 29);
+      ctx.restore();
     }
 
     /**
@@ -1922,6 +2002,12 @@
       flrGrad.addColorStop(1, '#020503');
       ctx.fillStyle = flrGrad;
       ctx.fillRect(0, halfH, w, halfH);
+
+      // Muzzle flash ambient room illumination
+      if (this.player.isShooting && (this.player.shootProgress || 0) < 0.3) {
+        ctx.fillStyle = 'rgba(255, 170, 0, 0.12)';
+        ctx.fillRect(0, 0, w, h);
+      }
 
       // 2. DDA Raycaster for vertical wall strips
       const colStep = 2; // High density 2px columns
@@ -2007,32 +2093,83 @@
         const distCorrection = Math.cos(rayAngle - pAngle);
         const correctedDist = perpDist * distCorrection;
 
-        const lineH = Math.min(h * 2.5, Math.floor((h / correctedDist) * 0.95));
+        const lineH = Math.min(h * 3.0, Math.floor((TS * h) / (correctedDist + 0.0001)));
         const drawStart = Math.max(0, Math.floor(halfH - lineH / 2));
         const drawEnd = Math.min(h, Math.floor(halfH + lineH / 2));
 
-        const maxShadeDist = 18;
+        const maxShadeDist = 20;
         const shade = Math.max(0.08, Math.min(1.0, 1.0 - perpDist / maxShadeDist));
-        let r, g, b;
+
+        // Wall Texture Coordinate (0 to 1)
+        let wallX;
+        if (side === 0) wallX = py / TS + perpDist * sin;
+        else wallX = px / TS + perpDist * cos;
+        wallX -= Math.floor(wallX);
 
         if (hitTile === 2) {
-          // Hermetic door (steel amber)
-          r = Math.floor(180 * shade);
-          g = Math.floor(140 * shade);
-          b = Math.floor(45 * shade);
-        } else {
-          // Monolithic concrete block wall
-          const sideDarken = side === 1 ? 0.72 : 1.0;
-          r = Math.floor(35 * shade * sideDarken);
-          g = Math.floor(145 * shade * sideDarken);
-          b = Math.floor(65 * shade * sideDarken);
-        }
+          // --- STEEL HERMETIC DOOR (Аварийная гермодверь с рулем и полосами) ---
+          const isEdge = (wallX < 0.08 || wallX > 0.92);
+          const isCenterWheel = (wallX > 0.42 && wallX < 0.58);
+          let r = Math.floor(190 * shade);
+          let g = Math.floor(150 * shade);
+          let b = Math.floor(50 * shade);
 
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+          if (isEdge) {
+            r = Math.floor(90 * shade);
+            g = Math.floor(75 * shade);
+            b = Math.floor(30 * shade);
+          } else if (isCenterWheel) {
+            // Circular locking vault wheel
+            r = Math.floor(240 * shade);
+            g = Math.floor(190 * shade);
+            b = Math.floor(70 * shade);
+          }
+
+          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+
+          // Top and bottom yellow/black hazard warning stripes
+          const hazardH = Math.max(4, Math.floor(lineH * 0.09));
+          const isStripe = Math.floor(wallX * 8) % 2 === 0;
+          ctx.fillStyle = isStripe ? `rgb(${Math.floor(220 * shade)}, ${Math.floor(180 * shade)}, 0)` : '#111111';
+          ctx.fillRect(screenX, drawStart, colStep, hazardH);
+          ctx.fillRect(screenX, drawEnd - hazardH, colStep, hazardH);
+        } else {
+          // --- CONCRETE WALL (Монолитный бетонный блок) ---
+          const sideDarken = side === 1 ? 0.72 : 1.0;
+          let r = Math.floor(35 * shade * sideDarken);
+          let g = Math.floor(145 * shade * sideDarken);
+          let b = Math.floor(65 * shade * sideDarken);
+
+          // Check if wall has graffiti or warning stencils
+          const tileSeed = (mapX * 37 + mapY * 19) % 11;
+          const hasGraffiti = (tileSeed === 1 || tileSeed === 5);
+
+          if (hasGraffiti && wallX > 0.25 && wallX < 0.75) {
+            if (tileSeed === 1) {
+              // Red danger blood graffiti: САМОСБОР
+              r = Math.floor(190 * shade);
+              g = Math.floor(25 * shade);
+              b = Math.floor(25 * shade);
+            } else {
+              // Faded yellow warning sign: ОПАСНОСТЬ
+              r = Math.floor(180 * shade);
+              g = Math.floor(150 * shade);
+              b = Math.floor(30 * shade);
+            }
+          }
+
+          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+        }
       }
 
-      // 3. Billboard Entities (Sort back to front)
+      // Check center ray enemy locking
+      let isAimingAtEnemy = false;
+      const midCol = Math.floor(numCols / 2);
+      const centerDist = zBuffer[midCol] || 999;
+
+      // 3. Billboard Entities (Sorted back to front with per-column Z-Buffer culling)
       const visibleSprites = [];
 
       if (this.elevator) {
@@ -2084,131 +2221,292 @@
             x: ent.x,
             y: ent.y,
             type: 'monster',
+            behavior: ent.behavior,
             color: ent.color || '#ff3b30',
             hp: ent.hp,
-            maxHp: ent.maxHp
+            maxHp: ent.maxHp,
+            damageFlashTimer: ent.damageFlashTimer || 0
           });
         }
       }
 
       for (const sp of visibleSprites) {
-        sp.dist = Math.hypot(sp.x - px, sp.y - py);
-        let ang = Math.atan2(sp.y - py, sp.x - px) - pAngle;
+        const dx = sp.x - px;
+        const dy = sp.y - py;
+        sp.dist = Math.hypot(dx, dy);
+
+        let ang = Math.atan2(dy, dx) - pAngle;
         while (ang < -Math.PI) ang += 2 * Math.PI;
         while (ang > Math.PI) ang -= 2 * Math.PI;
         sp.angle = ang;
+        sp.depth = sp.dist * Math.cos(ang);
+
+        // Check if crosshair in center aims at this monster
+        if (sp.type === 'monster' && Math.abs(ang) < 0.12 && sp.dist < centerDist && sp.dist < 380) {
+          isAimingAtEnemy = true;
+        }
       }
 
-      visibleSprites.sort((a, b) => b.dist - a.dist);
+      visibleSprites.sort((a, b) => b.depth - a.depth);
 
       for (const sp of visibleSprites) {
-        if (sp.dist < 8) continue;
-        if (Math.abs(sp.angle) > fov * 0.72) continue;
+        if (sp.depth < 14) continue;
+        if (Math.abs(sp.angle) > fov * 0.75) continue;
 
         const screenX = Math.floor((w / 2) + Math.tan(sp.angle) * (w / 2));
-        const sprHeight = Math.min(h * 2, Math.floor((h / (sp.dist / TS)) * 0.9));
-        const sprWidth = Math.floor(sprHeight * 0.75);
-        const sprTop = Math.floor(halfH - sprHeight / 2);
+        const sprHeight = Math.min(h * 2.8, Math.floor((TS * h) / sp.depth));
+        const sprWidth = Math.floor(sprHeight * 0.85);
+        const sprTop = Math.floor(halfH - sprHeight * 0.45);
+        const sprBottom = Math.floor(halfH + sprHeight * 0.55);
         const sprLeft = Math.floor(screenX - sprWidth / 2);
+        const sprRight = Math.floor(screenX + sprWidth / 2);
 
-        const bufIdx = Math.floor(screenX / colStep);
-        if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < sp.dist) {
-          continue; // Occluded by concrete wall
+        const drawStartX = Math.max(0, sprLeft);
+        const drawEndX = Math.min(w, sprRight);
+
+        const shade = Math.max(0.18, Math.min(1.0, 1.0 - sp.depth / (TS * 18)));
+        const isDamaged = (sp.damageFlashTimer > 0);
+
+        let hasDrawnAnyStripe = false;
+
+        // Render billboard stripe by stripe with depth testing against zBuffer
+        for (let stripe = drawStartX; stripe < drawEndX; stripe += colStep) {
+          const colIdx = Math.floor(stripe / colStep);
+          if (colIdx < 0 || colIdx >= numCols) continue;
+
+          // Occlusion depth test: if wall is closer than entity, don't draw
+          if (sp.depth > zBuffer[colIdx]) continue;
+
+          hasDrawnAnyStripe = true;
+          const u = (stripe - sprLeft) / sprWidth; // Horizontal texture coordinate across sprite (0..1)
+
+          if (sp.type === 'monster') {
+            // Silhouette variation based on behavior
+            const isSlime = (sp.behavior === 'wander_skitter' || sp.behavior === 'slime_split');
+            const isMimic = (sp.behavior === 'radar_disguise');
+
+            let bodyR = isDamaged ? 255 : Math.floor(240 * shade);
+            let bodyG = isDamaged ? 255 : Math.floor(40 * shade);
+            let bodyB = isDamaged ? 255 : Math.floor(40 * shade);
+
+            if (isSlime) {
+              // Черная слизь: низкий растекающийся купол с капающими отростками
+              const slimeH = Math.sin(u * Math.PI) * sprHeight * 0.55;
+              const yStart = sprBottom - slimeH;
+              ctx.fillStyle = isDamaged ? '#ffffff' : `rgb(${Math.floor(40 * shade)}, ${Math.floor(180 * shade)}, ${Math.floor(60 * shade)})`;
+              ctx.fillRect(stripe, yStart, colStep, sprBottom - yStart);
+
+              // Glowing eyes
+              if ((u > 0.35 && u < 0.45) || (u > 0.55 && u < 0.65)) {
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(stripe, yStart + slimeH * 0.3, colStep, Math.max(2, sprHeight * 0.08));
+              }
+            } else if (isMimic) {
+              // Отступник-ликвидатор: силуэт в тяжелом противогазе с фильтром
+              const bodyProfile = Math.sin(u * Math.PI) * sprHeight * 0.85;
+              const yStart = sprBottom - bodyProfile;
+              ctx.fillStyle = isDamaged ? '#ffffff' : `rgb(${Math.floor(160 * shade)}, ${Math.floor(50 * shade)}, ${Math.floor(180 * shade)})`;
+              ctx.fillRect(stripe, yStart, colStep, sprBottom - yStart);
+
+              // Gas mask filter snout in center
+              if (u > 0.44 && u < 0.56) {
+                ctx.fillStyle = '#111111';
+                ctx.fillRect(stripe, yStart + bodyProfile * 0.4, colStep, bodyProfile * 0.35);
+              }
+            } else {
+              // Одичавший жилец: сгорбленный силуэт с когтями и перекошенной головой
+              const headOffset = (u > 0.4 && u < 0.6) ? sprHeight * 0.25 : 0;
+              const bodyProfile = Math.sin(u * Math.PI) * (sprHeight * 0.75) + headOffset;
+              const yStart = sprBottom - bodyProfile;
+
+              ctx.fillStyle = isDamaged ? '#ffffff' : `rgb(${bodyR}, ${bodyG}, ${bodyB})`;
+              ctx.fillRect(stripe, yStart, colStep, sprBottom - yStart);
+
+              // Piercing white/red eyes
+              if ((u > 0.38 && u < 0.46) || (u > 0.54 && u < 0.62)) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(stripe, yStart + bodyProfile * 0.22, colStep, Math.max(2, sprHeight * 0.08));
+              }
+            }
+          } else if (sp.type === 'elevator') {
+            // Luminous extraction cargo beacon
+            ctx.fillStyle = 'rgba(51, 212, 255, 0.45)';
+            ctx.fillRect(stripe, sprTop, colStep, sprHeight);
+            if (u < 0.1 || u > 0.9) {
+              ctx.fillStyle = '#33d4ff';
+              ctx.fillRect(stripe, sprTop, colStep, sprHeight);
+            }
+          } else {
+            // Crate / Weapon / Ally
+            ctx.fillStyle = sp.color;
+            ctx.fillRect(stripe, sprTop + sprHeight * 0.3, colStep, sprHeight * 0.7);
+          }
         }
 
-        const shade = Math.max(0.15, Math.min(1.0, 1.0 - sp.dist / (TS * 16)));
-        ctx.fillStyle = sp.color;
-        ctx.shadowColor = sp.color;
-        ctx.shadowBlur = 8 * shade;
-
-        if (sp.type === 'monster') {
-          // Hostile mutated creature billboard
-          ctx.fillRect(sprLeft, sprTop + sprHeight * 0.2, sprWidth, sprHeight * 0.8);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(sprLeft + sprWidth * 0.25, sprTop + sprHeight * 0.35, sprWidth * 0.15, sprHeight * 0.1);
-          ctx.fillRect(sprLeft + sprWidth * 0.6, sprTop + sprHeight * 0.35, sprWidth * 0.15, sprHeight * 0.1);
-        } else if (sp.type === 'elevator') {
-          // Luminous extraction cargo beacon
-          ctx.fillStyle = 'rgba(51, 212, 255, 0.4)';
-          ctx.fillRect(sprLeft - sprWidth * 0.3, sprTop, sprWidth * 1.6, sprHeight);
-          ctx.strokeStyle = '#33d4ff';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(sprLeft - sprWidth * 0.3, sprTop, sprWidth * 1.6, sprHeight);
-        } else {
-          ctx.fillRect(sprLeft, sprTop + sprHeight * 0.3, sprWidth, sprHeight * 0.7);
-        }
-        ctx.shadowBlur = 0;
-
-        if (sp.hp !== undefined && sp.maxHp) {
+        // Draw Health Bar strictly above head if entity is visible
+        if (hasDrawnAnyStripe && sp.hp !== undefined && sp.maxHp) {
           const hpPct = Math.max(0, Math.min(1, sp.hp / sp.maxHp));
-          const barW = sprWidth;
-          const barH = Math.max(3, Math.floor(sprHeight * 0.07));
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(sprLeft, sprTop - barH - 4, barW, barH);
+          const barW = Math.max(30, sprWidth * 0.8);
+          const barH = Math.max(4, Math.floor(sprHeight * 0.07));
+          const barX = Math.floor(screenX - barW / 2);
+          const barY = sprTop - barH - 8;
+
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+          ctx.fillRect(barX, barY, barW, barH);
           ctx.fillStyle = sp.color;
-          ctx.fillRect(sprLeft, sprTop - barH - 4, barW * hpPct, barH);
+          ctx.fillRect(barX + 1, barY + 1, (barW - 2) * hpPct, barH - 2);
         }
       }
 
-      // 4. First-Person Weapon Model & Hands
+      // 4. Center Tactical Crosshair: [|], [-+-], [|]
+      const cx = Math.floor(w / 2);
+      const cy = Math.floor(h / 2);
+      const crosshairColor = isAimingAtEnemy ? '#ff3333' : '#33ff00';
+
+      ctx.save();
+      ctx.strokeStyle = crosshairColor;
+      ctx.fillStyle = crosshairColor;
+      ctx.shadowColor = crosshairColor;
+      ctx.shadowBlur = isAimingAtEnemy ? 12 : 5;
+      ctx.lineWidth = 1.5;
+
+      // Center dot
+      ctx.fillRect(cx - 1, cy - 1, 2, 2);
+
+      // Top & Bottom vertical ticks
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 12);
+      ctx.lineTo(cx, cy - 4);
+      ctx.moveTo(cx, cy + 4);
+      ctx.lineTo(cx, cy + 12);
+      // Left & Right horizontal ticks
+      ctx.moveTo(cx - 12, cy);
+      ctx.lineTo(cx - 4, cy);
+      ctx.moveTo(cx + 4, cy);
+      ctx.lineTo(cx + 12, cy);
+      ctx.stroke();
+      ctx.restore();
+
+      // 5. First-Person Weapon Model & Hands Rig
       this.drawFPSWeapon(ctx, w, h);
     }
 
     /**
-     * First-Person Weapon View with Procedural Bobbing & Recoil
+     * First-Person Weapon Rig: Melee Pipe, Shotgun, Pistol, Rifle with Recoil & Flash
      */
     drawFPSWeapon(ctx, w, h) {
       const isMoving = (this.player.vx !== 0 || this.player.vy !== 0);
-      const bobX = isMoving ? Math.sin(this.tick * 0.18) * 9 : 0;
-      const bobY = isMoving ? Math.abs(Math.cos(this.tick * 0.18)) * 7 : 0;
-
-      const recoil = this.player.isShooting ? (1.0 - (this.player.shootProgress || 0)) * 26 : 0;
-      const swingOffset = this.player.isSwinging ? Math.sin((this.player.swingProgress || 0) * Math.PI) * 70 : 0;
-
-      const gunX = w / 2 + 55 + bobX - swingOffset;
-      const gunY = h - 50 + bobY - recoil;
+      const bobX = isMoving ? Math.sin(this.tick * 0.18) * 8 : 0;
+      const bobY = isMoving ? Math.abs(Math.cos(this.tick * 0.18)) * 6 : 0;
 
       const weapon = this.player.weapon || this.player.baseWeapon;
       const isRanged = weapon && weapon.isRanged;
+      const gunType = weapon ? (weapon.gunType || 'pistol') : 'pistol';
+
+      const recoil = this.player.isShooting ? (1.0 - (this.player.shootProgress || 0)) * 32 : 0;
+      const swingProgress = this.player.swingProgress || 0;
+      const swingOffset = this.player.isSwinging ? Math.sin(swingProgress * Math.PI) * 90 : 0;
+      const swingDrop = this.player.isSwinging ? Math.sin(swingProgress * Math.PI) * 50 : 0;
 
       ctx.save();
-      if (isRanged) {
-        // Firearm barrel & receiver
-        ctx.fillStyle = '#1c2e22';
-        ctx.fillRect(gunX - 22, gunY - 95, 34, 115);
-        ctx.fillStyle = '#2d4c38';
-        ctx.fillRect(gunX - 16, gunY - 130, 22, 40);
 
-        // Green phosphor tritium sights
-        ctx.fillStyle = '#1fe044';
-        ctx.shadowColor = '#1fe044';
-        ctx.shadowBlur = 6;
-        ctx.fillRect(gunX - 7, gunY - 133, 4, 4);
+      if (!isRanged) {
+        // --- 1. ТЯЖЕЛАЯ ВОДОПРОВОДНАЯ ТРУБА С ВЕНТИЛЕМ (MELEE) ---
+        const pipeX = w / 2 + 110 + bobX - swingOffset;
+        const pipeY = h - 10 + bobY + swingDrop;
 
-        // Muzzle Flash
+        ctx.save();
+        ctx.translate(pipeX, pipeY);
+        ctx.rotate(-0.35 - (this.player.isSwinging ? swingProgress * 0.8 : 0));
+
+        // Angled heavy steel pipe
+        ctx.fillStyle = '#3a4a3e';
+        ctx.fillRect(-18, -170, 26, 190);
+        ctx.fillStyle = '#556a5c';
+        ctx.fillRect(-14, -165, 8, 180);
+
+        // Pipe coupling threads
+        ctx.fillStyle = '#889988';
+        ctx.fillRect(-22, -180, 34, 14);
+
+        // Circular Red Valve Wheel (Круглый вентиль)
+        ctx.fillStyle = '#aa2222';
+        ctx.beginPath();
+        ctx.arc(-5, -135, 24, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#111111';
+        ctx.beginPath();
+        ctx.arc(-5, -135, 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      } else if (gunType === 'shotgun') {
+        // --- 2. ДВУСТВОЛЬНЫЙ ОБРЕЗ / КС-23 (SHOTGUN) ---
+        const gunX = w / 2 + bobX;
+        const gunY = h - 20 + bobY - recoil;
+
+        // Wooden foregrip
+        ctx.fillStyle = '#4a2f1b';
+        ctx.fillRect(gunX - 22, gunY - 70, 44, 45);
+
+        // Twin steel barrels (Сдвоенные стволы)
+        ctx.fillStyle = '#1b241e';
+        ctx.fillRect(gunX - 20, gunY - 145, 18, 80);
+        ctx.fillRect(gunX + 2, gunY - 145, 18, 80);
+
+        // Sight rib in center
+        ctx.fillStyle = '#33ff55';
+        ctx.fillRect(gunX - 1, gunY - 147, 2, 4);
+
+        // Shotgun Muzzle Flash & Spread Blast
         if (this.player.isShooting && (this.player.shootProgress || 0) < 0.35) {
           ctx.fillStyle = '#fff488';
-          ctx.shadowColor = '#ff9900';
+          ctx.shadowColor = '#ff6600';
+          ctx.shadowBlur = 30;
+          ctx.beginPath();
+          ctx.arc(gunX, gunY - 165, 34, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Spreading pellet sparks
+          for (let p = -3; p <= 3; p++) {
+            ctx.fillStyle = '#ff3300';
+            ctx.fillRect(gunX + p * 12, gunY - 195 - Math.abs(p) * 6, 4, 12);
+          }
+        }
+      } else {
+        // --- 3. ПИСТОЛЕТ МАКАРОВА / АК-74 (PISTOL / RIFLE) ---
+        const gunX = w / 2 + 50 + bobX;
+        const gunY = h - 25 + bobY - recoil;
+
+        // Receiver & Slide
+        ctx.fillStyle = '#1c2820';
+        ctx.fillRect(gunX - 16, gunY - 110, 32, 120);
+
+        // Front sight with tritium glow
+        ctx.fillStyle = '#33ff33';
+        ctx.shadowColor = '#33ff33';
+        ctx.shadowBlur = 6;
+        ctx.fillRect(gunX - 2, gunY - 118, 4, 6);
+
+        // Muzzle Flash Star
+        if (this.player.isShooting && (this.player.shootProgress || 0) < 0.35) {
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#ffaa00';
           ctx.shadowBlur = 24;
           ctx.beginPath();
-          ctx.arc(gunX - 5, gunY - 146, 22, 0, Math.PI * 2);
+          ctx.arc(gunX, gunY - 130, 20, 0, Math.PI * 2);
           ctx.fill();
 
           ctx.fillStyle = '#ff6600';
           ctx.beginPath();
-          ctx.moveTo(gunX - 5, gunY - 180);
-          ctx.lineTo(gunX + 16, gunY - 135);
-          ctx.lineTo(gunX - 26, gunY - 135);
+          ctx.moveTo(gunX, gunY - 160);
+          ctx.lineTo(gunX + 16, gunY - 120);
+          ctx.lineTo(gunX - 16, gunY - 120);
           ctx.closePath();
           ctx.fill();
         }
-      } else {
-        // Heavy steel pipe / melee weapon
-        ctx.fillStyle = '#445548';
-        ctx.fillRect(gunX - 16, gunY - 120, 24, 140);
-        ctx.fillStyle = '#88ff9e';
-        ctx.fillRect(gunX - 20, gunY - 126, 32, 10);
       }
+
       ctx.restore();
     }
 

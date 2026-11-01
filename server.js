@@ -5393,7 +5393,7 @@ function checkLifterTrigger(player, sock, loc) {
             p.xp -= nextLevelXp;
             p.level = (p.level || 1) + 1;
             p.maxHp = (p.maxHp || 100) + 10;
-            p.hp = p.maxHp;
+            if (won) p.hp = p.maxHp;
             nextLevelXp = p.level * 100;
         }
 
@@ -5410,7 +5410,11 @@ function checkLifterTrigger(player, sock, loc) {
 
         // Возврат ликвидатора в безопасную жилячейку
         p.location = 'safe_room';
-        p.hp = p.maxHp;
+        if (won) {
+            p.hp = p.maxHp; // Восстанавливаем HP только при успешной эвакуации!
+        } else {
+            p.hp = 0; // Когда бежим / ранены — HP остается 0!
+        }
 
         if (!p.notebook) p.notebook = [];
         if (won) {

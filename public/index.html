@@ -271,6 +271,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .combat-quick-slots { position: absolute; left: 6px; top: 6px; display: flex; flex-direction: column; gap: 5px; z-index: 100; }
 .combat-q-slot { width: 72px; min-height: 46px; border: 1px solid var(--term-dim); background: rgba(0,15,0,0.85); color: var(--term-green); display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; font-size: 10px; text-align: center; padding: 3px; box-sizing: border-box; transition: 0.15s; }
 .combat-q-slot:hover { border-color: var(--term-green); background: rgba(51,255,0,0.08); }
+.hub-belt-slot { flex: 1; min-height: 48px; font-size: 11px; padding: 6px 10px; border: 1px solid var(--term-green); background: rgba(0,25,0,0.92); color: var(--term-green); box-shadow: 0 0 10px rgba(31,224,68,0.25); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; cursor: pointer; border-radius: 4px; transition: 0.15s ease; box-sizing: border-box; }
+.hub-belt-slot:hover { border-color: #fff; background: rgba(31,224,68,0.22); box-shadow: 0 0 16px rgba(31,224,68,0.55); transform: translateY(-2px); }
 #combat-log { height: clamp(50px, 9vh, 75px); overflow-y: auto; white-space: pre-wrap; font-size: 12px; color: #8f8; }
 .critical-hp { color: var(--term-danger) !important; }
 .rating-box { margin-top: 8px; border-top: 1px dashed var(--term-dim); padding-top: 6px; font-size: 12.5px; line-height: 1.4; color: #8c8; }
@@ -2266,23 +2268,23 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 
   <!-- Правая часть: Персонаж и пояс со снаряжением в Жилячейке -->
-  <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; max-width: 440px; min-width: 250px; height: 100%; margin-bottom: 8px;">
-    <!-- Спрайт персонажа в полный рост -->
-    <div id="hub-player-avatar" class="combat-avatar" style="height: clamp(280px, 56vh, 480px); width: clamp(200px, 28vw, 320px); position: relative;">
-      <img id="hub-base-skin" class="avatar-layer" style="z-index: 1;" src="" alt="">
-      <img id="hub-clothes" class="avatar-layer" style="z-index: 2;" src="" alt="">
-      <img id="hub-mask" class="avatar-layer" style="z-index: 3;" src="" alt="">
-      <img id="hub-weapon" class="avatar-layer" style="z-index: 4;" src="" alt="">
+  <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; max-width: 520px; min-width: 300px; height: 100%; margin-bottom: 8px; margin-right: clamp(10px, 4vw, 50px); pointer-events: auto;">
+    <!-- Крупный спрайт персонажа в полный рост перед гермодверью -->
+    <div id="hub-player-avatar" style="height: clamp(520px, 78vh, 850px); width: clamp(340px, 38vw, 520px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible;">
+      <img id="hub-base-skin" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; height: 100%; object-fit: contain; object-position: bottom center; pointer-events: none; z-index: 1;" src="" alt="">
+      <img id="hub-clothes" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; height: 100%; object-fit: contain; object-position: bottom center; pointer-events: none; z-index: 2;" src="" alt="">
+      <img id="hub-mask" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; height: 100%; object-fit: contain; object-position: bottom center; pointer-events: none; z-index: 3;" src="" alt="">
+      <img id="hub-weapon" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; height: 100%; object-fit: contain; object-position: bottom center; pointer-events: none; z-index: 4;" src="" alt="">
     </div>
 
     <!-- Предметы на поясе ликвидатора -->
-    <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 320px; margin-top: 6px;">
-      <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: bold; color: var(--term-green); letter-spacing: 1px; margin-bottom: 4px; text-shadow: 0 0 6px var(--term-green);">
+    <div id="hub-belt-container" style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 380px; margin-top: 8px; z-index: 25;">
+      <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: bold; color: var(--term-green); letter-spacing: 1.5px; margin-bottom: 5px; text-shadow: 0 0 8px var(--term-green);">
         ⚡ ПРЕДМЕТЫ НА ПОЯСЕ [1] | [2]
       </div>
-      <div class="combat-quick-slots" style="display: flex; gap: 10px; width: 100%; justify-content: center;">
-        <div id="hub-qslot-0" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 0)" style="flex: 1; min-height: 40px; font-size: 11px; padding: 6px;" data-i18n="slot_empty">[ПУСТО]</div>
-        <div id="hub-qslot-1" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 1)" style="flex: 1; min-height: 40px; font-size: 11px; padding: 6px;" data-i18n="slot_empty">[ПУСТО]</div>
+      <div style="display: flex; gap: 14px; width: 100%; justify-content: center; position: relative;">
+        <div id="hub-qslot-0" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 0)" data-i18n="slot_empty">[ПУСТО]</div>
+        <div id="hub-qslot-1" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 1)" data-i18n="slot_empty">[ПУСТО]</div>
       </div>
     </div>
   </div>
