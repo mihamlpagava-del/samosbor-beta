@@ -803,6 +803,12 @@
         this.damagePlayer(12, 'САМОСБОР');
       }
 
+      // Check combat state to switch dynamic battle music vs ambient exploration
+      if (this.tick % 30 === 0 && typeof playRaidMusic === 'function') {
+        const hasCombat = this.entities.some(e => e.type === 'monster' && e.hp > 0 && (e.state === 'CHASE' || Math.hypot(e.x - this.player.x, e.y - this.player.y) < 240));
+        playRaidMusic(hasCombat ? 'combat' : 'explore');
+      }
+
       // 2. Radar Sweep Angle Rotation
       this.radarAngle += this.radarSpeed;
       if (this.radarAngle >= Math.PI * 2) this.radarAngle -= Math.PI * 2;

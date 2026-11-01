@@ -2841,9 +2841,9 @@ function getDisplayNotebookEntry(e) {
 }
 
 let musicEnabled = true, sfxEnabled = true, crtEnabled = true;
-const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/sounds/ambient_explore.mp3') };
+const AMBIENTS = { hub: new Audio('assets/sounds/ambient_hub.mp3'), chest: new Audio('assets/sounds/ambient_chest.mp3'), shop: new Audio('assets/sounds/ambient_shop.mp3'), map: new Audio('assets/sounds/ambient_map.mp3'), explore: new Audio('assets/sounds/ambient_explore.mp3'), combat: new Audio('assets/audio/combat_music.mp3') };
 Object.values(AMBIENTS).forEach(a => { a.loop = true; a.volume = 0; });
-let currentAmbient = null; const AMBIENT_MAX_VOL = 0.35;
+let currentAmbient = null; const AMBIENT_MAX_VOL = 0.18; // Громкость тише на половину
 const SOUNDS = { click: new Audio('assets/sounds/click.mp3'), hit_player: new Audio('assets/sounds/hit_player.mp3'), hit_enemy: new Audio('assets/sounds/hit_enemy.mp3'), hit_crit: new Audio('assets/sounds/hit_enemy.mp3'), dodge: new Audio('assets/sounds/dodge.mp3'), roar: new Audio('assets/sounds/roar.mp3'), heal: new Audio('assets/sounds/heal.mp3'), special: new Audio('assets/sounds/shocker.mp3'), victory: new Audio('assets/sounds/buy.mp3'), defeat: new Audio('assets/sounds/low_hp.mp3'), low_hp: new Audio('assets/sounds/low_hp.mp3'), equip: new Audio('assets/sounds/equip.mp3'), buy: new Audio('assets/sounds/buy.mp3'), farm: new Audio('assets/sounds/farm.mp3') };
 Object.values(SOUNDS).forEach(s => s.volume = 0.5);
 let lowHpWarningPlayed = false;
@@ -10440,20 +10440,40 @@ function renderAchievementsList() {
 // ===== ТАКТИЧЕСКИЙ РЕЖИМ: РАДАР-РОГАЛИК («РЕЙД: САМОСБОР») =====
 let radarRoguelikeGame = null;
 let raidMusicAudio = null;
+let raidCombatMusicAudio = null;
+let currentRaidTrack = 'explore';
 
-function playRaidMusic() {
+function playRaidMusic(track = 'explore') {
   try {
     if (!raidMusicAudio) {
       raidMusicAudio = new Audio('assets/audio/raid_music.mp3');
       raidMusicAudio.loop = true;
-      raidMusicAudio.volume = 0.55;
+      raidMusicAudio.volume = 0.22; // Тише на половину
     }
-    raidMusicAudio.currentTime = 0;
-    const playPromise = raidMusicAudio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(err => {
-        console.log('[RadarRoguelike] Autoplay prevented, waiting for interaction:', err);
-      });
+    if (!raidCombatMusicAudio) {
+      raidCombatMusicAudio = new Audio('assets/audio/combat_music.mp3');
+      raidCombatMusicAudio.loop = true;
+      raidCombatMusicAudio.volume = 0.24; // Тише на половину
+    }
+
+    if (track === 'combat') {
+      if (currentRaidTrack !== 'combat') {
+        currentRaidTrack = 'combat';
+        raidMusicAudio.pause();
+        raidCombatMusicAudio.currentTime = 0;
+        const p = raidCombatMusicAudio.play();
+        if (p) p.catch(()=>{});
+      }
+    } else {
+      if (currentRaidTrack !== 'explore') {
+        currentRaidTrack = 'explore';
+        raidCombatMusicAudio.pause();
+        const p = raidMusicAudio.play();
+        if (p) p.catch(()=>{});
+      } else if (raidMusicAudio.paused) {
+        const p = raidMusicAudio.play();
+        if (p) p.catch(()=>{});
+      }
     }
   } catch (e) {
     console.error('[RadarRoguelike] Error playing raid music:', e);
@@ -10467,6 +10487,13 @@ function stopRaidMusic() {
       raidMusicAudio.currentTime = 0;
     } catch (e) {}
   }
+  if (raidCombatMusicAudio) {
+    try {
+      raidCombatMusicAudio.pause();
+      raidCombatMusicAudio.currentTime = 0;
+    } catch (e) {}
+  }
+  currentRaidTrack = 'explore';
 }
 
 function openRadarRoguelikeModal() {
