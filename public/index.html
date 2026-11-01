@@ -2141,6 +2141,13 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
+
+<!-- ПОЛНОЭКРАННЫЙ РЕЖИМ 2D TOP-DOWN RADAR SHOOTER («РЕЙД: САМОСБОР») -->
+<div id="radar-roguelike-screen" style="display: none; position: fixed; inset: 0; z-index: 99999; background: #041407; overflow: hidden; width: 100vw; height: 100vh;">
+  <canvas id="radar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+  <button id="btn-radar-abort" onclick="closeRadarRoguelikeModal()" style="position: absolute; top: 16px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.92); border: 2px solid #1fe044; color: #1fe044; padding: 8px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-shadow: 0 0 8px #1fe044; box-shadow: 0 0 12px rgba(31,224,68,0.4);">[ESC] В ЖИЛЯЧЕЙКУ</button>
+</div>
+
 <div id="hub-screen" class="screen">
   <div class="panel" style="width: 550px; max-width: 95%;">
     <h2 style="font-size: 20px; margin-top: 0; letter-spacing: 2px;" data-i18n="hub_title">ЖИЛЯЧЕЙКА</h2>
@@ -2162,7 +2169,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <div id="hub-error" style="color: var(--term-danger); margin-top: 5px; font-size: 13px; min-height: 18px;"></div>
     </div>
     <div class="game-controls" style="margin-top: 15px;">
-      <button id="btn-exit-cell" class="btn-primary-radar" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell">⚡ ВЫЙТИ ИЗ ЖИЛ ЯЧЕЙКИ</button>
+      <button id="btn-exit-cell" class="btn-primary-radar" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell">[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]</button>
       <div class="row-2"><button id="open-notebook-btn" data-i18n="btn_notebook">БЛОКНОТ</button><button id="open-chest-btn" data-i18n="btn_chest">СУНДУК</button></div>
       <div class="row-2"><button id="open-shop-btn" data-i18n="btn_shop">РАСПРЕДЕЛИТЕЛЬ</button><button id="open-craft-btn" data-i18n="btn_craft">ВЕРСТАК</button></div>
       <div class="row-2"><button id="open-chat-btn" data-i18n="btn_chat">СЕТЬ</button><button id="open-leaderboard-btn" data-i18n="btn_leaderboard">РЕЙТИНГ</button></div>
@@ -2904,7 +2911,7 @@ const I18N = {
     lbl_rooms: "Секторов:",
     lbl_rating: "Рейтинг:",
     lbl_loc_backpack: "РЮКЗАК:",
-    btn_exit_cell: "⚡ ВЫЙТИ ИЗ ЖИЛ ЯЧЕЙКИ",
+    btn_exit_cell: "[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]",
     btn_notebook: "📓 ДНЕВНИК",
     btn_chest: "🎒 ИНВЕНТАРЬ / ДЕЛО",
     btn_shop: "🛒 ТОРГОВЕЦ",
@@ -3145,7 +3152,7 @@ const I18N = {
     lbl_loc_backpack: "BACKPACK:",
     btn_notebook: "📓 DIARY",
     btn_chest: "🎒 DOSSIER / INVENTORY",
-    btn_exit_cell: "⚡ EXIT LIVING CELL",
+    btn_exit_cell: "[ ⚠️ EXIT LIVING CELL ]",
     btn_shop: "🛒 TRADER",
     btn_craft: "⚒️ WORKBENCH",
     btn_chat: "💬 GLOBAL CHAT",
@@ -10209,29 +10216,36 @@ function renderAchievementsList() {
 }
 
 
-// ===== ТАКТИЧЕСКИЙ РЕЖИМ: РАДАР-РОГАЛИК =====
+// ===== ТАКТИЧЕСКИЙ РЕЖИМ: РАДАР-РОГАЛИК («РЕЙД: САМОСБОР») =====
 let radarRoguelikeGame = null;
+
 function openRadarRoguelikeModal() {
-  const modal = document.getElementById('radar-roguelike-modal');
-  if (!modal) return;
-  modal.style.display = 'flex';
+  const screen = document.getElementById('radar-roguelike-screen');
   const canvas = document.getElementById('radar-canvas');
+  if (!screen || !canvas) return;
+
+  // Скрываем главное меню и открываем полноэкранный радарный холст
+  const hub = document.getElementById('hub-screen');
+  if (hub) hub.style.display = 'none';
+  screen.style.display = 'block';
+
   if (!radarRoguelikeGame) {
     if (typeof RadarRoguelikeEngine !== 'undefined') {
       radarRoguelikeGame = new RadarRoguelikeEngine();
-      radarRoguelikeGame.init(canvas, () => {
+      radarRoguelikeGame.init(canvas, (completed) => {
         closeRadarRoguelikeModal();
       });
       radarRoguelikeGame.start();
     }
   } else {
+    radarRoguelikeGame.buildFloor();
     radarRoguelikeGame.start();
   }
 }
 
 function closeRadarRoguelikeModal() {
-  const modal = document.getElementById('radar-roguelike-modal');
-  if (modal) modal.style.display = 'none';
+  const screen = document.getElementById('radar-roguelike-screen');
+  if (screen) screen.style.display = 'none';
   if (radarRoguelikeGame) {
     radarRoguelikeGame.stop();
   }
@@ -10241,8 +10255,8 @@ function closeRadarRoguelikeModal() {
 
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.code === 'Escape') {
-    const rm = document.getElementById('radar-roguelike-modal');
-    if (rm && rm.style.display === 'flex') {
+    const screen = document.getElementById('radar-roguelike-screen');
+    if (screen && screen.style.display === 'block') {
       closeRadarRoguelikeModal();
     }
   }
@@ -10252,6 +10266,7 @@ window.addEventListener('DOMContentLoaded', applyLanguage);
 applyLanguage();
 </script>
 <script src="assets/samosborQuestEngine.js"></script>
+<script src="assets/levelGen.js"></script>
 <script src="assets/spriteFactory.js"></script>
 <script src="assets/radarRoguelike.js"></script>
 </body>

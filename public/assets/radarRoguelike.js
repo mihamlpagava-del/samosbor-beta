@@ -1,13 +1,15 @@
 /**
  * ============================================================================
- * MODULE: radarRoguelike.js (Top-Down Radar Roguelike Engine)
+ * MODULE: radarRoguelike.js (2D Top-Down Radar Roguelike Engine - «РЕЙД: САМОСБОР»)
  * ============================================================================
- * Samosbor Tactical Radar Exploration Mode:
- * - Procedural room & corridor generation with airtight doors ("Гермодвери").
- * - Autonomous AI entities (Liquidator Patrol, Mutant Slime, Wandering Civilian).
- * - Finite State Machine (IDLE_WANDER, PATROL, CHASE, ATTACK).
- * - Rotating radar sweep beam with phosphor decay trail.
- * - Dynamic overhead CRT health bars and bottom-right telemetry HUD.
+ * Complete implementation:
+ * - 40x40 procedural floor generated via LevelGen.js
+ * - Procedural rendering via SpriteFactory.js (Player, Mutants, Allies, Tiles)
+ * - 360° rotating radar sweep line with phosphor persistence decay
+ * - Floating overhead health bars (24x4px, flash on damage)
+ * - CRT HUD: Telemetry (HP, Ammo, Status), scanlines, vignette & beam collapse
+ * - Full WASD controls, mouse crosshair, impulse shooting & sound alert aggro
+ * - Extraction elevator victory & death game over loop
  */
 
 (function (global) {
@@ -19,56 +21,70 @@
       this.ctx = null;
       this.isRunning = false;
       this.tick = 0;
+      this.animFrameId = null;
+
+      // Radar Sweep
       this.radarAngle = 0;
-      this.radarSpeed = 0.035;
+      this.radarSpeed = 0.038; // Radians per frame
 
-      this.map = {
-        width: 1400,
-        height: 1000,
-        tileSize: 32,
-        rooms: [],
-        doors: [],
-        walls: []
-      };
+      // Level Map (40x40 grid, tileSize = 32px)
+      this.mapData = null;
+      this.tileSize = 32;
 
+      // Player
       this.player = {
         x: 200,
         y: 200,
-        radius: 12,
+        radius: 13,
         angle: 0,
         vx: 0,
         vy: 0,
-        speed: 2.8,
+        speed: 2.9,
         hp: 100,
         maxHp: 100,
         armor: 15,
-        ammo: 30,
-        maxAmmo: 30,
+        ammo: 36,
+        maxAmmo: 36,
         talonsEarned: 0,
+        xpEarned: 0,
         type: 'player',
         isPlayer: true,
-        damageFlashTimer: 0
+        damageFlashTimer: 0,
+        isDead: false
       };
 
+      // Entities (Mutants, Patrols, Projectiles, Particles)
       this.entities = [];
       this.projectiles = [];
       this.particles = [];
+      this.crates = [];
+      this.doors = [];
+      this.elevator = null;
+
+      // Input & Mouse
       this.keys = {};
       this.mouse = { x: 0, y: 0, worldX: 0, worldY: 0, isDown: false };
       this.currentRoomName = 'Жилая ячейка №556';
-      this.lastAttackTime = 0;
+      this.lastShotTime = 0;
+
+      // CRT Collapse Animation on Death / Victory
+      this.isCollapsing = false;
+      this.collapseProgress = 0;
+      this.evacuationPrompt = false;
 
       this.onExitCallback = null;
     }
 
+    /**
+     * Initialize engine on canvas element
+     */
     init(canvasElement, onExit) {
       this.canvas = canvasElement;
       this.ctx = canvasElement.getContext('2d');
       this.onExitCallback = onExit;
 
       this.setupInputListeners();
-      this.generateProceduralMap();
-      this.spawnEntities();
+      this.buildFloor();
       this.syncPlayerFromBase();
     }
 
@@ -76,8 +92,103 @@
       if (typeof clientMe !== 'undefined' && clientMe) {
         this.player.hp = clientMe.hp || 100;
         this.player.maxHp = clientMe.maxHp || 100;
-        this.player.armor = (clientMe.stats && clientMe.stats.def) ? clientMe.stats.def : 12;
+        this.player.armor = (clientMe.stats && clientMe.stats.def) ? clientMe.stats.def : 14;
       }
+    }
+
+    buildFloor() {
+      if (typeof LevelGen !== 'undefined') {
+        this.mapData = LevelGen.generate();
+      } else {
+        // Fallback simple map if LevelGen isn't loaded
+        this.mapData = {
+          width: 40,
+          height: 40,
+          tileSize: 32,
+          grid: Array(40).fill(null).map(() => new Uint8Array(40).fill(0)),
+          rooms: [{ id: 0, name: 'Жилая ячейка №556', x: 2, y: 2, w: 10, h: 8 }],
+          doors: [],
+          playerSpawn: { x: 160, y: 160 },
+          elevator: { x: 300, y: 300, w: 32, h: 32 },
+          lootCrates: [],
+          mutantSpawns: [],
+          patrolSpawns: []
+        };
+      }
+
+      this.tileSize = this.mapData.tileSize || 32;
+
+      // Position player at safe room spawn
+      this.player.x = this.mapData.playerSpawn.x;
+      this.player.y = this.mapData.playerSpawn.y;
+      this.player.vx = 0;
+      this.player.vy = 0;
+      this.player.hp = this.player.maxHp;
+      this.player.ammo = this.player.maxAmmo;
+      this.player.talonsEarned = 0;
+      this.player.xpEarned = 0;
+      this.player.isDead = false;
+      this.isCollapsing = false;
+      this.collapseProgress = 0;
+
+      this.crates = this.mapData.lootCrates || [];
+      this.doors = this.mapData.doors || [];
+      this.elevator = this.mapData.elevator || { x: 500, y: 500, w: 32, h: 32 };
+
+      // Initialize AI Entities
+      this.entities = [];
+
+      // 1. Mutants (Hostile Wandering Biomass)
+      (this.mapData.mutantSpawns || []).forEach((m, idx) => {
+        this.entities.push({
+          id: `mutant_${idx}`,
+          type: 'mutant_slime',
+          name: 'Мутант // Слизень',
+          x: m.x,
+          y: m.y,
+          homeX: m.x,
+          homeY: m.y,
+          radius: 14,
+          angle: Math.random() * Math.PI * 2,
+          vx: 0,
+          vy: 0,
+          speed: m.speed || 1.6,
+          hp: m.hp || 50,
+          maxHp: m.maxHp || 50,
+          state: 'IDLE_WANDER',
+          stateTimer: Math.random() * 60,
+          wanderTarget: { x: m.x, y: m.y },
+          damageFlashTimer: 0,
+          phosphorAlpha: 0.15,
+          color: '#ff3b30'
+        });
+      });
+
+      // 2. Patrol Liquidators (Friendly / Allies)
+      (this.mapData.patrolSpawns || []).forEach((p, idx) => {
+        this.entities.push({
+          id: `patrol_${idx}`,
+          type: 'liquidator',
+          name: `Патрульный [Ликвидатор ${idx + 1}]`,
+          x: p.x,
+          y: p.y,
+          homeX: p.x,
+          homeY: p.y,
+          radius: 13,
+          angle: 0,
+          vx: 0,
+          vy: 0,
+          speed: 1.8,
+          hp: 120,
+          maxHp: 120,
+          state: 'PATROL',
+          stateTimer: 0,
+          wanderTarget: { x: p.x, y: p.y },
+          damageFlashTimer: 0,
+          phosphorAlpha: 0.25,
+          color: '#1fe044'
+        });
+      });
     }
 
     setupInputListeners() {
@@ -85,11 +196,12 @@
         if (!this.isRunning) return;
         this.keys[e.code] = true;
         this.keys[e.key.toLowerCase()] = true;
+
         if (e.code === 'Escape') {
           this.exitToCell();
         }
         if (e.code === 'KeyE' || e.code === 'Space') {
-          this.interactWithNearbyObject();
+          this.interactNearby();
         }
         if (e.code === 'KeyR') {
           this.reloadAmmo();
@@ -102,555 +214,523 @@
         this.keys[e.key.toLowerCase()] = false;
       });
 
-      this.canvas.addEventListener('mousemove', (e) => {
-        if (!this.isRunning) return;
-        const rect = this.canvas.getBoundingClientRect();
-        this.mouse.x = e.clientX - rect.left;
-        this.mouse.y = e.clientY - rect.top;
-      });
+      if (this.canvas) {
+        this.canvas.addEventListener('mousemove', (e) => {
+          if (!this.isRunning) return;
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.x = e.clientX - rect.left;
+          this.mouse.y = e.clientY - rect.top;
 
-      this.canvas.addEventListener('mousedown', (e) => {
-        if (!this.isRunning) return;
-        if (e.button === 0) {
-          this.mouse.isDown = true;
-          this.playerShoot();
-        }
-      });
+          const cam = this.getCameraOffset();
+          this.mouse.worldX = this.mouse.x + cam.x;
+          this.mouse.worldY = this.mouse.y + cam.y;
 
-      this.canvas.addEventListener('mouseup', () => {
-        this.mouse.isDown = false;
-      });
+          this.player.angle = Math.atan2(this.mouse.worldY - this.player.y, this.mouse.worldX - this.player.x);
+        });
+
+        this.canvas.addEventListener('mousedown', (e) => {
+          if (!this.isRunning) return;
+          if (e.button === 0) {
+            this.mouse.isDown = true;
+            this.playerShoot();
+          }
+        });
+
+        this.canvas.addEventListener('mouseup', () => {
+          this.mouse.isDown = false;
+        });
+      }
     }
 
     start() {
       this.isRunning = true;
-      this.syncPlayerFromBase();
       this.resizeCanvas();
       window.addEventListener('resize', () => this.resizeCanvas());
+
       this.loop = this.loop.bind(this);
-      requestAnimationFrame(this.loop);
+      if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = requestAnimationFrame(this.loop);
     }
 
     stop() {
       this.isRunning = false;
+      if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     }
 
     resizeCanvas() {
       if (!this.canvas) return;
-      this.canvas.width = this.canvas.parentElement ? this.canvas.parentElement.clientWidth : 960;
-      this.canvas.height = this.canvas.parentElement ? this.canvas.parentElement.clientHeight : 640;
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
     }
 
-    /**
-     * Генерация процедурного лабиринта комнат, коридоров и гермодверей
-     */
-    generateProceduralMap() {
-      this.map.rooms = [
-        { id: 0, name: 'Жилая ячейка №556', x: 80, y: 80, w: 260, h: 220, isSafe: true },
-        { id: 1, name: 'Коридор Блока П-46', x: 340, y: 150, w: 280, h: 90, isCorridor: true },
-        { id: 2, name: 'Технический склад ГО', x: 620, y: 60, w: 280, h: 260 },
-        { id: 3, name: 'Вентиляционный шурф №3', x: 220, y: 300, w: 90, h: 280, isCorridor: true },
-        { id: 4, name: 'Отстойник едкой слизи', x: 120, y: 580, w: 340, h: 280, isDanger: true },
-        { id: 5, name: 'Трансформаторная подстанция', x: 460, y: 440, w: 300, h: 240 },
-        { id: 6, name: 'Центральный распределитель', x: 760, y: 380, w: 340, h: 260 },
-        { id: 7, name: 'Шахта резервного лифта E4', x: 840, y: 680, w: 260, h: 220, isExit: true }
-      ];
-
-      // Позиционируем игрока в центре стартовой ячейки
-      this.player.x = 210;
-      this.player.y = 190;
-
-      // Гермодвери между комнатами
-      this.map.doors = [
-        { x: 340, y: 175, w: 14, h: 44, isOpen: false, name: 'Гермошлюз №1' },
-        { x: 620, y: 175, w: 14, h: 44, isOpen: false, name: 'Шлюз Склада ГО' },
-        { x: 245, y: 300, w: 44, h: 14, isOpen: false, name: 'Шлюз Шурфа' },
-        { x: 245, y: 580, w: 44, h: 14, isOpen: false, name: 'Люк Отстойника' },
-        { x: 460, y: 530, w: 14, h: 44, isOpen: false, name: 'Шлюз Трансформаторной' },
-        { x: 760, y: 500, w: 14, h: 44, isOpen: false, name: 'Шлюз Распределителя' },
-        { x: 960, y: 680, w: 44, h: 14, isOpen: false, name: 'Бронедверь Лифта E4' }
-      ];
-    }
-
-    /**
-     * Создание сущностей AI (Ликвидаторы, Слизни, Жильцы)
-     */
-    spawnEntities() {
-      this.entities = [];
-
-      // 1. Патрульный Ликвидатор (Neutral / Friendly AI)
-      this.entities.push({
-        id: 'liq_1',
-        type: 'liquidator',
-        name: 'Патрульный Ликвидатор [Сержант Громов]',
-        x: 480,
-        y: 195,
-        radius: 13,
-        angle: 0,
-        vx: 0,
-        vy: 0,
-        speed: 1.8,
-        hp: 180,
-        maxHp: 180,
-        state: 'PATROL',
-        waypoints: [
-          { x: 480, y: 195 },
-          { x: 720, y: 180 },
-          { x: 720, y: 250 },
-          { x: 500, y: 195 }
-        ],
-        curWaypoint: 0,
-        stateTimer: 0,
-        phosphorAlpha: 1.0,
-        damageFlashTimer: 0
-      });
-
-      // 2. Второй Ликвидатор на нижнем уровне
-      this.entities.push({
-        id: 'liq_2',
-        type: 'liquidator',
-        name: 'Ликвидатор охраны [Рядовой Зимин]',
-        x: 820,
-        y: 480,
-        radius: 13,
-        angle: 0,
-        vx: 0,
-        vy: 0,
-        speed: 1.7,
-        hp: 160,
-        maxHp: 160,
-        state: 'PATROL',
-        waypoints: [
-          { x: 820, y: 480 },
-          { x: 980, y: 520 },
-          { x: 860, y: 600 }
-        ],
-        curWaypoint: 0,
-        stateTimer: 0,
-        phosphorAlpha: 1.0,
-        damageFlashTimer: 0
-      });
-
-      // 3. Заблудший жилец (Civilian / Stalker)
-      this.entities.push({
-        id: 'civ_1',
-        type: 'civilian',
-        name: 'Заблудший жилец [Дядя Толя]',
-        x: 740,
-        y: 120,
-        radius: 11,
-        angle: 0,
-        vx: 0,
-        vy: 0,
-        speed: 1.2,
-        hp: 75,
-        maxHp: 75,
-        state: 'IDLE_WANDER',
-        homeRoom: this.map.rooms[2],
-        stateTimer: 0,
-        phosphorAlpha: 0.9,
-        damageFlashTimer: 0
-      });
-
-      // 4. Мутанты / Слизни (Hostile Wanderers)
-      const slimeSpawns = [
-        { x: 200, y: 700, hp: 110, name: 'Хлюп-Мутант Сливной Трубы' },
-        { x: 320, y: 760, hp: 130, name: 'Членистоногий Клещ Самосбора' },
-        { x: 620, y: 520, hp: 160, name: 'Биомасса Коллектора' },
-        { x: 920, y: 780, hp: 220, name: 'Аномальный Слизень Шахты' }
-      ];
-
-      slimeSpawns.forEach((s, idx) => {
-        this.entities.push({
-          id: `mut_${idx}`,
-          type: 'mutant_slime',
-          name: s.name,
-          x: s.x,
-          y: s.y,
-          radius: 14,
-          angle: Math.random() * Math.PI * 2,
-          vx: 0,
-          vy: 0,
-          speed: 1.6,
-          hp: s.hp,
-          maxHp: s.hp,
-          state: 'IDLE_WANDER',
-          stateTimer: 0,
-          attackCooldown: 0,
-          phosphorAlpha: 0.8,
-          damageFlashTimer: 0
-        });
-      });
-    }
-
-    /**
-     * Основной игровой цикл
-     */
     loop() {
       if (!this.isRunning) return;
       this.tick++;
 
-      this.updatePhysics();
-      this.updateAI();
+      this.update();
       this.render();
 
-      requestAnimationFrame(this.loop);
+      this.animFrameId = requestAnimationFrame(this.loop);
     }
 
     /**
-     * Обновление физики игрока, выстрелов и частиц
-     */
-    updatePhysics() {
-      // 1. Движение игрока
-      let dx = 0;
-      let dy = 0;
-      if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['w']) dy -= 1;
-      if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) dy += 1;
-      if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) dx -= 1;
-      if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) dx += 1;
-
-      if (dx !== 0 && dy !== 0) {
-        dx *= 0.7071;
-        dy *= 0.7071;
-      }
-
-      this.player.vx = dx * this.player.speed;
-      this.player.vy = dy * this.player.speed;
-
-      let nextX = this.player.x + this.player.vx;
-      let nextY = this.player.y + this.player.vy;
-
-      if (!this.checkWallCollision(nextX, this.player.y, this.player.radius)) {
-        this.player.x = nextX;
-      }
-      if (!this.checkWallCollision(this.player.x, nextY, this.player.radius)) {
-        this.player.y = nextY;
-      }
-
-      // Направление взгляда игрока (на курсор мыши)
-      const cam = this.getCameraOffset();
-      this.mouse.worldX = this.mouse.x + cam.x;
-      this.mouse.worldY = this.mouse.y + cam.y;
-      this.player.angle = Math.atan2(this.mouse.worldY - this.player.y, this.mouse.worldX - this.player.x);
-
-      // Текущая комната игрока
-      for (let r of this.map.rooms) {
-        if (this.player.x >= r.x && this.player.x <= r.x + r.w && this.player.y >= r.y && this.player.y <= r.y + r.h) {
-          this.currentRoomName = r.name;
-          break;
-        }
-      }
-
-      // Вращение луча радара
-      this.radarAngle = (this.radarAngle + this.radarSpeed) % (Math.PI * 2);
-
-      // 2. Обновление снарядов
-      for (let i = this.projectiles.length - 1; i >= 0; i--) {
-        let p = this.projectiles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life--;
-
-        // Столкновение со стенами
-        if (this.checkWallCollision(p.x, p.y, 3) || p.life <= 0) {
-          this.spawnHitParticles(p.x, p.y, p.color || '#1fe044', 4);
-          this.projectiles.splice(i, 1);
-          continue;
-        }
-
-        // Попадание по врагам
-        if (p.isPlayer) {
-          for (let e of this.entities) {
-            if (e.type === 'mutant_slime' && Math.hypot(p.x - e.x, p.y - e.y) < e.radius + 4) {
-              e.hp -= p.dmg;
-              e.damageFlashTimer = 6;
-              e.state = 'CHASE'; // Слизень сразу агрится на выстрел
-              this.spawnHitParticles(p.x, p.y, '#ff3b30', 8);
-              this.projectiles.splice(i, 1);
-              if (e.hp <= 0) {
-                this.killEntity(e);
-              }
-              break;
-            }
-          }
-        }
-      }
-
-      // 3. Обновление частиц
-      for (let i = this.particles.length - 1; i >= 0; i--) {
-        let pt = this.particles[i];
-        pt.x += pt.vx;
-        pt.y += pt.vy;
-        pt.alpha -= 0.04;
-        if (pt.alpha <= 0) {
-          this.particles.splice(i, 1);
-        }
-      }
-
-      // Таймер урона игрока
-      if (this.player.damageFlashTimer > 0) this.player.damageFlashTimer--;
-    }
-
-    /**
-     * Поведение AI сущностей (State Machine: IDLE_WANDER, PATROL, CHASE, ATTACK)
-     */
-    updateAI() {
-      for (let e of this.entities) {
-        if (e.damageFlashTimer > 0) e.damageFlashTimer--;
-
-        // Затухание люминофора радара
-        if (e.phosphorAlpha > 0.15) {
-          e.phosphorAlpha -= 0.006;
-        }
-
-        // Проверка развертки луча радара
-        let angToEntity = Math.atan2(e.y - this.player.y, e.x - this.player.x);
-        if (angToEntity < 0) angToEntity += Math.PI * 2;
-        let diff = Math.abs(angToEntity - this.radarAngle);
-        if (diff < 0.15 || diff > Math.PI * 2 - 0.15) {
-          e.phosphorAlpha = 1.0; // Луч прошел над сущностью — яркая засветка!
-        }
-
-        // --- ЛОГИКА МУТАНТА / СЛИЗНЯ ---
-        if (e.type === 'mutant_slime') {
-          let distToPlayer = Math.hypot(this.player.x - e.x, this.player.y - e.y);
-
-          // Обнаружение игрока в радиусе видимости (или по шуму)
-          if (distToPlayer < 240 && this.hasLineOfSight(e.x, e.y, this.player.x, this.player.y)) {
-            e.state = 'CHASE';
-          }
-
-          if (e.state === 'CHASE') {
-            e.angle = Math.atan2(this.player.y - e.y, this.player.x - e.x);
-            let spd = e.speed * 1.35;
-            let nX = e.x + Math.cos(e.angle) * spd;
-            let nY = e.y + Math.sin(e.angle) * spd;
-            if (!this.checkWallCollision(nX, e.y, e.radius)) e.x = nX;
-            if (!this.checkWallCollision(e.x, nY, e.radius)) e.y = nY;
-
-            // Атака в ближнем бою
-            if (distToPlayer < e.radius + this.player.radius + 6) {
-              e.attackCooldown = (e.attackCooldown || 0) + 1;
-              if (e.attackCooldown > 45) {
-                e.attackCooldown = 0;
-                let dmg = Math.max(4, 18 - Math.floor(this.player.armor / 3));
-                this.player.hp = Math.max(0, this.player.hp - dmg);
-                this.player.damageFlashTimer = 8;
-                this.spawnHitParticles(this.player.x, this.player.y, '#ff3b30', 10);
-                if (typeof playSound === 'function') playSound('hit_player');
-              }
-            }
-          } else {
-            // IDLE_WANDER: Блуждание в темных зонах
-            e.stateTimer = (e.stateTimer || 0) - 1;
-            if (e.stateTimer <= 0) {
-              e.stateTimer = Math.floor(Math.random() * 80) + 40;
-              e.angle = Math.random() * Math.PI * 2;
-            }
-            let spd = e.speed * 0.45;
-            let nX = e.x + Math.cos(e.angle) * spd;
-            let nY = e.y + Math.sin(e.angle) * spd;
-            if (!this.checkWallCollision(nX, nY, e.radius)) {
-              e.x = nX;
-              e.y = nY;
-            }
-          }
-        }
-
-        // --- ЛОГИКА ПАТРУЛЬНОГО ЛИКВИДАТОРА ---
-        if (e.type === 'liquidator') {
-          // Поиск враждебных слизней в секторе обзора
-          let targetSlime = null;
-          let nearestDist = 320;
-          for (let other of this.entities) {
-            if (other.type === 'mutant_slime') {
-              let d = Math.hypot(other.x - e.x, other.y - e.y);
-              if (d < nearestDist && this.hasLineOfSight(e.x, e.y, other.x, other.y)) {
-                nearestDist = d;
-                targetSlime = other;
-              }
-            }
-          }
-
-          if (targetSlime) {
-            // Атака мутанта из огнемета / карабина
-            e.angle = Math.atan2(targetSlime.y - e.y, targetSlime.x - e.x);
-            e.stateTimer = (e.stateTimer || 0) + 1;
-            if (e.stateTimer > 40) {
-              e.stateTimer = 0;
-              this.fireProjectile(e.x, e.y, e.angle, 8, 22, '#00ffaa', false);
-              this.spawnHitParticles(e.x, e.y, '#00ffaa', 3);
-            }
-          } else if (e.waypoints && e.waypoints.length > 0) {
-            // PATROL: Движение по маршрутным точкам
-            let wp = e.waypoints[e.curWaypoint];
-            let dist = Math.hypot(wp.x - e.x, wp.y - e.y);
-            if (dist < 15) {
-              e.curWaypoint = (e.curWaypoint + 1) % e.waypoints.length;
-            } else {
-              e.angle = Math.atan2(wp.y - e.y, wp.x - e.x);
-              let nX = e.x + Math.cos(e.angle) * e.speed;
-              let nY = e.y + Math.sin(e.angle) * e.speed;
-              if (!this.checkWallCollision(nX, e.y, e.radius)) e.x = nX;
-              if (!this.checkWallCollision(e.x, nY, e.radius)) e.y = nY;
-            }
-          }
-        }
-
-        // --- ЛОГИКА ЗАБЛУДШЕГО ЖИЛЬЦА ---
-        if (e.type === 'civilian') {
-          // Проверяет близость слизней — если близко, бежит в страхе
-          let threatNear = false;
-          for (let other of this.entities) {
-            if (other.type === 'mutant_slime' && Math.hypot(other.x - e.x, other.y - e.y) < 140) {
-              threatNear = true;
-              e.angle = Math.atan2(e.y - other.y, e.x - other.x); // Бежит от врага
-              break;
-            }
-          }
-
-          if (threatNear) {
-            let nX = e.x + Math.cos(e.angle) * (e.speed * 1.5);
-            let nY = e.y + Math.sin(e.angle) * (e.speed * 1.5);
-            if (!this.checkWallCollision(nX, e.y, e.radius)) e.x = nX;
-            if (!this.checkWallCollision(e.x, nY, e.radius)) e.y = nY;
-          } else {
-            // Медленное хождение по комнате
-            e.stateTimer = (e.stateTimer || 0) - 1;
-            if (e.stateTimer <= 0) {
-              e.stateTimer = Math.floor(Math.random() * 100) + 50;
-              e.angle = Math.random() * Math.PI * 2;
-            }
-            let nX = e.x + Math.cos(e.angle) * (e.speed * 0.4);
-            let nY = e.y + Math.sin(e.angle) * (e.speed * 0.4);
-            if (!this.checkWallCollision(nX, nY, e.radius)) {
-              e.x = nX;
-              e.y = nY;
-            }
-          }
-        }
-      }
-    }
-
-    /**
-     * Выстрел игрока
+     * Player Shooting & Sound Alert Noise
      */
     playerShoot() {
-      if (this.player.ammo <= 0) {
-        if (typeof playSound === 'function') playSound('click');
+      if (this.player.isDead || this.player.ammo <= 0) {
+        this.reloadAmmo();
         return;
       }
+
       const now = Date.now();
-      if (now - this.lastAttackTime < 240) return;
-      this.lastAttackTime = now;
-
+      if (now - this.lastShotTime < 180) return; // Fire rate limit
+      this.lastShotTime = now;
       this.player.ammo--;
-      this.fireProjectile(this.player.x, this.player.y, this.player.angle, 12, 35, '#1fe044', true);
-      this.spawnHitParticles(this.player.x + Math.cos(this.player.angle) * 14, this.player.y + Math.sin(this.player.angle) * 14, '#1fe044', 4);
-      if (typeof playSound === 'function') playSound('hit_enemy');
-    }
 
-    fireProjectile(x, y, angle, speed, dmg, color, isPlayer) {
+      // Play audio if available
+      if (typeof playSound === 'function') {
+        playSound('buy');
+      }
+
+      const speed = 14;
+      const spread = (Math.random() - 0.5) * 0.08;
+      const shotAngle = this.player.angle + spread;
+
       this.projectiles.push({
-        x: x + Math.cos(angle) * 14,
-        y: y + Math.sin(angle) * 14,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 50,
-        dmg: dmg,
-        color: color,
-        isPlayer: isPlayer
+        x: this.player.x + Math.cos(shotAngle) * 16,
+        y: this.player.y + Math.sin(shotAngle) * 16,
+        vx: Math.cos(shotAngle) * speed,
+        vy: Math.sin(shotAngle) * speed,
+        damage: 28,
+        isPlayer: true,
+        life: 55,
+        color: '#88ff9e'
       });
+
+      // Muzzle flash particles
+      for (let i = 0; i < 4; i++) {
+        this.particles.push({
+          x: this.player.x + Math.cos(shotAngle) * 18,
+          y: this.player.y + Math.sin(shotAngle) * 18,
+          vx: Math.cos(shotAngle + (Math.random() - 0.5) * 0.4) * (Math.random() * 4 + 2),
+          vy: Math.sin(shotAngle + (Math.random() - 0.5) * 0.4) * (Math.random() * 4 + 2),
+          color: '#ffffff',
+          alpha: 1.0,
+          sz: 2
+        });
+      }
+
+      // Gunshot noise aggros nearby mutants within 350px!
+      for (const e of this.entities) {
+        if (e.type === 'mutant_slime') {
+          const d = Math.hypot(e.x - this.player.x, e.y - this.player.y);
+          if (d < 350) {
+            e.state = 'CHASE';
+            e.stateTimer = 180;
+          }
+        }
+      }
     }
 
     reloadAmmo() {
-      this.player.ammo = this.player.maxAmmo;
-      if (typeof playSound === 'function') playSound('equip');
+      if (this.player.ammo < this.player.maxAmmo) {
+        this.player.ammo = this.player.maxAmmo;
+        this.spawnFloatingNotice('ПАТРОНЫ ПЕРЕЗАРЯЖЕНЫ [36]', '#1fe044');
+      }
     }
 
-    interactWithNearbyObject() {
-      // Открытие / закрытие дверей
-      for (let d of this.map.doors) {
-        let dist = Math.hypot(this.player.x - (d.x + d.w / 2), this.player.y - (d.y + d.h / 2));
-        if (dist < 45) {
-          d.isOpen = !d.isOpen;
-          if (typeof playSound === 'function') playSound('click');
+    interactNearby() {
+      // 1. Check extraction elevator
+      if (this.elevator) {
+        const dElev = Math.hypot(this.player.x - (this.elevator.x + 16), this.player.y - (this.elevator.y + 16));
+        if (dElev < 48) {
+          this.evacuateSuccess();
           return;
         }
       }
 
-      // Выход через шахту E4
-      let exitRoom = this.map.rooms.find(r => r.isExit);
-      if (exitRoom) {
-        let distToExit = Math.hypot(this.player.x - (exitRoom.x + exitRoom.w / 2), this.player.y - (exitRoom.y + exitRoom.h / 2));
-        if (distToExit < 60) {
-          this.exitToCell(true);
+      // 2. Check nearby airtight doors
+      for (const d of this.doors) {
+        const dist = Math.hypot(this.player.x - d.x, this.player.y - d.y);
+        if (dist < 45) {
+          d.isOpen = !d.isOpen;
+          this.spawnFloatingNotice(d.isOpen ? 'ГЕРМОДВЕРЬ ОТКРЫТА' : 'ГЕРМОДВЕРЬ ЗАКРЫТА', '#ffaa00');
+          return;
+        }
+      }
+
+      // 3. Check loot crates
+      for (const crate of this.crates) {
+        if (!crate.opened) {
+          const dist = Math.hypot(this.player.x - crate.x, this.player.y - crate.y);
+          if (dist < 40) {
+            this.openCrate(crate);
+            return;
+          }
         }
       }
     }
 
-    killEntity(e) {
-      const idx = this.entities.indexOf(e);
-      if (idx !== -1) {
-        this.entities.splice(idx, 1);
-        this.spawnHitParticles(e.x, e.y, '#ff3b30', 25);
-        this.player.talonsEarned += 45;
-        if (typeof playSound === 'function') playSound('buy');
+    openCrate(crate) {
+      crate.opened = true;
+      if (crate.type === 'ammo') {
+        this.player.ammo = this.player.maxAmmo;
+        this.spawnFloatingNotice('+36 ПАТРОНОВ', '#33d4ff');
+      } else {
+        this.player.talonsEarned += crate.amount || 25;
+        this.player.xpEarned += 15;
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
+        this.spawnFloatingNotice(`+${crate.amount || 25} ТАЛОНОВ, +20 HP`, '#f5a623');
+      }
+    }
+
+    evacuateSuccess() {
+      this.isCollapsing = true;
+      const talons = this.player.talonsEarned + 100; // Extraction bonus!
+      const xp = this.player.xpEarned + 50;
+
+      if (typeof clientMe !== 'undefined' && clientMe) {
+        clientMe.talons = (clientMe.talons || 0) + talons;
+        clientMe.xp = (clientMe.xp || 0) + xp;
+      }
+      if (typeof socket !== 'undefined' && socket) {
+        socket.emit('terminalError', `ЭВАКУАЦИЯ УСПЕШНА! Получено: +${talons} талонов, +${xp} XP.`);
+      }
+
+      setTimeout(() => {
+        this.exitToCell(true);
+      }, 1200);
+    }
+
+    spawnFloatingNotice(text, color = '#1fe044') {
+      this.particles.push({
+        x: this.player.x - 30,
+        y: this.player.y - 28,
+        vx: 0,
+        vy: -0.6,
+        text: text,
+        color: color,
+        alpha: 1.0,
+        isText: true
+      });
+    }
+
+    /**
+     * Main Simulation Update
+     */
+    update() {
+      if (this.isCollapsing) {
+        this.collapseProgress += 0.04;
+        return;
+      }
+
+      // 1. Radar Angle Rotation (360° sweep)
+      this.radarAngle += this.radarSpeed;
+      if (this.radarAngle >= Math.PI * 2) {
+        this.radarAngle -= Math.PI * 2;
+      }
+
+      // 2. Player Input Movement with smooth inertia
+      let moveX = 0;
+      let moveY = 0;
+      if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['w']) moveY -= 1;
+      if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) moveY += 1;
+      if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) moveX -= 1;
+      if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) moveX += 1;
+
+      if (moveX !== 0 && moveY !== 0) {
+        moveX *= 0.7071;
+        moveY *= 0.7071;
+      }
+
+      const accel = 0.45;
+      const friction = 0.82;
+      this.player.vx = (this.player.vx + moveX * accel * this.player.speed) * friction;
+      this.player.vy = (this.player.vy + moveY * accel * this.player.speed) * friction;
+
+      // Wall and Door Collision Check
+      const nextX = this.player.x + this.player.vx;
+      const nextY = this.player.y + this.player.vy;
+
+      if (!this.isTileSolid(nextX, this.player.y, this.player.radius)) {
+        this.player.x = nextX;
+      } else {
+        this.player.vx = 0;
+      }
+
+      if (!this.isTileSolid(this.player.x, nextY, this.player.radius)) {
+        this.player.y = nextY;
+      } else {
+        this.player.vy = 0;
+      }
+
+      // Identify Current Room
+      this.updateCurrentRoom();
+
+      // Automatic proximity crate opening & elevator prompt
+      if (this.elevator) {
+        const dElev = Math.hypot(this.player.x - (this.elevator.x + 16), this.player.y - (this.elevator.y + 16));
+        this.evacuationPrompt = (dElev < 50);
+      }
+
+      for (const crate of this.crates) {
+        if (!crate.opened) {
+          const dCrate = Math.hypot(this.player.x - crate.x, this.player.y - crate.y);
+          if (dCrate < 24) {
+            this.openCrate(crate);
+          }
+        }
+      }
+
+      // Damage flash timer decay
+      if (this.player.damageFlashTimer > 0) this.player.damageFlashTimer--;
+
+      // 3. Update AI Entities (Mutants & Liquidators)
+      this.updateEntities();
+
+      // 4. Update Projectiles
+      this.updateProjectiles();
+
+      // 5. Update Particles
+      this.updateParticles();
+
+      // 6. Check Player Death
+      if (this.player.hp <= 0 && !this.player.isDead) {
+        this.player.isDead = true;
+        this.isCollapsing = true;
+        if (typeof socket !== 'undefined' && socket) {
+          socket.emit('terminalError', 'РЕЙД ПРЕРВАН: СИГНАЛ БИОМЕТРИИ ЛИКВИДАТОРА УТЕРЯН.');
+        }
+        setTimeout(() => this.exitToCell(false), 1400);
+      }
+    }
+
+    updateCurrentRoom() {
+      if (!this.mapData || !this.mapData.rooms) return;
+      const px = this.player.x;
+      const py = this.player.y;
+
+      for (const r of this.mapData.rooms) {
+        if (px >= r.worldX && px <= r.worldX + r.worldW && py >= r.worldY && py <= r.worldY + r.worldH) {
+          this.currentRoomName = r.name;
+          return;
+        }
+      }
+      this.currentRoomName = 'Технический коридор';
+    }
+
+    isTileSolid(worldX, worldY, radius = 8) {
+      if (!this.mapData || !this.mapData.grid) return false;
+      const TS = this.tileSize;
+      const W = this.mapData.width;
+      const H = this.mapData.height;
+
+      // Check perimeter points around radius
+      const checkPoints = [
+        { x: worldX - radius, y: worldY },
+        { x: worldX + radius, y: worldY },
+        { x: worldX, y: worldY - radius },
+        { x: worldX, y: worldY + radius }
+      ];
+
+      for (const pt of checkPoints) {
+        const tx = Math.floor(pt.x / TS);
+        const ty = Math.floor(pt.y / TS);
+
+        if (tx < 0 || tx >= W || ty < 0 || ty >= H) return true;
+        if (this.mapData.grid[ty][tx] === 1) return true; // TILE_WALL
+
+        // Check closed airtight doors
+        for (const d of this.doors) {
+          if (!d.isOpen && d.tileX === tx && d.tileY === ty) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    updateEntities() {
+      const px = this.player.x;
+      const py = this.player.y;
+
+      for (const e of this.entities) {
+        if (e.damageFlashTimer > 0) e.damageFlashTimer--;
+
+        // Phosphor decay trail relative to radar sweep angle
+        const angleToEntity = Math.atan2(e.y - py, e.x - px);
+        let normalizedAngle = angleToEntity < 0 ? angleToEntity + Math.PI * 2 : angleToEntity;
+        let diff = Math.abs(normalizedAngle - this.radarAngle);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+        if (diff < 0.2) {
+          e.phosphorAlpha = 1.0; // Swept by beam! Maximum brightness
+        } else {
+          e.phosphorAlpha = Math.max(0.12, (e.phosphorAlpha || 1.0) - 0.006);
+        }
+
+        // Entity AI State Machine
+        if (e.type === 'mutant_slime') {
+          const distToPlayer = Math.hypot(px - e.x, py - e.y);
+
+          if (e.state === 'IDLE_WANDER') {
+            e.stateTimer--;
+            if (e.stateTimer <= 0) {
+              e.stateTimer = 60 + Math.random() * 90;
+              e.wanderTarget = {
+                x: e.homeX + (Math.random() - 0.5) * 160,
+                y: e.homeY + (Math.random() - 0.5) * 160
+              };
+            }
+
+            const dx = e.wanderTarget.x - e.x;
+            const dy = e.wanderTarget.y - e.y;
+            if (Math.hypot(dx, dy) > 8) {
+              const ang = Math.atan2(dy, dx);
+              e.vx = Math.cos(ang) * (e.speed * 0.6);
+              e.vy = Math.sin(ang) * (e.speed * 0.6);
+              e.angle = ang;
+            } else {
+              e.vx = 0;
+              e.vy = 0;
+            }
+
+            // Aggro if player enters 190px range
+            if (distToPlayer < 190) {
+              e.state = 'CHASE';
+              e.stateTimer = 180;
+            }
+          } else if (e.state === 'CHASE') {
+            const ang = Math.atan2(py - e.y, px - e.x);
+            e.vx = Math.cos(ang) * e.speed;
+            e.vy = Math.sin(ang) * e.speed;
+            e.angle = ang;
+
+            // Attack player on contact
+            if (distToPlayer < e.radius + this.player.radius + 4) {
+              this.damagePlayer(14);
+              e.vx *= -1.5;
+              e.vy *= -1.5;
+            }
+          }
+        } else if (e.type === 'liquidator') {
+          // Patrol wander between friendly nodes
+          e.stateTimer--;
+          if (e.stateTimer <= 0) {
+            e.stateTimer = 90 + Math.random() * 90;
+            e.wanderTarget = {
+              x: e.homeX + (Math.random() - 0.5) * 120,
+              y: e.homeY + (Math.random() - 0.5) * 120
+            };
+          }
+          const dx = e.wanderTarget.x - e.x;
+          const dy = e.wanderTarget.y - e.y;
+          if (Math.hypot(dx, dy) > 10) {
+            const ang = Math.atan2(dy, dx);
+            e.vx = Math.cos(ang) * (e.speed * 0.7);
+            e.vy = Math.sin(ang) * (e.speed * 0.7);
+            e.angle = ang;
+          }
+        }
+
+        // Apply movement with wall collisions
+        const nextEx = e.x + (e.vx || 0);
+        const nextEy = e.y + (e.vy || 0);
+
+        if (!this.isTileSolid(nextEx, e.y, e.radius)) e.x = nextEx;
+        if (!this.isTileSolid(e.x, nextEy, e.radius)) e.y = nextEy;
+      }
+    }
+
+    damagePlayer(amount) {
+      if (this.player.damageFlashTimer > 0) return; // Brief invulnerability
+      const actualDmg = Math.max(4, amount - Math.floor(this.player.armor * 0.35));
+      this.player.hp = Math.max(0, this.player.hp - actualDmg);
+      this.player.damageFlashTimer = 12;
+
+      // Damage particles
+      for (let i = 0; i < 6; i++) {
+        this.particles.push({
+          x: this.player.x,
+          y: this.player.y,
+          vx: (Math.random() - 0.5) * 4,
+          vy: (Math.random() - 0.5) * 4,
+          color: '#ff3b30',
+          alpha: 1.0,
+          sz: 2.5
+        });
+      }
+    }
+
+    updateProjectiles() {
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const p = this.projectiles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+
+        // Check wall collision
+        if (this.isTileSolid(p.x, p.y, 4) || p.life <= 0) {
+          this.spawnHitParticles(p.x, p.y, '#1fe044', 4);
+          this.projectiles.splice(i, 1);
+          continue;
+        }
+
+        // Check enemy collision
+        let hit = false;
+        for (let j = this.entities.length - 1; j >= 0; j--) {
+          const e = this.entities[j];
+          if (e.type === 'mutant_slime') {
+            const dist = Math.hypot(p.x - e.x, p.y - e.y);
+            if (dist < e.radius + 6) {
+              e.hp -= p.damage;
+              e.damageFlashTimer = 8;
+              this.spawnHitParticles(p.x, p.y, '#ff3b30', 6);
+              hit = true;
+
+              if (e.hp <= 0) {
+                this.entities.splice(j, 1);
+                this.player.talonsEarned += 15;
+                this.player.xpEarned += 25;
+                this.spawnFloatingNotice('+15 ТАЛОНОВ', '#ffd700');
+              }
+              break;
+            }
+          }
+        }
+
+        if (hit) {
+          this.projectiles.splice(i, 1);
+        }
       }
     }
 
     spawnHitParticles(x, y, color, count) {
       for (let i = 0; i < count; i++) {
-        let ang = Math.random() * Math.PI * 2;
-        let spd = Math.random() * 3 + 1;
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 3 + 1;
         this.particles.push({
-          x: x,
-          y: y,
+          x,
+          y,
           vx: Math.cos(ang) * spd,
           vy: Math.sin(ang) * spd,
-          color: color,
+          color,
           alpha: 1.0,
-          sz: Math.random() * 2.5 + 1.5
+          sz: Math.random() * 2 + 1.5
         });
       }
     }
 
-    checkWallCollision(x, y, radius) {
-      // Проверка границ комнат
-      let insideAnyRoom = false;
-      for (let r of this.map.rooms) {
-        if (x >= r.x + radius && x <= r.x + r.w - radius && y >= r.y + radius && y <= r.y + r.h - radius) {
-          insideAnyRoom = true;
-          break;
+    updateParticles() {
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const pt = this.particles[i];
+        pt.x += pt.vx || 0;
+        pt.y += pt.vy || 0;
+        pt.alpha -= pt.isText ? 0.02 : 0.04;
+        if (pt.alpha <= 0) {
+          this.particles.splice(i, 1);
         }
       }
-
-      // Проверка закрытых гермодверей
-      for (let d of this.map.doors) {
-        if (!d.isOpen) {
-          if (x >= d.x - radius && x <= d.x + d.w + radius && y >= d.y - radius && y <= d.y + d.h + radius) {
-            return true;
-          }
-        } else {
-          // Если дверь открыта, через нее можно проходить между комнатами
-          if (x >= d.x - 2 && x <= d.x + d.w + 2 && y >= d.y - 2 && y <= d.y + d.h + 2) {
-            return false;
-          }
-        }
-      }
-
-      return !insideAnyRoom;
-    }
-
-    hasLineOfSight(x1, y1, x2, y2) {
-      let dist = Math.hypot(x2 - x1, y2 - y1);
-      let steps = Math.ceil(dist / 20);
-      for (let i = 1; i < steps; i++) {
-        let cx = x1 + (x2 - x1) * (i / steps);
-        let cy = y1 + (y2 - y1) * (i / steps);
-        if (this.checkWallCollision(cx, cy, 2)) return false;
-      }
-      return true;
     }
 
     getCameraOffset() {
@@ -661,7 +741,7 @@
     }
 
     /**
-     * Отрисовка ЭЛТ-радарного экрана
+     * Master Render
      */
     render() {
       const ctx = this.ctx;
@@ -669,29 +749,40 @@
       const h = this.canvas.height;
       const cam = this.getCameraOffset();
 
-      // Очистка с эффектом фосфорного шлейфа
-      ctx.fillStyle = '#010803';
+      // CRT Persistence Trail: Slow dark phosphor fade
+      ctx.fillStyle = 'rgba(4, 20, 7, 0.05)';
       ctx.fillRect(0, 0, w, h);
 
       ctx.save();
       ctx.translate(-cam.x, -cam.y);
 
-      // 1. Отрисовка пола и стен комнат
-      this.drawRoomsAndDoors(ctx);
+      // 1. Draw Map Tiles (Walls & Floors via SpriteFactory)
+      this.drawTiles(ctx, cam, w, h);
 
-      // 2. Вращающийся луч тактического радара
-      this.drawRadarSweep(ctx);
-
-      // 3. Частицы
-      for (let pt of this.particles) {
-        ctx.fillStyle = pt.color;
-        ctx.globalAlpha = Math.max(0, pt.alpha);
-        ctx.fillRect(pt.x, pt.y, pt.sz, pt.sz);
+      // 2. Draw Airtight Doors
+      for (const door of this.doors) {
+        if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDoorTile) {
+          SpriteFactory.drawDoorTile(ctx, door, this.tileSize, 1.0);
+        }
       }
-      ctx.globalAlpha = 1.0;
 
-      // 4. Снаряды
-      for (let p of this.projectiles) {
+      // 3. Draw Loot Crates
+      for (const crate of this.crates) {
+        if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawLootCrate) {
+          SpriteFactory.drawLootCrate(ctx, crate, this.tileSize, this.tick, crate.phosphorAlpha || 0.8);
+        }
+      }
+
+      // 4. Draw Extraction Elevator Shaft
+      if (this.elevator && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawElevatorShaft) {
+        SpriteFactory.drawElevatorShaft(ctx, this.elevator, this.tileSize, this.tick, 1.0);
+      }
+
+      // 5. Draw 360° Circular Radar Sweep Beam
+      this.drawCircularSonar(ctx);
+
+      // 6. Draw Projectiles
+      for (const p of this.projectiles) {
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
@@ -700,65 +791,87 @@
         ctx.stroke();
       }
 
-      // 5. Сущности AI (Ликвидаторы, Слизни, Жильцы)
-      for (let e of this.entities) {
+      // 7. Draw AI Entities
+      for (const e of this.entities) {
         if (typeof SpriteFactory !== 'undefined') {
           SpriteFactory.drawEntity(ctx, e, this.tick);
         }
       }
 
-      // 6. Игрок
+      // 8. Draw Player
       if (typeof SpriteFactory !== 'undefined') {
         SpriteFactory.drawEntity(ctx, this.player, this.tick);
       }
 
-      ctx.restore();
-
-      // 7. Пост-процессинг: Радарная сетка, шкалы и ЭЛТ-телеметрия
-      this.drawRadarHUD(ctx, w, h);
-    }
-
-    drawRoomsAndDoors(ctx) {
-      // Комнаты
-      for (let r of this.map.rooms) {
-        // Пол
-        ctx.fillStyle = r.isDanger ? 'rgba(30, 6, 6, 0.75)' : (r.isSafe ? 'rgba(5, 25, 12, 0.75)' : 'rgba(3, 16, 8, 0.75)');
-        ctx.fillRect(r.x, r.y, r.w, r.h);
-
-        // Контур стен
-        ctx.strokeStyle = r.isDanger ? '#ff3b30' : '#1fe044';
-        ctx.lineWidth = 2.5;
-        ctx.strokeRect(r.x, r.y, r.w, r.h);
-
-        // Название комнаты в стиле терминала
-        ctx.fillStyle = r.isDanger ? 'rgba(255, 60, 50, 0.55)' : 'rgba(31, 224, 68, 0.45)';
-        ctx.font = '10px monospace';
-        ctx.fillText(`[ ${r.name.toUpperCase()} ]`, r.x + 8, r.y + 16);
+      // 9. Particles and Floating Notices
+      for (const pt of this.particles) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, pt.alpha);
+        if (pt.isText) {
+          ctx.fillStyle = pt.color;
+          ctx.font = 'bold 12px "Share Tech Mono", monospace';
+          ctx.fillText(pt.text, pt.x, pt.y);
+        } else {
+          ctx.fillStyle = pt.color;
+          ctx.fillRect(pt.x, pt.y, pt.sz, pt.sz);
+        }
+        ctx.restore();
       }
 
-      // Гермодвери
-      for (let d of this.map.doors) {
-        ctx.fillStyle = d.isOpen ? 'rgba(31, 224, 68, 0.3)' : '#ffaa00';
-        ctx.fillRect(d.x, d.y, d.w, d.h);
-        ctx.strokeStyle = d.isOpen ? '#1fe044' : '#ff5500';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(d.x, d.y, d.w, d.h);
+      ctx.restore();
 
-        if (!d.isOpen) {
-          ctx.fillStyle = '#000';
-          ctx.fillRect(d.x + 2, d.y + 2, d.w - 4, d.h - 4);
+      // 10. Draw CRT Post-Processing & HUD Telemetry
+      this.drawRadarHUD(ctx, w, h);
+
+      // 11. CRT Beam Collapse Animation (on Death or Extraction)
+      if (this.isCollapsing) {
+        this.drawCRTCollapse(ctx, w, h);
+      }
+    }
+
+    drawTiles(ctx, cam, w, h) {
+      if (!this.mapData || !this.mapData.grid) return;
+      const TS = this.tileSize;
+      const startX = Math.max(0, Math.floor(cam.x / TS));
+      const endX = Math.min(this.mapData.width - 1, Math.ceil((cam.x + w) / TS));
+      const startY = Math.max(0, Math.floor(cam.y / TS));
+      const endY = Math.min(this.mapData.height - 1, Math.ceil((cam.y + h) / TS));
+
+      for (let y = startY; y <= endY; y++) {
+        for (let x = startX; x <= endX; x++) {
+          const tile = this.mapData.grid[y][x];
+          const wx = x * TS;
+          const wy = y * TS;
+
+          if (tile === 1) { // TILE_WALL
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawWallTile) {
+              SpriteFactory.drawWallTile(ctx, wx, wy, TS, 1.0);
+            } else {
+              ctx.fillStyle = '#0b3814';
+              ctx.fillRect(wx, wy, TS, TS);
+            }
+          } else { // TILE_FLOOR
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawFloorTile) {
+              SpriteFactory.drawFloorTile(ctx, wx, wy, TS, 0.8);
+            }
+          }
         }
       }
     }
 
-    drawRadarSweep(ctx) {
+    /**
+     * Circular Sonar Overlay with Angular Notches & Sweep Line
+     */
+    drawCircularSonar(ctx) {
       const px = this.player.x;
       const py = this.player.y;
-      const sweepRadius = 380;
+      const sweepRadius = 420;
 
       ctx.save();
+
+      // Gradient Sweep Cone
       const grad = ctx.createRadialGradient(px, py, 10, px, py, sweepRadius);
-      grad.addColorStop(0, 'rgba(31, 224, 68, 0.18)');
+      grad.addColorStop(0, 'rgba(31, 224, 68, 0.22)');
       grad.addColorStop(1, 'rgba(31, 224, 68, 0.0)');
 
       ctx.fillStyle = grad;
@@ -768,9 +881,9 @@
       ctx.closePath();
       ctx.fill();
 
-      // Сам луч сканирования
+      // Sweep Beam Line
       ctx.strokeStyle = '#1fe044';
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(px, py);
       ctx.lineTo(px + Math.cos(this.radarAngle) * sweepRadius, py + Math.sin(this.radarAngle) * sweepRadius);
@@ -780,90 +893,128 @@
     }
 
     /**
-     * ЭЛТ Телеметрия игрока и радарная сетка (Bottom-Right HUD)
+     * CRT HUD Telemetry & Scanline Overlay
      */
     drawRadarHUD(ctx, w, h) {
       ctx.save();
 
-      // Круговая сетка прицела вокруг игрока
+      // 1. Concentric Range Rings & Crosshairs
       const cx = w / 2;
       const cy = h / 2;
-      ctx.strokeStyle = 'rgba(31, 224, 68, 0.15)';
+      ctx.strokeStyle = 'rgba(31, 224, 68, 0.12)';
       ctx.lineWidth = 1;
-      [80, 160, 240].forEach(rad => {
+      [100, 200, 320].forEach(rad => {
         ctx.beginPath();
         ctx.arc(cx, cy, rad, 0, Math.PI * 2);
         ctx.stroke();
       });
 
-      // Перекрестье прицела
-      ctx.beginPath();
-      ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
-      ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
-      ctx.stroke();
+      // Angular degree notches (0, 90, 180, 270)
+      ctx.fillStyle = 'rgba(31, 224, 68, 0.35)';
+      ctx.font = '9px monospace';
+      ctx.fillText('0° N', cx - 10, cy - 325);
+      ctx.fillText('90° E', cx + 325, cy + 3);
+      ctx.fillText('180° S', cx - 14, cy + 335);
+      ctx.fillText('270° W', cx - 355, cy + 3);
 
-      // Нижняя правая панель телеметрии
-      const hudW = 270;
-      const hudH = 110;
+      // 2. Top-Left Status Panel
+      ctx.fillStyle = 'rgba(4, 20, 7, 0.9)';
+      ctx.fillRect(16, 16, 320, 68);
+      ctx.strokeStyle = '#1fe044';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(16, 16, 320, 68);
+
+      ctx.fillStyle = '#ff3b30';
+      ctx.font = 'bold 12px "Share Tech Mono", monospace';
+      ctx.fillText('СТАТУС: ТРЕВОГА // САМОСБОР', 28, 38);
+
+      ctx.fillStyle = '#1fe044';
+      ctx.font = '11px monospace';
+      ctx.fillText(`СЕКТОР: [ ${this.currentRoomName.toUpperCase()} ]`, 28, 56);
+      ctx.fillText(`РЕЙДОВЫЙ СБОР: +${this.player.talonsEarned} ТАЛОНОВ`, 28, 72);
+
+      // 3. Bottom-Right CRT Telemetry Panel
+      const hudW = 290;
+      const hudH = 96;
       const hudX = w - hudW - 16;
       const hudY = h - hudH - 16;
 
-      ctx.fillStyle = 'rgba(3, 16, 7, 0.9)';
+      ctx.fillStyle = 'rgba(4, 20, 7, 0.9)';
       ctx.fillRect(hudX, hudY, hudW, hudH);
       ctx.strokeStyle = '#1fe044';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(hudX, hudY, hudW, hudH);
 
-      // Заголовок телеметрии
-      ctx.fillStyle = '#1fe044';
-      ctx.font = 'bold 12px "Share Tech Mono", monospace';
-      ctx.fillText(`РАДАР // ${this.currentRoomName.toUpperCase()}`, hudX + 10, hudY + 20);
-
-      // Сегментированная шкала здоровья
+      // Segmented HP Bar
       const hpPct = Math.max(0, this.player.hp / this.player.maxHp);
-      const totalSegments = 10;
-      const filledSegments = Math.round(hpPct * totalSegments);
+      const segments = 10;
+      const filled = Math.round(hpPct * segments);
       let segBar = '[';
-      for (let s = 0; s < totalSegments; s++) {
-        segBar += (s < filledSegments) ? '|' : ' ';
-      }
+      for (let s = 0; s < segments; s++) segBar += (s < filled) ? '||' : '  ';
       segBar += ']';
 
-      ctx.font = '11.5px monospace';
+      ctx.font = 'bold 12px "Share Tech Mono", monospace';
       ctx.fillStyle = this.player.hp < 30 ? '#ff3b30' : '#1fe044';
-      ctx.fillText(`HP: ${this.player.hp}/${this.player.maxHp}  ${segBar}`, hudX + 10, hudY + 42);
+      ctx.fillText(`HP: ${segBar} ${this.player.hp}/${this.player.maxHp}`, hudX + 14, hudY + 28);
 
-      // Броня и боезапас
-      ctx.fillStyle = '#88ffaa';
-      ctx.fillText(`БРОНЯ: ${this.player.armor} DEF | ТАЛОНЫ: +${this.player.talonsEarned}`, hudX + 10, hudY + 64);
+      ctx.font = '11.5px monospace';
+      ctx.fillStyle = '#88ff9e';
+      ctx.fillText(`ПАТРОНЫ: ${this.player.ammo}/${this.player.maxAmmo} (7.62 мм)`, hudX + 14, hudY + 52);
+      ctx.fillText(`БРОНЯ: ${this.player.armor} DEF | [R] ПЕРЕЗАРЯДКА`, hudX + 14, hudY + 74);
 
-      // Боезапас
-      ctx.fillStyle = this.player.ammo <= 5 ? '#ffaa00' : '#00ffff';
-      ctx.fillText(`БОЕКОМПЛЕКТ: ${this.player.ammo}/${this.player.maxAmmo} [ЛКМ - ОГОНЬ, R - ПЕРЕЗАРЯДКА]`, hudX + 10, hudY + 86);
+      // 4. Extraction Elevator Prompt Banner
+      if (this.evacuationPrompt) {
+        ctx.fillStyle = 'rgba(0, 40, 15, 0.95)';
+        ctx.fillRect(cx - 210, h - 85, 420, 36);
+        ctx.strokeStyle = '#88ff9e';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 210, h - 85, 420, 36);
 
-      // Верхняя статусная строка управления
-      ctx.fillStyle = 'rgba(4, 20, 10, 0.85)';
-      ctx.fillRect(16, 16, 320, 48);
-      ctx.strokeStyle = '#1fe044';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(16, 16, 320, 48);
+        ctx.fillStyle = '#88ff9e';
+        ctx.font = 'bold 13px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡ НАЖМИТЕ [ E ] ДЛЯ ЭВАКУАЦИИ В ЖИЛЯЧЕЙКУ ⚡', cx, h - 62);
+        ctx.textAlign = 'left';
+      }
 
-      ctx.fillStyle = '#1fe044';
-      ctx.font = '11px monospace';
-      ctx.fillText(`[WASD] ДВИЖЕНИЕ  [МЫШЬ] ПРИЦЕЛ`, 24, 34);
-      ctx.fillText(`[E/ПРОБЕЛ] ДВЕРИ  [ESC] В ЖИЛЯЧЕЙКУ`, 24, 52);
+      // 5. CRT Scanlines & Screen Vignette
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      for (let y = 0; y < h; y += 4) {
+        ctx.fillRect(0, y, w, 1.5);
+      }
+
+      ctx.restore();
+    }
+
+    /**
+     * CRT Beam Collapse on Game Over / Victory
+     */
+    drawCRTCollapse(ctx, w, h) {
+      ctx.save();
+      const p = Math.min(1.0, this.collapseProgress);
+
+      if (p < 0.6) {
+        // Vertical squeeze to a single horizontal beam
+        const curH = h * (1 - p / 0.6);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, w, (h - curH) / 2);
+        ctx.fillRect(0, (h + curH) / 2, w, (h - curH) / 2);
+      } else {
+        // Horizontal collapse to a center dot, then black
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, w, h);
+
+        const dotP = (p - 0.6) / 0.4;
+        const curW = w * (1 - dotP);
+        ctx.fillStyle = '#88ff9e';
+        ctx.fillRect((w - curW) / 2, h / 2 - 1, curW, 2);
+      }
 
       ctx.restore();
     }
 
     exitToCell(completed = false) {
       this.stop();
-      if (this.player.talonsEarned > 0 && typeof clientMe !== 'undefined' && clientMe) {
-        clientMe.talons = (clientMe.talons || 0) + this.player.talonsEarned;
-        if (typeof socket !== 'undefined' && socket) {
-          socket.emit('terminalError', `ТАКТИЧЕСКИЙ РЕЙД ЗАВЕРШЕН! Получено: +${this.player.talonsEarned} талонов.`);
-        }
-      }
       if (typeof this.onExitCallback === 'function') {
         this.onExitCallback(completed);
       }
@@ -872,4 +1023,3 @@
 
   global.RadarRoguelikeEngine = RadarRoguelikeEngine;
 })(typeof window !== 'undefined' ? window : this);
-

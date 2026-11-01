@@ -337,6 +337,200 @@
         ctx.fillStyle = fillColor;
         ctx.fillRect(barX, barY, fillW, barH);
       }
+    },
+
+    /**
+     * Окружение: Стена Гигахруща (32x32 железобетонный блок со светлой окантовкой стыков)
+     */
+    drawWallTile(ctx, x, y, size = 32, alpha = 1.0) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.1, alpha);
+      // Базовый темный железобетон
+      ctx.fillStyle = '#061c0b';
+      ctx.fillRect(x, y, size, size);
+
+      // Внутренний массив плиты
+      ctx.fillStyle = '#0b3814';
+      ctx.fillRect(x + 2, y + 2, size - 4, size - 4);
+
+      // Светлая окантовка стыков блоков
+      ctx.strokeStyle = '#1fe044';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
+
+      // Крепежные заклепки / арматура по углам
+      ctx.fillStyle = '#88ff9e';
+      ctx.fillRect(x + 3, y + 3, 2, 2);
+      ctx.fillRect(x + size - 5, y + 3, 2, 2);
+      ctx.fillRect(x + 3, y + size - 5, 2, 2);
+      ctx.fillRect(x + size - 5, y + size - 5, 2, 2);
+
+      ctx.restore();
+    },
+
+    /**
+     * Окружение: Пол коридора (32x32 темная плиточная сетка со слабыми линиями сканирования)
+     */
+    drawFloorTile(ctx, x, y, size = 32, alpha = 1.0) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.04, alpha * 0.7);
+
+      ctx.fillStyle = '#031006';
+      ctx.fillRect(x, y, size, size);
+
+      // Тонкая сетка плитки
+      ctx.strokeStyle = '#082a10';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
+
+      // Внутренние слабые линии сканирования
+      ctx.strokeStyle = 'rgba(31, 224, 68, 0.08)';
+      ctx.beginPath();
+      ctx.moveTo(x + 4, y + size / 2);
+      ctx.lineTo(x + size - 4, y + size / 2);
+      ctx.stroke();
+
+      ctx.restore();
+    },
+
+    /**
+     * Окружение: Гермодверь (полосатая штриховка безопасности, разделяющая помещения)
+     */
+    drawDoorTile(ctx, door, size = 32, alpha = 1.0) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.15, alpha);
+
+      const x = door.x - size / 2;
+      const y = door.y - size / 2;
+
+      // Рама гермодвери
+      ctx.fillStyle = '#041407';
+      ctx.fillRect(x, y, size, size);
+      ctx.strokeStyle = '#1fe044';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
+
+      // Полосатая штриховка безопасности (желто-черная / фосфорно-темная)
+      const stripeW = 6;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x + 3, y + 3, size - 6, size - 6);
+      ctx.clip();
+
+      for (let s = -size; s < size * 2; s += stripeW * 2) {
+        ctx.fillStyle = door.isOpen ? '#0b3814' : '#ffaa00';
+        ctx.beginPath();
+        ctx.moveTo(x + s, y);
+        ctx.lineTo(x + s + stripeW, y);
+        ctx.lineTo(x + s + stripeW - size, y + size);
+        ctx.lineTo(x + s - size, y + size);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Индикатор замка
+      ctx.fillStyle = door.isOpen ? '#1fe044' : '#ff3b30';
+      ctx.beginPath();
+      ctx.arc(door.x, door.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    },
+
+    /**
+     * Окружение: Ящик снабжения / Лут (контур контейнера с маркировкой пайка концентрата)
+     */
+    drawLootCrate(ctx, crate, size = 32, tick = 0, alpha = 1.0) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.12, alpha);
+
+      const cx = crate.x;
+      const cy = crate.y;
+      const r = crate.radius || 12;
+
+      if (crate.opened) {
+        // Открытый пустой ящик
+        ctx.strokeStyle = '#445544';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx - r, cy - r, r * 2, r * 2);
+        ctx.fillStyle = 'rgba(10, 25, 12, 0.4)';
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        ctx.restore();
+        return;
+      }
+
+      // Неоткрытый контейнер (#f5a623 контур и свечение)
+      const pulse = Math.sin(tick * 0.1) * 2;
+      const color = crate.type === 'ammo' ? '#33d4ff' : '#f5a623';
+
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 6 + pulse;
+
+      ctx.fillStyle = '#091c0e';
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(cx - r, cy - r, r * 2, r * 2);
+
+      // Крест или маркировка пайка
+      ctx.fillStyle = color;
+      if (crate.type === 'ammo') {
+        // Три патронные риски
+        ctx.fillRect(cx - 5, cy - 6, 2, 12);
+        ctx.fillRect(cx - 1, cy - 6, 2, 12);
+        ctx.fillRect(cx + 3, cy - 6, 2, 12);
+      } else {
+        // Звезда / концентратный крест
+        ctx.fillRect(cx - 6, cy - 2, 12, 4);
+        ctx.fillRect(cx - 2, cy - 6, 4, 12);
+      }
+
+      ctx.restore();
+    },
+
+    /**
+     * Окружение: Шахта лифта / Эвакуация (мигающие шевроны выхода)
+     */
+    drawElevatorShaft(ctx, elevator, size = 32, tick = 0, alpha = 1.0) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.2, alpha);
+
+      const x = elevator.x;
+      const y = elevator.y;
+
+      // Площадка шахты
+      ctx.fillStyle = '#031407';
+      ctx.fillRect(x, y, size, size);
+
+      ctx.strokeStyle = '#1fe044';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, size - 2, size - 2);
+
+      // Пульсирующие шевроны выхода (вверх / внутрь)
+      const blink = Math.sin(tick * 0.15) > 0;
+      ctx.strokeStyle = blink ? '#88ff9e' : '#1fe044';
+      ctx.lineWidth = 2;
+
+      const midX = x + size / 2;
+      const midY = y + size / 2;
+
+      // Шеврон 1
+      ctx.beginPath();
+      ctx.moveTo(midX - 8, midY + 4);
+      ctx.lineTo(midX, midY - 4);
+      ctx.lineTo(midX + 8, midY + 4);
+      ctx.stroke();
+
+      // Шеврон 2
+      ctx.beginPath();
+      ctx.moveTo(midX - 8, midY + 10);
+      ctx.lineTo(midX, midY + 2);
+      ctx.lineTo(midX + 8, midY + 10);
+      ctx.stroke();
+
+      ctx.restore();
     }
   };
 
