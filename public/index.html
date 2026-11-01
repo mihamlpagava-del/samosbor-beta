@@ -1375,6 +1375,23 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   }
 }
 
+@keyframes chatBtnPulse {
+  0%, 100% {
+    background: rgba(255, 30, 30, 0.35);
+    border-color: #ff3333;
+    color: #ff6666;
+    box-shadow: 0 0 14px rgba(255, 50, 50, 0.8), inset 0 0 10px rgba(255, 50, 50, 0.4);
+    text-shadow: 0 0 8px #ff4444;
+  }
+  50% {
+    background: rgba(0, 25, 10, 0.85);
+    border-color: #1fe044;
+    color: #1fe044;
+    box-shadow: 0 0 4px rgba(31, 224, 68, 0.4);
+    text-shadow: 0 0 4px #1fe044;
+  }
+}
+
 .chat-btn-blinking {
   animation: chatBtnPulse 1.05s ease-in-out infinite !important;
   font-weight: bold !important;
@@ -7101,6 +7118,67 @@ socket.on('combatStart', (data) => {
   document.getElementById('btn-attack').innerText = (currentLang === 'en' ? 'AIMED ATTACK' : 'ПРИЦЕЛЬНАЯ АТАКА');
 });
 
+let aimSweetSpotLeft = 40;
+let aimSweetSpotWidth = 20;
+
+function toggleAimAttack() {
+  const container = document.getElementById('aim-bar-container');
+  const btn = document.getElementById('btn-attack');
+  const cursor = document.getElementById('aim-cursor');
+  const sweetSpot = document.getElementById('aim-sweet-spot');
+  if (!container || !btn || !cursor) return;
+
+  const isEn = (currentLang === 'en');
+
+  if (!isAiming) {
+    isAiming = true;
+    container.style.display = 'block';
+    btn.innerText = isEn ? '⚔️ STRIKE NOW!' : '⚔️ УДАРИТЬ СЕЙЧАС!';
+    btn.style.background = 'rgba(255, 30, 30, 0.4)';
+
+    // Рандомизация положения зеленой шкалы при каждом прицеливании
+    aimSweetSpotWidth = 16 + Math.floor(Math.random() * 8); // 16%..24%
+    aimSweetSpotLeft = 8 + Math.floor(Math.random() * (85 - aimSweetSpotWidth));
+    if (sweetSpot) {
+      sweetSpot.style.left = aimSweetSpotLeft + '%';
+      sweetSpot.style.width = aimSweetSpotWidth + '%';
+      sweetSpot.style.background = 'rgba(51, 255, 0, 0.55)';
+      sweetSpot.style.borderLeft = '2px solid #00ff66';
+      sweetSpot.style.borderRight = '2px solid #00ff66';
+      sweetSpot.style.boxShadow = '0 0 12px rgba(0, 255, 102, 0.85)';
+    }
+
+    aimPos = 0;
+    aimDir = 1;
+    if (aimInterval) clearInterval(aimInterval);
+
+    aimInterval = setInterval(() => {
+      aimPos += aimDir * 2.8;
+      if (aimPos >= 98) {
+        aimPos = 98;
+        aimDir = -1;
+      } else if (aimPos <= 0) {
+        aimPos = 0;
+        aimDir = 1;
+      }
+      cursor.style.left = aimPos + '%';
+    }, 20);
+  } else {
+    isAiming = false;
+    if (aimInterval) clearInterval(aimInterval);
+    container.style.display = 'none';
+    btn.innerText = isEn ? 'AIMED ATTACK' : 'ПРИЦЕЛЬНАЯ АТАКА';
+    btn.style.background = '';
+
+    const isHit = (aimPos >= aimSweetSpotLeft && aimPos <= (aimSweetSpotLeft + aimSweetSpotWidth));
+    if (isHit) {
+      socket.emit('combatAction', 'aimed_success');
+    } else {
+      socket.emit('combatAction', 'aimed_fail');
+    }
+  }
+}
+
 let mgData = null, mgStep = 0, mgInput = [], currentGameLoc = null;
 
 socket.on('startCombatMinigame', (data) => {
@@ -8580,6 +8658,12 @@ function updateUI(me, sectorPlayers) {
   let ins = document.getElementById('intro-screen');
   if (ls.classList.contains('active-screen')) return;
   if (ins.classList.contains('active-screen')) return;
+
+  const rScreen = document.getElementById('radar-roguelike-screen');
+  if (rScreen && rScreen.style.display === 'block') {
+    // В данный момент активен рейд "САМОСБОР" (Radar Roguelike) - не перебивать экран хабом!
+    return;
+  }
 
   const invM = document.getElementById('inventory-modal'), shopM = document.getElementById('shop-modal'), mgM = document.getElementById('minigame-modal'), evM = document.getElementById('event-modal'), crM = document.getElementById('craft-modal'), inM = document.getElementById('info-modal'), chM = document.getElementById('chat-modal');
   let mapS = document.getElementById('map-screen');
@@ -10220,26 +10304,40 @@ function renderAchievementsList() {
 let radarRoguelikeGame = null;
 
 function openRadarRoguelikeModal() {
+  console.log('[RadarRoguelike] Opening raid mode...');
   const screen = document.getElementById('radar-roguelike-screen');
   const canvas = document.getElementById('radar-canvas');
-  if (!screen || !canvas) return;
+  if (!screen || !canvas) {
+    console.error('[RadarRoguelike] Screen or canvas element not found!');
+    return;
+  }
 
   // Скрываем главное меню и открываем полноэкранный радарный холст
   const hub = document.getElementById('hub-screen');
-  if (hub) hub.style.display = 'none';
+  if (hub) {
+    hub.style.display = 'none';
+    hub.classList.remove('active-screen');
+  }
   screen.style.display = 'block';
 
-  if (!radarRoguelikeGame) {
-    if (typeof RadarRoguelikeEngine !== 'undefined') {
-      radarRoguelikeGame = new RadarRoguelikeEngine();
-      radarRoguelikeGame.init(canvas, (completed) => {
-        closeRadarRoguelikeModal();
-      });
+  try {
+    if (!radarRoguelikeGame) {
+      if (typeof RadarRoguelikeEngine !== 'undefined') {
+        radarRoguelikeGame = new RadarRoguelikeEngine();
+        radarRoguelikeGame.init(canvas, (completed) => {
+          closeRadarRoguelikeModal();
+        });
+        radarRoguelikeGame.start();
+      } else {
+        console.error('[RadarRoguelike] RadarRoguelikeEngine class is undefined!');
+      }
+    } else {
+      radarRoguelikeGame.buildFloor();
+      radarRoguelikeGame.syncPlayerFromBase();
       radarRoguelikeGame.start();
     }
-  } else {
-    radarRoguelikeGame.buildFloor();
-    radarRoguelikeGame.start();
+  } catch (err) {
+    console.error('[RadarRoguelike] Error starting raid:', err);
   }
 }
 
@@ -10262,10 +10360,16 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+const exitCellButton = document.getElementById('btn-exit-cell');
+if (exitCellButton) {
+  exitCellButton.onclick = openRadarRoguelikeModal;
+}
+
 window.addEventListener('DOMContentLoaded', applyLanguage);
 applyLanguage();
 </script>
 <script src="assets/samosborQuestEngine.js"></script>
+<script src="assets/radarAudio.js"></script>
 <script src="assets/levelGen.js"></script>
 <script src="assets/spriteFactory.js"></script>
 <script src="assets/radarRoguelike.js"></script>

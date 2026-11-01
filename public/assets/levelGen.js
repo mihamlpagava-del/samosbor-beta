@@ -5,11 +5,16 @@
  * Grid-based dungeon generator:
  * - 40x40 grid (tileSize = 32px => 1280x1280 world)
  * - 6-8 interconnected rectangular rooms with 1-2 tile wide corridors
- * - Safe player spawn ("Ячейка 556")
+ * - Safe player spawn ("Жилая ячейка №556")
  * - Distant elevator shaft extraction zone ("Шахта Лифта // Эвакуация")
- * - Supply crates / loot packs with concentrate rations & ammo
+ * - Supply crates, concentrate rations, and firearm drops (PM, Shotgun, AK-74)
+ * - Diverse procedural monsters:
+ *   1. Acid Slime (Слизень)
+ *   2. Scavenger Creeper (Трупоед-Шмыг)
+ *   3. Spitter Worm (Плюющийся Червь)
+ *   4. Armored Brute (Бронированный Мусорщик)
+ * - Patrol Liquidators (союзники)
  * - Airtight blast doors ("Гермодвери")
- * - Roaming mutants and patrol liquidator spawn anchors
  */
 
 (function (global) {
@@ -20,9 +25,8 @@
     GRID_HEIGHT: 40,
     TILE_SIZE: 32,
 
-    // Tile Types
-    TILE_WALL: 1,
     TILE_FLOOR: 0,
+    TILE_WALL: 1,
     TILE_DOOR: 2,
     TILE_ELEVATOR: 3,
 
@@ -39,7 +43,7 @@
 
     /**
      * Generate complete procedural floor
-     * @returns {Object} Map data with tiles, rooms, doors, loot, spawns
+     * @returns {Object} Map data
      */
     generate() {
       const W = this.GRID_WIDTH;
@@ -55,13 +59,13 @@
       }
 
       // 2. Generate 6 to 8 rectangular rooms
-      const numRooms = 6 + Math.floor(Math.random() * 3); // 6, 7, or 8
+      const numRooms = 6 + Math.floor(Math.random() * 3);
       const rooms = [];
       let roomNamesPool = [...this.ROOM_NAMES];
 
-      for (let attempt = 0; attempt < 120 && rooms.length < numRooms; attempt++) {
-        const rw = 5 + Math.floor(Math.random() * 4); // 5..8 tiles (160..256px)
-        const rh = 4 + Math.floor(Math.random() * 4); // 4..7 tiles (128..224px)
+      for (let attempt = 0; attempt < 140 && rooms.length < numRooms; attempt++) {
+        const rw = 5 + Math.floor(Math.random() * 4); // 5..8 tiles
+        const rh = 4 + Math.floor(Math.random() * 4); // 4..7 tiles
         const rx = 2 + Math.floor(Math.random() * (W - rw - 4));
         const ry = 2 + Math.floor(Math.random() * (H - rh - 4));
 
@@ -80,7 +84,7 @@
           centerY: Math.floor(ry + rh / 2)
         };
 
-        // Check distance/overlap with existing rooms (minimum 2 tiles buffer)
+        // Check buffer distance
         let overlaps = false;
         for (const existing of rooms) {
           if (
@@ -96,7 +100,6 @@
 
         if (!overlaps) {
           rooms.push(newRoom);
-          // Carve room floor
           for (let y = newRoom.y; y < newRoom.y + newRoom.h; y++) {
             for (let x = newRoom.x; x < newRoom.x + newRoom.w; x++) {
               grid[y][x] = this.TILE_FLOOR;
@@ -105,19 +108,17 @@
         }
       }
 
-      // 3. Connect rooms with corridors (MST / Chain + Random shortcuts)
+      // 3. Connect rooms with corridors
       const doors = [];
       for (let i = 0; i < rooms.length - 1; i++) {
         this.connectRooms(grid, rooms[i], rooms[i + 1], doors);
       }
-      // Add a couple extra loop corridors for non-linear exploration
       if (rooms.length > 3) {
         this.connectRooms(grid, rooms[0], rooms[Math.floor(rooms.length / 2)], doors);
         this.connectRooms(grid, rooms[1], rooms[rooms.length - 1], doors);
       }
 
-      // 4. Designate spawn room and elevator room
-      // Spawn is Room 0 ("Жилая ячейка №556")
+      // 4. Safe Spawn Room (Room 0)
       rooms[0].name = 'Жилая ячейка №556';
       rooms[0].isSafe = true;
 
@@ -126,7 +127,7 @@
         y: rooms[0].centerY * TS + TS / 2
       };
 
-      // Find furthest room for Elevator Shaft extraction
+      // 5. Extraction Elevator in furthest room
       let maxDist = -1;
       let elevatorRoom = rooms[rooms.length - 1];
       for (let i = 1; i < rooms.length; i++) {
@@ -149,11 +150,10 @@
       };
       grid[elevatorRoom.centerY][elevatorRoom.centerX] = this.TILE_ELEVATOR;
 
-      // 5. Spawn 8 to 12 Loot / Supply Crates in rooms (avoiding player center)
+      // 6. Loot Crates (Ammo, Food, Medical)
       const lootCrates = [];
       const numCrates = 8 + Math.floor(Math.random() * 5); // 8..12
       for (let c = 0; c < numCrates; c++) {
-        // Pick a room (prefer non-spawn rooms, but spawn room can have 1 starter crate)
         const room = rooms[Math.floor(Math.random() * rooms.length)];
         const cx = room.x + 1 + Math.floor(Math.random() * (room.w - 2));
         const cy = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
@@ -168,7 +168,7 @@
             tileY: cy,
             radius: 12,
             type: isAmmo ? 'ammo' : 'ration',
-            amount: isAmmo ? 15 : 25,
+            amount: isAmmo ? 18 : 30,
             name: isAmmo ? 'Патроны 7.62 мм' : 'Паёк концентрата',
             opened: false,
             phosphorAlpha: 0.15
@@ -176,26 +176,87 @@
         }
       }
 
-      // 6. Spawn 6 to 10 Hostile Mutants/Slimes in rooms (strictly away from Room 0)
+      // 7. Firearm Weapon Drops in rooms (2-4 guns on floor)
+      const weaponDrops = [];
+      const GUN_TYPES = [
+        { id: 'pm_gun', name: 'Пистолет Макарова', dmg: 32, ammo: 16, type: 'pistol', icon: 'pm' },
+        { id: 'shotgun', name: 'Дробовик КС-23', dmg: 68, ammo: 10, type: 'shotgun', icon: 'shotgun' },
+        { id: 'ak_carbine', name: 'Автомат АК-74У', dmg: 38, ammo: 30, type: 'rifle', icon: 'ak' }
+      ];
+      const eligibleGunRooms = rooms.slice(1);
+      const numGuns = 2 + Math.floor(Math.random() * 3); // 2..4
+      for (let g = 0; g < numGuns; g++) {
+        const room = eligibleGunRooms[Math.floor(Math.random() * eligibleGunRooms.length)];
+        const gx = room.x + 1 + Math.floor(Math.random() * (room.w - 2));
+        const gy = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
+
+        if (grid[gy][gx] === this.TILE_FLOOR) {
+          const gunTemplate = GUN_TYPES[Math.floor(Math.random() * GUN_TYPES.length)];
+          weaponDrops.push({
+            id: `drop_gun_${g}`,
+            x: gx * TS + TS / 2,
+            y: gy * TS + TS / 2,
+            radius: 12,
+            name: gunTemplate.name,
+            gunId: gunTemplate.id,
+            dmg: gunTemplate.dmg,
+            ammo: gunTemplate.ammo,
+            maxAmmo: gunTemplate.ammo,
+            gunType: gunTemplate.type,
+            pickedUp: false,
+            phosphorAlpha: 0.2
+          });
+        }
+      }
+
+      // 8. Diverse Procedural Monster Spawns (6 to 10 entities)
       const mutantSpawns = [];
-      const numMutants = 6 + Math.floor(Math.random() * 5); // 6..10
+      const numMutants = 7 + Math.floor(Math.random() * 5); // 7..11
+      const MONSTER_ARCHETYPES = ['slime', 'creeper', 'spitter', 'brute'];
+
       for (let m = 0; m < numMutants; m++) {
         const eligibleRooms = rooms.filter(r => !r.isSafe);
         const room = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
         const mx = room.x + 1 + Math.floor(Math.random() * (room.w - 2));
         const my = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
 
+        const arch = MONSTER_ARCHETYPES[Math.floor(Math.random() * MONSTER_ARCHETYPES.length)];
+        let hp = 45;
+        let speed = 1.6;
+        let radius = 13;
+        let name = 'Мутант // Слизень';
+
+        if (arch === 'creeper') {
+          name = 'Трупоед-Шмыг';
+          hp = 35;
+          speed = 2.4; // Fast lunger
+          radius = 11;
+        } else if (arch === 'spitter') {
+          name = 'Плюющийся Червь';
+          hp = 60;
+          speed = 1.0; // Slow distant shooter
+          radius = 14;
+        } else if (arch === 'brute') {
+          name = 'Бронированный Мусорщик';
+          hp = 135;
+          speed = 1.1; // Heavy tank
+          radius = 18;
+        }
+
         mutantSpawns.push({
           x: mx * TS + TS / 2,
           y: my * TS + TS / 2,
           homeRoomId: room.id,
-          hp: 45 + Math.floor(Math.random() * 30),
-          maxHp: 75,
-          speed: 1.4 + Math.random() * 0.6
+          archetype: arch,
+          name: name,
+          hp: hp,
+          maxHp: hp,
+          speed: speed,
+          radius: radius
         });
       }
 
-      // 7. Spawn 2 to 3 Patrol Liquidators (Allies)
+      // 9. Patrol Liquidators (2-3 Allies)
       const patrolSpawns = [];
       const patrolRooms = rooms.slice(1, 4);
       patrolRooms.forEach((r, idx) => {
@@ -203,8 +264,8 @@
           x: r.centerX * TS + TS / 2,
           y: r.centerY * TS + TS / 2,
           homeRoomId: r.id,
-          hp: 100,
-          maxHp: 100,
+          hp: 120,
+          maxHp: 120,
           speed: 1.8
         });
       });
@@ -219,21 +280,18 @@
         playerSpawn,
         elevator,
         lootCrates,
+        weaponDrops,
         mutantSpawns,
         patrolSpawns
       };
     },
 
-    /**
-     * Connect two rooms with horizontal and vertical corridors
-     */
     connectRooms(grid, roomA, roomB, doors) {
-      let x1 = roomA.centerX;
-      let y1 = roomA.centerY;
+      const x1 = roomA.centerX;
+      const y1 = roomA.centerY;
       const x2 = roomB.centerX;
       const y2 = roomB.centerY;
 
-      // 50% chance horizontal first, then vertical
       if (Math.random() < 0.5) {
         this.carveHCorridor(grid, x1, x2, y1);
         this.carveVCorridor(grid, y1, y2, x2);
@@ -242,7 +300,6 @@
         this.carveHCorridor(grid, x1, x2, y2);
       }
 
-      // Add airtight doors near room boundaries
       this.tryPlaceDoor(grid, roomA, doors);
       this.tryPlaceDoor(grid, roomB, doors);
     },
@@ -252,7 +309,6 @@
       const maxX = Math.max(x1, x2);
       for (let x = minX; x <= maxX; x++) {
         grid[y][x] = this.TILE_FLOOR;
-        // Corridor width: 1-2 cells
         if (y + 1 < this.GRID_HEIGHT - 2 && (x % 3 === 0)) {
           grid[y + 1][x] = this.TILE_FLOOR;
         }
@@ -272,7 +328,6 @@
 
     tryPlaceDoor(grid, room, doors) {
       const TS = this.TILE_SIZE;
-      // Scan borders of the room for single opening
       const perimeter = [];
       for (let x = room.x; x < room.x + room.w; x++) {
         perimeter.push({ x, y: room.y - 1, dir: 'up' });
@@ -289,7 +344,6 @@
           p.y > 1 && p.y < this.GRID_HEIGHT - 2 &&
           grid[p.y][p.x] === this.TILE_FLOOR
         ) {
-          // Check if not already a door
           const exists = doors.some(d => d.tileX === p.x && d.tileY === p.y);
           if (!exists) {
             grid[p.y][p.x] = this.TILE_DOOR;
@@ -301,8 +355,6 @@
               w: TS,
               h: TS,
               isOpen: false,
-              openProgress: 0,
-              dir: p.dir,
               name: 'Гермодверь ГД-4'
             });
             break;
