@@ -5368,6 +5368,62 @@ function checkLifterTrigger(player, sock, loc) {
         broadcastGameState();
     });
 
+    // ===== РОГАЛИК-РЕЙД В ГИГАХРУЩ: СОХРАНЕНИЕ ОПЫТА, ТАЛОНОВ И ХАБАРА ПРИ ЭВАКУАЦИИ / СМЕРТИ =====
+    socket.on('radarRaidComplete', (data) => {
+        let auth = getAuthPlayer();
+        if (!auth) return;
+        let { username, p } = auth;
+        if (!data || typeof data !== 'object') return;
+
+        let won = Boolean(data.won);
+        let earnedXP = Math.max(0, Math.min(20000, Number(data.xp) || 0));
+        let earnedTalons = won ? Math.max(0, Math.min(50000, Number(data.talons) || 0)) : 0;
+        let kills = Math.max(0, Math.min(1000, Number(data.kills) || 0));
+
+        p.talons = (p.talons || 0) + earnedTalons;
+        p.xp = (p.xp || 0) + earnedXP;
+        p.monstersKilled = (p.monstersKilled || 0) + kills;
+        if (won) {
+            p.roomsCleared = (p.roomsCleared || 0) + 1;
+        }
+
+        // Автоматический пересчет уровня и максимального здоровья
+        let nextLevelXp = (p.level || 1) * 100;
+        while (p.xp >= nextLevelXp) {
+            p.xp -= nextLevelXp;
+            p.level = (p.level || 1) + 1;
+            p.maxHp = (p.maxHp || 100) + 10;
+            p.hp = p.maxHp;
+            nextLevelXp = p.level * 100;
+        }
+
+        // Зачисление найденных предметов в инвентарь сундука/рюкзака
+        if (won && Array.isArray(data.lootItems)) {
+            if (!p.inventory) p.inventory = [];
+            let maxInv = getMaxInv(p);
+            data.lootItems.forEach(itemId => {
+                if (p.inventory.length < maxInv && (GAME_ITEMS[itemId] || BASE_EQUIP[itemId])) {
+                    p.inventory.push(itemId);
+                }
+            });
+        }
+
+        // Возврат ликвидатора в безопасную жилячейку
+        p.location = 'safe_room';
+        p.hp = p.maxHp;
+
+        if (!p.notebook) p.notebook = [];
+        if (won) {
+            p.notebook.push(`[РЕЙД // ЭВАКУАЦИЯ]: Успешный выход через шахту лифта. Зачислено: +${earnedTalons} талонов, +${earnedXP} XP.`);
+        } else {
+            p.notebook.push(`[РЕЙД // РАНЕНИЕ]: Ликвидатор эвакуирован в Жилячейку. Спасено опыта: +${earnedXP} XP.`);
+        }
+
+        checkPlayerAchievements(p, socket);
+        saveDB(true);
+        broadcastGameState();
+    });
+
     socket.on('disconnect', () => {
         let u = onlinePlayers[socket.id];
         if (u) {

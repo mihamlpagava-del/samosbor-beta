@@ -59,6 +59,8 @@
         armor: 14,
         talonsEarned: 0,
         xpEarned: 0,
+        monstersKilled: 0,
+        collectedLoot: [],
         type: 'player',
         isPlayer: true,
         damageFlashTimer: 0,
@@ -72,6 +74,10 @@
         baseWeapon: { id: 'pipe', name: 'Тяжелая водопроводная труба', dmg: 28, isRanged: false, ammo: Infinity },
         weapon: null
       };
+
+      // Camera Mode: TDS (Top-Down 2D) vs FPS (First-Person 3D Raycasting)
+      this.cameraMode = 'TDS';
+      this.isEvacuating = false;
 
       // Entities & World
       this.entities = [];
@@ -480,6 +486,10 @@
         if (e.code === 'KeyE' || e.code === 'Space') {
           this.interactNearby();
         }
+        if (e.code === 'KeyG') {
+          this.cameraMode = (this.cameraMode === 'TDS') ? 'FPS' : 'TDS';
+          this.spawnFloatingNotice(this.cameraMode === 'FPS' ? '📷 КАМЕРА: [FPS 3D]' : '📷 КАМЕРА: [TDS 2D]', '#00ffaa');
+        }
         if (e.code === 'F2') {
           if (typeof AsciiRenderer !== 'undefined') {
             AsciiRenderer.enabled = !AsciiRenderer.enabled;
@@ -505,7 +515,16 @@
           this.mouse.worldX = this.mouse.x + cam.x;
           this.mouse.worldY = this.mouse.y + cam.y;
 
-          this.player.angle = Math.atan2(this.mouse.worldY - this.player.y, this.mouse.worldX - this.player.x);
+          if (this.cameraMode === 'FPS') {
+            if (e.movementX !== undefined && Math.abs(e.movementX) < 120) {
+              this.player.angle += e.movementX * 0.004;
+            } else {
+              const midX = this.canvas.width / 2;
+              this.player.angle += (this.mouse.x - midX) * 0.00015;
+            }
+          } else {
+            this.player.angle = Math.atan2(this.mouse.worldY - this.player.y, this.mouse.worldX - this.player.x);
+          }
 
           // Check if hovering over any hostile monster
           this.mouse.isOverEnemy = this.entities.some(ent => {
@@ -690,6 +709,7 @@
       const idx = this.entities.indexOf(monster);
       if (idx !== -1) {
         this.entities.splice(idx, 1);
+        this.player.monstersKilled = (this.player.monstersKilled || 0) + 1;
         const cost = monster.cost || 2;
         const bounty = 10 + cost * 4;
         const xp = 15 + cost * 5;
@@ -754,15 +774,17 @@
       if (drop.pickedUp) return;
       const weapon = drop.weapon || drop;
       if (!weapon) return;
+
+      const type = (weapon.type || weapon.id || weapon.gunId || weapon.name || '').toUpperCase();
+      if (!type) return;
       drop.pickedUp = true;
 
-      const weaponId = (weapon.id || weapon.type || weapon.gunId || weapon.name || '').toUpperCase();
-      const gName = weapon.name || weapon.title || weaponId || 'Огнестрельное оружие';
+      const gName = weapon.name || weapon.title || type || 'Огнестрельное оружие';
       const gAmmo = (weapon.ammo !== undefined) ? weapon.ammo : (drop.ammo || 20);
       const gMaxAmmo = (weapon.maxAmmo !== undefined) ? weapon.maxAmmo : (drop.maxAmmo || 20);
       const gDmg = weapon.dmg || drop.dmg || 34;
       const gType = weapon.gunType || drop.gunType || 'rifle';
-      const gId = weaponId || 'GUN';
+      const gId = type || 'GUN';
 
       const newGun = {
         id: gId,
@@ -782,18 +804,28 @@
         this.player.weapon = newGun;
       }
 
+      // Add dropped firearm to collected loot for evacuation
+      if (!this.player.collectedLoot) this.player.collectedLoot = [];
+      const invWeaponId = gType === 'pistol' ? 'weapon_pistol' : (gType === 'shotgun' ? 'weapon_shotgun' : 'weapon_crowbar');
+      this.player.collectedLoot.push(invWeaponId);
+
       if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
       const displayName = String(gName).toUpperCase();
       this.spawnFloatingNotice(`⚡ ПОДОБРАН В СЛОТ 2: ${displayName} [${gAmmo}]`, '#33d4ff');
     }
 
     pickWeapon(weapon) {
+      if (!weapon) return;
+      const type = (weapon.type || weapon.id || weapon.name || '').toUpperCase();
+      if (!type) return;
       return this.pickupWeapon(weapon);
     }
 
     openCrate(crate) {
       crate.opened = true;
       if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
+
+      if (!this.player.collectedLoot) this.player.collectedLoot = [];
 
       if (crate.type === 'ammo') {
         if (this.player.weapon && this.player.weapon.isRanged) {
@@ -802,15 +834,23 @@
         } else {
           this.spawnFloatingNotice('ПАТРОНЫ [НУЖНО ОГНЕСТРЕЛЬНОЕ ОРУЖИЕ]', '#888888');
         }
+        this.player.collectedLoot.push('special_knife');
       } else {
-        this.player.talonsEarned += crate.amount || 30;
-        this.player.xpEarned += 20;
+        const bonusTalons = crate.amount || 30;
+        const bonusXp = 20;
+        this.player.talonsEarned += bonusTalons;
+        this.player.xpEarned += bonusXp;
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + 25);
+
+        const lootPool = ['mat_scrap', 'mat_tape', 'mat_chem', 'food_ration', 'food_medkit', 'mat_electro'];
+        const rolledItem = lootPool[Math.floor(Math.random() * lootPool.length)];
+        this.player.collectedLoot.push(rolledItem);
+
         if (this.player.belt && this.player.belt.medkits < this.player.belt.maxMedkits) {
           this.player.belt.medkits++;
-          this.spawnFloatingNotice(`+${crate.amount || 30} ТАЛОНОВ, +25 HP, +1 АПТЕЧКА НА ПОЯС`, '#f5a623');
+          this.spawnFloatingNotice(`+${bonusTalons} ТАЛОНОВ, +25 HP, +1 АПТЕЧКА, +ХАБАР`, '#f5a623');
         } else {
-          this.spawnFloatingNotice(`+${crate.amount || 30} ТАЛОНОВ, +25 HP`, '#f5a623');
+          this.spawnFloatingNotice(`+${bonusTalons} ТАЛОНОВ, +25 HP, +ХАБАР`, '#f5a623');
         }
       }
     }
@@ -876,10 +916,24 @@
       // 4. Player Input Movement & Inertia (only if alive)
       let moveX = 0, moveY = 0;
       if (!this.player.isDead) {
-        if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['w']) moveY -= 1;
-        if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) moveY += 1;
-        if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) moveX -= 1;
-        if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) moveX += 1;
+        if (this.cameraMode === 'FPS') {
+          const cos = Math.cos(this.player.angle);
+          const sin = Math.sin(this.player.angle);
+          let fwd = 0;
+          let strafe = 0;
+          if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['w']) fwd += 1;
+          if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) fwd -= 1;
+          if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) strafe -= 1;
+          if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) strafe += 1;
+
+          moveX = fwd * cos - strafe * sin;
+          moveY = fwd * sin + strafe * cos;
+        } else {
+          if (this.keys['KeyW'] || this.keys['ArrowUp'] || this.keys['w']) moveY -= 1;
+          if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) moveY += 1;
+          if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) moveX -= 1;
+          if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) moveX += 1;
+        }
       }
 
       if (moveX !== 0 && moveY !== 0) {
@@ -936,10 +990,24 @@
         this.player.deathTick = 0;
         this.isCollapsing = false;
         if (typeof RadarAudio !== 'undefined') RadarAudio.playPlayerHurt();
-        setTimeout(() => this.finishRaid(false), 1600);
+        this.showDeathPrompt();
       }
       if (this.player.isDead) {
         this.player.deathTick = (this.player.deathTick || 0) + 1;
+      }
+    }
+
+    /**
+     * Show Death Modal Overlay: [ 🏃 БЕЖАТЬ В ЖИЛ-ЯЧЕЙКУ ]
+     */
+    showDeathPrompt() {
+      const deathOverlay = document.getElementById('radar-death-overlay');
+      if (deathOverlay) {
+        deathOverlay.style.display = 'flex';
+        const fleeBtn = document.getElementById('btn-radar-flee-cell');
+        if (fleeBtn) fleeBtn.focus();
+      } else {
+        setTimeout(() => this.finishRaid(false), 1600);
       }
     }
 
@@ -973,9 +1041,12 @@
     }
 
     evacuateSuccess() {
+      if (this.isEvacuating) return;
+      this.isEvacuating = true;
       this.isCollapsing = true;
       if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
-      setTimeout(() => this.finishRaid(true), 1300);
+      this.spawnFloatingNotice('🏆 ЭВАКУАЦИЯ УСПЕШНА! ВЫХОД В ЖИЛЯЧЕЙКУ...', '#ffd700');
+      setTimeout(() => this.finishRaid(true), 1100);
     }
 
     /**
@@ -990,25 +1061,79 @@
 
         const earnedXP = won ? (this.player.xpEarned + 60) : Math.floor(this.player.xpEarned * 0.4);
         const earnedTalons = won ? (this.player.talonsEarned + 100) : 0; // If dead, all loot is lost!
+        const lootItems = (won && Array.isArray(this.player.collectedLoot)) ? [...this.player.collectedLoot] : [];
+        const kills = this.player.monstersKilled || 0;
 
-        // Credit rewards to player account
+        // Credit rewards immediately to local player profile
         if (typeof clientMe !== 'undefined' && clientMe) {
           clientMe.xp = (clientMe.xp || 0) + earnedXP;
           if (won) {
             clientMe.talons = (clientMe.talons || 0) + earnedTalons;
+            clientMe.roomsCleared = (clientMe.roomsCleared || 0) + 1;
+            if (lootItems.length > 0) {
+              if (!clientMe.inventory) clientMe.inventory = [];
+              for (const lItem of lootItems) {
+                if (clientMe.inventory.length < 12) {
+                  clientMe.inventory.push(lItem);
+                }
+              }
+            }
+          }
+          clientMe.monstersKilled = (clientMe.monstersKilled || 0) + kills;
+
+          // Check level up
+          while (clientMe.xp >= (clientMe.level || 1) * 100) {
+            clientMe.xp -= (clientMe.level || 1) * 100;
+            clientMe.level = (clientMe.level || 1) + 1;
+            if (clientMe.stats) clientMe.stats.maxHp = (clientMe.stats.maxHp || 100) + 10;
           }
         }
 
-        // Show summary popup
-        this.showRaidSummaryModal(won, earnedTalons, earnedXP);
-
+        // Notify server to persistently save in database & broadcast
         if (typeof socket !== 'undefined' && socket && socket.connected) {
           try {
-            socket.emit('terminalError', won
-              ? `🏆 ЭВАКУАЦИЯ УСПЕШНА! Сохранено талонов: +${earnedTalons}, получено: +${earnedXP} XP.`
-              : `☠️ ЛИКВИДАТОР ПОГИБ. Все найденные талоны потеряны. Получено опыта: +${earnedXP} XP.`
-            );
-          } catch (e) {}
+            socket.emit('radarRaidComplete', {
+              won: won,
+              talons: earnedTalons,
+              xp: earnedXP,
+              kills: kills,
+              lootItems: lootItems
+            });
+          } catch (e) {
+            console.error('[RadarRoguelike] Failed emitting radarRaidComplete:', e);
+          }
+        }
+
+        // Hide death overlay
+        const deathOverlay = document.getElementById('radar-death-overlay');
+        if (deathOverlay) deathOverlay.style.display = 'none';
+
+        // Return immediately to living cell (hub-screen)
+        if (typeof closeRadarRoguelikeModal === 'function') {
+          closeRadarRoguelikeModal();
+        }
+
+        // Update hub UI to display credited XP, talons, and inventory
+        if (typeof updateUI === 'function' && typeof clientMe !== 'undefined' && clientMe) {
+          updateUI(clientMe, window.sectorPlayers || []);
+        }
+
+        // Show prominent status message on hub screen
+        const hubNotice = document.getElementById('hub-error');
+        if (hubNotice) {
+          if (won) {
+            hubNotice.style.color = '#1fe044';
+            hubNotice.innerHTML = `🏆 ЭВАКУАЦИЯ УСПЕШНА! Зачислено: <b style="color:#ffd700;">+${earnedTalons}</b> талонов, <b style="color:#1fe044;">+${earnedXP} XP</b>${lootItems.length ? `, хабар: +${lootItems.length} предм.` : ''}!`;
+          } else {
+            hubNotice.style.color = '#ff3b30';
+            hubNotice.innerHTML = `☠️ ЛИКВИДАТОР ЭВАКУИРОВАН! Талоны потеряны. Спасено опыта: <b style="color:#1fe044;">+${earnedXP} XP</b>.`;
+          }
+          hubNotice.style.display = 'block';
+          setTimeout(() => { if (hubNotice.style.color === 'rgb(31, 224, 68)' || hubNotice.style.color === 'rgb(255, 59, 48)') hubNotice.style.display = 'none'; }, 7000);
+        }
+
+        if (won && typeof playSound === 'function') {
+          playSound('victory');
         }
       } catch (err) {
         console.error('[RadarRoguelike] finishRaid error:', err);
@@ -1541,7 +1666,7 @@
         this.player.deathTick = 0;
         this.isCollapsing = false;
         if (typeof RadarAudio !== 'undefined') RadarAudio.playPlayerHurt();
-        setTimeout(() => this.finishRaid(false), 1500);
+        this.showDeathPrompt();
       }
     }
 
@@ -1625,7 +1750,7 @@
     }
 
     /**
-     * Master Render
+     * Master Render (Supports Dual-Mode: TDS 2D vs FPS 3D Raycasting)
      */
     render() {
       const w = this.canvas.width;
@@ -1646,101 +1771,107 @@
       worldCtx.fillStyle = '#020503';
       worldCtx.fillRect(0, 0, w, h);
 
-      worldCtx.save();
-      worldCtx.translate(-cam.x, -cam.y);
+      if (this.cameraMode === 'FPS') {
+        // --- FIRST PERSON 3D RAYCASTING MODE ---
+        this.renderFPS(worldCtx, w, h);
+      } else {
+        // --- TOP-DOWN 2D TACTICAL VIEW MODE ---
+        worldCtx.save();
+        worldCtx.translate(-cam.x, -cam.y);
 
-      // 1. Draw Map Tiles with Fog of War
-      this.drawTilesWithFog(worldCtx, cam, w, h);
+        // 1. Draw Map Tiles with Fog of War
+        this.drawTilesWithFog(worldCtx, cam, w, h);
 
-      // 2. Draw Airtight Doors
-      for (const door of this.doors) {
-        if (this.isCellExplored(door.tileX, door.tileY)) {
-          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDoorTile) {
-            SpriteFactory.drawDoorTile(worldCtx, door, this.tileSize, this.tick, 1.0);
-          }
-        }
-      }
-
-      // 2b. Draw Wall Lanterns ("Фонари") with warm amber glow
-      if (this.lamps) {
-        for (const lamp of this.lamps) {
-          if (this.isCellExplored(lamp.tileX, lamp.tileY)) {
-            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawWallLamp) {
-              SpriteFactory.drawWallLamp(worldCtx, lamp, this.tileSize, this.tick, 1.0);
+        // 2. Draw Airtight Doors
+        for (const door of this.doors) {
+          if (this.isCellExplored(door.tileX, door.tileY)) {
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDoorTile) {
+              SpriteFactory.drawDoorTile(worldCtx, door, this.tileSize, this.tick, 1.0);
             }
           }
         }
-      }
 
-      // 3. Draw Loot Crates
-      for (const crate of this.crates) {
-        if (this.isCellExplored(crate.tileX, crate.tileY)) {
-          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawLootCrate) {
-            SpriteFactory.drawLootCrate(worldCtx, crate, this.tileSize, this.tick, crate.phosphorAlpha || 0.8);
+        // 2b. Draw Wall Lanterns ("Фонари") with warm amber glow
+        if (this.lamps) {
+          for (const lamp of this.lamps) {
+            if (this.isCellExplored(lamp.tileX, lamp.tileY)) {
+              if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawWallLamp) {
+                SpriteFactory.drawWallLamp(worldCtx, lamp, this.tileSize, this.tick, 1.0);
+              }
+            }
           }
         }
-      }
 
-      // 4. Draw Dropped Firearms
-      for (const drop of this.weaponDrops) {
-        if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDroppedWeapon) {
-          SpriteFactory.drawDroppedWeapon(worldCtx, drop, this.tileSize, this.tick, drop.phosphorAlpha || 0.8);
+        // 3. Draw Loot Crates
+        for (const crate of this.crates) {
+          if (this.isCellExplored(crate.tileX, crate.tileY)) {
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawLootCrate) {
+              SpriteFactory.drawLootCrate(worldCtx, crate, this.tileSize, this.tick, crate.phosphorAlpha || 0.8);
+            }
+          }
         }
-      }
 
-      // 5. Draw Extraction Elevator Shaft
-      if (this.elevator && this.isCellExplored(this.elevator.tileX, this.elevator.tileY)) {
-        if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawElevatorShaft) {
-          SpriteFactory.drawElevatorShaft(worldCtx, this.elevator, this.tileSize, this.tick, 1.0);
+        // 4. Draw Dropped Firearms
+        for (const drop of this.weaponDrops) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDroppedWeapon) {
+            SpriteFactory.drawDroppedWeapon(worldCtx, drop, this.tileSize, this.tick, drop.phosphorAlpha || 0.8);
+          }
         }
-      }
 
-      // 6. Draw Projectiles
-      for (const p of this.projectiles) {
-        worldCtx.fillStyle = p.color || '#ffeedd';
-        worldCtx.beginPath();
-        worldCtx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-        worldCtx.fill();
-        worldCtx.strokeStyle = '#ffffff';
-        worldCtx.stroke();
-      }
+        // 5. Draw Extraction Elevator Shaft
+        if (this.elevator && this.isCellExplored(this.elevator.tileX, this.elevator.tileY)) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawElevatorShaft) {
+            SpriteFactory.drawElevatorShaft(worldCtx, this.elevator, this.tileSize, this.tick, 1.0);
+          }
+        }
 
-      // 7. Draw Melee Swing Slash Arc
-      if (this.player.isSwinging && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawMeleeSwingArc) {
-        SpriteFactory.drawMeleeSwingArc(worldCtx, this.player.x, this.player.y, this.player.angle, this.player.swingProgress);
-      }
+        // 6. Draw Projectiles
+        for (const p of this.projectiles) {
+          worldCtx.fillStyle = p.color || '#ffeedd';
+          worldCtx.beginPath();
+          worldCtx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+          worldCtx.fill();
+          worldCtx.strokeStyle = '#ffffff';
+          worldCtx.stroke();
+        }
 
-      // 8. Draw AI Entities
-      for (const e of this.entities) {
+        // 7. Draw Melee Swing Slash Arc
+        if (this.player.isSwinging && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawMeleeSwingArc) {
+          SpriteFactory.drawMeleeSwingArc(worldCtx, this.player.x, this.player.y, this.player.angle, this.player.swingProgress);
+        }
+
+        // 8. Draw AI Entities
+        for (const e of this.entities) {
+          if (typeof SpriteFactory !== 'undefined') {
+            SpriteFactory.drawEntity(worldCtx, e, this.tick);
+          }
+        }
+
+        // 9. Draw Player
         if (typeof SpriteFactory !== 'undefined') {
-          SpriteFactory.drawEntity(worldCtx, e, this.tick);
+          SpriteFactory.drawEntity(worldCtx, this.player, this.tick);
         }
-      }
 
-      // 9. Draw Player
-      if (typeof SpriteFactory !== 'undefined') {
-        SpriteFactory.drawEntity(worldCtx, this.player, this.tick);
-      }
-
-      // 10. Particles & Floating Text
-      for (const pt of this.particles) {
-        worldCtx.save();
-        worldCtx.globalAlpha = Math.max(0, pt.alpha);
-        if (pt.isText) {
-          worldCtx.fillStyle = pt.color;
-          worldCtx.font = 'bold 12px "Share Tech Mono", monospace';
-          worldCtx.fillText(pt.text, pt.x, pt.y);
-        } else {
-          worldCtx.fillStyle = pt.color;
-          worldCtx.fillRect(pt.x, pt.y, pt.sz, pt.sz);
+        // 10. Particles & Floating Text
+        for (const pt of this.particles) {
+          worldCtx.save();
+          worldCtx.globalAlpha = Math.max(0, pt.alpha);
+          if (pt.isText) {
+            worldCtx.fillStyle = pt.color;
+            worldCtx.font = 'bold 12px "Share Tech Mono", monospace';
+            worldCtx.fillText(pt.text, pt.x, pt.y);
+          } else {
+            worldCtx.fillStyle = pt.color;
+            worldCtx.fillRect(pt.x, pt.y, pt.sz, pt.sz);
+          }
+          worldCtx.restore();
         }
+
         worldCtx.restore();
+
+        // 11. Dynamic Darkness & Volumetric Flashlight
+        this.drawDynamicDarkness(worldCtx, cam, w, h);
       }
-
-      worldCtx.restore();
-
-      // 11. Dynamic Darkness & Volumetric Flashlight
-      this.drawDynamicDarkness(worldCtx, cam, w, h);
 
       // 12. Full-Color Swaggerfall (ANSI Text-Mode) Shader Post-Process!
       if (offscreenCanvas && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
@@ -1751,13 +1882,334 @@
       this.drawRadarHUD(this.ctx, w, h);
 
       if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawCrosshair) {
-        SpriteFactory.drawCrosshair(this.ctx, this.mouse.x, this.mouse.y, this.tick, this.mouse.isOverEnemy);
+        const crosshairX = (this.cameraMode === 'FPS') ? (w / 2) : this.mouse.x;
+        const crosshairY = (this.cameraMode === 'FPS') ? (h / 2) : this.mouse.y;
+        SpriteFactory.drawCrosshair(this.ctx, crosshairX, crosshairY, this.tick, this.mouse.isOverEnemy);
       }
 
       // 14. CRT Collapse on Game Over / Victory
       if (this.isCollapsing) {
         this.drawCRTCollapse(this.ctx, w, h);
       }
+    }
+
+    /**
+     * First-Person 3D Raycasting Renderer (DDA Wolf3D style -> Swaggerfall ANSI text-mode)
+     */
+    renderFPS(ctx, w, h) {
+      if (!this.mapData || !this.mapData.grid) return;
+      const grid = this.mapData.grid;
+      const mapW = this.mapData.width;
+      const mapH = this.mapData.height;
+      const TS = this.tileSize;
+
+      const px = this.player.x;
+      const py = this.player.y;
+      const pAngle = this.player.angle;
+      const fov = 1.15; // ~66 degrees field of view
+      const halfFov = fov / 2;
+      const halfH = h / 2;
+
+      // 1. Concrete ceiling and industrial floor
+      const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
+      ceilGrad.addColorStop(0, '#040d06');
+      ceilGrad.addColorStop(1, '#0c1f10');
+      ctx.fillStyle = ceilGrad;
+      ctx.fillRect(0, 0, w, halfH);
+
+      const flrGrad = ctx.createLinearGradient(0, halfH, 0, h);
+      flrGrad.addColorStop(0, '#09150c');
+      flrGrad.addColorStop(1, '#020503');
+      ctx.fillStyle = flrGrad;
+      ctx.fillRect(0, halfH, w, halfH);
+
+      // 2. DDA Raycaster for vertical wall strips
+      const colStep = 2; // High density 2px columns
+      const numCols = Math.ceil(w / colStep);
+      const zBuffer = new Float32Array(numCols);
+
+      for (let i = 0; i < numCols; i++) {
+        const screenX = i * colStep;
+        const rayAngle = pAngle - halfFov + (i / numCols) * fov;
+        const sin = Math.sin(rayAngle);
+        const cos = Math.cos(rayAngle);
+
+        let mapX = Math.floor(px / TS);
+        let mapY = Math.floor(py / TS);
+
+        const deltaDistX = Math.abs(1 / (cos || 0.00001));
+        const deltaDistY = Math.abs(1 / (sin || 0.00001));
+
+        let stepX, stepY;
+        let sideDistX, sideDistY;
+
+        if (cos < 0) {
+          stepX = -1;
+          sideDistX = (px / TS - mapX) * deltaDistX;
+        } else {
+          stepX = 1;
+          sideDistX = (mapX + 1.0 - px / TS) * deltaDistX;
+        }
+
+        if (sin < 0) {
+          stepY = -1;
+          sideDistY = (py / TS - mapY) * deltaDistY;
+        } else {
+          stepY = 1;
+          sideDistY = (mapY + 1.0 - py / TS) * deltaDistY;
+        }
+
+        let hit = 0;
+        let side = 0;
+        let hitTile = 1;
+        let maxSteps = 42;
+
+        while (hit === 0 && maxSteps-- > 0) {
+          if (sideDistX < sideDistY) {
+            sideDistX += deltaDistX;
+            mapX += stepX;
+            side = 0;
+          } else {
+            sideDistY += deltaDistY;
+            mapY += stepY;
+            side = 1;
+          }
+
+          if (mapX < 0 || mapX >= mapW || mapY < 0 || mapY >= mapH) {
+            hit = 1;
+            break;
+          }
+
+          const cell = grid[mapY][mapX];
+          if (cell === 1) {
+            hit = 1;
+            hitTile = 1;
+          } else if (cell === 2) {
+            const door = this.doors.find(dr => dr.tileX === mapX && dr.tileY === mapY);
+            if (!door || !door.isOpen) {
+              hit = 1;
+              hitTile = 2;
+            }
+          }
+        }
+
+        let perpDist;
+        if (side === 0) {
+          perpDist = (mapX - px / TS + (1 - stepX) / 2) / (cos || 0.00001);
+        } else {
+          perpDist = (mapY - py / TS + (1 - stepY) / 2) / (sin || 0.00001);
+        }
+        if (perpDist < 0.05) perpDist = 0.05;
+
+        zBuffer[i] = perpDist * TS;
+
+        // Fish-eye correction
+        const distCorrection = Math.cos(rayAngle - pAngle);
+        const correctedDist = perpDist * distCorrection;
+
+        const lineH = Math.min(h * 2.5, Math.floor((h / correctedDist) * 0.95));
+        const drawStart = Math.max(0, Math.floor(halfH - lineH / 2));
+        const drawEnd = Math.min(h, Math.floor(halfH + lineH / 2));
+
+        const maxShadeDist = 18;
+        const shade = Math.max(0.08, Math.min(1.0, 1.0 - perpDist / maxShadeDist));
+        let r, g, b;
+
+        if (hitTile === 2) {
+          // Hermetic door (steel amber)
+          r = Math.floor(180 * shade);
+          g = Math.floor(140 * shade);
+          b = Math.floor(45 * shade);
+        } else {
+          // Monolithic concrete block wall
+          const sideDarken = side === 1 ? 0.72 : 1.0;
+          r = Math.floor(35 * shade * sideDarken);
+          g = Math.floor(145 * shade * sideDarken);
+          b = Math.floor(65 * shade * sideDarken);
+        }
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+      }
+
+      // 3. Billboard Entities (Sort back to front)
+      const visibleSprites = [];
+
+      if (this.elevator) {
+        visibleSprites.push({
+          x: this.elevator.x + 16,
+          y: this.elevator.y + 16,
+          type: 'elevator',
+          color: '#33d4ff',
+          name: '[E] ШАХТА ЭВАКУАЦИИ'
+        });
+      }
+
+      for (const crate of this.crates) {
+        if (!crate.opened) {
+          visibleSprites.push({
+            x: crate.x,
+            y: crate.y,
+            type: 'crate',
+            color: '#f5a623'
+          });
+        }
+      }
+
+      for (const drop of this.weaponDrops) {
+        if (!drop.pickedUp) {
+          visibleSprites.push({
+            x: drop.x,
+            y: drop.y,
+            type: 'weapon',
+            color: '#00ffaa'
+          });
+        }
+      }
+
+      for (const ally of (this.allies || [])) {
+        visibleSprites.push({
+          x: ally.x,
+          y: ally.y,
+          type: 'ally',
+          color: '#1fe044',
+          hp: ally.hp,
+          maxHp: ally.maxHp
+        });
+      }
+
+      for (const ent of this.entities) {
+        if (ent.hp > 0) {
+          visibleSprites.push({
+            x: ent.x,
+            y: ent.y,
+            type: 'monster',
+            color: ent.color || '#ff3b30',
+            hp: ent.hp,
+            maxHp: ent.maxHp
+          });
+        }
+      }
+
+      for (const sp of visibleSprites) {
+        sp.dist = Math.hypot(sp.x - px, sp.y - py);
+        let ang = Math.atan2(sp.y - py, sp.x - px) - pAngle;
+        while (ang < -Math.PI) ang += 2 * Math.PI;
+        while (ang > Math.PI) ang -= 2 * Math.PI;
+        sp.angle = ang;
+      }
+
+      visibleSprites.sort((a, b) => b.dist - a.dist);
+
+      for (const sp of visibleSprites) {
+        if (sp.dist < 8) continue;
+        if (Math.abs(sp.angle) > fov * 0.72) continue;
+
+        const screenX = Math.floor((w / 2) + Math.tan(sp.angle) * (w / 2));
+        const sprHeight = Math.min(h * 2, Math.floor((h / (sp.dist / TS)) * 0.9));
+        const sprWidth = Math.floor(sprHeight * 0.75);
+        const sprTop = Math.floor(halfH - sprHeight / 2);
+        const sprLeft = Math.floor(screenX - sprWidth / 2);
+
+        const bufIdx = Math.floor(screenX / colStep);
+        if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < sp.dist) {
+          continue; // Occluded by concrete wall
+        }
+
+        const shade = Math.max(0.15, Math.min(1.0, 1.0 - sp.dist / (TS * 16)));
+        ctx.fillStyle = sp.color;
+        ctx.shadowColor = sp.color;
+        ctx.shadowBlur = 8 * shade;
+
+        if (sp.type === 'monster') {
+          // Hostile mutated creature billboard
+          ctx.fillRect(sprLeft, sprTop + sprHeight * 0.2, sprWidth, sprHeight * 0.8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sprLeft + sprWidth * 0.25, sprTop + sprHeight * 0.35, sprWidth * 0.15, sprHeight * 0.1);
+          ctx.fillRect(sprLeft + sprWidth * 0.6, sprTop + sprHeight * 0.35, sprWidth * 0.15, sprHeight * 0.1);
+        } else if (sp.type === 'elevator') {
+          // Luminous extraction cargo beacon
+          ctx.fillStyle = 'rgba(51, 212, 255, 0.4)';
+          ctx.fillRect(sprLeft - sprWidth * 0.3, sprTop, sprWidth * 1.6, sprHeight);
+          ctx.strokeStyle = '#33d4ff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(sprLeft - sprWidth * 0.3, sprTop, sprWidth * 1.6, sprHeight);
+        } else {
+          ctx.fillRect(sprLeft, sprTop + sprHeight * 0.3, sprWidth, sprHeight * 0.7);
+        }
+        ctx.shadowBlur = 0;
+
+        if (sp.hp !== undefined && sp.maxHp) {
+          const hpPct = Math.max(0, Math.min(1, sp.hp / sp.maxHp));
+          const barW = sprWidth;
+          const barH = Math.max(3, Math.floor(sprHeight * 0.07));
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(sprLeft, sprTop - barH - 4, barW, barH);
+          ctx.fillStyle = sp.color;
+          ctx.fillRect(sprLeft, sprTop - barH - 4, barW * hpPct, barH);
+        }
+      }
+
+      // 4. First-Person Weapon Model & Hands
+      this.drawFPSWeapon(ctx, w, h);
+    }
+
+    /**
+     * First-Person Weapon View with Procedural Bobbing & Recoil
+     */
+    drawFPSWeapon(ctx, w, h) {
+      const isMoving = (this.player.vx !== 0 || this.player.vy !== 0);
+      const bobX = isMoving ? Math.sin(this.tick * 0.18) * 9 : 0;
+      const bobY = isMoving ? Math.abs(Math.cos(this.tick * 0.18)) * 7 : 0;
+
+      const recoil = this.player.isShooting ? (1.0 - (this.player.shootProgress || 0)) * 26 : 0;
+      const swingOffset = this.player.isSwinging ? Math.sin((this.player.swingProgress || 0) * Math.PI) * 70 : 0;
+
+      const gunX = w / 2 + 55 + bobX - swingOffset;
+      const gunY = h - 50 + bobY - recoil;
+
+      const weapon = this.player.weapon || this.player.baseWeapon;
+      const isRanged = weapon && weapon.isRanged;
+
+      ctx.save();
+      if (isRanged) {
+        // Firearm barrel & receiver
+        ctx.fillStyle = '#1c2e22';
+        ctx.fillRect(gunX - 22, gunY - 95, 34, 115);
+        ctx.fillStyle = '#2d4c38';
+        ctx.fillRect(gunX - 16, gunY - 130, 22, 40);
+
+        // Green phosphor tritium sights
+        ctx.fillStyle = '#1fe044';
+        ctx.shadowColor = '#1fe044';
+        ctx.shadowBlur = 6;
+        ctx.fillRect(gunX - 7, gunY - 133, 4, 4);
+
+        // Muzzle Flash
+        if (this.player.isShooting && (this.player.shootProgress || 0) < 0.35) {
+          ctx.fillStyle = '#fff488';
+          ctx.shadowColor = '#ff9900';
+          ctx.shadowBlur = 24;
+          ctx.beginPath();
+          ctx.arc(gunX - 5, gunY - 146, 22, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ff6600';
+          ctx.beginPath();
+          ctx.moveTo(gunX - 5, gunY - 180);
+          ctx.lineTo(gunX + 16, gunY - 135);
+          ctx.lineTo(gunX - 26, gunY - 135);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        // Heavy steel pipe / melee weapon
+        ctx.fillStyle = '#445548';
+        ctx.fillRect(gunX - 16, gunY - 120, 24, 140);
+        ctx.fillStyle = '#88ff9e';
+        ctx.fillRect(gunX - 20, gunY - 126, 32, 10);
+      }
+      ctx.restore();
     }
 
     /**

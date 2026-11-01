@@ -2212,10 +2212,27 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
     </div>
   </div>
+
+  <!-- ЭКРАН РАНЕНИЯ / ГИБЕЛИ: ВЫ РАНЕНЫ -> БЕЖАТЬ В ЖИЛ-ЯЧЕЙКУ -->
+  <div id="radar-death-overlay" style="display: none; position: absolute; inset: 0; background: rgba(8, 2, 2, 0.85); z-index: 100010; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+    <div style="background: rgba(20, 4, 4, 0.96); border: 2px solid #ff3b30; box-shadow: 0 0 35px rgba(255,59,48,0.7); padding: 28px 36px; max-width: 480px; width: 90%; text-align: center; font-family: 'Share Tech Mono', monospace;">
+      <div style="color: #ff3b30; font-size: 26px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 14px #ff3b30; margin-bottom: 12px;">
+        ⚠️ ВЫ РАНЕНЫ!
+      </div>
+      <div style="color: #e0d0d0; font-size: 13.5px; line-height: 1.6; margin-bottom: 22px;">
+        Критическое повреждение систем жизнеобеспечения.<br>
+        Ликвидатор эвакуируется в Жилячейку аварийным маяком.
+      </div>
+      <button id="btn-radar-flee-cell" onclick="handleRadarFleeCell()" style="padding: 14px 28px; width: 100%; font-family: inherit; font-size: 16px; font-weight: bold; letter-spacing: 1.5px; background: rgba(255,59,48,0.25); border: 2px solid #ff3b30; color: #ff5555; cursor: pointer; box-shadow: 0 0 20px rgba(255,59,48,0.5); text-transform: uppercase;">
+        🏃 БЕЖАТЬ В ЖИЛ-ЯЧЕЙКУ
+      </button>
+    </div>
+  </div>
 </div>
 
-<div id="hub-screen" class="screen" style="align-items: flex-start; padding-left: clamp(16px, 4vw, 48px);">
-  <div class="panel" style="width: 520px; max-width: 95%;">
+<div id="hub-screen" class="screen" style="flex-direction: row; justify-content: space-between; align-items: flex-end; padding: clamp(12px, 2.5vw, 32px); box-sizing: border-box; overflow-y: auto;">
+  <!-- Левая панель: Терминал Жилячейки -->
+  <div class="panel" style="width: 520px; max-width: 55%; margin: 0; max-height: 94vh; overflow-y: auto;">
     <h2 style="font-size: 20px; margin-top: 0; letter-spacing: 2px;" data-i18n="hub_title">ЖИЛЯЧЕЙКА</h2>
     <div class="stats" id="hub-stats-panel" style="position:relative;">
       <div><span data-i18n="lbl_level">УРОВЕНЬ:</span> <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
@@ -2245,6 +2262,28 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       </div>
       <button id="open-story-btn" style="margin-top: 6px; width: 100%; color: #00ffaa; border-color: rgba(0,255,170,0.6); font-weight: bold; background: rgba(0, 35, 25, 0.7); letter-spacing: 1px;" onclick="openStorySimulationModal()" data-i18n="btn_story_simulation">📟 С.С.Р.С. // ХРОНИКИ ГИГАХРУЩА</button>
       <button id="open-map-btn" data-i18n="btn_map">ВЫХОД В БЛОК</button>
+    </div>
+  </div>
+
+  <!-- Правая часть: Персонаж и пояс со снаряжением в Жилячейке -->
+  <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; max-width: 440px; min-width: 250px; height: 100%; margin-bottom: 8px;">
+    <!-- Спрайт персонажа в полный рост -->
+    <div id="hub-player-avatar" class="combat-avatar" style="height: clamp(280px, 56vh, 480px); width: clamp(200px, 28vw, 320px); position: relative;">
+      <img id="hub-base-skin" class="avatar-layer" style="z-index: 1;" src="" alt="">
+      <img id="hub-clothes" class="avatar-layer" style="z-index: 2;" src="" alt="">
+      <img id="hub-mask" class="avatar-layer" style="z-index: 3;" src="" alt="">
+      <img id="hub-weapon" class="avatar-layer" style="z-index: 4;" src="" alt="">
+    </div>
+
+    <!-- Предметы на поясе ликвидатора -->
+    <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 320px; margin-top: 6px;">
+      <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: bold; color: var(--term-green); letter-spacing: 1px; margin-bottom: 4px; text-shadow: 0 0 6px var(--term-green);">
+        ⚡ ПРЕДМЕТЫ НА ПОЯСЕ [1] | [2]
+      </div>
+      <div class="combat-quick-slots" style="display: flex; gap: 10px; width: 100%; justify-content: center;">
+        <div id="hub-qslot-0" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 0)" style="flex: 1; min-height: 40px; font-size: 11px; padding: 6px;" data-i18n="slot_empty">[ПУСТО]</div>
+        <div id="hub-qslot-1" class="combat-q-slot" onclick="socket.emit('useQuickSlot', 1)" style="flex: 1; min-height: 40px; font-size: 11px; padding: 6px;" data-i18n="slot_empty">[ПУСТО]</div>
+      </div>
     </div>
   </div>
 </div>
@@ -8438,6 +8477,7 @@ function updateUI(me, sectorPlayers) {
     let s = `assets/character/${me.appearance.skin}.png`;
     let is = document.getElementById('inv-base-skin'); if(is) is.src = s;
     let bs = document.getElementById('battle-base-skin'); if(bs) bs.src = s;
+    let hs = document.getElementById('hub-base-skin'); if(hs) hs.src = s;
   }
   let fl = document.getElementById('ui-current-floor'); if(fl) fl.innerText = me.floor;
   document.querySelectorAll('.ui-level').forEach(el => el.innerText = me.level);
@@ -8498,6 +8538,7 @@ function updateUI(me, sectorPlayers) {
       const iconId = (itemData && itemData.iconId) ? itemData.iconId : itemId;
       let iI = document.getElementById(`inv-img-${slot}`);
       let bI = document.getElementById(`battle-${slot}`);
+      let hI = document.getElementById(`hub-${slot}`);
       const nD = document.getElementById(`inv-${slot}-name`);
       const slotIcon = document.getElementById(`inv-equip-icon-${slot}`);
       const slotPh = document.getElementById(`inv-equip-ph-${slot}`);
@@ -8506,6 +8547,7 @@ function updateUI(me, sectorPlayers) {
         let iconUrl = `assets/icons/${iconId}.png`;
         if(iI) { iI.src = url; iI.style.display = 'block'; }
         if(bI) { bI.src = url; bI.style.display = 'block'; }
+        if(hI) { hI.src = url; hI.style.display = 'block'; }
         if(slotIcon) { slotIcon.src = iconUrl; slotIcon.style.display = 'block'; }
         if(slotPh) { slotPh.style.display = 'none'; }
         let statBadge = '';
@@ -8520,6 +8562,7 @@ function updateUI(me, sectorPlayers) {
       } else {
         if(iI) { iI.src = ''; iI.style.display = 'none'; }
         if(bI) { bI.src = ''; bI.style.display = 'none'; }
+        if(hI) { hI.src = ''; hI.style.display = 'none'; }
         if(slotIcon) { slotIcon.src = ''; slotIcon.style.display = 'none'; }
         if(slotPh) { slotPh.style.display = 'block'; }
         if(nD) nD.innerHTML = `<span style="color:var(--ink-dim); font-size:12px;">${isEn ? '[Empty]' : '[Пусто]'}</span>`;
@@ -8551,6 +8594,7 @@ function updateUI(me, sectorPlayers) {
     let itemId = qSlots[i];
     let iS = document.getElementById(`inv-qslot-${i}`);
     let cS = document.getElementById(`combat-qslot-${i}`);
+    let hS = document.getElementById(`hub-qslot-${i}`);
     if (itemId && GAME_ITEMS[itemId]) {
       let qItem = GAME_ITEMS[itemId];
       let qBadge = getItemStatBadges(qItem);
@@ -8559,10 +8603,12 @@ function updateUI(me, sectorPlayers) {
       let applyPrompt = isEn ? '(USE)' : '(ПРИМЕНИТЬ)';
       if(iS) { iS.innerHTML = `<div style="font-weight:bold; color:var(--ink-accent);">${qName}</div>${qBadge}<div style="font-size:10px; color:var(--ink-dim); margin-top:2px;">${unequipPrompt}</div>`; }
       if(cS) { cS.innerHTML = `${qName}${qBadge}<div style="color:#fff; font-size:10px; margin-top:2px;">${applyPrompt}</div>`; }
+      if(hS) { hS.innerHTML = `<div style="font-weight:bold; color:#ffd700; font-size:11px;">[${i+1}] ${qName}</div><div style="color:var(--term-green); font-size:9.5px; margin-top:2px;">${applyPrompt}</div>`; }
     } else if (pendingEquipIndex === null) {
       let emptyText = isEn ? "[EMPTY]" : "[ПУСТО]";
       if(iS) { iS.innerHTML = emptyText; iS.style.borderColor = '#880000'; iS.style.background = 'rgba(122,0,0,0.08)'; }
       if(cS) { cS.innerHTML = emptyText; }
+      if(hS) { hS.innerHTML = `<span style="color:var(--term-dim); font-size:11px;">[${i+1}] ${emptyText}</span>`; }
     }
   }
 
@@ -10623,6 +10669,10 @@ function launchRadarRoguelike() {
     hub.style.display = 'none';
     hub.classList.remove('active-screen');
   }
+  const deathOverlay = document.getElementById('radar-death-overlay');
+  if (deathOverlay) deathOverlay.style.display = 'none';
+  const summaryModal = document.getElementById('raid-summary-modal');
+  if (summaryModal) summaryModal.style.display = 'none';
   screen.style.display = 'block';
 
   // Запускаем фоновую музыку рейда
@@ -10671,10 +10721,28 @@ function cancelExitRadarRaid() {
 
 function forceExitRadarRaid() {
   cancelExitRadarRaid();
-  closeRadarRoguelikeModal();
+  if (radarRoguelikeGame) {
+    radarRoguelikeGame.finishRaid(false);
+  } else {
+    closeRadarRoguelikeModal();
+  }
+}
+
+function handleRadarFleeCell() {
+  const deathOverlay = document.getElementById('radar-death-overlay');
+  if (deathOverlay) deathOverlay.style.display = 'none';
+  if (radarRoguelikeGame) {
+    radarRoguelikeGame.finishRaid(false);
+  } else {
+    closeRadarRoguelikeModal();
+  }
 }
 
 function closeRadarRoguelikeModal() {
+  const deathOverlay = document.getElementById('radar-death-overlay');
+  if (deathOverlay) deathOverlay.style.display = 'none';
+  const summaryModal = document.getElementById('raid-summary-modal');
+  if (summaryModal) summaryModal.style.display = 'none';
   const screen = document.getElementById('radar-roguelike-screen');
   if (screen) screen.style.display = 'none';
   
@@ -10692,6 +10760,10 @@ function closeRadarRoguelikeModal() {
   }
   showScreen('hub-screen');
   updateActiveBackground();
+
+  if (typeof updateUI === 'function' && typeof clientMe !== 'undefined' && clientMe) {
+    updateUI(clientMe, window.lastSectorPlayers || []);
+  }
 
   // Возобновляем музыку жилой ячейки, если музыка включена
   try {
