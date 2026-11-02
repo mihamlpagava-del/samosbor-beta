@@ -87,6 +87,12 @@
       this.weaponDrops = [];
       this.doors = [];
       this.elevator = null;
+      this.decals = [];
+      this.lightSources = [];
+      this.screenFlashTimer = 0;
+      this.screenShakeTimer = 0;
+      this.screenShakeIntensity = 0;
+      this.bobTimer = 0;
 
       // Controls & Mouse
       this.keys = {};
@@ -388,6 +394,51 @@
       this.doors = this.mapData.doors || [];
       this.elevator = this.mapData.elevator || { x: 500, y: 500, w: 64, h: 64 };
       this.lamps = this.mapData.lamps || [];
+      this.decals = [];
+      this.lightSources = [];
+
+      // Initialize Dynamic Map Light Sources (Emergency Red, Warm Amber & Sparking Panels)
+      for (let li = 0; li < this.lamps.length; li++) {
+        const lamp = this.lamps[li];
+        const isRed = (lamp.tileX % 3 === 0);
+        this.lightSources.push({
+          type: isRed ? 'emergency_lamp' : 'amber_lamp',
+          x: lamp.x,
+          y: lamp.y,
+          tileX: lamp.tileX,
+          tileY: lamp.tileY,
+          color: isRed ? '#ff3b30' : '#ffaa22',
+          rgb: isRed ? [255, 59, 48] : [255, 170, 34],
+          radius: isRed ? 125 : 135,
+          baseRadius: isRed ? 125 : 135,
+          intensity: isRed ? 0.9 : 0.82,
+          flicker: true
+        });
+      }
+
+      // Add 2-4 Sparking Electrical Panels in corridors
+      if (this.mapData.corridorPoints && this.mapData.corridorPoints.length > 0) {
+        const cpLen = this.mapData.corridorPoints.length;
+        const panelCount = Math.min(4, Math.max(2, Math.floor(cpLen / 25)));
+        for (let pi = 0; pi < panelCount; pi++) {
+          const pt = this.mapData.corridorPoints[(pi * 31 + 7) % cpLen];
+          this.lightSources.push({
+            type: 'sparking_panel',
+            x: pt.x * this.tileSize + this.tileSize / 2,
+            y: pt.y * this.tileSize + 6,
+            tileX: pt.x,
+            tileY: pt.y,
+            color: '#aaddff',
+            rgb: [170, 221, 255],
+            radius: 85,
+            baseRadius: 85,
+            intensity: 0.25,
+            flicker: true,
+            isSparking: false,
+            sparkTimer: 20 + Math.random() * 80
+          });
+        }
+      }
 
       // Initialize Entities (Dynamic Bestiary Scaled to Player Level)
       this.entities = [];
@@ -780,6 +831,43 @@
         this.player.xpEarned += xp;
         this.spawnFloatingNotice(`+${bounty} ТАЛОНОВ, +${xp} XP`, '#ffd700');
 
+        // Spawn Blood / Slime Decal on floor
+        const isSlimeDecal = (monster.type === 'black_slime' || (monster.name || '').includes('Слизь') || (monster.name || '').includes('Кокон'));
+        const decalColor = isSlimeDecal ? '#184720' : '#470808';
+        const splatterColor = isSlimeDecal ? '#2fe04e' : '#991111';
+        const rad = 16 + Math.random() * 8;
+        if (!this.decals) this.decals = [];
+        this.decals.push({
+          x: monster.x,
+          y: monster.y,
+          radius: rad,
+          color: decalColor,
+          splatterColor: splatterColor,
+          isSlime: isSlimeDecal,
+          splatters: Array.from({ length: 6 }, () => ({
+            dx: (Math.random() - 0.5) * rad * 2.2,
+            dy: (Math.random() - 0.5) * rad * 2.2,
+            r: 1.5 + Math.random() * 2.5
+          }))
+        });
+        if (this.decals.length > 50) this.decals.shift();
+
+        // 35% chance to drop Medical Kit or Ammo Box
+        if (Math.random() < 0.35) {
+          const isMed = Math.random() < 0.55;
+          this.weaponDrops.push({
+            id: isMed ? ('drop_med_' + Date.now()) : ('drop_ammo_' + Date.now()),
+            x: monster.x,
+            y: monster.y,
+            tileX: Math.floor(monster.x / this.tileSize),
+            tileY: Math.floor(monster.y / this.tileSize),
+            pickedUp: false,
+            isMedkit: isMed,
+            item: { id: isMed ? 'food_medkit' : 'ammo_box', type: isMed ? 'heal' : 'ammo' },
+            name: isMed ? 'Аптечка первой помощи' : 'Коробка патронов'
+          });
+        }
+
         // Slime split on death
         if (monster.behavior === 'slime_split' && typeof Progression !== 'undefined' && Progression.createSlimeChildren) {
           const children = Progression.createSlimeChildren(monster);
@@ -862,6 +950,23 @@
     pickupWeapon(drop) {
       if (!drop) return;
       if (drop.pickedUp) return;
+      if (drop.isMedkit || (drop.item && (drop.item.id === 'food_medkit' || drop.item.type === 'heal'))) {
+        drop.pickedUp = true;
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 35);
+        this.spawnFloatingNotice('+35 HP (АПТЕЧКА ИСПОЛЬЗОВАНА)', '#33ff55');
+        if (typeof RadarAudio !== 'undefined' && RadarAudio.playUseHeal) RadarAudio.playUseHeal();
+        return;
+      }
+      if (drop.item && drop.item.id === 'ammo_box') {
+        drop.pickedUp = true;
+        if (this.player.weapon && this.player.weapon.isRanged) {
+          this.player.weapon.ammo = (this.player.weapon.ammo || 0) + 20;
+          this.spawnFloatingNotice('+20 ПАТРОНОВ', '#ffd700');
+        } else {
+          this.spawnFloatingNotice('ПОЛУЧЕНЫ ПАТРОНЫ', '#ffd700');
+        }
+        return;
+      }
       const weapon = drop.weapon || drop;
       if (!weapon) return;
 
@@ -973,6 +1078,57 @@
         this.samosborActive = true;
         if (typeof RadarAudio !== 'undefined') RadarAudio.playSamosborAlarm();
         this.spawnFloatingNotice('ВНИМАНИЕ! САМОСБОР ПРОРВАЛ СЕКТОР!', '#ff0033');
+      }
+
+      // 1a. Viewmodel Bobbing & Screen Feedback Timers
+      const isPlayerMoving = (this.player.vx !== 0 || this.player.vy !== 0);
+      if (isPlayerMoving) this.bobTimer = (this.bobTimer || 0) + 0.16;
+      else this.bobTimer = (this.bobTimer || 0) * 0.85;
+
+      if (this.screenFlashTimer > 0) this.screenFlashTimer--;
+      if (this.screenShakeTimer > 0) this.screenShakeTimer--;
+
+      // Dynamic light sources & sparking panels update
+      if (this.lightSources) {
+        for (let lsi = 0; lsi < this.lightSources.length; lsi++) {
+          const ls = this.lightSources[lsi];
+          if (ls.type === 'sparking_panel') {
+            ls.sparkTimer = (ls.sparkTimer || 50) - 1;
+            if (ls.sparkTimer <= 0) {
+              ls.isSparking = true;
+              ls.intensity = 1.0;
+              ls.radius = 110;
+              ls.sparkTimer = 60 + Math.random() * 110;
+
+              // Spawn blue-white electric sparks
+              for (let spki = 0; spki < 4; spki++) {
+                this.particles.push({
+                  x: ls.x + (Math.random() - 0.5) * 6,
+                  y: ls.y + (Math.random() - 0.5) * 6,
+                  vx: (Math.random() - 0.5) * 4.5,
+                  vy: -1 - Math.random() * 3,
+                  color: '#e6f5ff',
+                  alpha: 1.0,
+                  sz: 1.8,
+                  life: 14,
+                  gravity: 0.18
+                });
+              }
+            } else if (ls.isSparking && ls.sparkTimer < 56) {
+              ls.isSparking = false;
+              ls.intensity = 0.25;
+              ls.radius = ls.baseRadius;
+            }
+          }
+        }
+      }
+
+      // Decay entity flinch & damage flash
+      for (let ei = 0; ei < this.entities.length; ei++) {
+        const ent = this.entities[ei];
+        if (ent.flinchX) ent.flinchX *= 0.65;
+        if (ent.flinchY) ent.flinchY *= 0.65;
+        if (ent.damageFlashTimer > 0) ent.damageFlashTimer--;
       }
 
       // 1b. Airtight Blast Door Smooth Slide Animations
@@ -1365,7 +1521,7 @@
 
       // 3. Wall Lanterns Ambient Illumination ("Фонари")
       if (this.lamps) {
-        for (const lamp of this.lamps) {
+        for (const lamp of (this.lightSources || this.lamps)) {
           const ltx = lamp.tileX;
           const lty = lamp.tileY;
           for (let dy = -2; dy <= 2; dy++) {
@@ -1766,6 +1922,9 @@
       const actualDmg = Math.max(5, amount - Math.floor(this.player.armor * 0.35));
       this.player.hp = Math.max(0, this.player.hp - actualDmg);
       this.player.damageFlashTimer = 14;
+      this.screenFlashTimer = 10;
+      this.screenShakeTimer = 8;
+      this.screenShakeIntensity = Math.min(8, 3 + Math.floor(amount / 8));
 
       if (typeof RadarAudio !== 'undefined') {
         RadarAudio.playPlayerHurt();
@@ -1889,6 +2048,24 @@
         offscreenCanvas = off.canvas;
       }
 
+      // Screen Shake offset
+      if (this.screenShakeTimer > 0) {
+        const sInt = this.screenShakeIntensity || 4;
+        const sX = (Math.random() - 0.5) * sInt * 2;
+        const sY = (Math.random() - 0.5) * sInt * 2;
+        this.ctx.save();
+        this.ctx.translate(sX, sY);
+      }
+
+      // Screen Shake offset
+      if (this.screenShakeTimer > 0) {
+        const sInt = this.screenShakeIntensity || 4;
+        const sX = (Math.random() - 0.5) * sInt * 2;
+        const sY = (Math.random() - 0.5) * sInt * 2;
+        this.ctx.save();
+        this.ctx.translate(sX, sY);
+      }
+
       // Deep solid darkness background
       worldCtx.fillStyle = '#020503';
       worldCtx.fillRect(0, 0, w, h);
@@ -1903,6 +2080,18 @@
 
         // 1. Draw Map Tiles with Fog of War
         this.drawTilesWithFog(worldCtx, cam, w, h);
+
+        // 1c. Draw Floor Blood & Slime Decals
+        if (this.decals) {
+          for (let di = 0; di < this.decals.length; di++) {
+            const dec = this.decals[di];
+            if (this.isCellExplored(Math.floor(dec.x / this.tileSize), Math.floor(dec.y / this.tileSize))) {
+              if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawDecal) {
+                SpriteFactory.drawDecal(worldCtx, dec);
+              }
+            }
+          }
+        }
 
         // 2. Draw Airtight Doors
         for (const door of this.doors) {
@@ -2001,7 +2190,21 @@
       }
 
       // 13. Draw Tactical HUD & Crosshair on display context
+      // Screen Flash Damage Vignette (Red radial aura on hit)
+      if (this.screenFlashTimer > 0) {
+        const vAlpha = (this.screenFlashTimer / 10) * 0.45;
+        const vGrad = this.ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.72);
+        vGrad.addColorStop(0, 'rgba(255, 0, 0, 0)');
+        vGrad.addColorStop(0.6, 'rgba(255, 0, 0, 0.15)');
+        vGrad.addColorStop(1, `rgba(220, 0, 0, ${vAlpha.toFixed(2)})`);
+        this.ctx.fillStyle = vGrad;
+        this.ctx.fillRect(0, 0, w, h);
+      }
+
       this.drawRadarHUD(this.ctx, w, h);
+      if (this.screenShakeTimer > 0) {
+        this.ctx.restore();
+      }
 
       if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawCrosshair) {
         const crosshairX = (this.cameraMode === 'FPS') ? (w / 2) : this.mouse.x;
@@ -2091,7 +2294,7 @@
       ctx.fillStyle = ceilGrad;
       ctx.fillRect(0, 0, w, halfH);
 
-      // Overhead concrete crossbeams and conduit shadow lines
+      // Overhead concrete crossbeams
       ctx.fillStyle = 'rgba(20, 36, 26, 0.4)';
       for (let cy = 12; cy < halfH; cy += Math.max(6, Math.floor(cy * 0.28))) {
         const beamH = Math.max(1, Math.floor(cy * 0.04));
@@ -2270,13 +2473,11 @@
           // Atmospheric Material Fallback
           const sideDarken = side === 1 ? 0.72 : 1.0;
           if (isDoor) {
-            // Authentic Samosbor blast door fallback with hazard stripes & lock wheel
             const isHazardStripe = (Math.floor(wallX * 8 + (drawEnd - drawStart) * 0.05) % 2 === 0);
             const stripeColor = isHazardStripe ? [190, 150, 20] : [35, 42, 38];
             ctx.fillStyle = `rgb(${Math.floor(stripeColor[0] * sideDarken)}, ${Math.floor(stripeColor[1] * sideDarken)}, ${Math.floor(stripeColor[2] * sideDarken)})`;
             ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
 
-            // Center locking seal line
             if (Math.abs(wallX - 0.5) < 0.06) {
               ctx.fillStyle = '#111813';
               ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
@@ -2293,19 +2494,24 @@
         // --- DYNAMIC LIGHTING, SHADING & DISTANCE FOG ---
         const maxShadeDist = 18;
         let shade = Math.max(0.04, Math.min(1.0, 1.0 - perpDist / maxShadeDist));
-        if (side === 1) shade *= 0.76; // 3D side shadow depth
+        if (side === 1) shade *= 0.76;
 
-        // Local wall lanterns volumetric illumination
-        if (this.lamps && this.lamps.length > 0) {
-          const hitWorldX = px + cos * (perpDist * TS);
-          const hitWorldY = py + sin * (perpDist * TS);
-          for (let li = 0; li < this.lamps.length; li++) {
-            const lamp = this.lamps[li];
-            const ld = Math.hypot(hitWorldX - lamp.x, hitWorldY - lamp.y);
-            if (ld < 110) {
-              const lampFactor = (1.0 - ld / 110) * 0.42;
-              const flicker = Math.sin(this.tick * 0.16 + lamp.tileX * 5) * 0.06;
-              shade = Math.min(1.0, shade + Math.max(0, lampFactor + flicker));
+        // Dynamic Map Lights accumulation (Emergency Red, Warm Amber & Sparking Panels)
+        const hitWorldX = px + cos * (perpDist * TS);
+        const hitWorldY = py + sin * (perpDist * TS);
+        let lightR = 0, lightG = 0, lightB = 0;
+
+        if (this.lightSources) {
+          for (let li = 0; li < this.lightSources.length; li++) {
+            const ls = this.lightSources[li];
+            const ld = Math.hypot(hitWorldX - ls.x, hitWorldY - ls.y);
+            const effRad = ls.radius + (ls.flicker ? (Math.sin(this.tick * 0.25 + ls.x) * 3 + (Math.random() - 0.5) * 2) : 0);
+            if (ld < effRad) {
+              const atten = Math.pow(1.0 - ld / effRad, 1.8) * (ls.intensity || 0.8);
+              lightR += ls.rgb[0] * atten;
+              lightG += ls.rgb[1] * atten;
+              lightB += ls.rgb[2] * atten;
+              shade = Math.min(1.0, shade + atten * 0.45);
             }
           }
         }
@@ -2314,6 +2520,14 @@
         const darkAlpha = 1.0 - shade;
         if (darkAlpha > 0.02) {
           ctx.fillStyle = `rgba(1, 8, 4, ${darkAlpha.toFixed(2)})`;
+          ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+        }
+
+        // Tint wall strip with colored light accumulation
+        if (lightR > 4 || lightG > 4 || lightB > 4) {
+          const maxL = Math.max(lightR, lightG, lightB);
+          const lAlpha = Math.min(0.48, (maxL / 255) * 0.55);
+          ctx.fillStyle = `rgba(${Math.min(255, Math.floor(lightR))}, ${Math.min(255, Math.floor(lightG))}, ${Math.min(255, Math.floor(lightB))}, ${lAlpha.toFixed(2)})`;
           ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
         }
 
@@ -2336,8 +2550,24 @@
         }
       }
 
-      // 3. Billboard Entities (Monsters, Allies, Loot, Crates, Elevator)
+      // 3. Billboard Entities (Decals, Monsters, Allies, Loot, Crates, Elevator)
       const visibleSprites = [];
+
+      // Blood & Slime Floor Decals
+      if (this.decals) {
+        for (let di = 0; di < this.decals.length; di++) {
+          const dec = this.decals[di];
+          visibleSprites.push({
+            x: dec.x,
+            y: dec.y,
+            type: 'decal',
+            color: dec.color,
+            splatterColor: dec.splatterColor,
+            radius: dec.radius,
+            isFloorDecal: true
+          });
+        }
+      }
 
       if (this.elevator) {
         visibleSprites.push({
@@ -2364,27 +2594,31 @@
 
       for (const drop of this.weaponDrops) {
         if (!drop.pickedUp) {
-          let itemKey = 'loot_crate';
-          if (drop.weapon) {
-            const wId = (drop.weapon.id || drop.weapon.type || '').toLowerCase();
-            if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) itemKey = 'weapon_shotgun';
-            else if (wId.includes('pipe') || wId.includes('crowbar') || wId.includes('melee')) itemKey = 'weapon_pipe';
-            else if (wId.includes('flame') || wId.includes('fire')) itemKey = 'weapon_flamethrower';
-            else if (wId.includes('rifle') || wId.includes('ak')) itemKey = 'weapon_rifle';
-            else itemKey = 'weapon_pistol';
-          } else if (drop.item) {
-            const iId = (drop.item.id || drop.item.type || '').toLowerCase();
-            if (iId.includes('med') || iId.includes('heal')) itemKey = 'food_medkit';
-            else if (iId.includes('ammo')) itemKey = 'ammo_box';
-            else if (iId.includes('filter')) itemKey = 'gas_filter';
-            else itemKey = 'loot_crate';
+          const isMed = !!(drop.isMedkit || (drop.item && (drop.item.id === 'food_medkit' || drop.item.type === 'heal')) || (drop.name && drop.name.includes('Аптечк')));
+          let itemKey = isMed ? 'food_medkit' : 'loot_crate';
+          if (!isMed) {
+            if (drop.weapon) {
+              const wId = (drop.weapon.id || drop.weapon.type || '').toLowerCase();
+              if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) itemKey = 'weapon_shotgun';
+              else if (wId.includes('pipe') || wId.includes('crowbar') || wId.includes('melee')) itemKey = 'weapon_pipe';
+              else if (wId.includes('flame') || wId.includes('fire')) itemKey = 'weapon_flamethrower';
+              else if (wId.includes('rifle') || wId.includes('ak')) itemKey = 'weapon_rifle';
+              else itemKey = 'weapon_pistol';
+            } else if (drop.item) {
+              const iId = (drop.item.id || drop.item.type || '').toLowerCase();
+              if (iId.includes('ammo')) itemKey = 'ammo_box';
+              else if (iId.includes('filter')) itemKey = 'gas_filter';
+              else itemKey = 'loot_crate';
+            }
           }
+
           visibleSprites.push({
             x: drop.x,
             y: drop.y,
             type: 'weapon',
             key: itemKey,
-            color: '#00ffaa'
+            isMedkit: isMed,
+            color: isMed ? '#33ff77' : '#00ffaa'
           });
         }
       }
@@ -2413,13 +2647,14 @@
           else mKey = 'black_slime';
 
           visibleSprites.push({
-            x: ent.x,
-            y: ent.y,
+            x: ent.x + (ent.flinchX || 0),
+            y: ent.y + (ent.flinchY || 0),
             type: 'monster',
             key: mKey,
             color: ent.color || '#ff3b30',
             hp: ent.hp,
-            maxHp: ent.maxHp
+            maxHp: ent.maxHp,
+            damageFlashTimer: ent.damageFlashTimer || 0
           });
         }
       }
@@ -2444,21 +2679,66 @@
 
       for (const sp of inFrontSprites) {
         const screenX = Math.floor((w / 2) + Math.tan(sp.angle) * (w / 2) / Math.tan(fov / 2));
-        const sprHeight = Math.min(h * 2.2, Math.floor((h / (sp.perpDist / TS)) * 0.88));
-        const aspect = (sp.type === 'weapon' || sp.type === 'crate') ? 0.65 : 0.82;
-        const sprWidth = Math.max(4, Math.floor(sprHeight * aspect));
+        const perpDistWorld = sp.perpDist;
+        const wallBase = halfH + Math.floor(((h / (perpDistWorld / TS)) * 0.95) / 2);
 
-        // Ground firmly on floor base
-        const wallBase = halfH + Math.floor(((h / (sp.perpDist / TS)) * 0.95) / 2);
-        const sprTop = Math.floor(wallBase - sprHeight);
+        // Ground Decal Rendering
+        if (sp.isFloorDecal) {
+          const decalW = Math.max(6, Math.floor((h / (perpDistWorld / TS)) * 0.65));
+          const decalH = Math.max(3, Math.floor(decalW * 0.3));
+          const decLeft = Math.floor(screenX - decalW / 2);
+          const decTop = Math.floor(wallBase - decalH);
+
+          for (let stripeX = Math.max(0, decLeft); stripeX < Math.min(w, decLeft + decalW); stripeX += colStep) {
+            const bufIdx = Math.floor(stripeX / colStep);
+            if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < perpDistWorld) continue;
+
+            const u = (stripeX - decLeft) / decalW;
+            const distFromCenter = Math.abs(u - 0.5) * 2;
+            const sliceH = Math.floor(decalH * Math.sqrt(Math.max(0, 1 - distFromCenter * distFromCenter)));
+            const sliceTop = wallBase - sliceH;
+
+            ctx.fillStyle = sp.color || '#470808';
+            ctx.fillRect(stripeX, sliceTop, colStep, sliceH);
+          }
+          continue;
+        }
+
+        const isItem = (sp.type === 'weapon' || sp.type === 'crate');
+        const aspect = isItem ? 0.68 : 0.82;
+        const baseSprHeight = Math.min(h * 2.2, Math.floor((h / (perpDistWorld / TS)) * 0.88));
+
+        // Hover & Pseudo-3D Spin for dropped loot
+        let hoverYOffset = 0;
+        let spinScaleX = 1.0;
+        if (sp.type === 'weapon') {
+          hoverYOffset = Math.sin(Date.now() * 0.003 + sp.x) * (baseSprHeight * 0.09);
+          spinScaleX = Math.cos(Date.now() * 0.004 + sp.y);
+        }
+
+        const sprHeight = baseSprHeight;
+        const sprWidth = Math.max(4, Math.floor(sprHeight * aspect * Math.abs(spinScaleX)));
+        const sprTop = Math.floor(wallBase - sprHeight - hoverYOffset);
         const sprLeft = Math.floor(screenX - sprWidth / 2);
         const sprRight = sprLeft + sprWidth;
 
         if (sprRight <= 0 || sprLeft >= w) continue;
 
-        const perpDistWorld = sp.perpDist;
         const shade = Math.max(0.08, Math.min(1.0, 1.0 - perpDistWorld / (TS * 18)));
         const darkAlpha = 1.0 - shade;
+
+        // Ground Light Halo for items
+        if (sp.type === 'weapon') {
+          const haloW = Math.max(8, Math.floor((h / (perpDistWorld / TS)) * 0.55));
+          const haloH = Math.max(3, Math.floor(haloW * 0.28));
+          const haloLeft = Math.floor(screenX - haloW / 2);
+          for (let hx = Math.max(0, haloLeft); hx < Math.min(w, haloLeft + haloW); hx += colStep) {
+            const bufIdx = Math.floor(hx / colStep);
+            if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < perpDistWorld) continue;
+            ctx.fillStyle = sp.isMedkit ? 'rgba(51, 255, 100, 0.35)' : 'rgba(255, 170, 0, 0.35)';
+            ctx.fillRect(hx, wallBase - haloH / 2, colStep, haloH);
+          }
+        }
 
         let sprImg = null;
         if (typeof TextureManager !== 'undefined' && TextureManager.getSprite && sp.key) {
@@ -2467,11 +2747,10 @@
 
         let anyStripeVisible = false;
 
-        // PER-COLUMN STRIPE RENDERING & Z-BUFFER OCCLUSION (NO X-RAY GLITCH)
+        // PER-COLUMN STRIPE RENDERING & Z-BUFFER OCCLUSION
         for (let stripeX = Math.max(0, sprLeft); stripeX < Math.min(w, sprRight); stripeX += colStep) {
           const bufIdx = Math.floor(stripeX / colStep);
           if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < perpDistWorld) {
-            // Occluded by wall or blast door!
             continue;
           }
 
@@ -2490,6 +2769,12 @@
               ctx.fillStyle = sp.color || '#ff3b30';
               ctx.fillRect(stripeX, sprTop + sprHeight * 0.15, colStep, sprHeight * 0.85);
             }
+          }
+
+          // Damage Flash (Bright White / Red Flash on hit)
+          if (sp.damageFlashTimer > 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+            ctx.fillRect(stripeX, sprTop, colStep, sprHeight);
           }
 
           // Shading overlay
@@ -2560,116 +2845,272 @@
       ctx.fillRect(chX - 0.5, chY - 0.5, 1, 1);
       ctx.restore();
 
-      // 5. First-Person Weapon Model & Hands
+      // 5. First-Person Weapon Model & Liquidator Hazmat Hands
       this.drawFPSWeapon(ctx, w, h);
     }
 
     /**
-     * First-Person Weapon View with Procedural Bobbing & Recoil
+     * First-Person Weapon Rig with Liquidator Hazmat Hand & Procedural Bobbing & Recoil
      */
     drawFPSWeapon(ctx, w, h) {
-      const isMoving = (this.player.vx !== 0 || this.player.vy !== 0);
-      const bobX = isMoving ? Math.sin(this.tick * 0.18) * 8 : 0;
-      const bobY = isMoving ? Math.abs(Math.cos(this.tick * 0.18)) * 6 : 0;
-
-      const recoil = this.player.isShooting ? (1.0 - (this.player.shootProgress || 0)) * 28 : 0;
-      const swingOffset = this.player.isSwinging ? Math.sin((this.player.swingProgress || 0) * Math.PI) * 75 : 0;
-
-      const gunX = w / 2 + 55 + bobX - swingOffset;
-      const gunY = h - 45 + bobY - recoil;
+      const bobX = Math.cos(this.bobTimer || 0) * 4;
+      const bobY = Math.abs(Math.sin(this.bobTimer || 0)) * 6;
 
       const weapon = this.player.weapon || this.player.baseWeapon;
       const wId = (weapon && (weapon.id || weapon.type || weapon.gunType || weapon.name || '')).toLowerCase();
-      const isRanged = weapon && (weapon.isRanged || wId.includes('shotgun') || wId.includes('rifle') || wId.includes('pistol') || wId.includes('ks23'));
+      const isShotgun = wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga');
+      const isMelee = !weapon.isRanged && !isShotgun && !wId.includes('rifle') && !wId.includes('pistol') && !wId.includes('gun');
 
       ctx.save();
-      if (isRanged) {
-        if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) {
-          // --- KS-23 Heavy Riot Shotgun ---
-          // Heavy steel barrel
-          ctx.fillStyle = '#1e2822';
-          ctx.fillRect(gunX - 26, gunY - 110, 38, 130);
-          ctx.fillStyle = '#2f3f35';
-          ctx.fillRect(gunX - 20, gunY - 145, 26, 45);
-          // Ribbed pump slide (wooden / bakelite grip)
-          ctx.fillStyle = '#52341b';
-          ctx.fillRect(gunX - 24, gunY - 80, 34, 32);
-          for (let ry = gunY - 76; ry < gunY - 52; ry += 6) {
-            ctx.fillStyle = '#3a2312';
-            ctx.fillRect(gunX - 24, ry, 34, 2);
-          }
-          // Brass bead front sight
-          ctx.fillStyle = '#ffd700';
-          ctx.fillRect(gunX - 8, gunY - 148, 4, 4);
-        } else {
-          // --- Makarov / Pistol / Rifle ---
-          ctx.fillStyle = '#1c2e22';
-          ctx.fillRect(gunX - 20, gunY - 95, 32, 115);
-          ctx.fillStyle = '#2d4c38';
-          ctx.fillRect(gunX - 15, gunY - 130, 22, 40);
-          // Green phosphor tritium sights
-          ctx.fillStyle = '#1fe044';
-          ctx.shadowColor = '#1fe044';
-          ctx.shadowBlur = 6;
-          ctx.fillRect(gunX - 6, gunY - 133, 4, 4);
+
+      // Melee Swing Motion (Sharp diagonal slash 180ms)
+      if (isMelee) {
+        const p = this.player.isSwinging ? (this.player.swingProgress || 0) : 0;
+        const swingEase = Math.sin(p * Math.PI);
+        const slashRot = -0.55 + swingEase * 1.35;
+        const slashX = -swingEase * 130;
+        const slashY = swingEase * 50;
+
+        const armX = w * 0.65 + bobX + slashX;
+        const armY = h * 0.88 + bobY + slashY;
+
+        ctx.save();
+        ctx.translate(armX, armY);
+        ctx.rotate(slashRot);
+
+        // Pipe body
+        ctx.fillStyle = '#3c4c41';
+        ctx.fillRect(-14, -165, 26, 190);
+        // Metallic sheen highlight
+        ctx.fillStyle = '#677f6f';
+        ctx.fillRect(-8, -165, 8, 190);
+        // Joint rings
+        ctx.fillStyle = '#222d26';
+        ctx.fillRect(-18, -145, 34, 12);
+        ctx.fillRect(-18, -80, 34, 12);
+        // Red industrial valve wheel
+        ctx.fillStyle = '#d32f2f';
+        ctx.beginPath();
+        ctx.arc(0, -115, 22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1c241e';
+        ctx.beginPath();
+        ctx.arc(0, -115, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d32f2f';
+        ctx.fillRect(-3, -135, 6, 40);
+        ctx.fillRect(-20, -118, 40, 6);
+
+        // Liquidator Glove & Hazmat Sleeve
+        // Rubber glove gripping handle
+        ctx.fillStyle = '#232a26';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 22, 26, 0.1, 0, Math.PI * 2);
+        ctx.fill();
+        // Knuckle padding
+        ctx.fillStyle = '#171c19';
+        ctx.fillRect(-12, -8, 24, 8);
+
+        // Forearm sleeve (Murky green hazmat OZK)
+        ctx.fillStyle = '#324233';
+        ctx.beginPath();
+        ctx.moveTo(-24, 20);
+        ctx.lineTo(34, 15);
+        ctx.lineTo(55, 160);
+        ctx.lineTo(-45, 160);
+        ctx.closePath();
+        ctx.fill();
+        // Sleeve fold lines
+        ctx.strokeStyle = '#1e2920';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-20, 50);
+        ctx.lineTo(25, 45);
+        ctx.moveTo(-15, 95);
+        ctx.lineTo(35, 90);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // High-speed slash blur trail during attack
+        if (this.player.isSwinging && p > 0.1 && p < 0.85) {
+          ctx.strokeStyle = 'rgba(51, 255, 100, 0.45)';
+          ctx.lineWidth = 14;
+          ctx.beginPath();
+          ctx.arc(w / 2 - 20, h / 2 + 30, 110, -0.8 + p * 1.5, 0.4 + p * 1.5);
+          ctx.stroke();
+        }
+      } else if (isShotgun) {
+        // --- KS-23 Heavy Riot Shotgun (Dual Hands) ---
+        const recoil = this.player.isShooting ? Math.sin((this.player.shootProgress || 0) * Math.PI) * 36 : 0;
+        const recoilRot = this.player.isShooting ? -Math.sin((this.player.shootProgress || 0) * Math.PI) * 0.16 : 0;
+        const pumpProg = (this.player.isShooting && this.player.shootProgress > 0.45 && this.player.shootProgress < 0.85)
+          ? Math.sin((this.player.shootProgress - 0.45) / 0.4 * Math.PI) * 18 : 0;
+
+        const gunX = w / 2 + 50 + bobX;
+        const gunY = h - 45 + bobY - recoil;
+
+        ctx.save();
+        ctx.translate(gunX, gunY);
+        ctx.rotate(recoilRot);
+
+        // Barrel & Receiver
+        ctx.fillStyle = '#19221c';
+        ctx.fillRect(-24, -160, 36, 185);
+        ctx.fillStyle = '#2b3930';
+        ctx.fillRect(-18, -195, 24, 55);
+        // Brass bead sight
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(-8, -198, 4, 4);
+
+        // Ribbed wooden/bakelite pump forend (slides on pump action)
+        const pumpY = -110 + pumpProg;
+        ctx.fillStyle = '#5c351c';
+        ctx.fillRect(-26, pumpY, 40, 42);
+        for (let ry = pumpY + 5; ry < pumpY + 38; ry += 7) {
+          ctx.fillStyle = '#3a2010';
+          ctx.fillRect(-26, ry, 40, 2);
         }
 
-        // Muzzle Flash VFX
+        // Left Hand supporting pump forend
+        ctx.fillStyle = '#232a26';
+        ctx.beginPath();
+        ctx.ellipse(-18, pumpY + 22, 16, 20, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        // Left Arm sleeve coming from bottom-left
+        ctx.fillStyle = '#324233';
+        ctx.beginPath();
+        ctx.moveTo(-32, pumpY + 30);
+        ctx.lineTo(-12, pumpY + 35);
+        ctx.lineTo(-75, 140);
+        ctx.lineTo(-120, 140);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right Hand on trigger & grip
+        ctx.fillStyle = '#232a26';
+        ctx.beginPath();
+        ctx.ellipse(8, 20, 18, 24, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        // Right Arm sleeve coming from bottom-right
+        ctx.fillStyle = '#324233';
+        ctx.beginPath();
+        ctx.moveTo(-6, 32);
+        ctx.lineTo(26, 25);
+        ctx.lineTo(75, 140);
+        ctx.lineTo(25, 140);
+        ctx.closePath();
+        ctx.fill();
+
+        // Ejected brass shell during racking
+        if (pumpProg > 6) {
+          ctx.fillStyle = '#ffd700';
+          ctx.fillRect(28 + pumpProg * 1.5, -70 - pumpProg * 0.8, 14, 6);
+        }
+
+        // Muzzle blast fireball & sparks
+        if (this.player.isShooting && (this.player.shootProgress || 0) < 0.32) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(-6, -208, 16, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ff9900';
+          ctx.shadowColor = '#ff6600';
+          ctx.shadowBlur = 28;
+          ctx.beginPath();
+          ctx.arc(-6, -214, 30, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ff4400';
+          ctx.beginPath();
+          ctx.moveTo(-6, -255);
+          ctx.lineTo(24, -195);
+          ctx.lineTo(-36, -195);
+          ctx.closePath();
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Flying sparks
+          ctx.fillStyle = '#ffffff';
+          for (let spk = 0; spk < 6; spk++) {
+            const sx = -6 + (Math.random() - 0.5) * 55;
+            const sy = -215 - Math.random() * 45;
+            ctx.fillRect(sx, sy, 2.5, 2.5);
+          }
+        }
+
+        ctx.restore();
+      } else {
+        // --- Makarov Pistol / Rifle (Right Hand Gripping) ---
+        const recoil = this.player.isShooting ? Math.sin((this.player.shootProgress || 0) * Math.PI) * 22 : 0;
+        const recoilRot = this.player.isShooting ? -Math.sin((this.player.shootProgress || 0) * Math.PI) * 0.18 : 0;
+
+        const gunX = w / 2 + 60 + bobX;
+        const gunY = h - 45 + bobY - recoil;
+
+        ctx.save();
+        ctx.translate(gunX, gunY);
+        ctx.rotate(recoilRot);
+
+        // Blued steel slide & receiver
+        ctx.fillStyle = '#1c2620';
+        ctx.fillRect(-18, -125, 28, 135);
+        ctx.fillStyle = '#2c3c32';
+        ctx.fillRect(-13, -155, 18, 42);
+
+        // Green phosphor tritium sights
+        ctx.fillStyle = '#1fe044';
+        ctx.shadowColor = '#1fe044';
+        ctx.shadowBlur = 6;
+        ctx.fillRect(-5, -158, 4, 4);
+        ctx.shadowBlur = 0;
+
+        // Textured Bakelite Grip
+        ctx.fillStyle = '#5c2c1a';
+        ctx.fillRect(-15, -15, 22, 45);
+
+        // Right Hand holding pistol grip
+        ctx.fillStyle = '#232a26';
+        ctx.beginPath();
+        ctx.ellipse(-2, 10, 18, 24, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Right Arm sleeve
+        ctx.fillStyle = '#324233';
+        ctx.beginPath();
+        ctx.moveTo(-16, 25);
+        ctx.lineTo(18, 18);
+        ctx.lineTo(65, 140);
+        ctx.lineTo(15, 140);
+        ctx.closePath();
+        ctx.fill();
+
+        // Muzzle Flash
         if (this.player.isShooting && (this.player.shootProgress || 0) < 0.35) {
           ctx.fillStyle = '#fff488';
           ctx.shadowColor = '#ff9900';
-          ctx.shadowBlur = 26;
+          ctx.shadowBlur = 24;
           ctx.beginPath();
-          ctx.arc(gunX - 6, gunY - 152, 24, 0, Math.PI * 2);
+          ctx.arc(-4, -170, 20, 0, Math.PI * 2);
           ctx.fill();
 
           ctx.fillStyle = '#ff6600';
           ctx.beginPath();
-          ctx.moveTo(gunX - 6, gunY - 188);
-          ctx.lineTo(gunX + 18, gunY - 140);
-          ctx.lineTo(gunX - 28, gunY - 140);
+          ctx.moveTo(-4, -205);
+          ctx.lineTo(16, -160);
+          ctx.lineTo(-24, -160);
           ctx.closePath();
           ctx.fill();
-
-          // Sparks
-          ctx.fillStyle = '#ffffff';
-          for (let spk = 0; spk < 4; spk++) {
-            const sx = gunX - 6 + (Math.random() - 0.5) * 40;
-            const sy = gunY - 152 - Math.random() * 35;
-            ctx.fillRect(sx, sy, 2, 2);
-          }
+          ctx.shadowBlur = 0;
         }
-      } else {
-        // --- Heavy Steel Pipe with Red Valve (Melee) ---
-        // Massive angled pipe
-        ctx.fillStyle = '#3e4e44';
-        ctx.fillRect(gunX - 18, gunY - 130, 28, 150);
-        // Pipe sheen highlight
-        ctx.fillStyle = '#657e6e';
-        ctx.fillRect(gunX - 12, gunY - 130, 8, 150);
-        // Threaded joint rings
-        ctx.fillStyle = '#25322b';
-        ctx.fillRect(gunX - 22, gunY - 110, 36, 12);
-        ctx.fillRect(gunX - 22, gunY - 40, 36, 12);
-        // Red industrial valve wheel
-        ctx.fillStyle = '#d62828';
-        ctx.beginPath();
-        ctx.arc(gunX - 4, gunY - 75, 18, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#1c221e';
-        ctx.beginPath();
-        ctx.arc(gunX - 4, gunY - 75, 9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#d62828';
-        ctx.fillRect(gunX - 6, gunY - 92, 4, 34);
-        ctx.fillRect(gunX - 21, gunY - 77, 34, 4);
+
+        ctx.restore();
       }
+
       ctx.restore();
     }
 
-    /**
-     * Dynamic Lighting & Darkness: Darkness covers the block, pierced by player flashlight & lanterns
-     */
     drawDynamicDarkness(ctx, cam, w, h) {
       if (!this.darknessCanvas) {
         this.darknessCanvas = document.createElement('canvas');

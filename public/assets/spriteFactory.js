@@ -67,50 +67,90 @@
 
       const lx = lamp.x;
       const ly = lamp.y;
+      const isRed = (lamp.type === 'emergency_lamp' || lamp.color === '#ff3b30');
+      const isSpark = (lamp.type === 'sparking_panel');
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      // 1. Warm amber volumetric halo (radius 220px)
-      const flicker = 0.94 + Math.sin(tick * 0.15 + (lamp.x % 17)) * 0.06;
-      const rad = 220 * flicker;
+      if (isSpark) {
+        // Electrical panel fixture
+        ctx.fillStyle = '#222d26';
+        ctx.fillRect(lx - 8, ly - 6, 16, 12);
+        ctx.strokeStyle = '#445b4b';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(lx - 8, ly - 6, 16, 12);
 
-      const grad = ctx.createRadialGradient(lx, ly, 6, lx, ly, rad);
-      grad.addColorStop(0, 'rgba(255, 195, 75, 0.48)');
-      grad.addColorStop(0.35, 'rgba(255, 150, 30, 0.22)');
-      grad.addColorStop(0.75, 'rgba(180, 80, 10, 0.08)');
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        // Warning lightning glyph
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡', lx, ly + 3);
 
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(lx, ly, rad, 0, Math.PI * 2);
-      ctx.fill();
+        // Flash & electric glow on spark
+        if (lamp.isSparking) {
+          const sGrad = ctx.createRadialGradient(lx, ly, 2, lx, ly, 75);
+          sGrad.addColorStop(0, 'rgba(230, 245, 255, 0.85)');
+          sGrad.addColorStop(0.3, 'rgba(120, 200, 255, 0.45)');
+          sGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = sGrad;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 75, 0, Math.PI * 2);
+          ctx.fill();
 
-      // 2. Bulkhead lantern cage fixture
-      ctx.fillStyle = '#ffaa33';
-      ctx.beginPath();
-      ctx.arc(lx, ly, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(lx - 3, ly);
+          ctx.lineTo(lx + (Math.random() - 0.5) * 8, ly + (Math.random() - 0.5) * 8);
+          ctx.stroke();
+        }
+      } else {
+        // Bulkhead Lantern (Amber or Emergency Red)
+        const flicker = 0.94 + Math.sin(tick * 0.15 + (lamp.x % 17)) * 0.06;
+        const rad = (lamp.radius || 200) * flicker;
 
-      // Protective cage ribs
-      ctx.strokeStyle = '#553311';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(lx - 5, ly);
-      ctx.lineTo(lx + 5, ly);
-      ctx.moveTo(lx, ly - 5);
-      ctx.lineTo(lx, ly + 5);
-      ctx.stroke();
+        const grad = ctx.createRadialGradient(lx, ly, 4, lx, ly, rad);
+        if (isRed) {
+          grad.addColorStop(0, 'rgba(255, 60, 40, 0.5)');
+          grad.addColorStop(0.35, 'rgba(200, 20, 20, 0.22)');
+          grad.addColorStop(0.75, 'rgba(120, 10, 10, 0.08)');
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else {
+          grad.addColorStop(0, 'rgba(255, 195, 75, 0.48)');
+          grad.addColorStop(0.35, 'rgba(255, 150, 30, 0.22)');
+          grad.addColorStop(0.75, 'rgba(180, 80, 10, 0.08)');
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        }
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(lx, ly, rad, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = isRed ? '#ff3b30' : '#ffaa33';
+        ctx.beginPath();
+        ctx.arc(lx, ly, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.strokeStyle = isRed ? '#551111' : '#553311';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(lx - 5, ly);
+        ctx.lineTo(lx + 5, ly);
+        ctx.moveTo(lx, ly - 5);
+        ctx.lineTo(lx + 5, ly);
+        ctx.stroke();
+      }
 
       ctx.restore();
     },
 
     /**
-     * Render Bunker Floor Tile
-     */
+     *      */
     drawFloorTile(ctx, wx, wy, TS, alpha, seed = 0) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
@@ -420,25 +460,41 @@
 
       const x = drop.x;
       const y = drop.y;
-      const pulse = Math.sin(tick * 0.12) * 3;
+
+      const isMed = !!(drop.isMedkit || (drop.item && (drop.item.id === 'food_medkit' || drop.item.type === 'heal')) || (drop.name && drop.name.includes('Аптечк')));
+      const now = Date.now();
+
+      // Dynamic Y-Axis Hover & Pseudo-3D Y-Axis Rotation
+      const hoverY = Math.sin(now * 0.003 + (drop.x % 10)) * 4;
+      const rawScaleX = Math.cos(now * 0.004 + (drop.y % 10));
+      const scaleX = Math.abs(rawScaleX);
+
+      // Pulsing Ground Light Halo (12 to 18 px)
+      const pulseRad = 12 + ((Math.sin(tick * 0.12) + 1) * 3);
 
       ctx.save();
       ctx.globalAlpha = Math.max(0.2, Math.min(1.0, alpha));
 
-      // Radial pulsing pickup halo
-      const grad = ctx.createRadialGradient(x, y, 2, x, y, 16 + pulse);
-      grad.addColorStop(0, 'rgba(255, 180, 0, 0.45)');
-      grad.addColorStop(0.65, 'rgba(255, 140, 0, 0.2)');
-      grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
-      ctx.fillStyle = grad;
+      // 1. Floor Ground Light Halo
+      const haloGrad = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, pulseRad);
+      if (isMed) {
+        haloGrad.addColorStop(0, 'rgba(51, 255, 100, 0.42)');
+        haloGrad.addColorStop(0.65, 'rgba(40, 220, 80, 0.18)');
+        haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      } else {
+        haloGrad.addColorStop(0, 'rgba(255, 170, 0, 0.42)');
+        haloGrad.addColorStop(0.65, 'rgba(240, 130, 0, 0.18)');
+        haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      }
+      ctx.fillStyle = haloGrad;
       ctx.beginPath();
-      ctx.arc(x, y, 16 + pulse, 0, Math.PI * 2);
+      ctx.ellipse(x, y + 4, pulseRad, pulseRad * 0.55, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Compact 18x18 item icon
+      // 2. Rotating Item Icon
       let icon = null;
       if (typeof TextureManager !== 'undefined' && TextureManager.getSprite) {
-        let key = 'loot_crate';
+        let key = isMed ? 'food_medkit' : 'loot_crate';
         if (drop.weapon) {
           const wId = (drop.weapon.id || drop.weapon.type || '').toLowerCase();
           if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) key = 'weapon_shotgun';
@@ -456,38 +512,83 @@
         icon = TextureManager.getSprite(key);
       }
 
+      const itemW = Math.max(3, Math.floor(18 * scaleX));
+      const itemH = 18;
+      const itemX = x - itemW / 2;
+      const itemY = y - 8 + hoverY;
+
       if (icon && icon.complete && icon.naturalWidth > 0) {
-        ctx.drawImage(icon, x - 9, y - 9, 18, 18);
+        ctx.drawImage(icon, itemX, itemY, itemW, itemH);
+      } else if (isMed) {
+        // Detailed Army Medkit with Red Cross
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(itemX, itemY + 2, itemW, 14);
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(itemX, itemY + 2, itemW, 14);
+        if (scaleX > 0.3) {
+          ctx.fillStyle = '#d32f2f';
+          ctx.fillRect(x - 2 * scaleX, itemY + 4, 4 * scaleX, 10);
+          ctx.fillRect(x - 5 * scaleX, itemY + 7, 10 * scaleX, 4);
+        }
       } else {
         // Fallback gun shape
         ctx.strokeStyle = '#ffb703';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(x - 8, y);
-        ctx.lineTo(x + 8, y);
-        ctx.lineTo(x + 8, y + 4);
-        ctx.lineTo(x + 3, y + 4);
-        ctx.lineTo(x + 3, y + 8);
+        ctx.moveTo(x - 8 * scaleX, itemY + 8);
+        ctx.lineTo(x + 8 * scaleX, itemY + 8);
+        ctx.lineTo(x + 8 * scaleX, itemY + 12);
+        ctx.lineTo(x + 3 * scaleX, itemY + 12);
+        ctx.lineTo(x + 3 * scaleX, itemY + 16);
         ctx.stroke();
       }
 
-      const dropLabel = drop.weapon ? (drop.weapon.name || 'ОРУЖИЕ').slice(0, 14) : (drop.item ? (drop.item.name || 'ПРЕДМЕТ').slice(0, 14) : 'ХАБАР');
-      ctx.fillStyle = '#ffb703';
+      const dropLabel = drop.weapon ? (drop.weapon.name || 'ОРУЖИЕ').slice(0, 14) : (isMed ? 'АПТЕЧКА' : (drop.item ? (drop.item.name || 'ПРЕДМЕТ').slice(0, 14) : 'ХАБАР'));
+      ctx.fillStyle = isMed ? '#33ff77' : '#ffb703';
       ctx.font = 'bold 8px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(dropLabel, x, y - 13);
+      ctx.fillText(dropLabel, x, itemY - 4);
 
       ctx.restore();
     },
 
     /**
-     * Render Main Entities: Player, Allies, and Tier 1-3 Samosbor Bestiary
+     * Render Floor Blood / Slime Decal
      */
+    drawDecal(ctx, decal) {
+      if (!ctx || !decal) return;
+      ctx.save();
+      const x = decal.x;
+      const y = decal.y;
+      const rad = decal.radius || 18;
+
+      // Dark pool
+      ctx.fillStyle = decal.color || '#4a0808';
+      ctx.beginPath();
+      ctx.ellipse(x, y, rad, rad * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Satellite blood droplets
+      if (decal.splatters) {
+        ctx.fillStyle = decal.splatterColor || '#991111';
+        for (let i = 0; i < decal.splatters.length; i++) {
+          const sp = decal.splatters[i];
+          ctx.beginPath();
+          ctx.arc(x + sp.dx, y + sp.dy, sp.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    },
+
+    /**
+     *      */
     drawEntity(ctx, entity, tick) {
       if (!ctx || !entity) return;
 
-      const x = entity.x || 0;
-      const y = entity.y || 0;
+      const x = (entity.x || 0) + (entity.flinchX || 0);
+      const y = (entity.y || 0) + (entity.flinchY || 0);
       const radius = entity.radius || 13;
       const angle = entity.angle || 0;
       const isFlash = entity.damageFlashTimer && entity.damageFlashTimer > 0;
