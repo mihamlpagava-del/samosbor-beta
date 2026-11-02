@@ -1418,13 +1418,15 @@
         playRaidMusic(hasCombat ? 'combat' : 'explore');
       }
 
-      // Emit live position to raid session every 5 ticks (12 fps netrate)
-      if (this.tick % 5 === 0 && typeof socket !== 'undefined' && socket && socket.emit) {
-        socket.emit('raidPlayerMove', {
+      // High-Frequency 30 FPS Movement Sync to Multiplayer Room
+      if (this.tick % 2 === 0 && typeof socket !== 'undefined' && socket && socket.emit && this.currentRoomCode) {
+        socket.emit('playerInputFPS', {
+          roomCode: this.currentRoomCode,
           x: Math.round(this.player.x),
           y: Math.round(this.player.y),
           angle: Number(this.player.angle.toFixed(2)),
-          hp: this.player.hp
+          hp: this.player.hp,
+          weapon: (this.player.weapon && (this.player.weapon.gunType || this.player.weapon.id)) || 'pipe'
         });
       }
 
@@ -1672,6 +1674,35 @@
       });
 
       // 2. Continuous 25 Hz World State Updates from Server
+      // Zero-latency instant peer movement
+      socket.on('peerMovedFPS', (data) => {
+        if (!data || !data.id || data.id === this.myNetworkId) return;
+        if (!this.remotePlayers[data.id]) {
+          this.remotePlayers[data.id] = {
+            id: data.id,
+            name: data.name || 'Боец',
+            renderX: data.x,
+            renderY: data.y,
+            renderAngle: data.angle || 0,
+            targetX: data.x,
+            targetY: data.y,
+            targetAngle: data.angle || 0,
+            hp: data.hp || 100,
+            maxHp: 100,
+            weapon: data.weapon || 'pipe',
+            isShootingTimer: 0
+          };
+        } else {
+          const peer = this.remotePlayers[data.id];
+          peer.targetX = data.x;
+          peer.targetY = data.y;
+          peer.targetAngle = data.angle || 0;
+          if (data.hp !== undefined) peer.hp = data.hp;
+          if (data.weapon) peer.weapon = data.weapon;
+          if (data.name) peer.name = data.name;
+        }
+      });
+
       socket.on('serverUpdateFPS', (data) => {
         if (!data || !data.players) return;
         for (const id in data.players) {

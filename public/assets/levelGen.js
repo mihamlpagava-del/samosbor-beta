@@ -17,6 +17,26 @@
   'use strict';
 
   const LevelGen = {
+    _rng: Math.random,
+    setSeed(seedStr) {
+      if (!seedStr) {
+        this._rng = Math.random;
+        return;
+      }
+      let h = 2166136261 >>> 0;
+      const str = String(seedStr);
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 16777619) >>> 0;
+      }
+      this._rng = function() {
+        h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
+        h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+        return ((h ^= h >>> 16) >>> 0) / 4294967296;
+      };
+    },
+    random() {
+      return this._rng ? this._rng() : this.random();
+    },
     GRID_WIDTH: 72,
     GRID_HEIGHT: 72,
     TILE_SIZE: 32,
@@ -82,13 +102,13 @@
 
         if (maxRw < 4 || maxRh < 4) continue;
 
-        const rw = minRw + Math.floor(Math.random() * (maxRw - minRw + 1));
-        const rh = minRh + Math.floor(Math.random() * (maxRh - minRh + 1));
-        const rx = leaf.x + 1 + Math.floor(Math.random() * (leaf.w - rw - 1));
-        const ry = leaf.y + 1 + Math.floor(Math.random() * (leaf.h - rh - 1));
+        const rw = minRw + Math.floor(this.random() * (maxRw - minRw + 1));
+        const rh = minRh + Math.floor(this.random() * (maxRh - minRh + 1));
+        const rx = leaf.x + 1 + Math.floor(this.random() * (leaf.w - rw - 1));
+        const ry = leaf.y + 1 + Math.floor(this.random() * (leaf.h - rh - 1));
 
         if (themePool.length === 0) themePool = [...this.ROOM_THEMES];
-        const themeIdx = Math.floor(Math.random() * themePool.length);
+        const themeIdx = Math.floor(this.random() * themePool.length);
         const theme = themePool.splice(themeIdx, 1)[0];
 
         const roomName = (i === 0) ? 'Жилая ячейка №556' : theme.name;
@@ -134,7 +154,7 @@
           for (let x = Math.max(0, rx - 1); x <= Math.min(W - 1, rx + rw); x++) {
             if (grid[y][x] === this.TILE_WALL) {
               let assigned = wallMat;
-              const rRoll = Math.random();
+              const rRoll = this.random();
               if (rRoll < 0.08) assigned = 'concrete_ussr';
               else if (rRoll < 0.15) assigned = 'concrete_warning';
               else if (rRoll < 0.22) assigned = 'concrete_vent';
@@ -267,7 +287,7 @@
       }
 
       // Choose split axis (prefer splitting the longer axis)
-      let splitHoriz = Math.random() < 0.5;
+      let splitHoriz = this.random() < 0.5;
       if (node.w > node.h && node.w / node.h >= 1.25) splitHoriz = false;
       else if (node.h > node.w && node.h / node.w >= 1.25) splitHoriz = true;
 
@@ -277,7 +297,7 @@
         return;
       }
 
-      const split = minSize + Math.floor(Math.random() * (max - minSize + 1));
+      const split = minSize + Math.floor(this.random() * (max - minSize + 1));
 
       if (splitHoriz) {
         node.left = { x: node.x, y: node.y, w: node.w, h: split };
@@ -322,7 +342,7 @@
       const H = this.GRID_HEIGHT;
 
       let cx = x1, cy = y1;
-      const horizontalFirst = Math.random() < 0.5;
+      const horizontalFirst = this.random() < 0.5;
 
       const stepX = () => {
         while (cx !== x2) {
@@ -469,10 +489,10 @@
      */
     populateLoot(rooms, startRoom, furthestRoom, lootCrates, weaponDrops, TS) {
       const eligibleRooms = rooms.filter(r => r.id !== startRoom.id && r.id !== furthestRoom.id);
-      const numCaches = Math.min(eligibleRooms.length, 4 + Math.floor(Math.random() * 3));
+      const numCaches = Math.min(eligibleRooms.length, 4 + Math.floor(this.random() * 3));
 
       // Shuffle rooms
-      const shuffled = [...eligibleRooms].sort(() => Math.random() - 0.5);
+      const shuffled = [...eligibleRooms].sort(() => this.random() - 0.5);
 
       const crateTypes = ['crate_ammo', 'crate_med', 'crate_supply', 'crate_tech', 'crate_wood'];
       const guns = [
@@ -487,12 +507,12 @@
         const cy = room.centerY;
 
         // Spawn 1-2 Crates in the cache room
-        const numCrates = 1 + Math.floor(Math.random() * 2);
+        const numCrates = 1 + Math.floor(this.random() * 2);
         for (let c = 0; c < numCrates; c++) {
           const offsetX = (c === 0 ? -1 : 1);
-          const ctype = crateTypes[Math.floor(Math.random() * crateTypes.length)];
+          const ctype = crateTypes[Math.floor(this.random() * crateTypes.length)];
           lootCrates.push({
-            id: 'crate_' + Math.random().toString(36).substr(2, 7),
+            id: 'crate_' + this.random().toString(36).substr(2, 7),
             x: (cx + offsetX) * TS + TS / 2,
             y: cy * TS + TS / 2,
             tileX: cx + offsetX,
@@ -662,13 +682,13 @@
     },
     populateChests(rooms, startRoom, chests, weaponDrops, TS) {
       const eligibleRooms = rooms.filter(r => r.id !== startRoom.id);
-      const shuffled = [...eligibleRooms].sort(() => Math.random() - 0.5);
+      const shuffled = [...eligibleRooms].sort(() => this.random() - 0.5);
 
       // Keycard item drop in one of the mid-distance rooms
       if (shuffled.length > 2) {
         const keycardRoom = shuffled[1];
         weaponDrops.push({
-          id: 'drop_keycard_' + Math.random().toString(36).substr(2, 6),
+          id: 'drop_keycard_' + this.random().toString(36).substr(2, 6),
           isKeycard: true,
           name: '🔑 Электронная ключ-карта допуска',
           x: (keycardRoom.centerX) * TS + TS / 2,
@@ -681,7 +701,7 @@
       }
 
       // Spawn 3-5 openable supply chests
-      const chestCount = Math.min(shuffled.length, 3 + Math.floor(Math.random() * 3));
+      const chestCount = Math.min(shuffled.length, 3 + Math.floor(this.random() * 3));
       for (let i = 0; i < chestCount; i++) {
         const room = shuffled[i];
         const isSecretChest = !!room.isSecret;
@@ -697,8 +717,8 @@
           isLocked: isLockedKeycard,
           requiresKeycard: isLockedKeycard,
           loot: {
-            talons: isLockedKeycard ? 320 : 85 + Math.floor(Math.random() * 70),
-            ammo: isLockedKeycard ? 36 : 14 + Math.floor(Math.random() * 12),
+            talons: isLockedKeycard ? 320 : 85 + Math.floor(this.random() * 70),
+            ammo: isLockedKeycard ? 36 : 14 + Math.floor(this.random() * 12),
             medkits: isLockedKeycard ? 2 : 1,
             hasKeycard: (!isLockedKeycard && i === 0),
             weapon: isLockedKeycard ? { id: 'gun_ks23', name: 'Карабин КС-23', dmg: 55, isRanged: true, ammo: 18, gunType: 'shotgun' } : null
@@ -721,8 +741,8 @@
             y: ly * TS + 6,
             tileX: lx,
             tileY: ly,
-            flicker: (Math.random() < 0.4),
-            radius: 190 + Math.random() * 60
+            flicker: (this.random() < 0.4),
+            radius: 190 + this.random() * 60
           });
         }
       }

@@ -3084,6 +3084,20 @@ app.post('/vk-payment', (req, res) => {
 const fpsLobbies = {};
 const raidRoomsFPS = {};
 
+// 25 Hz Real-Time Multiplayer World State Broadcaster for FPS Rooms
+setInterval(() => {
+    if (typeof io === 'undefined') return;
+    for (const rCode in raidRoomsFPS) {
+        const room = raidRoomsFPS[rCode];
+        if (room && room.players && Object.keys(room.players).length > 0) {
+            io.to(rCode).emit('serverUpdateFPS', {
+                players: room.players
+            });
+        }
+    }
+}, 40); // 25 Hz
+
+
 function getOpenFPSLobbiesList() {
     const list = [];
     for (const id in fpsLobbies) {
@@ -5726,6 +5740,17 @@ function checkLifterTrigger(player, sock, loc) {
                 p.y += Math.cos(p.angle) * speed;
             }
         }
+
+        // Instant broadcast to peers in room for zero-lag position sync
+        socket.to(roomCode).emit('peerMovedFPS', {
+            id: socket.id,
+            name: p.name,
+            x: p.x,
+            y: p.y,
+            angle: p.angle,
+            hp: p.hp,
+            weapon: p.weapon
+        });
     });
 
     socket.on('shootFPS', (shootData) => {

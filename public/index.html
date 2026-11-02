@@ -10876,6 +10876,11 @@ function launchRadarRoguelike(options = {}) {
       radarRoguelikeGame.syncPlayerFromBase();
       radarRoguelikeGame.start();
     }
+
+    // Connect and join multiplayer room if roomCode or multiplayer mode is set
+    if (radarRoguelikeGame && (options.roomCode || options.isPvP || options.mode === 'PVE' || options.mode === 'PVP')) {
+      radarRoguelikeGame.initRaidNetworking();
+    }
   } catch (err) {
     console.error('[RadarRoguelike] Error starting raid:', err);
   }
