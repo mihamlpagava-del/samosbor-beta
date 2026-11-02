@@ -546,15 +546,16 @@
         radius: 14,
         type: 'npc',
         portrait: 'assets/monsters/m_liquidator.png',
-        dialogue: 'Здорово, боец! Самосбор усиливается с каждой минутой. Если зачистишь этот этаж от мутантов — я щедро отсыплю патронов и талонов из резерва.',
+        dialogue: 'Здорово, боец! Самосбор усиливается с каждой минутой. Если зачистишь этот этаж от мутантов — я щедро отсыплю 300 талонов и боекомплект 12/76!',
         quest: {
           id: 'quest_clean_sector',
           title: 'Зачистка сектора от мутантов',
-          desc: 'Уничтожить 3 мутантов на этаже',
-          targetKills: 3,
+          desc: 'Уничтожить 5 мутантов на этаже',
+          targetKills: 5,
           currentKills: 0,
-          rewardTalons: 160,
-          rewardAmmo: 20,
+          rewardTalons: 300,
+          rewardAmmo: 25,
+          rewardXp: 100,
           completed: false,
           turnedIn: false
         }
@@ -572,14 +573,42 @@
           radius: 14,
           type: 'npc',
           portrait: 'assets/monsters/m_liquidator.png',
-          dialogue: 'Береги фильтр противогаза, сынок. На этаже полно слизи. Принеси мне электронную ключ-карту от запертого шлюза — выдам тебе две армейские аптечки!',
+          dialogue: 'Береги фильтр противогаза, сынок. На этаже полно заразы. Принеси мне электронную ключ-карту от шлюза — выдам 250 талонов и 3 армейские аптечки!',
           quest: {
             id: 'quest_find_keycard',
             title: 'Электронный доступ к шлюзу',
             desc: 'Найти электронную ключ-карту допуска',
             requiresKeycard: true,
-            rewardMedkits: 2,
-            rewardTalons: 120,
+            rewardMedkits: 3,
+            rewardTalons: 250,
+            rewardXp: 90,
+            completed: false,
+            turnedIn: false
+          }
+        });
+      }
+
+      // 3. Техник Михалыч (Инженер узла связи)
+      if (rooms.length > 3) {
+        const techRoom = rooms[2];
+        npcs.push({
+          id: 'npc_mikhalych',
+          name: 'Техник Михалыч',
+          role: 'Инженер узла связи',
+          x: techRoom.centerX * TS + TS / 2,
+          y: techRoom.centerY * TS + TS / 2,
+          radius: 14,
+          type: 'npc',
+          portrait: 'assets/monsters/m_liquidator.png',
+          dialogue: 'Привет, боец! Взрывной клапан заблокировал сектор, а в опечатанном ящике остался аварийный ремкомплект. Вскрой ящик снабжения [E] — получишь мой личный карабин КС-23 и солидную премию 350 талонов!',
+          quest: {
+            id: 'quest_open_crate',
+            title: 'Аварийный ремкомплект узла связи',
+            desc: 'Вскрыть опечатанный ящик снабжения [E]',
+            requiresChest: true,
+            rewardWeapon: { id: 'gun_ks23', name: 'Карабин КС-23', dmg: 55, isRanged: true, ammo: 30, maxAmmo: 30, gunType: 'shotgun' },
+            rewardTalons: 350,
+            rewardXp: 120,
             completed: false,
             turnedIn: false
           }

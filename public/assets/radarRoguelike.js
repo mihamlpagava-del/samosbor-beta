@@ -669,6 +669,16 @@
             return;
           }
           if (e.button === 0) {
+            // Handle Active NPC Dialog click first
+            if (this.activeDialog && this.activeDialog.npc) {
+              const npc = this.activeDialog.npc;
+              if (npc.quest && npc.quest.completed && !npc.quest.turnedIn) {
+                this.turnInNPCQuest(npc);
+              } else {
+                this.activeDialog = null;
+              }
+              return;
+            }
             // Check door interaction first
             if (this.cameraMode === 'FPS') {
               if (!this.isPointerLocked) {
@@ -865,6 +875,18 @@
         const xp = 15 + cost * 5;
         this.player.talonsEarned += bounty;
         this.player.xpEarned += xp;
+        // Check NPC Quests for monster elimination
+        for (const n of (this.npcs || [])) {
+          if (n.quest && n.quest.targetKills && !n.quest.completed) {
+            n.quest.currentKills = (n.quest.currentKills || 0) + 1;
+            if (n.quest.currentKills >= n.quest.targetKills) {
+              n.quest.completed = true;
+              this.spawnFloatingNotice(`🏆 ЗАДАНИЕ ВЫПОЛНЕНО: ${n.quest.title}! ПОГОВОРИТЕ С ${n.name}`, '#00ffaa');
+            } else {
+              this.spawnFloatingNotice(`Квест [${n.name}]: ${n.quest.currentKills}/${n.quest.targetKills} мутантов`, '#00ffcc');
+            }
+          }
+        }
         this.spawnFloatingNotice(`+${bounty} ТАЛОНОВ, +${xp} XP`, '#ffd700');
 
         // Spawn Blood / Slime Decal on floor
@@ -916,7 +938,32 @@
     }
 
     interactNearby() {
-      // 0. Nearby Wounded Liquidator
+      // 0. Active Dialog Turn-in or Dismissal
+      if (this.activeDialog && this.activeDialog.npc) {
+        const npc = this.activeDialog.npc;
+        if (npc.quest && npc.quest.completed && !npc.quest.turnedIn) {
+          this.turnInNPCQuest(npc);
+        } else {
+          this.activeDialog = null;
+        }
+        return;
+      }
+
+      // 1. Friendly NPCs with Dialogues & Quests (Radius 68px)
+      const nearbyNPC = (this.npcs || []).find(n => Math.hypot(this.player.x - n.x, this.player.y - n.y) < 68);
+      if (nearbyNPC) {
+        this.activeDialog = { npc: nearbyNPC };
+        if (typeof RadarAudio !== 'undefined' && RadarAudio.playKeycardUnlock) {
+          RadarAudio.playKeycardUnlock();
+        }
+        const q = nearbyNPC.quest;
+        if (q && q.completed && !q.turnedIn) {
+          this.spawnFloatingNotice('НАЖМИТЕ [E] ЧТОБЫ СДАТЬ ЗАДАНИЕ И ЗАБРАТЬ ТАЛОНЫ!', '#00ffaa');
+        }
+        return;
+      }
+
+      // 2. Nearby Wounded Liquidator
       const nearbyWounded = this.getNearbyWoundedNPC();
       if (nearbyWounded) {
         if (this.player.belt && this.player.belt.medkits > 0) {
@@ -929,29 +976,37 @@
         return;
       }
 
-      // 1. Doors (front direction priority in FPS, radial check in TDS)
-      const frontDoor = this.getDoorInFront(68);
+      // 3. Supply Chests (openable with [E])
+      for (const chest of (this.chests || [])) {
+        if (!chest.opened && Math.hypot(this.player.x - chest.x, this.player.y - chest.y) < 48) {
+          this.openChest(chest);
+          return;
+        }
+      }
+
+      // 4. Airtight Hermetic Blast Doors (Front check in FPS, radial in TDS)
+      const frontDoor = this.getDoorInFront(75);
       if (frontDoor) {
         this.toggleDoor(frontDoor);
         return;
       }
-      for (const d of this.doors) {
+      for (const d of (this.doors || [])) {
         if (Math.hypot(this.player.x - (d.x + 16), this.player.y - (d.y + 16)) < 55) {
           this.toggleDoor(d);
           return;
         }
       }
 
-      // 2. Weapon drops
-      for (const drop of this.weaponDrops) {
+      // 5. Weapon drops
+      for (const drop of (this.weaponDrops || [])) {
         if (!drop.pickedUp && Math.hypot(this.player.x - drop.x, this.player.y - drop.y) < 38) {
           this.pickupWeapon(drop);
           return;
         }
       }
 
-      // 3. Loot crates
-      for (const crate of this.crates) {
+      // 6. Loot crates
+      for (const crate of (this.crates || [])) {
         if (!crate.opened && Math.hypot(this.player.x - crate.x, this.player.y - crate.y) < 40) {
           this.openCrate(crate);
           return;
@@ -959,16 +1014,61 @@
       }
     }
 
-    getDoorInFront(maxDist = 68) {
+    /**
+     * Complete and Turn in NPC Quest, crediting Talons and rewards
+     */
+    turnInNPCQuest(npc) {
+      if (!npc || !npc.quest || npc.quest.turnedIn) return;
+      const q = npc.quest;
+      q.turnedIn = true;
+
+      const rewardTalons = q.rewardTalons || 250;
+      this.player.talonsEarned = (this.player.talonsEarned || 0) + rewardTalons;
+      this.player.xpEarned = (this.player.xpEarned || 0) + (q.rewardXp || 100);
+
+      if (q.rewardMedkits) {
+        if (this.player.belt) {
+          this.player.belt.medkits = Math.min(this.player.belt.maxMedkits || 5, (this.player.belt.medkits || 0) + q.rewardMedkits);
+        }
+      }
+
+      if (q.rewardAmmo && this.player.weapon && this.player.weapon.isRanged) {
+        this.player.weapon.ammo = Math.min(this.player.weapon.maxAmmo || 30, (this.player.weapon.ammo || 0) + q.rewardAmmo);
+      }
+
+      if (q.rewardWeapon) {
+        if (this.player.belt) {
+          this.player.belt.slot2 = Object.assign({}, q.rewardWeapon);
+        }
+      }
+
+      if (typeof RadarAudio !== 'undefined') {
+        if (RadarAudio.playLevelUp) RadarAudio.playLevelUp();
+        else if (RadarAudio.playKeycardUnlock) RadarAudio.playKeycardUnlock();
+      }
+
+      this.spawnFloatingNotice(`🏆 ЗАДАНИЕ СДАНО: +${rewardTalons} ТАЛОНОВ!`, '#00ffaa');
+
+      // Instantly save talons to client profile
+      if (typeof clientMe !== 'undefined' && clientMe) {
+        clientMe.talons = (clientMe.talons || 0) + rewardTalons;
+        if (typeof updateHubStats === 'function') updateHubStats();
+        if (typeof socket !== 'undefined' && socket && socket.emit) {
+          socket.emit('addTalonsReward', { talons: rewardTalons, reason: `Квест: ${q.title}` });
+        }
+      }
+    }
+
+    getDoorInFront(maxDist = 75) {
       const TS = this.tileSize;
       const cos = Math.cos(this.player.angle);
       const sin = Math.sin(this.player.angle);
-      for (let dist = 12; dist <= maxDist; dist += 8) {
+      for (let dist = 12; dist <= maxDist; dist += 6) {
         const checkX = this.player.x + cos * dist;
         const checkY = this.player.y + sin * dist;
         const tx = Math.floor(checkX / TS);
         const ty = Math.floor(checkY / TS);
-        const door = this.doors.find(d => d.tileX === tx && d.tileY === ty);
+        const door = (this.doors || []).find(d => d.tileX === tx && d.tileY === ty);
         if (door) return door;
       }
       return null;
@@ -976,11 +1076,32 @@
 
     toggleDoor(d) {
       if (!d) return;
-      d.isOpen = !d.isOpen;
-      if (typeof RadarAudio !== 'undefined' && RadarAudio.playDoorToggle) {
-        RadarAudio.playDoorToggle(d.isOpen);
+      if (d.requiresKeycard && !this.player.hasKeycard) {
+        if (typeof RadarAudio !== 'undefined' && RadarAudio.playDoorDenied) {
+          RadarAudio.playDoorDenied();
+        }
+        this.spawnFloatingNotice('ТРЕБУЕТСЯ ЭЛЕКТРОННАЯ КЛЮЧ-КАРТА!', '#ff3366');
+        return;
       }
-      this.spawnFloatingNotice(d.isOpen ? 'ГЕРМОДВЕРЬ ОТКРЫТА' : 'ГЕРМОДВЕРЬ ЗАКРЫТА', '#ffaa00');
+      if (d.requiresKeycard && this.player.hasKeycard && d.isLocked) {
+        d.isLocked = false;
+        if (typeof RadarAudio !== 'undefined' && RadarAudio.playKeycardUnlock) {
+          RadarAudio.playKeycardUnlock();
+        }
+        this.spawnFloatingNotice('ДОСТУП РАЗРЕШЕН // ЗАМОК РАЗБЛОКИРОВАН', '#00ffaa');
+      }
+
+      d.isOpen = !d.isOpen;
+      if (typeof RadarAudio !== 'undefined') {
+        if (RadarAudio.playSpatialDoor) {
+          const dx = (d.x + 16) - this.player.x;
+          const pan = Math.max(-1, Math.min(1, dx / 200));
+          RadarAudio.playSpatialDoor(pan, 1.0, d.isOpen);
+        } else if (RadarAudio.playDoorToggle) {
+          RadarAudio.playDoorToggle(d.isOpen);
+        }
+      }
+      this.spawnFloatingNotice(d.isOpen ? 'ГЕРМОДВЕРЬ ОТКРЫВАЕТСЯ...' : 'ГЕРМОДВЕРЬ ЗАКРЫВАЕТСЯ...', '#00ffaa');
     }
 
     pickupWeapon(drop) {
@@ -1523,7 +1644,31 @@
           }
         }
         const total = Object.keys(this.remotePlayers).length + 1;
-        this.spawnFloatingNotice(`👥 КООП-РЕЙД: ${total}/4 ЛИКВИДАТОРОВ В СЕТИ`, '#33d4ff');
+        const maxPl = this.isPvP ? 16 : 4;
+        const modeTitle = this.isPvP ? '☠️ PVP СМЕРТЕЛЬНЫЙ БОЙ' : '👥 КООП-РЕЙД';
+        this.spawnFloatingNotice(`${modeTitle}: ${total}/${maxPl} ЛИКВИДАТОРОВ В СЕТИ`, this.isPvP ? '#ff3366' : '#33d4ff');
+      });
+
+      // PvP Damage from opponent
+      socket.on('playerHurtFPS', (data) => {
+        if (!data) return;
+        if (data.targetId === this.myNetworkId) {
+          this.damagePlayer(data.dmg, `Пуля: ${data.attackerName || 'Ликвидатор'}`);
+        } else if (this.remotePlayers && this.remotePlayers[data.targetId]) {
+          this.remotePlayers[data.targetId].hp = data.hp;
+          this.remotePlayers[data.targetId].damageFlashTimer = 8;
+        }
+      });
+
+      // PvP Death / Killfeed Notice
+      socket.on('playerKilledFPS', (data) => {
+        if (!data) return;
+        const killMsg = `☠️ ${data.killerName} [${data.weapon || 'Огнестрел'}] ${data.victimName}`;
+        this.spawnFloatingNotice(killMsg, '#ff3366');
+        if (data.victimId === this.myNetworkId) {
+          this.player.isDead = true;
+          this.showDeathPrompt();
+        }
       });
 
       // 2. Continuous 25 Hz World State Updates from Server
@@ -1974,11 +2119,25 @@
       this.player.talonsEarned += (l.talons || 0);
       this.player.xpEarned += 45;
 
+      // Update NPC quests regarding chests
+      for (const n of (this.npcs || [])) {
+        if (n.quest && n.quest.requiresChest && !n.quest.completed) {
+          n.quest.completed = true;
+          this.spawnFloatingNotice(`🏆 ЗАДАНИЕ ВЫПОЛНЕНО: ${n.quest.title}! ПОГОВОРИТЕ С ${n.name}`, '#00ffaa');
+        }
+      }
+
       if (l.weapon) {
         this.player.weapon = Object.assign({}, l.weapon);
         this.spawnFloatingNotice(`📦 В СУНДУКЕ НАЙДЕН ${l.weapon.name}! +${l.talons} ТАЛОНОВ`, '#00ffaa');
       } else if (l.hasKeycard) {
         this.player.hasKeycard = true;
+        for (const n of (this.npcs || [])) {
+          if (n.quest && n.quest.requiresKeycard && !n.quest.completed) {
+            n.quest.completed = true;
+            this.spawnFloatingNotice(`🏆 КЛЮЧ-КАРТА НАЙДЕНА! ВЕРНИТЕСЬ К ${n.name}`, '#00ffaa');
+          }
+        }
         this.spawnFloatingNotice('🔑 В СУНДУКЕ НАЙДЕНА КЛЮЧ-КАРТА ДОСТУПА!', '#00ffaa');
       } else {
         this.spawnFloatingNotice(`📦 СУНДУК: +${l.talons} ТАЛОНОВ, +${l.ammo || 0} ПАТРОНОВ`, '#ffd700');
@@ -2993,28 +3152,28 @@
 
       // 1. Perspective industrial ceiling and floor
       const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
-      ceilGrad.addColorStop(0, '#040d06');
-      ceilGrad.addColorStop(1, '#0c1a10');
+      ceilGrad.addColorStop(0, '#051108');
+      ceilGrad.addColorStop(1, '#112918');
       ctx.fillStyle = ceilGrad;
       ctx.fillRect(0, 0, w, halfH);
 
-      // Overhead concrete crossbeams
-      ctx.fillStyle = 'rgba(20, 36, 26, 0.4)';
-      for (let cy = 12; cy < halfH; cy += Math.max(6, Math.floor(cy * 0.28))) {
-        const beamH = Math.max(1, Math.floor(cy * 0.04));
+      // Overhead concrete crossbeams & industrial conduits
+      ctx.fillStyle = 'rgba(28, 55, 38, 0.45)';
+      for (let cy = 8; cy < halfH; cy += Math.max(8, Math.floor(cy * 0.24))) {
+        const beamH = Math.max(1, Math.floor(cy * 0.05));
         ctx.fillRect(0, cy, w, beamH);
       }
 
       const flrGrad = ctx.createLinearGradient(0, halfH, 0, h);
-      flrGrad.addColorStop(0, '#09150c');
-      flrGrad.addColorStop(1, '#020503');
+      flrGrad.addColorStop(0, '#0d2215');
+      flrGrad.addColorStop(1, '#040b07');
       ctx.fillStyle = flrGrad;
       ctx.fillRect(0, halfH, w, halfH);
 
-      // Floor plate perspective seam lines
-      ctx.fillStyle = 'rgba(26, 44, 32, 0.35)';
-      for (let fy = halfH + 8; fy < h; fy += Math.max(5, Math.floor((fy - halfH) * 0.22))) {
-        const seamH = Math.max(1, Math.floor((fy - halfH) * 0.03));
+      // Floor steel plates & concrete tile perspective lines
+      ctx.fillStyle = 'rgba(32, 65, 42, 0.4)';
+      for (let fy = halfH + 4; fy < h; fy += Math.max(6, Math.floor((fy - halfH) * 0.20))) {
+        const seamH = Math.max(1, Math.floor((fy - halfH) * 0.04));
         ctx.fillRect(0, fy, w, seamH);
       }
 
@@ -3441,7 +3600,7 @@
       }
 
       // Filter sprites in front of camera
-      const inFrontSprites = visibleSprites.filter(sp => sp.perpDist > 8 && Math.cos(sp.angle) > 0.08 && Math.abs(sp.angle) < fov * 0.95);
+      const inFrontSprites = visibleSprites.filter(sp => sp.perpDist > 22 && Math.cos(sp.angle) > 0.08 && Math.abs(sp.angle) < fov * 0.95);
 
       // Sort furthest to nearest by perpendicular distance
       inFrontSprites.sort((a, b) => b.perpDist - a.perpDist);
@@ -3635,6 +3794,24 @@
           if (Math.abs(ang) < 0.055 && dist < wallDistAtCenter) {
             isAimingAtEnemy = true;
             break;
+          }
+        }
+      }
+
+      if (!isAimingAtEnemy && (this.isPvP || this.raidMode === 'PVP') && this.remotePlayers) {
+        for (const rId in this.remotePlayers) {
+          const rp = this.remotePlayers[rId];
+          if (rp && rp.hp > 0) {
+            const dx = rp.renderX - px;
+            const dy = rp.renderY - py;
+            const dist = Math.hypot(dx, dy);
+            let ang = Math.atan2(dy, dx) - pAngle;
+            while (ang < -Math.PI) ang += 2 * Math.PI;
+            while (ang > Math.PI) ang -= 2 * Math.PI;
+            if (Math.abs(ang) < 0.065 && dist < wallDistAtCenter) {
+              isAimingAtEnemy = true;
+              break;
+            }
           }
         }
       }

@@ -2175,6 +2175,157 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 
+
+<!-- ===================================================================== -->
+<!-- МОДАЛЬНЫЙ ДИСПЕТЧЕР ВЫЛАЗОК ГИГАХРУЩА (ХОСТ, СОЛО, PVE 4P, PVP 16P)   -->
+<!-- ===================================================================== -->
+<div id="fps-dispatcher-modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 10, 5, 0.94); z-index: 100050; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+  <div style="max-width: 860px; width: 94%; max-height: 90vh; background: #031408; border: 2px solid #1fe044; box-shadow: 0 0 45px rgba(31,224,68,0.35); display: flex; flex-direction: column; color: #88ff9e; font-family: 'Share Tech Mono', monospace; overflow: hidden; position: relative;">
+    
+    <!-- Header -->
+    <div style="padding: 14px 20px; background: rgba(31,224,68,0.12); border-bottom: 2px solid #1fe044; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <span style="font-size: 17px; font-weight: bold; color: #1fe044; letter-spacing: 1.5px; text-shadow: 0 0 10px #1fe044;">
+          ⚠️ ТАКТИЧЕСКИЙ ШЛЮЗ // ДИСПЕТЧЕР ВЫЛАЗОК
+        </span>
+        <div style="font-size: 11px; color: #b7ffc6; margin-top: 2px;">СЕКТОР: СБОРНЫЙ ПУНКТ ЛИКВИДАТОРОВ // ПРОТОКОЛ САМОСБОРА</div>
+      </div>
+      <button onclick="closeFPSDispatcherModal()" style="background: transparent; border: 1px solid #1fe044; color: #1fe044; padding: 4px 10px; cursor: pointer; font-size: 14px; font-family: inherit; font-weight: bold;">✕</button>
+    </div>
+
+    <!-- Quick Action Bar -->
+    <div style="padding: 14px 20px; background: rgba(0, 20, 9, 0.6); border-bottom: 1px solid rgba(31,224,68,0.3); display: flex; gap: 12px; flex-wrap: wrap;">
+      <button onclick="launchSoloFPSRaid()" style="flex: 1; min-width: 220px; padding: 12px 14px; background: rgba(31,224,68,0.2); border: 2px solid #1fe044; color: #1fe044; font-weight: bold; font-size: 13px; cursor: pointer; font-family: inherit; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>🟢</span> ОДИНОЧНАЯ ВЫЛАЗКА (СОЛО)
+      </button>
+      <button id="btn-toggle-create-lobby" onclick="toggleCreateLobbyView()" style="flex: 1; min-width: 220px; padding: 12px 14px; background: rgba(51,212,255,0.18); border: 2px solid #33d4ff; color: #33d4ff; font-weight: bold; font-size: 13px; cursor: pointer; font-family: inherit; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>⚔️</span> СОЗДАТЬ СВОЕ ЛОББИ (Я ХОСТ)
+      </button>
+      <button onclick="refreshFPSLobbiesList()" style="padding: 12px 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(31,224,68,0.4); color: #88ff9e; cursor: pointer; font-family: inherit; font-size: 13px;">
+        🔄 ОБНОВИТЬ
+      </button>
+    </div>
+
+    <!-- VIEW 1: CREATE LOBBY PANEL (Collapsible) -->
+    <div id="fps-create-lobby-panel" style="display: none; padding: 16px 20px; background: rgba(0, 26, 12, 0.95); border-bottom: 2px solid #33d4ff;">
+      <div style="font-size: 14px; font-weight: bold; color: #33d4ff; margin-bottom: 12px; letter-spacing: 1px;">
+        ⚙️ ПАРАМЕТРЫ НОВОГО ОТРЯДА // РЕЖИМ ВЫЛАЗКИ
+      </div>
+      
+      <div style="display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap;">
+        <!-- PVE Card -->
+        <label id="lbl-mode-pve" style="flex: 1; min-width: 240px; padding: 12px; background: rgba(31,224,68,0.15); border: 2px solid #1fe044; cursor: pointer; display: block;">
+          <input type="radio" name="fps-lobby-mode" value="PVE" checked onchange="updateLobbyModeSelection()" style="margin-right: 8px;" />
+          <b style="color: #1fe044; font-size: 13px;">🛡️ PVE КООПЕРАТИВ (до 4 игроков)</b>
+          <div style="font-size: 11px; color: #a9dfb5; margin-top: 6px; line-height: 1.4;">
+            Совместный штурм заброшенных этажей. Ликвидаторы помогают друг другу против мутантов и Самосбора.
+          </div>
+        </label>
+
+        <!-- PVP Card -->
+        <label id="lbl-mode-pvp" style="flex: 1; min-width: 240px; padding: 12px; background: rgba(255,59,48,0.08); border: 1px solid rgba(255,59,48,0.4); cursor: pointer; display: block;">
+          <input type="radio" name="fps-lobby-mode" value="PVP" onchange="updateLobbyModeSelection()" style="margin-right: 8px;" />
+          <b style="color: #ff3b30; font-size: 13px;">☠️ PVP СМЕРТЕЛЬНЫЙ БОЙ (до 16 игроков)</b>
+          <div style="font-size: 11px; color: #ffb3af; margin-top: 6px; line-height: 1.4;">
+            Все против всех! Ликвидаторы охотятся друг на друга. За каждого устраненного противника: +150 талонов.
+          </div>
+        </label>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <input id="fps-lobby-name-input" type="text" maxlength="32" placeholder="Название рейда (позывной)" style="flex: 1; min-width: 220px; padding: 10px 12px; background: rgba(0, 15, 6, 0.9); border: 1px solid #33d4ff; color: #ffffff; font-family: inherit; font-size: 13px; outline: none;" />
+        <button onclick="submitCreateFPSLobby()" style="padding: 10px 20px; background: rgba(51,212,255,0.25); border: 2px solid #33d4ff; color: #33d4ff; font-weight: bold; font-size: 13px; cursor: pointer; font-family: inherit;">
+          [ + СОЗДАТЬ И СТАТЬ ХОСТОМ ]
+        </button>
+        <button onclick="toggleCreateLobbyView(false)" style="padding: 10px 14px; background: transparent; border: 1px solid #777; color: #aaa; cursor: pointer; font-family: inherit; font-size: 12px;">
+          ОТМЕНА ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- VIEW 2: ACTIVE LOBBY ROOM (Shown when player joined or created a lobby) -->
+    <div id="fps-active-lobby-panel" style="display: none; padding: 18px 20px; overflow-y: auto; flex: 1;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(31,224,68,0.3); padding-bottom: 12px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <span id="active-lobby-title" style="font-size: 18px; font-weight: bold; color: #00ffcc;">ОТРЯД ЛИКВИДАТОРОВ</span>
+          <span id="active-lobby-mode-badge" style="margin-left: 10px; padding: 2px 8px; font-size: 11px; font-weight: bold; border-radius: 2px; background: rgba(31,224,68,0.25); border: 1px solid #1fe044; color: #1fe044;">PVE (4)</span>
+        </div>
+        <div style="font-size: 13px; color: #b7ffc6;">
+          <span id="active-lobby-players-count">1/4</span> БОЙЦОВ
+        </div>
+      </div>
+
+      <!-- Squad Members Grid -->
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 12px; color: #88ff9e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">
+          👥 Состав боевой группы:
+        </div>
+        <div id="active-lobby-members-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Squad Terminal Chat -->
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 12px; color: #88ff9e; margin-bottom: 6px; text-transform: uppercase;">
+          💬 Тактический радиоканал лобби:
+        </div>
+        <div id="active-lobby-chat-box" style="height: 110px; background: rgba(0, 15, 6, 0.85); border: 1px solid rgba(31,224,68,0.3); padding: 8px 12px; overflow-y: auto; font-size: 12px; line-height: 1.5; color: #d0ebd4; margin-bottom: 6px;">
+          <div style="color: #669977;">[ШЛЮЗ]: Радиоканал открыт. Ожидание готовности бойцов...</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input id="active-lobby-chat-input" type="text" maxlength="80" placeholder="Сообщение отряду..." style="flex: 1; padding: 8px 12px; background: rgba(0, 20, 8, 0.9); border: 1px solid #1fe044; color: #ffffff; font-family: inherit; font-size: 12px; outline: none;" onkeydown="if(event.key==='Enter') sendFPSLobbyChatMessage();" />
+          <button onclick="sendFPSLobbyChatMessage()" style="padding: 8px 14px; background: rgba(31,224,68,0.2); border: 1px solid #1fe044; color: #1fe044; font-family: inherit; font-size: 12px; cursor: pointer; font-weight: bold;">
+            ОТПРАВИТЬ
+          </button>
+        </div>
+      </div>
+
+      <!-- Host Action Controls -->
+      <div style="display: flex; gap: 14px; justify-content: space-between; align-items: center; border-top: 1px solid rgba(31,224,68,0.3); padding-top: 14px; flex-wrap: wrap;">
+        <button onclick="leaveCurrentFPSLobby()" style="padding: 10px 18px; background: rgba(255,59,48,0.14); border: 1px solid #ff3b30; color: #ff3b30; font-family: inherit; font-size: 12px; cursor: pointer; font-weight: bold;">
+          🚪 ПОКИНУТЬ ЛОББИ
+        </button>
+
+        <div id="host-launch-controls" style="display: flex; align-items: center; gap: 10px;">
+          <button id="btn-host-launch" onclick="launchRaidAsHost()" style="padding: 12px 28px; background: #1fe044; border: 2px solid #ffffff; color: #031408; font-weight: bold; font-size: 14px; cursor: pointer; font-family: inherit; letter-spacing: 1.5px; box-shadow: 0 0 25px rgba(31,224,68,0.8); animation: pulseGreenBtn 1.5s infinite;">
+            🚀 НАЧАТЬ ВЫЛАЗКУ ДЛЯ ВСЕХ
+          </button>
+          <div id="guest-waiting-notice" style="display: none; color: #ffd700; font-size: 12px;">
+            ⏳ Ожидание приказа командира (хоста) на открытие шлюза...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: OPEN LOBBIES BROWSER (Default view) -->
+    <div id="fps-browser-panel" style="padding: 18px 20px; overflow-y: auto; flex: 1;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+        <div style="font-size: 13px; font-weight: bold; color: #88ff9e; text-transform: uppercase; letter-spacing: 1px;">
+          📡 ДОСТУПНЫЕ ОТРЯДЫ В СЕТИ ГИГАХРУЩА:
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button onclick="filterFPSLobbies('ALL')" id="btn-flt-all" style="padding: 4px 10px; background: rgba(31,224,68,0.25); border: 1px solid #1fe044; color: #1fe044; font-size: 11px; cursor: pointer; font-family: inherit;">ВСЕ</button>
+          <button onclick="filterFPSLobbies('PVE')" id="btn-flt-pve" style="padding: 4px 10px; background: transparent; border: 1px solid #555; color: #aaa; font-size: 11px; cursor: pointer; font-family: inherit;">🛡️ PVE</button>
+          <button onclick="filterFPSLobbies('PVP')" id="btn-flt-pvp" style="padding: 4px 10px; background: transparent; border: 1px solid #555; color: #aaa; font-size: 11px; cursor: pointer; font-family: inherit;">☠️ PVP</button>
+        </div>
+      </div>
+
+      <!-- Lobbies List Container -->
+      <div id="fps-lobbies-table-container">
+        <div id="fps-empty-lobbies-notice" style="text-align: center; padding: 40px 20px; color: #7da588; border: 1px dashed rgba(31,224,68,0.3); font-size: 13px;">
+          В секторе сейчас нет открытых отрядов.<br>
+          Нажмите <b style="color: #33d4ff;">[ ⚔️ СОЗДАТЬ СВОЕ ЛОББИ ]</b> чтобы стать хостом, или начните <b style="color: #1fe044;">[ 🟢 СОЛО ВЫЛАЗКУ ]</b>!
+        </div>
+        <div id="fps-lobbies-grid" style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+          <!-- Dynamically populated lobbies -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- МОДАЛЬНОЕ ОКНО ВВОДА КОДА ДОСТУПА К ШЛЮЗУ (ПАРОЛЬ: 2847) -->
 <div id="radar-gate-password-modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 10, 4, 0.92); z-index: 100060; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
   <div style="max-width: 440px; width: 92%; background: #031307; border: 2px solid #1fe044; box-shadow: 0 0 35px rgba(31,224,68,0.45); padding: 26px; color: #88ff9e; font-family: 'Share Tech Mono', monospace; text-align: center;">
@@ -10621,8 +10772,7 @@ function stopRaidMusic() {
 }
 
 function openRadarRoguelikeModal() {
-  // Защита шлюза паролем (пароль: 2847)
-  openRadarPasswordModal();
+  openFPSDispatcherModal();
 }
 
 function openRadarPasswordModal() {
@@ -10663,7 +10813,7 @@ function submitRadarPassword() {
   }
 }
 
-function launchRadarRoguelike() {
+function launchRadarRoguelike(options = {}) {
   console.log('[RadarRoguelike] Opening raid mode...');
   const screen = document.getElementById('radar-roguelike-screen');
   const canvas = document.getElementById('radar-canvas');
@@ -10706,6 +10856,10 @@ function launchRadarRoguelike() {
     if (!radarRoguelikeGame) {
       if (typeof RadarRoguelikeEngine !== 'undefined') {
         radarRoguelikeGame = new RadarRoguelikeEngine();
+        radarRoguelikeGame.isPvP = !!options.isPvP;
+        radarRoguelikeGame.currentRoomCode = options.roomCode || null;
+        radarRoguelikeGame.raidMode = options.mode || 'SOLO';
+        radarRoguelikeGame.isHost = !!options.isHost;
         radarRoguelikeGame.init(canvas, (completed) => {
           closeRadarRoguelikeModal();
         });
@@ -10714,6 +10868,10 @@ function launchRadarRoguelike() {
         console.error('[RadarRoguelike] RadarRoguelikeEngine class is undefined!');
       }
     } else {
+      radarRoguelikeGame.isPvP = !!options.isPvP;
+      radarRoguelikeGame.currentRoomCode = options.roomCode || null;
+      radarRoguelikeGame.raidMode = options.mode || 'SOLO';
+      radarRoguelikeGame.isHost = !!options.isHost;
       radarRoguelikeGame.buildFloor();
       radarRoguelikeGame.syncPlayerFromBase();
       radarRoguelikeGame.start();
@@ -10824,5 +10982,290 @@ applyLanguage();
 <script src="assets/AsciiRenderer.js"></script>
 <script src="assets/spriteFactory.js"></script>
 <script src="assets/radarRoguelike.js"></script>
+
+<!-- ===================================================================== -->
+<!-- JAVASCRIPT CONTROLLER: FPS LOBBY DISPATCHER (HOST, PVE & PVP)        -->
+<!-- ===================================================================== -->
+<script>
+let currentFPSLobby = null;
+let cachedFPSLobbies = [];
+let currentFPSFilter = 'ALL';
+
+function openFPSDispatcherModal() {
+  const modal = document.getElementById('fps-dispatcher-modal');
+  if (modal) modal.style.display = 'flex';
+  toggleCreateLobbyView(false);
+
+  // Set default lobby name with player username
+  const nameInput = document.getElementById('fps-lobby-name-input');
+  if (nameInput) {
+    const un = (typeof clientMe !== 'undefined' && clientMe && clientMe.username) ? clientMe.username : 'Ликвидатор';
+    nameInput.value = 'Рейд [' + un + ']';
+  }
+
+  // Request fresh list from server
+  refreshFPSLobbiesList();
+}
+
+function closeFPSDispatcherModal() {
+  const modal = document.getElementById('fps-dispatcher-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function toggleCreateLobbyView(show) {
+  const panel = document.getElementById('fps-create-lobby-panel');
+  if (!panel) return;
+  const isCurrentlyShown = (panel.style.display === 'block');
+  const shouldShow = (typeof show === 'boolean') ? show : !isCurrentlyShown;
+  panel.style.display = shouldShow ? 'block' : 'none';
+  const btn = document.getElementById('btn-toggle-create-lobby');
+  if (btn) btn.style.background = shouldShow ? 'rgba(51,212,255,0.35)' : 'rgba(51,212,255,0.18)';
+}
+
+function updateLobbyModeSelection() {
+  const mode = document.querySelector('input[name="fps-lobby-mode"]:checked')?.value || 'PVE';
+  const pveLbl = document.getElementById('lbl-mode-pve');
+  const pvpLbl = document.getElementById('lbl-mode-pvp');
+  if (mode === 'PVE') {
+    if (pveLbl) { pveLbl.style.borderColor = '#1fe044'; pveLbl.style.background = 'rgba(31,224,68,0.18)'; }
+    if (pvpLbl) { pvpLbl.style.borderColor = 'rgba(255,59,48,0.3)'; pvpLbl.style.background = 'transparent'; }
+  } else {
+    if (pveLbl) { pveLbl.style.borderColor = 'rgba(31,224,68,0.3)'; pveLbl.style.background = 'transparent'; }
+    if (pvpLbl) { pvpLbl.style.borderColor = '#ff3b30'; pvpLbl.style.background = 'rgba(255,59,48,0.18)'; }
+  }
+}
+
+function submitCreateFPSLobby() {
+  const mode = document.querySelector('input[name="fps-lobby-mode"]:checked')?.value || 'PVE';
+  const nameInput = document.getElementById('fps-lobby-name-input');
+  const lobbyName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Рейд Ликвидатора';
+
+  if (typeof socket !== 'undefined' && socket && socket.emit) {
+    socket.emit('createFPSLobby', { mode: mode, name: lobbyName });
+  } else {
+    // Offline / fallback solo launch
+    launchSoloFPSRaid();
+  }
+}
+
+function joinFPSLobby(lobbyId) {
+  if (!lobbyId) return;
+  if (typeof socket !== 'undefined' && socket && socket.emit) {
+    socket.emit('joinFPSLobby', { lobbyId: lobbyId });
+  }
+}
+
+function leaveCurrentFPSLobby() {
+  if (typeof socket !== 'undefined' && socket && socket.emit) {
+    socket.emit('leaveFPSLobby');
+  }
+  currentFPSLobby = null;
+  showLobbiesBrowserView();
+}
+
+function launchRaidAsHost() {
+  if (typeof socket !== 'undefined' && socket && socket.emit) {
+    socket.emit('startFPSLobby');
+  }
+}
+
+function launchSoloFPSRaid() {
+  closeFPSDispatcherModal();
+  launchRadarRoguelike({ mode: 'SOLO', isPvP: false });
+}
+
+function refreshFPSLobbiesList() {
+  if (typeof socket !== 'undefined' && socket && socket.emit) {
+    socket.emit('getFPSLobbies');
+  }
+}
+
+function filterFPSLobbies(flt) {
+  currentFPSFilter = flt;
+  ['ALL', 'PVE', 'PVP'].forEach(f => {
+    const btn = document.getElementById('btn-flt-' + f.toLowerCase());
+    if (btn) {
+      const active = (f === flt);
+      btn.style.background = active ? 'rgba(31,224,68,0.25)' : 'transparent';
+      btn.style.borderColor = active ? '#1fe044' : '#555';
+      btn.style.color = active ? '#1fe044' : '#aaa';
+    }
+  });
+  renderFPSLobbiesList(cachedFPSLobbies);
+}
+
+function renderFPSLobbiesList(lobbies) {
+  cachedFPSLobbies = lobbies || [];
+  const grid = document.getElementById('fps-lobbies-grid');
+  const emptyNotice = document.getElementById('fps-empty-lobbies-notice');
+  if (!grid || !emptyNotice) return;
+
+  grid.innerHTML = '';
+  const filtered = cachedFPSLobbies.filter(l => {
+    if (currentFPSFilter === 'ALL') return true;
+    return l.mode === currentFPSFilter;
+  });
+
+  if (filtered.length === 0) {
+    emptyNotice.style.display = 'block';
+    return;
+  }
+  emptyNotice.style.display = 'none';
+
+  filtered.forEach(l => {
+    const isPvP = (l.mode === 'PVP');
+    const modeBadge = isPvP 
+      ? '<span style="color: #ff3b30; border: 1px solid #ff3b30; padding: 2px 6px; font-size: 11px; background: rgba(255,59,48,0.15);">☠️ PVP 16P</span>'
+      : '<span style="color: #1fe044; border: 1px solid #1fe044; padding: 2px 6px; font-size: 11px; background: rgba(31,224,68,0.15);">🛡️ PVE 4P</span>';
+
+    const card = document.createElement('div');
+    card.style.cssText = 'padding: 12px 16px; background: rgba(0, 20, 8, 0.7); border: 1px solid rgba(31,224,68,0.3); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;';
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        ${modeBadge}
+        <div>
+          <div style="font-weight: bold; font-size: 14px; color: #ffffff;">${l.name || 'Рейдовый отряд'}</div>
+          <div style="font-size: 11px; color: #88ff9e; margin-top: 2px;">👑 Хост: ${l.hostName || 'Ликвидатор'}</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="font-size: 13px; font-weight: bold; color: ${l.playerCount >= l.maxPlayers ? '#ff3b30' : '#00ffcc'};$">
+          ${l.playerCount} / ${l.maxPlayers} БОЙЦОВ
+        </div>
+        <button onclick="joinFPSLobby('${l.id}')" ${l.playerCount >= l.maxPlayers ? 'disabled' : ''} style="padding: 8px 16px; background: ${l.playerCount >= l.maxPlayers ? 'rgba(100,100,100,0.2)' : 'rgba(31,224,68,0.2)'}; border: 1px solid ${l.playerCount >= l.maxPlayers ? '#666' : '#1fe044'}; color: ${l.playerCount >= l.maxPlayers ? '#888' : '#1fe044'}; font-family: inherit; font-size: 12px; cursor: pointer; font-weight: bold;">
+          ${l.playerCount >= l.maxPlayers ? 'ПОЛНО' : '[ ВОЙТИ В ОТРЯД ]'}
+        </button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function showActiveLobbyView(lobby) {
+  currentFPSLobby = lobby;
+  toggleCreateLobbyView(false);
+  const browser = document.getElementById('fps-browser-panel');
+  const activePanel = document.getElementById('fps-active-lobby-panel');
+  if (browser) browser.style.display = 'none';
+  if (activePanel) activePanel.style.display = 'block';
+
+  updateActiveLobbyUI();
+}
+
+function showLobbiesBrowserView() {
+  const browser = document.getElementById('fps-browser-panel');
+  const activePanel = document.getElementById('fps-active-lobby-panel');
+  if (browser) browser.style.display = 'block';
+  if (activePanel) activePanel.style.display = 'none';
+  refreshFPSLobbiesList();
+}
+
+function updateActiveLobbyUI() {
+  if (!currentFPSLobby) return;
+  const title = document.getElementById('active-lobby-title');
+  const badge = document.getElementById('active-lobby-mode-badge');
+  const count = document.getElementById('active-lobby-players-count');
+  const list = document.getElementById('active-lobby-members-list');
+  const hostLaunchBtn = document.getElementById('btn-host-launch');
+  const guestNotice = document.getElementById('guest-waiting-notice');
+
+  if (title) title.textContent = currentFPSLobby.name || 'ОТРЯД ЛИКВИДАТОРОВ';
+  const isPvP = (currentFPSLobby.mode === 'PVP');
+  if (badge) {
+    badge.textContent = isPvP ? '☠️ PVP (16 ИГРОКОВ)' : '🛡️ PVE (4 ИГРОКА)';
+    badge.style.color = isPvP ? '#ff3b30' : '#1fe044';
+    badge.style.borderColor = isPvP ? '#ff3b30' : '#1fe044';
+    badge.style.background = isPvP ? 'rgba(255,59,48,0.18)' : 'rgba(31,224,68,0.18)';
+  }
+
+  const members = currentFPSLobby.members || [];
+  if (count) count.textContent = members.length + ' / ' + currentFPSLobby.maxPlayers;
+
+  if (list) {
+    list.innerHTML = '';
+    members.forEach(m => {
+      const isH = !!m.isHost;
+      const item = document.createElement('div');
+      item.style.cssText = 'padding: 10px 12px; background: rgba(0, 24, 10, 0.85); border: 1px solid ' + (isH ? '#ffd700' : '#1fe044') + '; display: flex; justify-content: space-between; align-items: center;';
+      item.innerHTML = `
+        <div>
+          <div style="font-weight: bold; color: ${isH ? '#ffd700' : '#ffffff'}; font-size: 13px;">
+            ${isH ? '👑 ' : '🪖 '} ${m.name}
+          </div>
+          <div style="font-size: 10px; color: #88ff9e; margin-top: 2px;">${isH ? 'КОМАНДИР ОТРЯДА' : 'ЛИКВИДАТОР'}</div>
+        </div>
+        <span style="font-size: 11px; color: #1fe044;">● ГОТОВ</span>
+      `;
+      list.appendChild(item);
+    });
+  }
+
+  // Host vs Guest action button
+  const amHost = !!currentFPSLobby.isHost;
+  if (hostLaunchBtn) hostLaunchBtn.style.display = amHost ? 'block' : 'none';
+  if (guestNotice) guestNotice.style.display = amHost ? 'none' : 'block';
+}
+
+function sendFPSLobbyChatMessage() {
+  const input = document.getElementById('active-lobby-chat-input');
+  const txt = input ? input.value.trim() : '';
+  if (!txt) return;
+  if (typeof socket !== 'undefined' && socket && socket.emit) {
+    socket.emit('fpsLobbyChat', { text: txt });
+  }
+  if (input) input.value = '';
+}
+
+// Socket.io Network Listeners for FPS Lobby System
+if (typeof socket !== 'undefined' && socket && socket.on) {
+  socket.on('fpsLobbiesList', (lobbies) => {
+    renderFPSLobbiesList(lobbies);
+  });
+
+  socket.on('fpsLobbyJoined', (data) => {
+    if (data && data.lobby) {
+      showActiveLobbyView(data.lobby);
+    }
+  });
+
+  socket.on('fpsLobbyUpdated', (data) => {
+    if (currentFPSLobby && data && data.members) {
+      currentFPSLobby.members = data.members;
+      if (data.hostName) currentFPSLobby.hostName = data.hostName;
+      // Re-evaluate if I am host
+      if (typeof socket !== 'undefined' && socket.id) {
+        const me = currentFPSLobby.members.find(m => m.id === socket.id);
+        currentFPSLobby.isHost = !!(me && me.isHost);
+      }
+      updateActiveLobbyUI();
+    }
+  });
+
+  socket.on('fpsLobbyChatMessage', (data) => {
+    const box = document.getElementById('active-lobby-chat-box');
+    if (!box || !data) return;
+    const msgEl = document.createElement('div');
+    msgEl.innerHTML = `<span style="color: ${data.isHost ? '#ffd700' : '#00ffcc'}; font-weight: bold;">${data.isHost ? '👑 ' : ''}${data.sender}:</span> ${data.text}`;
+    box.appendChild(msgEl);
+    box.scrollTop = box.scrollHeight;
+  });
+
+  socket.on('fpsLobbyError', (err) => {
+    alert(err || 'Ошибка лобби');
+  });
+
+  // Launch Raid Event for all lobby members!
+  socket.on('launchFPSRaid', (data) => {
+    closeFPSDispatcherModal();
+    launchRadarRoguelike({
+      isPvP: !!data.isPvP,
+      roomCode: data.roomCode,
+      mode: data.mode,
+      isHost: (currentFPSLobby && currentFPSLobby.isHost)
+    });
+  });
+}
+</script>
+
 </body>
 </html>

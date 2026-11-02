@@ -5428,7 +5428,208 @@ function checkLifterTrigger(player, sock, loc) {
         broadcastGameState();
     });
 
+// ===== FPS LOBBY SYSTEM (PVE 4-PLAYERS & PVP 16-PLAYERS WITH HOST) =====
+const fpsLobbies = {};
+if (typeof raidRoomsFPS === 'undefined') {
+    global.raidRoomsFPS = {};
+}
+
+function getOpenFPSLobbiesList() {
+    const list = [];
+    for (const id in fpsLobbies) {
+        const l = fpsLobbies[id];
+        if (l.status === 'waiting') {
+            list.push({
+                id: l.id,
+                name: l.name,
+                mode: l.mode,
+                maxPlayers: l.maxPlayers,
+                hostId: l.hostId,
+                hostName: l.hostName,
+                playerCount: l.members.length,
+                members: l.members.map(m => ({ id: m.id, name: m.name, isHost: m.id === l.hostId }))
+            });
+        }
+    }
+    return list;
+}
+
+function leaveFPSLobbyInternal(socket) {
+    const lobbyId = socket.currentFPSLobby;
+    if (!lobbyId || !fpsLobbies[lobbyId]) return;
+    const lobby = fpsLobbies[lobbyId];
+    lobby.members = lobby.members.filter(m => m.id !== socket.id);
+    socket.leave(lobbyId);
+    socket.currentFPSLobby = null;
+
+    if (lobby.members.length === 0) {
+        delete fpsLobbies[lobbyId];
+    } else {
+        if (lobby.hostId === socket.id) {
+            lobby.hostId = lobby.members[0].id;
+            lobby.hostName = lobby.members[0].name;
+            lobby.members[0].isHost = true;
+            if (typeof io !== 'undefined') {
+                io.to(lobby.id).emit('fpsLobbyHostChanged', { newHostId: lobby.hostId, newHostName: lobby.hostName });
+            }
+        }
+        if (typeof io !== 'undefined') {
+            io.to(lobby.id).emit('fpsLobbyUpdated', {
+                members: lobby.members,
+                hostName: lobby.hostName
+            });
+        }
+    }
+    if (typeof io !== 'undefined') {
+        io.emit('fpsLobbiesList', getOpenFPSLobbiesList());
+    }
+}
+
     // ===== MULTIPLAYER FPS MODE (25 HZ SOCKET.IO REAL-TIME SYNC) =====
+    // --- FPS LOBBY DISPATCHER (HOST, PVE & PVP) ---
+    socket.on('getFPSLobbies', () => {
+        socket.emit('fpsLobbiesList', getOpenFPSLobbiesList());
+    });
+
+    socket.on('createFPSLobby', (data) => {
+        let auth = getAuthPlayer();
+        let username = (auth && auth.username) ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
+        const mode = (data && data.mode === 'PVP') ? 'PVP' : 'PVE';
+        const maxPlayers = (mode === 'PVP') ? 16 : 4;
+        const lobbyId = 'lobby_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 4);
+        const lobbyName = (data && data.name && String(data.name).trim()) ? String(data.name).trim().slice(0, 32) : ('Рейд [' + username + ']');
+
+        if (socket.currentFPSLobby && fpsLobbies[socket.currentFPSLobby]) {
+            leaveFPSLobbyInternal(socket);
+        }
+
+        const newLobby = {
+            id: lobbyId,
+            name: lobbyName,
+            mode: mode,
+            maxPlayers: maxPlayers,
+            hostId: socket.id,
+            hostName: username,
+            status: 'waiting',
+            members: [{ id: socket.id, name: username, isHost: true }],
+            createdAt: Date.now()
+        };
+
+        fpsLobbies[lobbyId] = newLobby;
+        socket.currentFPSLobby = lobbyId;
+        socket.join(lobbyId);
+
+        socket.emit('fpsLobbyJoined', {
+            lobby: {
+                id: lobbyId,
+                name: lobbyName,
+                mode: mode,
+                maxPlayers: maxPlayers,
+                isHost: true,
+                hostName: username,
+                members: newLobby.members
+            }
+        });
+
+        io.emit('fpsLobbiesList', getOpenFPSLobbiesList());
+    });
+
+    socket.on('joinFPSLobby', (data) => {
+        if (!data || !data.lobbyId) return;
+        const lobby = fpsLobbies[data.lobbyId];
+        if (!lobby) {
+            socket.emit('fpsLobbyError', 'Лобби не найдено или уже закрыто.');
+            return;
+        }
+        if (lobby.status !== 'waiting') {
+            socket.emit('fpsLobbyError', 'Вылазка уже началась!');
+            return;
+        }
+        if (lobby.members.length >= lobby.maxPlayers) {
+            socket.emit('fpsLobbyError', 'Лобби заполнено до отказа!');
+            return;
+        }
+
+        if (socket.currentFPSLobby && fpsLobbies[socket.currentFPSLobby]) {
+            leaveFPSLobbyInternal(socket);
+        }
+
+        let auth = getAuthPlayer();
+        let username = (auth && auth.username) ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
+
+        lobby.members.push({ id: socket.id, name: username, isHost: false });
+        socket.currentFPSLobby = lobby.id;
+        socket.join(lobby.id);
+
+        socket.emit('fpsLobbyJoined', {
+            lobby: {
+                id: lobby.id,
+                name: lobby.name,
+                mode: lobby.mode,
+                maxPlayers: lobby.maxPlayers,
+                isHost: false,
+                hostName: lobby.hostName,
+                members: lobby.members
+            }
+        });
+
+        io.to(lobby.id).emit('fpsLobbyUpdated', {
+            members: lobby.members,
+            hostName: lobby.hostName
+        });
+
+        io.emit('fpsLobbiesList', getOpenFPSLobbiesList());
+    });
+
+    socket.on('leaveFPSLobby', () => {
+        leaveFPSLobbyInternal(socket);
+    });
+
+    socket.on('startFPSLobby', () => {
+        const lobbyId = socket.currentFPSLobby;
+        if (!lobbyId || !fpsLobbies[lobbyId]) return;
+        const lobby = fpsLobbies[lobbyId];
+        if (lobby.hostId !== socket.id) {
+            socket.emit('fpsLobbyError', 'Только командир (хост) может начать вылазку!');
+            return;
+        }
+
+        lobby.status = 'in_raid';
+
+        const roomCode = 'raid_' + lobby.id;
+        raidRoomsFPS[roomCode] = {
+            id: roomCode,
+            mode: lobby.mode,
+            isPvP: (lobby.mode === 'PVP'),
+            maxPlayers: lobby.maxPlayers,
+            players: {},
+            bullets: [],
+            createdAt: Date.now()
+        };
+
+        io.to(lobby.id).emit('launchFPSRaid', {
+            lobbyId: lobby.id,
+            roomCode: roomCode,
+            mode: lobby.mode,
+            isPvP: (lobby.mode === 'PVP'),
+            members: lobby.members
+        });
+
+        io.emit('fpsLobbiesList', getOpenFPSLobbiesList());
+    });
+
+    socket.on('fpsLobbyChat', (msg) => {
+        const lobbyId = socket.currentFPSLobby;
+        if (!lobbyId || !fpsLobbies[lobbyId] || !msg || !msg.text) return;
+        let auth = getAuthPlayer();
+        let username = auth ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
+        io.to(lobbyId).emit('fpsLobbyChatMessage', {
+            sender: username,
+            text: String(msg.text).slice(0, 80),
+            isHost: (socket.id === fpsLobbies[lobbyId].hostId)
+        });
+    });
+
     socket.on('joinRaidFPS', (data) => {
         let auth = getAuthPlayer();
         let username = (data && data.username) || (auth ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4)));
@@ -5527,6 +5728,7 @@ function checkLifterTrigger(player, sock, loc) {
         if (!shootData) return;
         const roomCode = shootData.roomCode || socket.currentRaidRoomFPS;
         if (!roomCode || !raidRoomsFPS[roomCode]) return;
+        const room = raidRoomsFPS[roomCode];
 
         // Broadcast peer shot muzzle flash & audio
         socket.to(roomCode).emit('peerShotVFX', {
@@ -5536,6 +5738,63 @@ function checkLifterTrigger(player, sock, loc) {
             angle: shootData.angle,
             weapon: shootData.weapon || 'rifle'
         });
+
+        // PvP Hitscan Check (16-player Deathmatch)
+        if (room.isPvP || (room.mode === 'PVP')) {
+            const shooter = room.players[socket.id];
+            const shooterName = shooter ? shooter.name : 'Ликвидатор';
+            const sX = shootData.x;
+            const sY = shootData.y;
+            const sAngle = shootData.angle;
+            const cos = Math.cos(sAngle);
+            const sin = Math.sin(sAngle);
+            const wName = shootData.weapon || 'rifle';
+            const dmg = (wName.includes('shotgun') || wName.includes('ks23')) ? 48 : (wName.includes('pipe') ? 35 : 28);
+
+            for (const pId in room.players) {
+                if (pId === socket.id) continue;
+                const target = room.players[pId];
+                if (!target || target.hp <= 0) continue;
+
+                const dx = target.x - sX;
+                const dy = target.y - sY;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 950) continue;
+
+                const dot = (dx * cos + dy * sin);
+                if (dot <= 0) continue;
+
+                const perpDist = Math.abs(dx * (-sin) + dy * cos);
+                if (perpDist < 26 && dot < dist + 10) {
+                    target.hp = Math.max(0, target.hp - dmg);
+                    io.to(roomCode).emit('playerHurtFPS', {
+                        targetId: pId,
+                        hp: target.hp,
+                        maxHp: target.maxHp || 100,
+                        dmg: dmg,
+                        attackerId: socket.id,
+                        attackerName: shooterName
+                    });
+
+                    if (target.hp <= 0) {
+                        io.to(roomCode).emit('playerKilledFPS', {
+                            victimId: pId,
+                            victimName: target.name,
+                            killerId: socket.id,
+                            killerName: shooterName,
+                            weapon: wName,
+                            rewardTalons: 150
+                        });
+                        let auth = getAuthPlayer();
+                        if (auth) {
+                            auth.talons = (auth.talons || 0) + 150;
+                            saveDB(true);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     });
 
     socket.on('chatFPS', (msg) => {
