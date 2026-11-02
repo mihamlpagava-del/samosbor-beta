@@ -91,6 +91,7 @@
       // Controls & Mouse
       this.keys = {};
       this.mouse = { x: 0, y: 0, worldX: 0, worldY: 0, isDown: false, isOverEnemy: false };
+      this.isPointerLocked = false;
       this.currentRoomName = 'Жилая ячейка №556';
       this.lastAttackTime = 0;
 
@@ -498,8 +499,17 @@
           this.interactNearby();
         }
         if (e.code === 'KeyG') {
-          this.cameraMode = (this.cameraMode === 'TDS') ? 'FPS' : 'TDS';
-          this.spawnFloatingNotice(this.cameraMode === 'FPS' ? '📷 КАМЕРА: [FPS 3D]' : '📷 КАМЕРА: [TDS 2D]', '#00ffaa');
+          if (this.cameraMode === 'TDS') {
+            this.cameraMode = 'FPS';
+            try { this.canvas.requestPointerLock(); } catch(err){}
+            this.spawnFloatingNotice('📷 КАМЕРА: [FPS 3D]', '#00ffaa');
+          } else {
+            this.cameraMode = 'TDS';
+            if (document.pointerLockElement === this.canvas) {
+              try { document.exitPointerLock(); } catch(err){}
+            }
+            this.spawnFloatingNotice('📷 КАМЕРА: [TDS 2D]', '#00ffaa');
+          }
         }
         if (e.code === 'F2') {
           if (typeof AsciiRenderer !== 'undefined') {
@@ -509,6 +519,10 @@
         }
       });
 
+      document.addEventListener('pointerlockchange', () => {
+        this.isPointerLocked = (document.pointerLockElement === this.canvas);
+      });
+
       window.addEventListener('keyup', (e) => {
         if (!this.isRunning) return;
         this.keys[e.code] = false;
@@ -516,6 +530,12 @@
       });
 
       if (this.canvas) {
+        this.canvas.addEventListener('click', () => {
+          if (this.cameraMode === 'FPS' && !this.isPointerLocked && !this.player.isDead) {
+            try { this.canvas.requestPointerLock(); } catch(err){}
+          }
+        });
+
         this.canvas.addEventListener('mousemove', (e) => {
           if (!this.isRunning) return;
           const rect = this.canvas.getBoundingClientRect();
@@ -527,12 +547,19 @@
           this.mouse.worldY = this.mouse.y + cam.y;
 
           if (this.cameraMode === 'FPS') {
-            if (e.movementX !== undefined && Math.abs(e.movementX) < 120) {
-              this.player.angle += e.movementX * 0.004;
+            if (this.isPointerLocked) {
+              this.player.angle += (e.movementX || 0) * 0.0028;
             } else {
-              const midX = this.canvas.width / 2;
-              this.player.angle += (this.mouse.x - midX) * 0.00015;
+              if (e.movementX !== undefined && Math.abs(e.movementX) < 120) {
+                this.player.angle += e.movementX * 0.0035;
+              } else {
+                const midX = this.canvas.width / 2;
+                this.player.angle += (this.mouse.x - midX) * 0.00015;
+              }
             }
+            // Keep crosshair anchored in FPS mode
+            this.mouse.x = this.canvas.width / 2;
+            this.mouse.y = this.canvas.height / 2;
           } else {
             this.player.angle = Math.atan2(this.mouse.worldY - this.player.y, this.mouse.worldX - this.player.x);
           }
@@ -555,6 +582,23 @@
             return;
           }
           if (e.button === 0) {
+            // Check door interaction first
+            if (this.cameraMode === 'FPS') {
+              if (!this.isPointerLocked) {
+                try { this.canvas.requestPointerLock(); } catch(err){}
+              }
+              const frontDoor = this.getDoorInFront(68);
+              if (frontDoor) {
+                this.toggleDoor(frontDoor);
+                return;
+              }
+            } else {
+              const clickedDoor = this.doors.find(d => Math.hypot(this.mouse.worldX - (d.x + 16), this.mouse.worldY - (d.y + 16)) < 28);
+              if (clickedDoor && Math.hypot(this.player.x - (clickedDoor.x + 16), this.player.y - (clickedDoor.y + 16)) < 65) {
+                this.toggleDoor(clickedDoor);
+                return;
+              }
+            }
             this.mouse.isDown = true;
             this.handlePlayerAttack();
           }
@@ -761,12 +805,15 @@
         return;
       }
 
-      // 1. Doors
+      // 1. Doors (front direction priority in FPS, radial check in TDS)
+      const frontDoor = this.getDoorInFront(68);
+      if (frontDoor) {
+        this.toggleDoor(frontDoor);
+        return;
+      }
       for (const d of this.doors) {
-        if (Math.hypot(this.player.x - d.x, this.player.y - d.y) < 45) {
-          d.isOpen = !d.isOpen;
-          if (typeof RadarAudio !== 'undefined') RadarAudio.playDoorToggle(d.isOpen);
-          this.spawnFloatingNotice(d.isOpen ? 'ГЕРМОДВЕРЬ ОТКРЫТА' : 'ГЕРМОДВЕРЬ ЗАКРЫТА', '#ffaa00');
+        if (Math.hypot(this.player.x - (d.x + 16), this.player.y - (d.y + 16)) < 55) {
+          this.toggleDoor(d);
           return;
         }
       }
@@ -786,6 +833,30 @@
           return;
         }
       }
+    }
+
+    getDoorInFront(maxDist = 68) {
+      const TS = this.tileSize;
+      const cos = Math.cos(this.player.angle);
+      const sin = Math.sin(this.player.angle);
+      for (let dist = 12; dist <= maxDist; dist += 8) {
+        const checkX = this.player.x + cos * dist;
+        const checkY = this.player.y + sin * dist;
+        const tx = Math.floor(checkX / TS);
+        const ty = Math.floor(checkY / TS);
+        const door = this.doors.find(d => d.tileX === tx && d.tileY === ty);
+        if (door) return door;
+      }
+      return null;
+    }
+
+    toggleDoor(d) {
+      if (!d) return;
+      d.isOpen = !d.isOpen;
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playDoorToggle) {
+        RadarAudio.playDoorToggle(d.isOpen);
+      }
+      this.spawnFloatingNotice(d.isOpen ? 'ГЕРМОДВЕРЬ ОТКРЫТА' : 'ГЕРМОДВЕРЬ ЗАКРЫТА', '#ffaa00');
     }
 
     pickupWeapon(drop) {
