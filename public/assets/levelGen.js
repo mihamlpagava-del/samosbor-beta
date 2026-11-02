@@ -226,6 +226,14 @@
       const chests = [];
       this.populateChests(rooms, startRoom, chests, weaponDrops, TS);
 
+      // 11b. Friendly NPCs with Dialogues & Quests
+      const npcs = [];
+      this.populateNPCs(rooms, startRoom, npcs, TS);
+
+      // 12. Authentic Living Cell & Bunker Props (Bunks, Desks, Chairs)
+      const props = [];
+      this.populateProps(rooms, grid, props, TS);
+
       return {
         grid,
         wallMaterials,
@@ -242,6 +250,8 @@
         lootCrates,
         weaponDrops,
         chests,
+        npcs,
+        props,
         lamps
       };
     },
@@ -521,6 +531,106 @@
     /**
      * Populate interactive supply chests & keycard drop
      */
+
+    /**
+     * Populate friendly NPCs with dialogues and procedural quests
+     */
+    populateNPCs(rooms, startRoom, npcs, TS) {
+      // 1. Старшина Семеныч (Комендант жилячейки)
+      npcs.push({
+        id: 'npc_semenych',
+        name: 'Старшина Семеныч',
+        role: 'Комендант блока',
+        x: (startRoom.centerX - 1) * TS + TS / 2,
+        y: (startRoom.centerY - 1) * TS + TS / 2,
+        radius: 14,
+        type: 'npc',
+        portrait: 'assets/monsters/m_liquidator.png',
+        dialogue: 'Здорово, боец! Самосбор усиливается с каждой минутой. Если зачистишь этот этаж от мутантов — я щедро отсыплю патронов и талонов из резерва.',
+        quest: {
+          id: 'quest_clean_sector',
+          title: 'Зачистка сектора от мутантов',
+          desc: 'Уничтожить 3 мутантов на этаже',
+          targetKills: 3,
+          currentKills: 0,
+          rewardTalons: 160,
+          rewardAmmo: 20,
+          completed: false,
+          turnedIn: false
+        }
+      });
+
+      // 2. Медсестра Клавдия (Полевой санитар) в соседней жилой комнате
+      if (rooms.length > 2) {
+        const medRoom = rooms[1];
+        npcs.push({
+          id: 'npc_klavdiya',
+          name: 'Медсестра Клавдия',
+          role: 'Полевой санитар',
+          x: medRoom.centerX * TS + TS / 2,
+          y: medRoom.centerY * TS + TS / 2,
+          radius: 14,
+          type: 'npc',
+          portrait: 'assets/monsters/m_liquidator.png',
+          dialogue: 'Береги фильтр противогаза, сынок. На этаже полно слизи. Принеси мне электронную ключ-карту от запертого шлюза — выдам тебе две армейские аптечки!',
+          quest: {
+            id: 'quest_find_keycard',
+            title: 'Электронный доступ к шлюзу',
+            desc: 'Найти электронную ключ-карту допуска',
+            requiresKeycard: true,
+            rewardMedkits: 2,
+            rewardTalons: 120,
+            completed: false,
+            turnedIn: false
+          }
+        });
+      }
+    },
+
+    /**
+     * Populate authentic living cell furniture & bunker props
+     */
+    populateProps(rooms, grid, props, TS) {
+      for (const room of rooms) {
+        // Living Cells and Safe Rooms get bunks, desks and chairs
+        if (room.type === 'living' || room.type === 'safe' || room.type === 'archive') {
+          if (room.h >= 5 && room.w >= 5) {
+            // Two-tier bunk bed along wall
+            props.push({
+              id: 'prop_bunk_' + room.id,
+              type: 'bunk',
+              x: (room.x + 1) * TS + TS / 2,
+              y: (room.y + 1) * TS + TS / 2,
+              tileX: room.x + 1,
+              tileY: room.y + 1,
+              name: 'Двухъярусная койка ликвидаторов'
+            });
+
+            // Metal desk with terminal
+            props.push({
+              id: 'prop_desk_' + room.id,
+              type: 'desk',
+              x: (room.x + room.w - 2) * TS + TS / 2,
+              y: (room.y + 1) * TS + TS / 2,
+              tileX: room.x + room.w - 2,
+              tileY: room.y + 1,
+              name: 'Стол с радиотерминалом'
+            });
+
+            // Swivel chair
+            props.push({
+              id: 'prop_chair_' + room.id,
+              type: 'chair',
+              x: (room.x + room.w - 2) * TS + TS / 2,
+              y: (room.y + 2) * TS + TS / 2,
+              tileX: room.x + room.w - 2,
+              tileY: room.y + 2,
+              name: 'Стул'
+            });
+          }
+        }
+      }
+    },
     populateChests(rooms, startRoom, chests, weaponDrops, TS) {
       const eligibleRooms = rooms.filter(r => r.id !== startRoom.id);
       const shuffled = [...eligibleRooms].sort(() => Math.random() - 0.5);
@@ -546,6 +656,7 @@
       for (let i = 0; i < chestCount; i++) {
         const room = shuffled[i];
         const isSecretChest = !!room.isSecret;
+        const isLockedKeycard = (i === 1 || isSecretChest);
         chests.push({
           id: 'chest_' + i,
           x: (room.centerX + (i % 2 === 0 ? 1 : -1)) * TS + TS / 2,
@@ -554,11 +665,14 @@
           tileY: room.centerY + (i % 2 === 0 ? -1 : 1),
           opened: false,
           isSecret: isSecretChest,
+          isLocked: isLockedKeycard,
+          requiresKeycard: isLockedKeycard,
           loot: {
-            talons: isSecretChest ? 250 : 80 + Math.floor(Math.random() * 70),
-            ammo: isSecretChest ? 32 : 12 + Math.floor(Math.random() * 14),
-            medkits: isSecretChest ? 2 : 1,
-            hasKeycard: (i === 0)
+            talons: isLockedKeycard ? 320 : 85 + Math.floor(Math.random() * 70),
+            ammo: isLockedKeycard ? 36 : 14 + Math.floor(Math.random() * 12),
+            medkits: isLockedKeycard ? 2 : 1,
+            hasKeycard: (!isLockedKeycard && i === 0),
+            weapon: isLockedKeycard ? { id: 'gun_ks23', name: 'Карабин КС-23', dmg: 55, isRanged: true, ammo: 18, gunType: 'shotgun' } : null
           }
         });
       }

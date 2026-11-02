@@ -1466,6 +1466,10 @@
       socket.on('liveRaidJoined', (data) => {
         if (!data || !data.players) return;
         this.remotePlayers = {};
+      this.npcs = [];
+      this.props = [];
+      this.floorDepth = 1;
+      this.activeDialog = null;
         for (const pId in data.players) {
           if (pId !== socket.id) {
             this.remotePlayers[pId] = data.players[pId];
@@ -1634,6 +1638,85 @@
 
         ctx.restore();
       }
+      // --- NPC DIALOGUE & QUEST OVERLAY MODAL ---
+      if (this.activeDialog && this.activeDialog.npc) {
+        const npc = this.activeDialog.npc;
+        const dw = Math.min(540, w * 0.92);
+        const dh = 190;
+        const dx = (w - dw) / 2;
+        const dy = (h - dh) / 2;
+
+        ctx.fillStyle = 'rgba(4, 18, 9, 0.96)';
+        ctx.fillRect(dx, dy, dw, dh);
+        ctx.strokeStyle = '#00ffaa';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(dx, dy, dw, dh);
+
+        // Header bar
+        ctx.fillStyle = 'rgba(0, 255, 170, 0.18)';
+        ctx.fillRect(dx + 2, dy + 2, dw - 4, 26);
+        ctx.font = 'bold 13px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText(`[ СВЯЗЬ ] ${npc.name} // ${npc.role || 'Ликвидатор'}`, dx + 14, dy + 19);
+
+        // Dialogue speech
+        ctx.font = '12.5px monospace';
+        ctx.fillStyle = '#d0ebd4';
+        const words = npc.dialogue.split(' ');
+        let line = '';
+        let lineY = dy + 52;
+        for (let wi = 0; wi < words.length; wi++) {
+          const testLine = line + words[wi] + ' ';
+          if (ctx.measureText(testLine).width > dw - 28) {
+            ctx.fillText(line, dx + 14, lineY);
+            line = words[wi] + ' ';
+            lineY += 18;
+          } else {
+            line = testLine;
+          }
+        }
+        ctx.fillText(line, dx + 14, lineY);
+
+        // Quest status & button
+        if (npc.quest) {
+          const q = npc.quest;
+          const statusY = dy + 130;
+          ctx.fillStyle = q.completed ? '#00ffaa' : '#ffd700';
+          ctx.font = 'bold 12px "Share Tech Mono", monospace';
+          const progStr = q.targetKills ? `(${q.currentKills || 0}/${q.targetKills})` : (q.requiresKeycard ? (this.player.hasKeycard ? '[ЕСТЬ КАРТА]' : '[ИЩИТЕ КАРТУ]') : '');
+          ctx.fillText(`📜 ${q.title}: ${q.desc || ''} ${progStr}`, dx + 14, statusY);
+
+          // Action prompt button
+          ctx.fillStyle = q.turnedIn ? '#666666' : q.completed ? '#00ffaa' : '#ffd700';
+          ctx.fillText(q.turnedIn ? '✅ ЗАДАНИЕ ЗАВЕРШЕНО' : q.completed ? '[ E ] СДАТЬ ЗАДАНИЕ И ПОЛУЧИТЬ НАГРАДУ!' : '[ E / КЛИК ] ПРИНЯТО К ИСПОЛНЕНИЮ', dx + 14, dy + 162);
+        }
+      }
+
+      // --- ELEVATOR MULTI-FLOOR DESCENT PROMPT ---
+      if (this.isPlayerInElevator && !this.activeDialog) {
+        const ew = Math.min(480, w * 0.90);
+        const eh = 96;
+        const ex = (w - ew) / 2;
+        const ey = h - 210;
+
+        ctx.fillStyle = 'rgba(2, 16, 12, 0.94)';
+        ctx.fillRect(ex, ey, ew, eh);
+        ctx.strokeStyle = '#33d4ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(ex, ey, ew, eh);
+
+        ctx.font = 'bold 13px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#33d4ff';
+        ctx.fillText(`⚡ ШАХТА ЛИФТА «S» // ЭТАЖ ${this.floorDepth || 1}`, ex + 14, ey + 24);
+
+        ctx.font = '11.5px monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText(`[1 / E] СПУСТИТЬСЯ ГЛУБЖЕ НА ЭТАЖ ${(this.floorDepth || 1) + 1} (+100 XP)`, ex + 14, ey + 48);
+
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText('[2 / ESC] ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ (СОХРАНИТЬ ВЕСЬ ХАБАР)', ex + 14, ey + 72);
+      }
+
       // Floating Quick Chat Input Box
       if (this.isTypingChat) {
         const cw = Math.min(520, w * 0.88);
@@ -1735,14 +1818,35 @@
      */
     openChest(chest) {
       if (!chest || chest.opened) return;
+      if (chest.requiresKeycard && chest.isLocked) {
+        if (this.player.hasKeycard) {
+          chest.isLocked = false;
+          chest.requiresKeycard = false;
+          this.spawnFloatingNotice('🔓 СУНДУК ВСКРЫТ КЛЮЧ-КАРТОЙ!', '#00ffaa');
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playKeycardUnlock) {
+            RadarAudio.playKeycardUnlock();
+          }
+        } else {
+          this.spawnFloatingNotice('⚠️ СУНДУК ЗАПЕРТ // ТРЕБУЕТСЯ КЛЮЧ-КАРТА ДОПУСКА!', '#ff3333');
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playDoorDenied) {
+            RadarAudio.playDoorDenied();
+          }
+          return;
+        }
+      }
+
       chest.opened = true;
       if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
         RadarAudio.playLootPickup();
       }
       const l = chest.loot || { talons: 100, ammo: 15, medkits: 1 };
       this.player.talonsEarned += (l.talons || 0);
-      this.player.xpEarned += 35;
-      if (l.hasKeycard) {
+      this.player.xpEarned += 45;
+
+      if (l.weapon) {
+        this.player.weapon = Object.assign({}, l.weapon);
+        this.spawnFloatingNotice(`📦 В СУНДУКЕ НАЙДЕН ${l.weapon.name}! +${l.talons} ТАЛОНОВ`, '#00ffaa');
+      } else if (l.hasKeycard) {
         this.player.hasKeycard = true;
         this.spawnFloatingNotice('🔑 В СУНДУКЕ НАЙДЕНА КЛЮЧ-КАРТА ДОСТУПА!', '#00ffaa');
       } else {
@@ -2549,6 +2653,31 @@
           }
         }
 
+        // 2c. Draw Living Cell & Bunker Props
+        for (const prop of (this.props || [])) {
+          if (this.isCellExplored(prop.tileX, prop.tileY)) {
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawProp) {
+              SpriteFactory.drawProp(worldCtx, prop, this.tileSize, this.tick, 1.0);
+            }
+          }
+        }
+
+        // 2d. Draw Supply Chests
+        for (const chest of (this.chests || [])) {
+          if (this.isCellExplored(chest.tileX, chest.tileY)) {
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawChest) {
+              SpriteFactory.drawChest(worldCtx, chest, this.tileSize, this.tick);
+            }
+          }
+        }
+
+        // 2e. Draw Friendly NPCs
+        for (const npc of (this.npcs || [])) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawEntity) {
+            SpriteFactory.drawEntity(worldCtx, Object.assign({}, npc, { isPlayer: false, color: '#00ffaa' }), this.tick);
+          }
+        }
+
         // 3. Draw Loot Crates
         for (const crate of this.crates) {
           if (this.isCellExplored(crate.tileX, crate.tileY)) {
@@ -3095,15 +3224,24 @@
         });
       }
 
+      // Bestiary Monsters in FPS Mode with Complete Monster Variety
       for (const ent of this.entities) {
         if (ent.hp > 0) {
           let mKey = 'black_slime';
-          const eType = (ent.type || '').toLowerCase();
-          if (eType.includes('madman') || eType.includes('feral')) mKey = 'feral_inhabitant';
-          else if (eType.includes('cult') || eType.includes('mimic')) mKey = 'voice_mimic';
-          else if (eType.includes('pod') || eType.includes('mold') || eType.includes('spore')) mKey = 'spore_pod';
-          else if (eType.includes('liquidator')) mKey = 'rogue_liquidator';
-          else if (eType.includes('centipede') || eType.includes('horror')) mKey = 'six_legged_horror';
+          const eType = (ent.type || ent.id || '').toLowerCase();
+          const eName = (ent.name || '').toLowerCase();
+
+          if (eType.includes('boss_slime') || eName.includes('протоплазма')) mKey = 'boss_slime';
+          else if (eType.includes('boss_reactor') || eName.includes('реактор')) mKey = 'boss_reactor';
+          else if (eType.includes('hound') || eName.includes('гончая')) mKey = 'concrete_hound';
+          else if (eType.includes('spider') || eName.includes('паук')) mKey = 'arachnid';
+          else if (eType.includes('spitter') || eName.includes('плевун')) mKey = 'acid_spitter';
+          else if (eType.includes('corpse') || eName.includes('трупоед')) mKey = 'corpse_feeder';
+          else if (eType.includes('centipede') || eType.includes('six_legged') || eName.includes('шестижоп') || eType.includes('horror')) mKey = 'six_legged_horror';
+          else if (eType.includes('rogue') || eType.includes('liquidator') || eName.includes('отступник')) mKey = 'rogue_liquidator';
+          else if (eType.includes('pod') || eType.includes('mold') || eType.includes('spore') || eName.includes('споровик')) mKey = 'spore_pod';
+          else if (eType.includes('cult') || eType.includes('mimic') || eType.includes('voice') || eName.includes('имитатор')) mKey = 'voice_mimic';
+          else if (eType.includes('madman') || eType.includes('feral') || eName.includes('одичавший') || eName.includes('жилец')) mKey = 'feral_inhabitant';
           else mKey = 'black_slime';
 
           visibleSprites.push({
@@ -3115,6 +3253,45 @@
             hp: ent.hp,
             maxHp: ent.maxHp,
             damageFlashTimer: ent.damageFlashTimer || 0
+          });
+        }
+      }
+
+      // Friendly NPCs in FPS
+      for (const npc of (this.npcs || [])) {
+        visibleSprites.push({
+          x: npc.x,
+          y: npc.y,
+          type: 'npc',
+          key: 'npc_liquidator',
+          color: '#00ffaa',
+          name: npc.name,
+          npc: npc
+        });
+      }
+
+      // Living Cell & Office Props in FPS
+      for (const prop of (this.props || [])) {
+        visibleSprites.push({
+          x: prop.x,
+          y: prop.y,
+          type: 'prop',
+          key: 'crate_wood',
+          prop: prop,
+          color: '#8b5a2b'
+        });
+      }
+
+      // Supply Chests in FPS
+      for (const chest of (this.chests || [])) {
+        if (!chest.opened) {
+          visibleSprites.push({
+            x: chest.x,
+            y: chest.y,
+            type: 'chest',
+            key: chest.requiresKeycard ? 'crate_tech' : 'crate_supply',
+            color: chest.requiresKeycard ? '#ff3366' : '#ffd700',
+            chest: chest
           });
         }
       }
@@ -3223,7 +3400,16 @@
           } else {
             // Fallback billboard
             if (sp.type === 'elevator') {
-              ctx.fillStyle = 'rgba(51, 212, 255, 0.45)';
+              // Glowing Floating Neon "S" Exit Glyph
+              const hoverY = Math.sin(this.tick * 0.08) * 14;
+              const sTop = sprTop + hoverY;
+              ctx.fillStyle = '#00ffcc';
+              ctx.shadowColor = '#00ffaa';
+              ctx.shadowBlur = 18;
+              ctx.fillRect(stripeX, sTop, colStep, sprHeight * 0.7);
+              ctx.shadowBlur = 0;
+            } else if (sp.type === 'npc') {
+              ctx.fillStyle = '#00ffaa';
               ctx.fillRect(stripeX, sprTop, colStep, sprHeight);
             } else {
               ctx.fillStyle = sp.color || '#ff3b30';

@@ -106,19 +106,38 @@
     }
   };
 
-  const SPRITE_DEFS = {
-    // Monsters
+    const SPRITE_DEFS = {
+    // Complete Samosbor Bestiary
     'black_slime': 'assets/monsters/m_slime.png',
     'feral_inhabitant': 'assets/monsters/m_madman.png',
     'voice_mimic': 'assets/monsters/m_cultist.png',
     'spore_pod': 'assets/monsters/m_mold.png',
     'rogue_liquidator': 'assets/monsters/m_liquidator.png',
     'six_legged_horror': 'assets/monsters/m_centipede.png',
+    'arachnid': 'assets/monsters/m_spider.png',
+    'concrete_hound': 'assets/monsters/m_hound.png',
+    'acid_spitter': 'assets/monsters/m_spitter.png',
+    'corpse_feeder': 'assets/monsters/m_corpse.png',
+    'hive_carrier': 'assets/monsters/m_hive.png',
+    'sludge_worm': 'assets/monsters/m_worm.png',
+    'drowned_worker': 'assets/monsters/m_drowned.png',
+    'parasite_carrier': 'assets/monsters/m_parasite.png',
+    'biomech_horror': 'assets/monsters/m_biomech.png',
+    'flesh_amalgam': 'assets/monsters/m_amalgam.png',
+    'mutated_plumber': 'assets/monsters/m_plumber.png',
+    'mutated_butcher': 'assets/monsters/m_butcher.png',
+    'giga_architect': 'assets/monsters/m_architect.png',
+    'boss_slime': 'assets/monsters/boss_slime.png',
+    'boss_reactor': 'assets/monsters/boss_reactor.png',
+    'boss_com': 'assets/monsters/boss_com.png',
+    'boss_arch': 'assets/monsters/boss_arch.png',
+    'boss_final': 'assets/monsters/boss_final.png',
     'mutant_default': 'assets/monsters/m_slime.png',
 
     // Allies & NPCs
     'liquidator': 'assets/monsters/m_liquidator.png',
     'npc_liquidator': 'assets/monsters/m_liquidator.png',
+    'npc_medic': 'assets/monsters/m_liquidator.png',
 
     // Items & Loot
     'weapon_pipe': 'assets/icons/weapon_pipe.png',

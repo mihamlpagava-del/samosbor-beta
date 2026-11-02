@@ -455,6 +455,63 @@
     /**
      * Render Dropped Weapon / Item on Floor (2D TDS)
      */
+
+    /**
+     * Render Authentic Living Cell Props (Bunk bed, Desk, Chair, Posters)
+     */
+    drawProp(ctx, prop, TS, tick, alpha = 1.0) {
+      if (!ctx || !prop) return;
+      const x = prop.x;
+      const y = prop.y;
+      const type = prop.type || 'desk';
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.2, Math.min(1.0, alpha));
+
+      if (type === 'bunk') {
+        // Two-Tier Soviet Metal Bunk Bed
+        ctx.fillStyle = '#1e2420'; // Frame
+        ctx.fillRect(x - 14, y - 10, 28, 20);
+        ctx.fillStyle = '#2d3b31'; // Olive mattress & blanket
+        ctx.fillRect(x - 12, y - 8, 24, 16);
+        ctx.fillStyle = '#c5d1c8'; // Pillow
+        ctx.fillRect(x - 11, y - 7, 7, 14);
+        // Metal bed posts
+        ctx.fillStyle = '#4c5c50';
+        ctx.fillRect(x - 14, y - 10, 3, 20);
+        ctx.fillRect(x + 11, y - 10, 3, 20);
+      } else if (type === 'desk') {
+        // Soviet Metal Desk with Green CRT Terminal
+        ctx.fillStyle = '#262f29'; // Desk surface
+        ctx.fillRect(x - 13, y - 9, 26, 18);
+        ctx.strokeStyle = '#3d4d42';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x - 13, y - 9, 26, 18);
+        // Green Phosphor CRT Monitor
+        ctx.fillStyle = '#151c17';
+        ctx.fillRect(x - 7, y - 6, 14, 11);
+        ctx.fillStyle = '#1fe044';
+        ctx.shadowColor = '#1fe044';
+        ctx.shadowBlur = 6;
+        ctx.fillRect(x - 5, y - 4, 10, 7);
+        ctx.shadowBlur = 0;
+      } else if (type === 'chair') {
+        // Swivel Chair with Brown Cushion
+        ctx.fillStyle = '#3a2010';
+        ctx.beginPath();
+        ctx.arc(x, y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#18201a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        // Generic Bunker Container
+        ctx.fillStyle = '#2b362f';
+        ctx.fillRect(x - 9, y - 9, 18, 18);
+      }
+
+      ctx.restore();
+    },
     drawDroppedWeapon(ctx, drop, TS, tick, alpha = 1.0) {
       if (!ctx || !drop || drop.pickedUp) return;
 
