@@ -164,7 +164,7 @@
     'weapon_default': 'assets/icons/weapon_pipe.png',
     'food_medkit': 'assets/icons/food_medkit.png',
     'ammo_box': 'assets/icons/ammo_box.png',
-    'keycard': 'assets/icons/keycard.png',
+    'keycard': 'assets/radar/props/keycard_pass.png',
     'food_ration': 'assets/icons/food_ration.png',
     'chest_military': 'assets/radar/props/chest_military_box.png',
     'keycard_pass': 'assets/radar/props/keycard_pass.png',

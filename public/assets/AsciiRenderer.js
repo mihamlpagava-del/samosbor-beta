@@ -123,11 +123,39 @@
         for (let cx = 0; cx < cols; cx++) {
           const px = cx * cw;
 
-          // Sample 4 representative points in the 6x6 cell: (1,1), (4,1), (1,4), (4,4)
-          const p1 = srcBuf32[(py + 1) * width + (px + 1)];
-          const p2 = srcBuf32[(py + 1) * width + (px + 4)];
-          const p3 = srcBuf32[(py + 4) * width + (px + 1)];
-          const p4 = srcBuf32[(py + 4) * width + (px + 4)];
+          // --- CRT BARREL LENS DISTORTION ---
+          // vec2 uv = coord / res; vec2 dc = uv - 0.5; uv = uv + dc * (dot(dc, dc) * 0.12);
+          const u = (cx + 0.5) / cols;
+          const v = (cy + 0.5) / rows;
+          const dcX = u - 0.5;
+          const dcY = v - 0.5;
+          const d2 = dcX * dcX + dcY * dcY;
+
+          const srcU = u + dcX * (d2 * 0.12);
+          const srcV = v + dcY * (d2 * 0.12);
+
+          // Outside spherical glass bounds -> render dark CRT monitor bezel
+          if (srcU < 0.0 || srcU >= 1.0 || srcV < 0.0 || srcV >= 1.0) {
+            for (let dy = 0; dy < 6; dy++) {
+              const rowOffset = (py + dy) * width + px;
+              targetBuf32[rowOffset]     = 0xFF000000;
+              targetBuf32[rowOffset + 1] = 0xFF000000;
+              targetBuf32[rowOffset + 2] = 0xFF000000;
+              targetBuf32[rowOffset + 3] = 0xFF000000;
+              targetBuf32[rowOffset + 4] = 0xFF000000;
+              targetBuf32[rowOffset + 5] = 0xFF000000;
+            }
+            continue;
+          }
+
+          const smpX = Math.floor(srcU * width);
+          const smpY = Math.floor(srcV * height);
+
+          // Sample 4 representative points from distorted source
+          const p1 = srcBuf32[Math.min(height - 1, smpY) * width + Math.min(width - 1, smpX)];
+          const p2 = srcBuf32[Math.min(height - 1, smpY) * width + Math.min(width - 1, smpX + 3)];
+          const p3 = srcBuf32[Math.min(height - 1, smpY + 3) * width + Math.min(width - 1, smpX)];
+          const p4 = srcBuf32[Math.min(height - 1, smpY + 3) * width + Math.min(width - 1, smpX + 3)];
 
           const r1 = p1 & 0xFF, g1 = (p1 >> 8) & 0xFF, b1 = (p1 >> 16) & 0xFF;
           const r2 = p2 & 0xFF, g2 = (p2 >> 8) & 0xFF, b2 = (p2 >> 16) & 0xFF;
@@ -226,6 +254,20 @@
 
       // Single ultra-fast pixel transfer onto target context (<1ms)
       targetCtx.putImageData(this.targetImageData, 0, 0);
+
+      // CRT Edge Scanlines & Monitor Vignette
+      targetCtx.save();
+      targetCtx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      for (let sy = 0; sy < height; sy += 3) {
+        targetCtx.fillRect(0, sy, width, 1);
+      }
+      const crtVig = targetCtx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.44, width / 2, height / 2, Math.max(width, height) * 0.72);
+      crtVig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      crtVig.addColorStop(0.75, 'rgba(0, 0, 0, 0.22)');
+      crtVig.addColorStop(1, 'rgba(0, 0, 0, 0.88)');
+      targetCtx.fillStyle = crtVig;
+      targetCtx.fillRect(0, 0, width, height);
+      targetCtx.restore();
     }
   };
 

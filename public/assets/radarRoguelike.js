@@ -647,6 +647,9 @@
         if (e.code === 'KeyG') {
           this.toggleCameraMode();
         }
+        if (e.code === 'KeyI' || e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш') {
+          this.toggleHUDVisibility();
+        }
         if (e.code === 'F2') {
           if (typeof AsciiRenderer !== 'undefined') {
             AsciiRenderer.enabled = !AsciiRenderer.enabled;
@@ -3413,31 +3416,63 @@
         ctx.translate(-w / 2, -h / 2);
       }
 
-      // 1. Perspective industrial ceiling and floor
-      const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
-      ceilGrad.addColorStop(0, '#051108');
-      ceilGrad.addColorStop(1, '#112918');
-      ctx.fillStyle = ceilGrad;
-      ctx.fillRect(0, 0, w, halfH);
+      // 1. Perspective Textured Floor & Ceiling Casting Engine
+      const rayDirX0 = Math.cos(pAngle - halfFov);
+      const rayDirY0 = Math.sin(pAngle - halfFov);
+      const rayDirX1 = Math.cos(pAngle + halfFov);
+      const rayDirY1 = Math.sin(pAngle + halfFov);
 
-      // Overhead concrete crossbeams & industrial conduits
-      ctx.fillStyle = 'rgba(28, 55, 38, 0.45)';
-      for (let cy = 8; cy < halfH; cy += Math.max(8, Math.floor(cy * 0.24))) {
-        const beamH = Math.max(1, Math.floor(cy * 0.05));
-        ctx.fillRect(0, cy, w, beamH);
-      }
+      // Base background fill in case of edge bounds
+      ctx.fillStyle = '#020603';
+      ctx.fillRect(0, 0, w, h);
 
-      const flrGrad = ctx.createLinearGradient(0, halfH, 0, h);
-      flrGrad.addColorStop(0, '#0d2215');
-      flrGrad.addColorStop(1, '#040b07');
-      ctx.fillStyle = flrGrad;
-      ctx.fillRect(0, halfH, w, halfH);
+      const floorRowStep = 3;
+      const floorBlockW = 4;
+      const maxFogDist = 17.0;
 
-      // Floor steel plates & concrete tile perspective lines
-      ctx.fillStyle = 'rgba(32, 65, 42, 0.4)';
-      for (let fy = halfH + 4; fy < h; fy += Math.max(6, Math.floor((fy - halfH) * 0.20))) {
-        const seamH = Math.max(1, Math.floor((fy - halfH) * 0.04));
-        ctx.fillRect(0, fy, w, seamH);
+      for (let y = halfH + 1; y < h; y += floorRowStep) {
+        const rowDist = (0.5 * h) / Math.max(1, (y - halfH));
+        const floorStepX = rowDist * (rayDirX1 - rayDirX0) / w;
+        const floorStepY = rowDist * (rayDirY1 - rayDirY0) / w;
+
+        let floorX = (px / TS) + rowDist * rayDirX0;
+        let floorY = (py / TS) + rowDist * rayDirY0;
+
+        const lighting = Math.max(0.03, Math.min(1.0, 1.0 - (rowDist / maxFogDist)));
+        const ceilY = halfH - (y - halfH);
+
+        for (let x = 0; x < w; x += floorBlockW) {
+          // --- FLOOR SAMPLE (Soviet reinforced concrete plates with seams) ---
+          const fTileX = Math.floor(floorX);
+          const fTileY = Math.floor(floorY);
+          const fSubX = (floorX - fTileX) * 128;
+          const fSubY = (floorY - fTileY) * 128;
+          const isFloorSeam = (fSubX < 4 || fSubY < 4);
+          const isCheck = ((fTileX + fTileY) & 1) === 0;
+
+          const fBaseR = isFloorSeam ? 18 : (isCheck ? 46 : 38);
+          const fBaseG = isFloorSeam ? 24 : (isCheck ? 56 : 48);
+          const fBaseB = isFloorSeam ? 20 : (isCheck ? 48 : 42);
+
+          ctx.fillStyle = `rgb(${Math.floor(fBaseR * lighting)},${Math.floor(fBaseG * lighting)},${Math.floor(fBaseB * lighting)})`;
+          ctx.fillRect(x, y, floorBlockW, floorRowStep);
+
+          // --- CEILING SAMPLE (Dark technical panels with cable trays) ---
+          if (ceilY >= 0) {
+            const isCeilSeam = (fSubX < 5 || fSubY < 5);
+            const isCable = (fSubX >= 56 && fSubX <= 72);
+
+            const cBaseR = isCable ? 44 : (isCeilSeam ? 10 : 22);
+            const cBaseG = isCable ? 50 : (isCeilSeam ? 14 : 27);
+            const cBaseB = isCable ? 38 : (isCeilSeam ? 12 : 24);
+
+            ctx.fillStyle = `rgb(${Math.floor(cBaseR * lighting * 0.85)},${Math.floor(cBaseG * lighting * 0.85)},${Math.floor(cBaseB * lighting * 0.85)})`;
+            ctx.fillRect(x, ceilY, floorBlockW, floorRowStep);
+          }
+
+          floorX += floorStepX * floorBlockW;
+          floorY += floorStepY * floorBlockW;
+        }
       }
 
       // 2. DDA Raycaster for vertical wall strips
@@ -3619,8 +3654,9 @@
 
         // --- DYNAMIC LIGHTING, SHADING & DISTANCE FOG ---
         const maxShadeDist = 18;
-        let shade = Math.max(0.04, Math.min(1.0, 1.0 - perpDist / maxShadeDist));
-        if (side === 1) shade *= 0.76;
+        // Directional Wall Shading: horizontal hits (side === 1) shaded by 0.75x, vertical hits (side === 0) 1.0x
+        const sideDarken = (side === 1) ? 0.75 : 1.0;
+        let shade = Math.max(0.04, Math.min(1.0, 1.0 - perpDist / maxShadeDist)) * sideDarken;
 
         
         // Wall Bullet Impact Decal overlay
@@ -3661,6 +3697,23 @@
         if (darkAlpha > 0.02) {
           ctx.fillStyle = `rgba(1, 8, 4, ${darkAlpha.toFixed(2)})`;
           ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+        }
+
+        // Inner Corner Ambient Occlusion (AO): Top 10% and Bottom 10% smooth darkening to ceiling & floor
+        const colH = drawEnd - drawStart;
+        const aoH = Math.max(2, Math.floor(colH * 0.10));
+        if (aoH > 1) {
+          const topAo = ctx.createLinearGradient(0, drawStart, 0, drawStart + aoH);
+          topAo.addColorStop(0, 'rgba(2, 8, 4, 0.75)');
+          topAo.addColorStop(1, 'rgba(2, 8, 4, 0)');
+          ctx.fillStyle = topAo;
+          ctx.fillRect(screenX, drawStart, colStep, aoH);
+
+          const btmAo = ctx.createLinearGradient(0, drawEnd - aoH, 0, drawEnd);
+          btmAo.addColorStop(0, 'rgba(2, 8, 4, 0)');
+          btmAo.addColorStop(1, 'rgba(2, 8, 4, 0.75)');
+          ctx.fillStyle = btmAo;
+          ctx.fillRect(screenX, drawEnd - aoH, colStep, aoH);
         }
 
         // Tint wall strip with colored light accumulation
@@ -3910,7 +3963,7 @@
         }
 
         const isItem = (sp.type === 'weapon' || sp.type === 'crate');
-        const aspect = isItem ? 0.68 : 0.82;
+        const aspect = isItem ? (sp.isKeycard ? 1.05 : 0.68) : 0.82;
         const baseSprHeight = Math.min(h * 2.2, Math.floor((h / (perpDistWorld / TS)) * 0.88));
 
         // Hover & Pseudo-3D Spin for dropped loot
@@ -3940,7 +3993,7 @@
           for (let hx = Math.max(0, haloLeft); hx < Math.min(w, haloLeft + haloW); hx += colStep) {
             const bufIdx = Math.floor(hx / colStep);
             if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < perpDistWorld) continue;
-            ctx.fillStyle = sp.isMedkit ? 'rgba(51, 255, 100, 0.35)' : 'rgba(255, 170, 0, 0.35)';
+            ctx.fillStyle = sp.isKeycard ? 'rgba(0, 229, 255, 0.55)' : (sp.isMedkit ? 'rgba(51, 255, 100, 0.35)' : 'rgba(255, 170, 0, 0.35)');
             ctx.fillRect(hx, wallBase - haloH / 2, colStep, haloH);
           }
         }
@@ -4115,6 +4168,65 @@
       ctx.stroke();
 
       ctx.fillRect(chX - 0.5, chY - 0.5, 1, 1);
+      ctx.restore();
+
+      // --- VOLUMETRIC FLASHLIGHT BEAM & DUST PARTICLES ---
+      ctx.save();
+      const beamOriginX = Math.floor(w * 0.78);
+      const beamOriginY = h + 10;
+      const beamTargetX = Math.floor(w * 0.5);
+      const beamTargetY = halfH;
+
+      const beamGrad = ctx.createRadialGradient(beamTargetX, beamTargetY, 20, beamOriginX, beamOriginY, Math.hypot(w, h) * 0.75);
+      beamGrad.addColorStop(0, 'rgba(220, 255, 205, 0.09)');
+      beamGrad.addColorStop(0.32, 'rgba(175, 245, 185, 0.055)');
+      beamGrad.addColorStop(0.68, 'rgba(110, 210, 145, 0.022)');
+      beamGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(beamOriginX - 50, beamOriginY);
+      ctx.lineTo(beamTargetX - 160, beamTargetY - 50);
+      ctx.lineTo(beamTargetX + 160, beamTargetY - 50);
+      ctx.lineTo(beamOriginX + 50, beamOriginY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Procedural Floating Dust Particles (28-35 particles)
+      if (!this.fpsDustParticles) {
+        this.fpsDustParticles = [];
+        for (let pi = 0; pi < 32; pi++) {
+          this.fpsDustParticles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: -0.2 - Math.random() * 0.3,
+            phase: Math.random() * Math.PI * 2,
+            sz: Math.random() > 0.6 ? 2 : 1.2,
+            baseAlpha: 0.25 + Math.random() * 0.55
+          });
+        }
+      }
+
+      for (let pi = 0; pi < this.fpsDustParticles.length; pi++) {
+        const dp = this.fpsDustParticles[pi];
+        dp.phase += 0.03;
+        dp.x += dp.vx + Math.cos(dp.phase) * 0.25;
+        dp.y += dp.vy + Math.sin(dp.phase * 0.8) * 0.2;
+
+        if (dp.y < 0) dp.y = h;
+        if (dp.y > h) dp.y = 0;
+        if (dp.x < 0) dp.x = w;
+        if (dp.x > w) dp.x = 0;
+
+        const distToTarget = Math.hypot(dp.x - beamTargetX, dp.y - beamTargetY);
+        const inBeamFactor = Math.max(0, 1.0 - distToTarget / (w * 0.45));
+        if (inBeamFactor > 0.05) {
+          const pAlpha = (dp.baseAlpha * inBeamFactor * (0.6 + Math.sin(dp.phase) * 0.4)).toFixed(2);
+          ctx.fillStyle = `rgba(225, 255, 215, ${pAlpha})`;
+          ctx.fillRect(dp.x, dp.y, dp.sz, dp.sz);
+        }
+      }
       ctx.restore();
 
       // 5. First-Person Weapon Model & Liquidator Hazmat Hands

@@ -177,8 +177,10 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
 
 .crt-bezel-header {
   display: flex;
-  justify-content: space-between;
+  display: flex;
+  justify-content: center;
   align-items: center;
+  text-align: center;
   padding: 0 4px 6px 4px;
   border-bottom: 1px solid rgba(0, 255, 170, 0.15);
   margin-bottom: 6px;
@@ -3209,9 +3211,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <!-- 2. Нижний блок: Клавиатурная консоль / Пульт управления со стола -->
     <div class="terminal-deck-console">
       <button id="btn-exit-cell" class="btn-hazard-sortie" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell">
-        <span>///</span>
-        <span style="letter-spacing: 1.5px;">⚠️ [ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ] ⚠️</span>
-        <span>///</span>
+        <span style="letter-spacing: 1.5px;">[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]</span>
       </button>
 
       <div class="terminal-buttons-grid">
@@ -12254,6 +12254,15 @@ function applyTouchControlsState() {
     radarRoguelikeGame.isTouchControlsActive = isTouchControlsActive;
   }
 }
+
+/* Global Hotkey [I] for HUD Toggle */
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyI' || e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш') {
+    if (window.radarRoguelikeGame && window.radarRoguelikeGame.isRunning) {
+      window.radarRoguelikeGame.toggleHUDVisibility();
+    }
+  }
+});
 
 function setupTouchOverlayEvents() {
   const baseEl = document.getElementById('touch-joystick-base');
