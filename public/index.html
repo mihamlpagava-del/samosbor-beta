@@ -2027,9 +2027,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div class="support-controls">
   <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
-  <a id="btn-telegram-header" class="telegram-btn" href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer" title="Telegram канал Самосбора">
-    <span>✈️</span> <span data-i18n="btn_telegram">ТЕЛЕГРАМ</span>
-  </a>
+  <button id="btn-vk-community" class="telegram-btn" style="background: rgba(39, 135, 245, 0.2); border-color: #2787f5; color: #61b0ff; cursor: pointer;" onclick="if(typeof vkBridge!=='undefined'&&vkBridge.send){vkBridge.send('VKWebAppJoinGroup',{group_id:228026116}).catch(()=>{});}else{window.open('https://vk.com/club228026116','_blank');}" title="Официальное сообщество ВКонтакте">
+    <span>🔵</span> <span data-i18n="btn_vk_community">СООБЩЕСТВО VK</span>
+  </button>
   <button id="btn-donate" class="support-btn" style="display: none;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="btn_donate">
     💙 ПОДДЕРЖАТЬ ПРОЕКТ
   </button>
@@ -2095,9 +2095,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
   <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
   <button id="btn-opt-story" class="audio-btn opt-btn" style="color: #00ffaa; border-color: rgba(0,255,170,0.5); font-weight: bold;" onclick="openStorySimulationModal()" data-i18n="opt_story_mode">📟 «С.С.Р.С. Хроники Гигахруща»</button>
-    <a id="btn-opt-telegram" class="audio-btn opt-btn" style="color: #29b6f6; text-decoration: none; display: flex; align-items: center; gap: 6px;" href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer">
-    <span>✈️</span> <span data-i18n="opt_telegram">Канал в Telegram</span>
-  </a>
+    <button id="btn-opt-vk" class="audio-btn opt-btn" style="color: #61b0ff; border-color: rgba(39,135,245,0.4); text-align: left; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="if(typeof vkBridge!=='undefined'&&vkBridge.send){vkBridge.send('VKWebAppJoinGroup',{group_id:228026116}).catch(()=>{});}else{window.open('https://vk.com/club228026116','_blank');}">
+    <span>🔵</span> <span data-i18n="opt_vk_community">Сообщество ВКонтакте</span>
+  </button>
   <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
   <button id="btn-opt-donate" class="audio-btn opt-btn" style="display: none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
   <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
@@ -2157,9 +2157,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     <button id="login-btn" data-i18n="login_btn">ВОЙТИ</button>
     <div id="auth-error" style="color: var(--term-danger); margin-top:12px; font-size: 14px; min-height: 18px;"></div>
     <div style="margin-top: 18px; padding-top: 12px; border-top: 1px dashed rgba(41, 182, 246, 0.3); text-align: center;">
-      <a href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer" style="color: #29b6f6; font-size: 12px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
-        <span>✈️</span> <span data-i18n="login_telegram_link">Telegram-канал игры: @samosbor_web</span>
-      </a>
+      <span style="color: #61b0ff; font-size: 12px; font-weight: bold; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" onclick="if(typeof vkBridge!=='undefined'&&vkBridge.send){vkBridge.send('VKWebAppJoinGroup',{group_id:228026116}).catch(()=>{});}else{window.open('https://vk.com/club228026116','_blank');}">
+    🔵 Официальное сообщество ВКонтакте
+  </span>
     </div>
   </div>
 </div>
@@ -2337,7 +2337,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
     </div>
     
     <div style="margin-bottom: 18px;">
-      <input id="radar-gate-pass-input" type="password" maxlength="6" placeholder="••••" style="width: 200px; padding: 10px 14px; font-family: 'Share Tech Mono', monospace; font-size: 24px; font-weight: bold; letter-spacing: 10px; text-align: center; background: rgba(0, 20, 8, 0.95); border: 2px solid #1fe044; color: #00ff66; outline: none; box-shadow: 0 0 15px rgba(31,224,68,0.3);" onkeydown="if(event.key==='Enter') submitRadarPassword();" />
+      <input id="radar-gate-pass-input" type="password" maxlength="6" value="2847" placeholder="2847" style="width: 200px; padding: 10px 14px; font-family: 'Share Tech Mono', monospace; font-size: 24px; font-weight: bold; letter-spacing: 10px; text-align: center; background: rgba(0, 20, 8, 0.95); border: 2px solid #1fe044; color: #00ff66; outline: none; box-shadow: 0 0 15px rgba(31,224,68,0.3);" onkeydown="if(event.key==='Enter') submitRadarPassword();" />
       <div id="radar-gate-pass-err" style="display: none; color: #ff3b30; font-size: 12px; font-weight: bold; margin-top: 8px; letter-spacing: 1px; text-shadow: 0 0 8px #ff3b30;">
         ДОСТУП ЗАПРЕЩЕН // НЕВЕРНЫЙ КОД
       </div>
@@ -2435,13 +2435,13 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <!-- Правая часть: Персонаж и пояс со снаряжением в Жилячейке -->
   <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; align-self: stretch; flex: 1; max-width: 520px; min-width: 280px; height: 100%; margin-bottom: 4px; margin-right: clamp(10px, 4vw, 50px); pointer-events: auto; position: relative;">
     <!-- Спрайт персонажа в полный рост перед гермодверью -->
-    <div id="hub-player-avatar" style="height: clamp(420px, 66vh, 720px); width: clamp(260px, 32vw, 480px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible; pointer-events: none;">
+    <div id="hub-player-avatar" style="height: clamp(330px, 49vh, 490px); width: clamp(230px, 28vw, 390px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible; pointer-events: none;">
       <!-- Тень под ногами на полу гермодвери -->
       <div style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: clamp(150px, 20vw, 250px); height: 16px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 74%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
-      <img id="hub-base-skin" style="position: absolute; bottom: -4%; left: 50%; transform: translateX(-50%); height: 112%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 1; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
-      <img id="hub-clothes" style="position: absolute; bottom: -4%; left: 50%; transform: translateX(-50%); height: 112%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 2; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
-      <img id="hub-mask" style="position: absolute; bottom: -4%; left: 50%; transform: translateX(-50%); height: 112%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 3; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
-      <img id="hub-weapon" style="position: absolute; bottom: -4%; left: 50%; transform: translateX(-50%); height: 112%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 4; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-base-skin" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 1; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-clothes" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 2; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-mask" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 3; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-weapon" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 4; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
     </div>
 
     <!-- Предметы на поясе ликвидатора -->
@@ -2574,9 +2574,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <button onclick="document.getElementById('info-modal').style.display='none'">[X]</button>
     </div>
     <button onclick="document.getElementById('info-modal').style.display='none'; startTutorial(true);" style="width: 100%; margin-bottom: 14px; padding: 8px 12px; font-weight: bold; border-color: var(--term-color); color: var(--term-color); background: rgba(0,35,10,0.7); cursor: pointer; letter-spacing: 1px;" data-i18n="btn_start_interactive_tut">🎓 ЗАПУСТИТЬ ИНТЕРАКТИВНОЕ ОБУЧЕНИЕ (ГАЙД ПО КНОПКАМ)</button>
-        <a href="https://t.me/samosbor_web" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; font-weight: bold; border: 1px solid #0288d1; color: #29b6f6; background: rgba(0,25,45,0.7); text-decoration: none; letter-spacing: 1px; font-size: 12px; border-radius: 3px;">
-      <span>✈️</span> <span data-i18n="info_telegram_banner">ОФИЦИАЛЬНЫЙ TELEGRAM КАНАЛ // @samosbor_web</span>
-    </a>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; font-weight: bold; border: 1px solid #2787f5; color: #61b0ff; background: rgba(0,25,60,0.7); letter-spacing: 1px; font-size: 12px; border-radius: 3px; cursor: pointer;" onclick="if(typeof vkBridge!=='undefined'&&vkBridge.send){vkBridge.send('VKWebAppJoinGroup',{group_id:228026116}).catch(()=>{});}else{window.open('https://vk.com/club228026116','_blank');}">
+    <span>🔵</span> <span data-i18n="info_vk_banner">ОФИЦИАЛЬНОЕ СООБЩЕСТВО VK // vk.com/club228026116</span>
+  </div>
     <div id="guide-content">
     <h3>= 1. ВВЕДЕНИЕ И ЦЕЛЬ =</h3>
     <p>Вы — один из двадцати трёх заключённых, приговорённых Партией Светлых к «искуплению через труд». Во время спуска вглубь шахты оборвался трос — клеть рухнула на самое дно. Вы выжили и укрылись в первой попавшейся жилячейке.</p>
@@ -3130,10 +3130,10 @@ let cachedGuideRu = null;
 const I18N = {
   ru: {
     btn_donate: "💙 ПОДДЕРЖАТЬ ПРОЕКТ",
-    btn_telegram: "ТЕЛЕГРАМ",
-    opt_telegram: "Канал в Telegram",
-    login_telegram_link: "Telegram-канал игры: @samosbor_web",
-    info_telegram_banner: "ОФИЦИАЛЬНЫЙ TELEGRAM КАНАЛ // @samosbor_web",
+    btn_telegram: "СООБЩЕСТВО VK",
+    opt_telegram: "Сообщество ВКонтакте",
+    login_telegram_link: "Официальное сообщество ВКонтакте",
+    info_telegram_banner: "ОФИЦИАЛЬНОЕ СООБЩЕСТВО VK // vk.com/club228026116",
     donate_title: "💎 ПОДДЕРЖКА ПРОЕКТА // ГОЛОСА VK",
     donate_desc_1: "Игра «САМОСБОР» создается и поддерживается силами разработчика. Если вам нравится атмосфера Гигахрущевки, вы можете поддержать развитие серверов и обновлений голосами ВКонтакте.",
     donate_desc_2: "⚡ В знак благодарности вы получите внутриигровые талоны снабжения:",
@@ -3369,10 +3369,10 @@ const I18N = {
   },
   en: {
     btn_donate: "💙 SUPPORT PROJECT",
-    btn_telegram: "TELEGRAM",
-    opt_telegram: "Telegram Channel",
-    login_telegram_link: "Official Telegram Channel: @samosbor_web",
-    info_telegram_banner: "OFFICIAL TELEGRAM CHANNEL // @samosbor_web",
+    btn_telegram: "VK COMMUNITY",
+    opt_telegram: "VK Community",
+    login_telegram_link: "Official VK Community",
+    info_telegram_banner: "OFFICIAL VK COMMUNITY // vk.com/club228026116",
     donate_title: "💎 SUPPORT PROJECT // VK VOTES",
     donate_desc_1: "SAMOSBOR is developed and maintained independently. If you enjoy the atmosphere of the Gigakhrushchyovka, you can support server hosting and new updates with VK Votes.",
     donate_desc_2: "⚡ As a token of gratitude, you will receive in-game supply talons:",
@@ -5088,9 +5088,13 @@ function renderTutorialStep(stepIdx) {
   if (btnNext) {
     const isLast = (stepIdx === steps.length - 1);
     const isEn = (currentLang === 'en');
-    btnNext.innerText = isLast ? (isEn ? "FINISH ✓" : "ЗАВЕРШИТЬ ✓") : (isEn ? "NEXT ▶" : "ДАЛЕЕ ▶");
-    btnNext.style.borderColor = isLast ? "var(--term-warn)" : "var(--term-color)";
-    btnNext.style.color = isLast ? "var(--term-warn)" : "var(--term-color)";
+    if (isLast) {
+      btnNext.innerText = isEn ? "FINISH TUTORIAL ✓" : "ЗАВЕРШИТЬ ОБУЧЕНИЕ ✓";
+      btnNext.style.cssText = "min-width: 150px; padding: 10px 22px; font-size: 13px; font-weight: 900; background: #ffaa00 !important; color: #000000 !important; border: 2px solid #ffffff !important; box-shadow: 0 0 20px rgba(255, 170, 0, 0.9) !important; border-radius: 4px; cursor: pointer; text-transform: uppercase;";
+    } else {
+      btnNext.innerText = isEn ? "NEXT ▶" : "ДАЛЕЕ ▶";
+      btnNext.style.cssText = "min-width: 105px; padding: 8px 18px; font-size: 12px; font-weight: bold; background: rgba(0, 255, 65, 0.28) !important; color: #00ff66 !important; border: 1px solid #00ff66 !important; border-radius: 3px; cursor: pointer;";
+    }
   }
   
   if (stepperEl) {
@@ -5297,22 +5301,14 @@ function renderOnboardingStep() {
         : '🏆 <b>Вы готовы к выживанию в Гигахруще!</b><br>• Выходите в 2D рейд по кнопке <b>[ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ]</b> за оружием и спасением бойцов.<br>• Доберитесь до сектора <b>E4</b> и почините грузовой лифт у Деда Макара.<br>• Торгуйте на <b>Барахолке</b> и общайтесь с 20 жителями блока.'}</div>
       <div style="margin-top:8px; display:flex; justify-content:flex-end; gap:8px;">
         <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:4px 12px; font-size:12px; cursor:pointer;">${isEn ? '📖 Open Full Guide' : '📖 Открыть Полный Гайд'}</button>
-        <button onclick="finishOnboarding()" style="background:var(--term-main); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:12px;">${isEn ? 'I AM READY, TO SURVIVAL! ✓' : 'Я ГОТОВ, В БОЙ! ✓'}</button>
+        <button onclick="finishOnboarding()" style="background:#ffaa00 !important; color:#000000 !important; border:2px solid #ffffff !important; font-weight:900 !important; padding:8px 22px !important; cursor:pointer !important; font-size:13px !important; box-shadow:0 0 18px rgba(255,170,0,0.9) !important; border-radius:4px; text-transform:uppercase;">${isEn ? 'COMPLETE TUTORIAL ✓' : 'ЗАВЕРШИТЬ ОБУЧЕНИЕ ✓'}</button>
       </div>
     `;
   }
 }
 
 function oldCheckAutoTutorial() {
-  if (!localStorage.getItem('samosbor_tutorial_completed')) {
-    setTimeout(() => {
-      let ls = document.getElementById('login-screen');
-      let ins = document.getElementById('intro-screen');
-      if ((!ls || !ls.classList.contains('active-screen')) && (!ins || !ins.classList.contains('active-screen'))) {
-        startTutorial(false);
-      }
-    }, 600);
-  }
+  // Replaced with interactive in-game sequential spotlight onboarding
 }
 
 document.addEventListener('keydown', (e) => {
@@ -6149,7 +6145,11 @@ function appendChatMessage(m, autoScroll = true) {
   let isSystem = (m.user === 'Диспетчер' || m.user === 'СИСТЕМА' || m.user === 'ШТАБ');
   let nameColor = isSystem ? '#ffcc00' : 'var(--term-warn)';
   
-  div.innerHTML = `<span style="color:#666; font-size:11px;">[${m.time || '12:00'}]</span> ${userBadge}${userTitle}<span style="color:${nameColor}; font-weight:bold; cursor:pointer;" onclick="mentionUser('${m.user}')">${m.user}:</span> <span style="color:#eee;">${m.text}</span>`;
+  const msgId = m.id || ('chat_' + (m.time || '0') + '_' + (m.user || ''));
+  div.id = 'chat-msg-' + msgId;
+  const isMine = (typeof clientMe !== 'undefined' && clientMe && clientMe.username === m.user);
+  const reportBtn = isMine ? '' : `<button class="chat-report-btn" title="Пожаловаться на сообщение" onclick="openChatReportModal('${encodeURIComponent(msgId)}', '${encodeURIComponent(m.user)}')" style="background:none; border:none; color:#777; font-size:11px; cursor:pointer; padding:0 3px; margin-left:5px; opacity:0.6; vertical-align:middle;" onmouseover="this.style.opacity='1';this.style.color='#ff4444';" onmouseout="this.style.opacity='0.6';this.style.color='#777';">⚠️</button>`;
+  div.innerHTML = `<span style="color:#666; font-size:11px;">[${m.time || '12:00'}]</span> ${userBadge}${userTitle}<span style="color:${nameColor}; font-weight:bold; cursor:pointer;" onclick="mentionUser('${m.user}')">${m.user}:</span> <span style="color:#eee;">${m.text}</span>${reportBtn}`;
   b.appendChild(div);
   if (autoScroll) b.scrollTop = b.scrollHeight;
 
@@ -10776,18 +10776,8 @@ function openRadarRoguelikeModal() {
 }
 
 function openRadarPasswordModal() {
-  const modal = document.getElementById('radar-gate-password-modal');
-  const input = document.getElementById('radar-gate-pass-input');
-  const err = document.getElementById('radar-gate-pass-err');
-  if (err) err.style.display = 'none';
-  if (input) {
-    input.value = '';
-    input.style.borderColor = '#1fe044';
-  }
-  if (modal) {
-    modal.style.display = 'flex';
-    setTimeout(() => { if (input) input.focus(); }, 100);
-  }
+  // Код 2847 больше не требуется - мгновенный доступ в рейд!
+  launchRadarRoguelike();
 }
 
 function cancelRadarPasswordModal() {
@@ -11269,6 +11259,76 @@ if (typeof socket !== 'undefined' && socket && socket.on) {
       isHost: (currentFPSLobby && currentFPSLobby.isHost)
     });
   });
+}
+</script>
+
+
+<!-- МОДАЛЬНОЕ ОКНО ЖАЛОБЫ НА СООБЩЕНИЕ В ЧАТЕ (ПРАВИЛА VK 2.5.2 & 2.5.3) -->
+<div id="chat-report-modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 8, 4, 0.88); z-index: 100080; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+  <div style="width: 380px; max-width: 92%; background: #07150c; border: 2px solid #ffaa00; box-shadow: 0 0 25px rgba(255, 170, 0, 0.4); padding: 20px; color: #eee; font-family: 'Share Tech Mono', monospace; border-radius: 4px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,170,0,0.4); padding-bottom: 8px; margin-bottom: 14px;">
+      <span style="color: #ffaa00; font-weight: bold; font-size: 14px; letter-spacing: 1px;">⚠️ ПОЖАЛОВАТЬСЯ НА СООБЩЕНИЕ</span>
+      <button onclick="closeChatReportModal()" style="background: none; border: none; color: #888; font-size: 14px; cursor: pointer;">[✕]</button>
+    </div>
+    <div style="font-size: 12px; color: #aaa; margin-bottom: 12px;">
+      Отправитель: <span id="report-target-user" style="color: #ffcc00; font-weight: bold;"></span>
+    </div>
+    <div style="font-size: 12px; margin-bottom: 6px; color: #88ff9e;">Выберите причину жалобы:</div>
+    <select id="report-reason-select" style="width: 100%; padding: 8px; background: #020c06; border: 1px solid #1fe044; color: #fff; font-family: inherit; font-size: 12px; margin-bottom: 16px; outline: none;">
+      <option value="spam">Спам / Реклама сторонних ресурсов</option>
+      <option value="insult">Оскорбления и токсичное поведение</option>
+      <option value="profanity">Ненормативная лексика / Мат</option>
+      <option value="rules">Нарушение правил площадки ВКонтакте</option>
+    </select>
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button onclick="closeChatReportModal()" style="padding: 6px 14px; background: transparent; border: 1px solid #666; color: #888; font-size: 12px; cursor: pointer;">ОТМЕНА</button>
+      <button onclick="submitChatReport()" style="padding: 6px 16px; background: #ffaa00; color: #000; border: none; font-weight: bold; font-size: 12px; cursor: pointer; border-radius: 2px;">ОТПРАВИТЬ ЖАЛОБУ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let activeReportMsgId = null;
+let activeReportUser = null;
+
+function openChatReportModal(msgId, user) {
+  activeReportMsgId = decodeURIComponent(msgId);
+  activeReportUser = decodeURIComponent(user);
+  const modal = document.getElementById('chat-report-modal');
+  const userEl = document.getElementById('report-target-user');
+  if (userEl) userEl.textContent = activeReportUser;
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeChatReportModal() {
+  const modal = document.getElementById('chat-report-modal');
+  if (modal) modal.style.display = 'none';
+  activeReportMsgId = null;
+  activeReportUser = null;
+}
+
+function submitChatReport() {
+  const reasonEl = document.getElementById('report-reason-select');
+  const reason = reasonEl ? reasonEl.value : 'spam';
+  if (activeReportMsgId && typeof socket !== 'undefined') {
+    socket.emit('reportChatMessage', {
+      msgId: activeReportMsgId,
+      user: activeReportUser,
+      reason: reason
+    });
+  }
+  // Visually mask the reported message locally
+  const msgEl = document.getElementById('chat-msg-' + activeReportMsgId);
+  if (msgEl) {
+    msgEl.style.opacity = '0.35';
+    msgEl.innerHTML = '<span style="color:#888; font-size:11px; font-style:italic;">[Сообщение скрыто по вашей жалобе]</span>';
+  }
+  closeChatReportModal();
+  if (typeof showSystemNotice === 'function') {
+    showSystemNotice('Жалоба отправлена модераторам. Спасибо за помощь!');
+  } else {
+    alert('Жалоба успешно отправлена модераторам. Сообщение скрыто.');
+  }
 }
 </script>
 

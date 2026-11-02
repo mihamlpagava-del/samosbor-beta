@@ -244,6 +244,7 @@ function initDatabase() {
         if (!Array.isArray(db.feedback)) db.feedback = [];
         if (!Array.isArray(db.fleaMarket)) db.fleaMarket = [];
         if (!Array.isArray(db.chatHistory)) db.chatHistory = [];
+        if (!Array.isArray(db.chatReports)) db.chatReports = [];
         if (db.chatHistory.length === 0) {
             db.chatHistory = [
                 { user: 'Диспетчер', text: 'Внимание всем блокам: радиоканал связи активен. Соблюдайте режим светомаскировки.', time: '12:00' },
@@ -311,6 +312,17 @@ let currentShopItems = [];
 let nextShopUpdate = 0;
 let chatHistory = (typeof db !== 'undefined' && db && Array.isArray(db.chatHistory)) ? db.chatHistory : [];
 const MAX_CHAT_MESSAGES = 100;
+
+// ============================================================================
+// CHAT MODERATION & PROFANITY CENSOR (VK RULES 2.5.2 & 2.5.3)
+// ============================================================================
+const PROFANITY_REGEX = /(?:ху[йияеё]|пизд|бля[дт]|сук[аио]|еб[аеёу]|ёб[аеёу]|залуп|гондон|шлюх|пидор|мудак|чмо|cock|bitch|fuck|whore|asshole)/gi;
+
+function censorProfanity(text) {
+    if (!text || typeof text !== 'string') return '';
+    return text.replace(PROFANITY_REGEX, (match) => '*'.repeat(match.length));
+}
+
 
 // ===== КОНФИГУРАЦИЯ ВОЛН СОВМЕСТНОЙ ВЫЛАЗКИ =====
 const RAID_WAVE_MONSTERS = [
@@ -3474,17 +3486,24 @@ io.on('connection', (socket) => {
     socket.on('sendChatMessage', (msg) => {
         let u = onlinePlayers[socket.id]; if (!u) return;
         let now = Date.now();
-        if (now - lastChatTime < 2000) { socket.emit('terminalError', 'СЕТЬ: Ожидайте 2 сек.'); return; }
+        if (now - lastChatTime < 1500) { socket.emit('terminalError', 'СЕТЬ: Ожидайте 1.5 сек.'); return; }
         lastChatTime = now;
-        let cleanMsg = String(msg || '').trim().substring(0, 100);
+        let cleanMsg = String(msg || '').trim().substring(0, 120);
         if (!cleanMsg) return;
+        
+        // Automated profanity pre-moderation
+        cleanMsg = censorProfanity(cleanMsg);
+        
         let p = db.players[u];
+        const msgId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
         let entry = {
+            id: msgId,
             user: u,
             level: p ? p.level : 1,
             title: p ? (p.title || 'Заключенный') : 'Заключенный',
             text: cleanMsg,
-            time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' })
+            time: new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' }),
+            reportCount: 0
         };
         if (!Array.isArray(db.chatHistory)) db.chatHistory = [];
         db.chatHistory.push(entry);
@@ -3492,6 +3511,40 @@ io.on('connection', (socket) => {
         chatHistory = db.chatHistory;
         saveDB();
         io.emit('chatMessage', entry);
+    });
+
+    // User message reporting (VK Mini Apps Rules 2.5.2 & 2.5.3)
+    socket.on('reportChatMessage', (data) => {
+        if (!data || !data.msgId) return;
+        let u = onlinePlayers[socket.id] || 'Аноним';
+        let reportEntry = {
+            id: 'rep_' + Date.now(),
+            reportedBy: u,
+            msgId: String(data.msgId),
+            targetUser: String(data.user || ''),
+            reason: String(data.reason || 'spam'),
+            createdAt: new Date().toISOString()
+        };
+
+        if (!Array.isArray(db.chatReports)) db.chatReports = [];
+        db.chatReports.push(reportEntry);
+        writeLog(`[ЖАЛОБА НА ЧАТ] Игрок ${u} пожаловался на ${data.user || data.msgId} [Причина: ${data.reason}]`);
+
+        // Find message and increment report count
+        if (Array.isArray(db.chatHistory)) {
+            const targetMsg = db.chatHistory.find(m => m.id === data.msgId || (m.time && m.user && ('chat_' + m.time + '_' + m.user) === data.msgId));
+            if (targetMsg) {
+                targetMsg.reportCount = (targetMsg.reportCount || 0) + 1;
+                // If 2 or more reports, automatically remove message from active history
+                if (targetMsg.reportCount >= 2) {
+                    db.chatHistory = db.chatHistory.filter(m => m !== targetMsg);
+                    chatHistory = db.chatHistory;
+                    io.emit('chatMessageRemoved', { msgId: data.msgId });
+                    writeLog(`[МОДЕРАЦИЯ ЧАТА] Сообщение ${data.msgId} удалено по жалобам игроков.`);
+                }
+            }
+        }
+        saveDB();
     });
 
     // ===== СОВМЕСТНАЯ ВЫЛАЗКА: ОБРАБОТЧИКИ ОТРЯДА И РЕЙДА =====

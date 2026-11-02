@@ -390,6 +390,7 @@
       this.collapseProgress = 0;
 
       this.crates = this.mapData.lootCrates || [];
+      this.barrels = (this.mapData.explosiveBarrels || []).map(b => Object.assign({}, b, { exploded: false }));
       this.weaponDrops = this.mapData.weaponDrops || [];
       this.doors = this.mapData.doors || [];
       this.elevator = this.mapData.elevator || { x: 500, y: 500, w: 64, h: 64 };
@@ -1502,6 +1503,21 @@
           this.pickupWeapon(drop);
         }
       }
+      
+      // Explosive Chemical Barrels
+      for (const barrel of (this.barrels || [])) {
+        if (!barrel.exploded) {
+          visibleSprites.push({
+            x: barrel.x,
+            y: barrel.y,
+            type: 'barrel',
+            key: 'barrel_explosive',
+            color: '#ffaa00',
+            name: '⚠️ ХИМ-БОЧКА'
+          });
+        }
+      }
+
       for (const crate of this.crates) {
         if (!crate.opened && Math.hypot(this.player.x - crate.x, this.player.y - crate.y) < 22) {
           this.openCrate(crate);
@@ -2999,6 +3015,16 @@
           }
         }
 
+        
+        // 3b. Draw Hazardous Explosive Barrels
+        for (const barrel of (this.barrels || [])) {
+          if (!barrel.exploded && this.isCellExplored(barrel.tileX, barrel.tileY)) {
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawExplosiveBarrel) {
+              SpriteFactory.drawExplosiveBarrel(worldCtx, barrel, this.tileSize, this.tick, 1.0);
+            }
+          }
+        }
+
         // 3. Draw Loot Crates
         for (const crate of this.crates) {
           if (this.isCellExplored(crate.tileX, crate.tileY)) {
@@ -3171,7 +3197,7 @@
       const pAngle = this.player.angle + ((this.recoilX || 0) * 0.004);
       const fov = 1.15; // ~66 degrees field of view
       const halfFov = fov / 2;
-      const halfH = Math.floor(h / 2 - (this.recoilY || 0));
+      const halfH = Math.floor(h / 2 - (this.recoilY || 0) + (this.horizonOffset || 0));
 
       ctx.save();
       // Apply Camera Roll on strafing
@@ -3389,6 +3415,20 @@
         const maxShadeDist = 18;
         let shade = Math.max(0.04, Math.min(1.0, 1.0 - perpDist / maxShadeDist));
         if (side === 1) shade *= 0.76;
+
+        
+        // Wall Bullet Impact Decal overlay
+        if (this.wallDecals && this.wallDecals.length > 0) {
+          for (let wdi = 0; wdi < this.wallDecals.length; wdi++) {
+            const wd = this.wallDecals[wdi];
+            if (wd.tileX === mapX && wd.tileY === mapY) {
+              const dY = halfH;
+              const dH = Math.max(3, Math.floor(lineH * 0.08));
+              ctx.fillStyle = '#080c09';
+              ctx.fillRect(screenX, dY, colStep, dH);
+            }
+          }
+        }
 
         // Dynamic Map Lights accumulation (Emergency Red, Warm Amber & Sparking Panels)
         const hitWorldX = px + cos * (perpDist * TS);
@@ -3894,8 +3934,10 @@
 
       const weapon = this.player.weapon || this.player.baseWeapon;
       const wId = (weapon && (weapon.id || weapon.type || weapon.gunType || weapon.name || '')).toLowerCase();
-      const isShotgun = wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga');
-      const isMelee = !weapon.isRanged && !isShotgun && !wId.includes('rifle') && !wId.includes('pistol') && !wId.includes('gun');
+      const isShotgun = wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga') || wId.includes('дробовик') || wId.includes('кс-23') || wId.includes('обрез');
+      const isRifle = wId.includes('rifle') || wId.includes('ak') || wId.includes('flame') || wId.includes('auto') || wId.includes('автомат') || wId.includes('ак-74') || wId.includes('огнемет');
+      const isPistol = wId.includes('pistol') || wId.includes('makarov') || wId.includes('gun') || wId.includes('пистолет') || wId.includes('пм');
+      const isMelee = !weapon.isRanged && !isShotgun && !isRifle && !isPistol;
 
       ctx.save();
 

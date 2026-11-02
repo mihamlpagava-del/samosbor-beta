@@ -398,6 +398,62 @@
     /**
      * Render Loot Supply Crate
      */
+    
+    /**
+     * Render Hazardous Explosive Chemical Barrel (Yellow/Rust Industrial Trefoil)
+     */
+    drawExplosiveBarrel(ctx, barrel, TS, tick = 0, alpha = 1.0) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const bx = barrel.x;
+      const by = barrel.y;
+      const r = barrel.radius || 13;
+
+      // Base cylinder shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.arc(bx, by + 2, r + 1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Industrial Rusted Yellow Barrel Body
+      ctx.fillStyle = '#b8860b'; // Dark goldenrod / rust yellow
+      ctx.beginPath();
+      ctx.arc(bx, by, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Top steel chime ring
+      ctx.strokeStyle = '#2b2210';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Inner lid
+      ctx.fillStyle = '#3a2d14';
+      ctx.beginPath();
+      ctx.arc(bx, by, r * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Biohazard / Radiation Trefoil Icon (Red/Black warning symbol)
+      const pulse = 0.8 + Math.sin(tick * 0.1) * 0.2;
+      ctx.fillStyle = `rgba(220, 20, 20, ${pulse.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(bx, by, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Danger Warning Hash Pattern
+      ctx.strokeStyle = '#ff3300';
+      ctx.lineWidth = 1.5;
+      for (let a = 0; a < 3; a++) {
+        const ang = (a * (Math.PI * 2 / 3)) + tick * 0.02;
+        ctx.beginPath();
+        ctx.moveTo(bx + Math.cos(ang) * (r * 0.25), by + Math.sin(ang) * (r * 0.25));
+        ctx.lineTo(bx + Math.cos(ang) * (r * 0.8), by + Math.sin(ang) * (r * 0.8));
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    },
+
     drawLootCrate(ctx, crate, TS, tick, alpha = 1.0) {
       if (!ctx || !crate || crate.opened) return;
 

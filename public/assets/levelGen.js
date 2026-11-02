@@ -219,8 +219,10 @@
 
       // 9. Loot Caches (4 to 6 random caches in non-safe rooms)
       const lootCrates = [];
+      const explosiveBarrels = [];
       const weaponDrops = [];
       this.populateLoot(rooms, startRoom, furthestRoom, lootCrates, weaponDrops, TS);
+      this.populateExplosiveBarrels(rooms, startRoom, furthestRoom, explosiveBarrels, TS);
 
       // 10. Wall Lanterns ("Фонари") for warm volumetric illumination
       const lamps = this.placeLanterns(grid, rooms, TS);
@@ -482,6 +484,34 @@
         }
       }
       return furthest;
+    },
+
+    /**
+     * Populate rooms with hazardous explosive chemical barrels
+     */
+    populateExplosiveBarrels(rooms, startRoom, furthestRoom, explosiveBarrels, TS) {
+      const eligibleRooms = rooms.filter(r => r.id !== startRoom.id);
+      for (const room of eligibleRooms) {
+        if (this.random() < 0.65) {
+          const numBarrels = 1 + Math.floor(this.random() * 2);
+          for (let b = 0; b < numBarrels; b++) {
+            const bx = room.x + 1 + Math.floor(this.random() * Math.max(1, room.w - 2));
+            const by = room.y + 1 + Math.floor(this.random() * Math.max(1, room.h - 2));
+            explosiveBarrels.push({
+              id: 'barrel_' + this.random().toString(36).substr(2, 7),
+              x: bx * TS + TS / 2,
+              y: by * TS + TS / 2,
+              tileX: bx,
+              tileY: by,
+              radius: 13,
+              hp: 20,
+              maxHp: 20,
+              exploded: false,
+              type: 'barrel_explosive'
+            });
+          }
+        }
+      }
     },
 
     /**
