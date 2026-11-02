@@ -101,6 +101,8 @@
       this.currentRoomName = 'Жилая ячейка №556';
       this.lastAttackTime = 0;
       this.touchMoveVector = { x: 0, y: 0, active: false };
+      this.touchTurnDirection = 0;
+      this.isHUDHidden = false;
       this.isTouchControlsActive = false;
 
       // CRT Collapse Animation
@@ -259,6 +261,26 @@
         this.switchBeltSlot(1);
       } else {
         this.switchBeltSlot(target);
+      }
+    }
+
+    toggleHUDVisibility() {
+      this.isHUDHidden = !this.isHUDHidden;
+      this.spawnFloatingNotice(
+        this.isHUDHidden ? '👁️ ИНТЕРФЕЙС: СКРЫТ [I]' : '👁️ ИНТЕРФЕЙС: ВКЛ [I]',
+        this.isHUDHidden ? '#ffcc00' : '#00ffaa'
+      );
+      const raidBtn = document.getElementById('btn-toggle-gamepad-raid');
+      const audioToggles = document.querySelector('.raid-audio-toggles');
+      const abortBtn = document.getElementById('btn-radar-abort');
+      const touchOverlay = document.getElementById('radar-touch-overlay');
+      const displayVal = this.isHUDHidden ? 'none' : '';
+      if (raidBtn) raidBtn.style.display = displayVal;
+      if (audioToggles) audioToggles.style.display = displayVal;
+      if (abortBtn) abortBtn.style.display = displayVal;
+      if (touchOverlay) {
+        if (this.isHUDHidden) touchOverlay.style.display = 'none';
+        else if (this.isTouchControlsActive) touchOverlay.style.display = 'block';
       }
     }
 
@@ -1551,7 +1573,13 @@
         }
       }
 
-      if (moveX !== 0 && moveY !== 0) {
+              // Continuous touch turn rotation (supports both FPS 3D and TDS 2D)
+        if (this.touchTurnDirection) {
+          const turnRate = (this.cameraMode === 'FPS') ? 0.052 : 0.065;
+          this.player.angle += this.touchTurnDirection * turnRate;
+        }
+
+        if (moveX !== 0 && moveY !== 0) {
         moveX *= 0.7071;
         moveY *= 0.7071;
       }
@@ -4639,6 +4667,18 @@
         ctx.fillRect(0, 0, w, h);
       }
 
+      // If HUD is hidden via [I] (Cinematic immersion mode)
+      if (this.isHUDHidden) {
+        if (this.cameraMode === 'FPS') {
+          ctx.fillStyle = 'rgba(0, 255, 170, 0.45)';
+          ctx.beginPath();
+          ctx.arc(cx, cy + (this.horizonOffset || 0), 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        return;
+      }
+
       
       // 1. Top-Left Status Panel (РАДАР-ДЕТЕКТОР РУ-4) - Fixed 280px width, no overlap
       const tlX = 16;
@@ -4647,50 +4687,54 @@
       const tlH = 86;
 
       // Vertical Tactical Controls Sidebar along Right Edge (Positioned under [ESC] button)
-      const sbW = 168;
-      const sbX = w - sbW - 16;
-      const sbY = 54;
-      const sbH = 204;
+      // Automatically hidden when mobile touch controls are active so it doesn't obstruct screen
+      if (!this.isTouchControlsActive && w > 580) {
+        const sbW = 168;
+        const sbX = w - sbW - 16;
+        const sbY = 54;
+        const sbH = 224;
 
-      ctx.fillStyle = 'rgba(2, 14, 5, 0.92)';
-      ctx.fillRect(sbX, sbY, sbW, sbH);
-      ctx.strokeStyle = '#1fe044';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(sbX, sbY, sbW, sbH);
+        ctx.fillStyle = 'rgba(2, 14, 5, 0.92)';
+        ctx.fillRect(sbX, sbY, sbW, sbH);
+        ctx.strokeStyle = '#1fe044';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sbX, sbY, sbW, sbH);
 
-      // Header Tab
-      ctx.fillStyle = 'rgba(31, 224, 68, 0.16)';
-      ctx.fillRect(sbX + 1, sbY + 1, sbW - 2, 20);
-      ctx.font = 'bold 10px "Share Tech Mono", monospace';
-      ctx.fillStyle = '#1fe044';
-      ctx.textAlign = 'center';
-      ctx.fillText('УПРАВЛЕНИЕ РЕЙДОМ', sbX + sbW / 2, sbY + 14);
-
-      // Control key mappings list
-      const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] TDS 2D' : '📷 [G] FPS 3D';
-      const hints = [
-        { key: camLabel, desc: '' },
-        { key: '[WASD]', desc: 'Движение' },
-        { key: '[F]', desc: 'Пинок ногой' },
-        { key: '[R]', desc: 'Перезарядка' },
-        { key: '[1] / [2]', desc: 'Оружие' },
-        { key: '[Q]', desc: 'Аптечка' },
-        { key: '[3]', desc: 'Музыка' },
-        { key: '[4]', desc: 'Звуки' }
-      ];
-
-      let rowY = sbY + 36;
-      ctx.textAlign = 'left';
-      for (const hint of hints) {
+        // Header Tab
+        ctx.fillStyle = 'rgba(31, 224, 68, 0.16)';
+        ctx.fillRect(sbX + 1, sbY + 1, sbW - 2, 20);
         ctx.font = 'bold 10px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#00ffaa';
-        ctx.fillText(hint.key, sbX + 10, rowY);
-        if (hint.desc) {
-          ctx.font = '10px monospace';
-          ctx.fillStyle = '#a4ffd9';
-          ctx.fillText(hint.desc, sbX + 82, rowY);
+        ctx.fillStyle = '#1fe044';
+        ctx.textAlign = 'center';
+        ctx.fillText('УПРАВЛЕНИЕ РЕЙДОМ', sbX + sbW / 2, sbY + 14);
+
+        // Control key mappings list
+        const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] TDS 2D' : '📷 [G] FPS 3D';
+        const hints = [
+          { key: camLabel, desc: '' },
+          { key: '[WASD]', desc: 'Движение' },
+          { key: '[F]', desc: 'Пинок ногой' },
+          { key: '[R]', desc: 'Перезарядка' },
+          { key: '[1] / [2]', desc: 'Оружие' },
+          { key: '[Q]', desc: 'Аптечка' },
+          { key: '[I]', desc: 'Скрыть UI' },
+          { key: '[3]', desc: 'Музыка' },
+          { key: '[4]', desc: 'Звуки' }
+        ];
+
+        let rowY = sbY + 36;
+        ctx.textAlign = 'left';
+        for (const hint of hints) {
+          ctx.font = 'bold 10px "Share Tech Mono", monospace';
+          ctx.fillStyle = '#00ffaa';
+          ctx.fillText(hint.key, sbX + 10, rowY);
+          if (hint.desc) {
+            ctx.font = '10px monospace';
+            ctx.fillStyle = '#a4ffd9';
+            ctx.fillText(hint.desc, sbX + 82, rowY);
+          }
+          rowY += 20;
         }
-        rowY += 20;
       }
 
       ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';

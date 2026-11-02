@@ -595,6 +595,25 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
   pointer-events: none;
 }
 
+.touch-actions-turn-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.touch-btn-turn {
+  width: 56px;
+  height: 56px;
+  background: radial-gradient(circle, rgba(0, 180, 255, 0.35) 0%, rgba(0, 45, 75, 0.9) 100%);
+  border-color: #00d4ff;
+  color: #c4f4ff;
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.6);
+}
+.touch-btn-turn .touch-icon { font-size: 22px; }
+.touch-btn-turn .touch-label { font-size: 8px; margin-top: 1px; color: #a4ffd9; font-weight: bold; }
+
 .touch-actions-top-row {
   display: flex;
   gap: 10px;
@@ -712,6 +731,10 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
   .touch-joystick-base { width: 112px; height: 112px; }
   .touch-joystick-knob { width: 48px; height: 48px; }
   .touch-actions-cluster { bottom: 8px; right: 8px; gap: 8px; }
+  .touch-actions-turn-row { gap: 8px; }
+  .touch-btn-turn { width: 46px; height: 46px; }
+  .touch-btn-turn .touch-icon { font-size: 18px; }
+  .touch-btn-turn .touch-label { font-size: 7px; }
   .touch-actions-top-row { gap: 6px; }
   .touch-btn-fire { width: 68px; height: 68px; }
   .touch-btn-interact { width: 56px; height: 56px; }
@@ -3047,6 +3070,18 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         <button id="btn-touch-weapon" class="touch-btn touch-btn-weapon" title="Сменить оружие [1/2]">
           <span class="touch-icon">🔄</span>
           <span class="touch-label">ОРУЖИЕ</span>
+        </button>
+      </div>
+
+      <!-- Кнопки поворота влево и вправо -->
+      <div class="touch-actions-turn-row">
+        <button id="btn-touch-turn-left" class="touch-btn touch-btn-turn" title="Поворот влево">
+          <span class="touch-icon">⟲</span>
+          <span class="touch-label">ВЛЕВО</span>
+        </button>
+        <button id="btn-touch-turn-right" class="touch-btn touch-btn-turn" title="Поворот вправо">
+          <span class="touch-icon">⟳</span>
+          <span class="touch-label">ВПРАВО</span>
         </button>
       </div>
 
@@ -12298,6 +12333,36 @@ function setupTouchOverlayEvents() {
   zoneEl.addEventListener('touchcancel', resetJoystick, { passive: false });
 
   // Right Side Touch Buttons
+  const btnTurnLeft = document.getElementById('btn-touch-turn-left');
+  const btnTurnRight = document.getElementById('btn-touch-turn-right');
+
+  function bindTurnButton(btn, dir) {
+    if (!btn) return;
+    const startTurn = (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame) radarRoguelikeGame.touchTurnDirection = dir;
+    };
+    const stopTurn = (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame && radarRoguelikeGame.touchTurnDirection === dir) {
+        radarRoguelikeGame.touchTurnDirection = 0;
+      }
+    };
+    btn.addEventListener('touchstart', startTurn, { passive: false });
+    btn.addEventListener('touchend', stopTurn, { passive: false });
+    btn.addEventListener('touchcancel', stopTurn, { passive: false });
+    btn.addEventListener('mousedown', startTurn);
+    btn.addEventListener('mouseup', stopTurn);
+    btn.addEventListener('mouseleave', (e) => {
+      if (radarRoguelikeGame && radarRoguelikeGame.touchTurnDirection === dir) {
+        radarRoguelikeGame.touchTurnDirection = 0;
+      }
+    });
+  }
+
+  bindTurnButton(btnTurnLeft, -1);
+  bindTurnButton(btnTurnRight, 1);
+
   const btnFire = document.getElementById('btn-touch-fire');
   const btnInteract = document.getElementById('btn-touch-interact');
   const btnMedkit = document.getElementById('btn-touch-medkit');
