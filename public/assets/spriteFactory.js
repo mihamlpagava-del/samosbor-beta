@@ -570,57 +570,147 @@
      */
 
     /**
-     * Render Authentic Living Cell Props (Bunk bed, Desk, Chair, Posters)
+     * Render Authentic Soviet Environmental Props & Clutter
+     * (Office Desk, Soviet Chair, Industrial Fridge ZIL, Wooden Crate, Floor Fan, Bunk)
      */
     drawProp(ctx, prop, TS, tick, alpha = 1.0) {
       if (!ctx || !prop) return;
       const x = prop.x;
       const y = prop.y;
-      const type = prop.type || 'desk';
+      const type = prop.type || 'office_desk';
 
       ctx.save();
       ctx.globalAlpha = Math.max(0.2, Math.min(1.0, alpha));
 
-      if (type === 'bunk') {
-        // Two-Tier Soviet Metal Bunk Bed
-        ctx.fillStyle = '#1e2420'; // Frame
+      // Soft ground contact shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + 2, (prop.radius || 12) * 1.1, (prop.radius || 12) * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (type === 'office_desk' || type === 'desk') {
+        // 1. Shabby Retro Office Desk with Papers & Terminal/Lamp
+        ctx.fillStyle = '#2a221b';
         ctx.fillRect(x - 14, y - 10, 28, 20);
-        ctx.fillStyle = '#2d3b31'; // Olive mattress & blanket
+        ctx.strokeStyle = '#3e342b';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x - 14, y - 10, 28, 20);
+
+        ctx.fillStyle = '#dcd3be';
+        ctx.fillRect(x - 10, y - 7, 8, 6);
+        ctx.fillStyle = '#9b3024';
+        ctx.fillRect(x + 2, y - 6, 7, 9);
+        ctx.fillStyle = '#ece4d0';
+        ctx.fillRect(x - 4, y + 1, 8, 5);
+
+        ctx.fillStyle = '#111813';
+        ctx.fillRect(x - 11, y + 1, 5, 5);
+        ctx.fillStyle = '#1fe044';
+        ctx.fillRect(x - 10, y + 2, 3, 3);
+      } else if (type === 'chair') {
+        // 2. Soviet Metal-frame Chair with Leatherette Seat
+        ctx.fillStyle = '#4a2414';
+        ctx.beginPath();
+        ctx.arc(x, y, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2b150a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.strokeStyle = '#737f77';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y - 3, 8, Math.PI * 0.8, Math.PI * 2.2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#556059';
+        ctx.fillRect(x - 7, y - 7, 2.5, 2.5);
+        ctx.fillRect(x + 5, y - 7, 2.5, 2.5);
+        ctx.fillRect(x - 7, y + 5, 2.5, 2.5);
+        ctx.fillRect(x + 5, y + 5, 2.5, 2.5);
+      } else if (type === 'fridge') {
+        // 3. Heavy Industrial Soviet Refrigerator "ЗИЛ" / Freezer
+        ctx.fillStyle = '#3a4740';
+        ctx.fillRect(x - 12, y - 13, 24, 26);
+        ctx.strokeStyle = '#1e2622';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 12, y - 13, 24, 26);
+
+        ctx.strokeStyle = '#25302a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 11, y - 3);
+        ctx.lineTo(x + 11, y - 3);
+        ctx.stroke();
+
+        ctx.fillStyle = '#a8b5ae';
+        ctx.fillRect(x + 7, y - 1, 3, 7);
+
+        ctx.fillStyle = 'rgba(140, 60, 20, 0.7)';
+        ctx.fillRect(x - 9, y + 6, 4, 3);
+        ctx.fillRect(x + 2, y - 10, 5, 2);
+      } else if (type === 'crate') {
+        // 4. Wooden / Metal Military Supply Crate
+        ctx.fillStyle = '#4a3b2c';
+        ctx.fillRect(x - 11, y - 11, 22, 22);
+        ctx.strokeStyle = '#282017';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x - 11, y - 11, 22, 22);
+
+        ctx.strokeStyle = '#63513e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 10, y - 10);
+        ctx.lineTo(x + 10, y + 10);
+        ctx.moveTo(x + 10, y - 10);
+        ctx.lineTo(x - 10, y + 10);
+        ctx.stroke();
+
+        ctx.fillStyle = '#8a2018';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', x, y);
+      } else if (type === 'vent_fan') {
+        // 5. Heavy Industrial Floor Fan / Blower
+        ctx.fillStyle = '#1c2420';
+        ctx.fillRect(x - 6, y - 6, 12, 12);
+
+        ctx.strokeStyle = '#4e6156';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const fanAng = (tick * 0.22) % (Math.PI * 2);
+        ctx.strokeStyle = '#8fa397';
+        ctx.lineWidth = 2.5;
+        for (let b = 0; b < 3; b++) {
+          const bAng = fanAng + (b * Math.PI * 2 / 3);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + Math.cos(bAng) * 8.5, y + Math.sin(bAng) * 8.5);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#1fe044';
+        ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+      } else if (type === 'bunk') {
+        // 6. Two-Tier Soviet Metal Bunk Bed
+        ctx.fillStyle = '#1e2420';
+        ctx.fillRect(x - 14, y - 10, 28, 20);
+        ctx.fillStyle = '#2d3b31';
         ctx.fillRect(x - 12, y - 8, 24, 16);
-        ctx.fillStyle = '#c5d1c8'; // Pillow
+        ctx.fillStyle = '#c5d1c8';
         ctx.fillRect(x - 11, y - 7, 7, 14);
-        // Metal bed posts
         ctx.fillStyle = '#4c5c50';
         ctx.fillRect(x - 14, y - 10, 3, 20);
         ctx.fillRect(x + 11, y - 10, 3, 20);
-      } else if (type === 'desk') {
-        // Soviet Metal Desk with Green CRT Terminal
-        ctx.fillStyle = '#262f29'; // Desk surface
-        ctx.fillRect(x - 13, y - 9, 26, 18);
-        ctx.strokeStyle = '#3d4d42';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(x - 13, y - 9, 26, 18);
-        // Green Phosphor CRT Monitor
-        ctx.fillStyle = '#151c17';
-        ctx.fillRect(x - 7, y - 6, 14, 11);
-        ctx.fillStyle = '#1fe044';
-        ctx.shadowColor = '#1fe044';
-        ctx.shadowBlur = 6;
-        ctx.fillRect(x - 5, y - 4, 10, 7);
-        ctx.shadowBlur = 0;
-      } else if (type === 'chair') {
-        // Swivel Chair with Brown Cushion
-        ctx.fillStyle = '#3a2010';
-        ctx.beginPath();
-        ctx.arc(x, y, 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#18201a';
-        ctx.lineWidth = 2;
-        ctx.stroke();
       } else {
-        // Generic Bunker Container
         ctx.fillStyle = '#2b362f';
         ctx.fillRect(x - 9, y - 9, 18, 18);
+        ctx.strokeStyle = '#415247';
+        ctx.strokeRect(x - 9, y - 9, 18, 18);
       }
 
       ctx.restore();

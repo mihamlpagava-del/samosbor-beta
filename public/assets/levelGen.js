@@ -215,10 +215,10 @@
         }
       }
 
-      // 8. Dynamic Bestiary Scaling via Progression
+      // 8. Dynamic Bestiary Scaling via Progression (Distant Room Spawning)
       let mutants = [];
       if (typeof Progression !== 'undefined' && Progression.generateEnemiesForLevel) {
-        mutants = Progression.generateEnemiesForLevel(playerLevel, rooms, TS);
+        mutants = Progression.generateEnemiesForLevel(playerLevel, rooms, TS, startRoom);
       }
 
       // 9. Loot Caches (4 to 6 random caches in non-safe rooms)
@@ -790,46 +790,105 @@
     },
 
     /**
-     * Populate authentic living cell furniture & bunker props
+     * Populate authentic retro office furniture, Soviet props & environmental clutter
      */
     populateProps(rooms, grid, props, TS) {
-      for (const room of rooms) {
-        // Living Cells and Safe Rooms get bunks, desks and chairs
-        if (room.type === 'living' || room.type === 'safe' || room.type === 'archive') {
-          if (room.h >= 5 && room.w >= 5) {
-            // Two-tier bunk bed along wall
-            props.push({
-              id: 'prop_bunk_' + room.id,
-              type: 'bunk',
-              x: (room.x + 1) * TS + TS / 2,
-              y: (room.y + 1) * TS + TS / 2,
-              tileX: room.x + 1,
-              tileY: room.y + 1,
-              name: 'Двухъярусная койка ликвидаторов'
-            });
+      const clutterDefs = [
+        { type: 'office_desk', name: 'Обшарпанный стол с бумагами', radius: 14, isPassable: false },
+        { type: 'chair', name: 'Советский стул', radius: 8, isPassable: false },
+        { type: 'fridge', name: 'Ржавый холодильник "ЗИЛ"', radius: 14, isPassable: false },
+        { type: 'crate', name: 'Деревянный ящик снабжения', radius: 12, isPassable: false },
+        { type: 'vent_fan', name: 'Напольный вентилятор', radius: 10, isPassable: false },
+        { type: 'bunk', name: 'Двухъярусная койка ликвидаторов', radius: 15, isPassable: false }
+      ];
 
-            // Metal desk with terminal
-            props.push({
-              id: 'prop_desk_' + room.id,
-              type: 'desk',
-              x: (room.x + room.w - 2) * TS + TS / 2,
-              y: (room.y + 1) * TS + TS / 2,
-              tileX: room.x + room.w - 2,
-              tileY: room.y + 1,
-              name: 'Стол с радиотерминалом'
-            });
+      for (let rIdx = 0; rIdx < rooms.length; rIdx++) {
+        const room = rooms[rIdx];
 
-            // Swivel chair
-            props.push({
-              id: 'prop_chair_' + room.id,
-              type: 'chair',
-              x: (room.x + room.w - 2) * TS + TS / 2,
-              y: (room.y + 2) * TS + TS / 2,
-              tileX: room.x + room.w - 2,
-              tileY: room.y + 2,
-              name: 'Стул'
-            });
+        // Safe Start Room: Bunk bed, terminal desk and chair
+        if (rIdx === 0) {
+          props.push({
+            id: 'prop_bunk_start',
+            type: 'bunk',
+            x: (room.x + 1) * TS + TS / 2,
+            y: (room.y + 1) * TS + TS / 2,
+            tileX: room.x + 1,
+            tileY: room.y + 1,
+            radius: 15,
+            name: 'Двухъярусная койка ликвидаторов'
+          });
+          props.push({
+            id: 'prop_desk_start',
+            type: 'office_desk',
+            x: (room.x + room.w - 2) * TS + TS / 2,
+            y: (room.y + 1) * TS + TS / 2,
+            tileX: room.x + room.w - 2,
+            tileY: room.y + 1,
+            radius: 14,
+            name: 'Стол с радиотерминалом'
+          });
+          props.push({
+            id: 'prop_chair_start',
+            type: 'chair',
+            x: (room.x + room.w - 2) * TS + TS / 2,
+            y: (room.y + 2) * TS + TS / 2,
+            tileX: room.x + room.w - 2,
+            tileY: room.y + 2,
+            radius: 8,
+            name: 'Стул'
+          });
+          continue;
+        }
+
+        // Room Clutter: 2 to 4 obstacles along room perimeters (not blocking doorways)
+        const numClutter = 2 + Math.floor(this.random() * 3);
+        const perimCells = [];
+
+        for (let ry = room.y + 1; ry < room.y + room.h - 1; ry++) {
+          for (let rx = room.x + 1; rx < room.x + room.w - 1; rx++) {
+            const isPerim = (rx === room.x + 1 || rx === room.x + room.w - 2 || ry === room.y + 1 || ry === room.y + room.h - 2);
+            if (isPerim && grid[ry] && grid[ry][rx] === this.TILE_FLOOR) {
+              // Avoid directly in front of doors
+              let nearDoor = false;
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  if (grid[ry + dy] && (grid[ry + dy][rx + dx] === this.TILE_DOOR_CLOSED || grid[ry + dy][rx + dx] === this.TILE_DOOR_OPEN)) {
+                    nearDoor = true;
+                  }
+                }
+              }
+              if (!nearDoor) {
+                perimCells.push({ x: rx, y: ry });
+              }
+            }
           }
+        }
+
+        const shuffled = perimCells.sort(() => this.random() - 0.5);
+        const toSpawn = Math.min(numClutter, shuffled.length);
+
+        for (let c = 0; c < toSpawn; c++) {
+          const cell = shuffled[c];
+          let cDef = clutterDefs[Math.floor(this.random() * clutterDefs.length)];
+          if (room.type === 'archive') {
+            cDef = this.random() < 0.6 ? clutterDefs[0] : clutterDefs[1]; // desks & chairs
+          } else if (room.type === 'warehouse' || room.type === 'armory') {
+            cDef = this.random() < 0.7 ? clutterDefs[3] : clutterDefs[4]; // crates & fans
+          } else if (room.type === 'boiler' || room.type === 'pump') {
+            cDef = this.random() < 0.5 ? clutterDefs[2] : clutterDefs[4]; // fridges & fans
+          }
+
+          props.push({
+            id: 'prop_' + room.id + '_' + c,
+            type: cDef.type,
+            name: cDef.name,
+            x: cell.x * TS + TS / 2,
+            y: cell.y * TS + TS / 2,
+            tileX: cell.x,
+            tileY: cell.y,
+            radius: cDef.radius,
+            isPassable: cDef.isPassable
+          });
         }
       }
     },

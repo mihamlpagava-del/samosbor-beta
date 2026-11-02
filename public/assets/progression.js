@@ -172,14 +172,21 @@
      * @param {Array} roomList Available rooms
      * @param {number} tileSize Grid tile size (32px)
      */
-    generateEnemiesForLevel(playerLevel, roomList, tileSize = 32) {
+    generateEnemiesForLevel(playerLevel, roomList, tileSize = 32, startRoom = null) {
       const pLevel = Math.max(1, playerLevel || 1);
       let threatBudget = 10 + pLevel * 6;
       const available = this.getAvailableTiers(pLevel);
       const spawned = [];
 
-      // Exclude Room 0 (safe start room!)
-      const spawnRooms = (roomList && roomList.length > 1) ? roomList.slice(1) : (roomList || []);
+      // Distant room selection: rooms at least 3.5 - 4 room lengths away from startRoom
+      function getRoomDistance(r, sR) {
+        if (!sR) return 5;
+        return Math.hypot(r.centerX - sR.centerX, r.centerY - sR.centerY) / 8;
+      }
+      const distantRooms = (startRoom && roomList && roomList.length > 2)
+        ? roomList.filter(r => r.id !== startRoom.id && getRoomDistance(r, startRoom) >= 3.5)
+        : (roomList || []).filter(r => !startRoom || r.id !== startRoom.id);
+      const spawnRooms = (distantRooms.length >= 2) ? distantRooms : (roomList || []).filter(r => !startRoom || r.id !== startRoom.id);
       if (spawnRooms.length === 0) return spawned;
 
       let safety = 0;

@@ -1321,18 +1321,51 @@
         }
       }
 
-      // --- MULTIPLAYER PEER COORDINATE LINEAR INTERPOLATION (LERP) ---
+      // --- MULTIPLAYER SNAPSHOT INTERPOLATION (80-100 MS DELAY BUFFER) ---
+      const renderTime = Date.now() - 90;
       for (const id in this.remotePlayers) {
         const peer = this.remotePlayers[id];
-        peer.renderX = (peer.renderX || peer.targetX) + ((peer.targetX || 0) - (peer.renderX || 0)) * 0.25;
-        peer.renderY = (peer.renderY || peer.targetY) + ((peer.targetY || 0) - (peer.renderY || 0)) * 0.25;
-
-        let diff = (peer.targetAngle || 0) - (peer.renderAngle || 0);
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        peer.renderAngle = (peer.renderAngle || 0) + diff * 0.25;
-
         if (peer.isShootingTimer > 0) peer.isShootingTimer--;
+        if (peer.alertTimer > 0) peer.alertTimer--;
+
+        const snaps = peer.snapshots;
+        if (!snaps || snaps.length === 0) {
+          peer.renderX = (peer.targetX !== undefined) ? peer.targetX : (peer.renderX || 0);
+          peer.renderY = (peer.targetY !== undefined) ? peer.targetY : (peer.renderY || 0);
+          peer.renderAngle = (peer.targetAngle !== undefined) ? peer.targetAngle : (peer.renderAngle || 0);
+          continue;
+        }
+
+        if (snaps.length === 1 || renderTime <= snaps[0].time) {
+          peer.renderX = snaps[0].x;
+          peer.renderY = snaps[0].y;
+          peer.renderAngle = snaps[0].angle;
+        } else if (renderTime >= snaps[snaps.length - 1].time) {
+          const last = snaps[snaps.length - 1];
+          peer.renderX += (last.x - peer.renderX) * 0.35;
+          peer.renderY += (last.y - peer.renderY) * 0.35;
+          let diff = (last.angle - peer.renderAngle);
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          peer.renderAngle += diff * 0.35;
+        } else {
+          for (let i = 0; i < snaps.length - 1; i++) {
+            const s1 = snaps[i];
+            const s2 = snaps[i + 1];
+            if (s1.time <= renderTime && renderTime <= s2.time) {
+              const span = s2.time - s1.time;
+              const t = span > 0 ? (renderTime - s1.time) / span : 0;
+              peer.renderX = s1.x + (s2.x - s1.x) * t;
+              peer.renderY = s1.y + (s2.y - s1.y) * t;
+
+              let diff = (s2.angle - s1.angle);
+              while (diff < -Math.PI) diff += Math.PI * 2;
+              while (diff > Math.PI) diff -= Math.PI * 2;
+              peer.renderAngle = s1.angle + diff * t;
+              break;
+            }
+          }
+        }
       }
 
       // --- PROXIMITY CHAT SPEECH BUBBLE DECAY ---
@@ -1756,6 +1789,9 @@
           if (data.hp !== undefined) peer.hp = data.hp;
           if (data.weapon) peer.weapon = data.weapon;
           if (data.name) peer.name = data.name;
+          if (!peer.snapshots) peer.snapshots = [];
+          peer.snapshots.push({ time: Date.now(), x: data.x, y: data.y, angle: data.angle || 0 });
+          if (peer.snapshots.length > 15) peer.snapshots.shift();
         }
       });
 
@@ -1787,6 +1823,9 @@
             if (sPlayer.hp !== undefined) peer.hp = sPlayer.hp;
             if (sPlayer.weapon) peer.weapon = sPlayer.weapon;
             if (sPlayer.name) peer.name = sPlayer.name;
+            if (!peer.snapshots) peer.snapshots = [];
+            peer.snapshots.push({ time: Date.now(), x: sPlayer.x, y: sPlayer.y, angle: sPlayer.angle || 0 });
+            if (peer.snapshots.length > 15) peer.snapshots.shift();
           }
         }
       });
@@ -2452,6 +2491,86 @@
       }
     }
 
+    checkClutterCollision(worldX, worldY, radius = 10) {
+      if (!this.props) return false;
+      for (let i = 0; i < this.props.length; i++) {
+        const p = this.props[i];
+        if (p.isPassable) continue;
+        const pr = p.radius || 12;
+        const dx = worldX - p.x;
+        const dy = worldY - p.y;
+        if (dx * dx + dy * dy < (radius + pr) * (radius + pr)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    hasLineOfSight(x1, y1, x2, y2) {
+      if (!this.mapData || !this.mapData.grid) return true;
+      const TS = this.tileSize;
+      const grid = this.mapData.grid;
+      const W = this.mapData.width;
+      const H = this.mapData.height;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= TS * 0.5) return true;
+
+      const steps = Math.ceil(dist / (TS * 0.35));
+      const stepX = dx / steps;
+      const stepY = dy / steps;
+
+      for (let i = 1; i < steps; i++) {
+        const cx = x1 + stepX * i;
+        const cy = y1 + stepY * i;
+        const tx = Math.floor(cx / TS);
+        const ty = Math.floor(cy / TS);
+
+        if (tx < 0 || tx >= W || ty < 0 || ty >= H) return false;
+        if (grid[ty][tx] === 1) return false;
+        if (grid[ty][tx] === 2) {
+          const d = this.doors.find(dr => dr.tileX === tx && dr.tileY === ty);
+          const prog = d ? (d.openProgress !== undefined ? d.openProgress : (d.isOpen ? 1 : 0)) : 0;
+          if (prog < 0.6) return false;
+        }
+      }
+      return true;
+    }
+
+    isPointInFlashlight(tx, ty) {
+      const px = this.player.x;
+      const py = this.player.y;
+      const dx = tx - px;
+      const dy = ty - py;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 450) return false;
+      if (dist < 75) return true; // Close ambient radius
+
+      const ang = Math.atan2(dy, dx);
+      let diff = Math.abs(ang - this.player.angle);
+      while (diff > Math.PI) diff = Math.PI * 2 - diff;
+      return diff < 0.55; // ~63 degree flashlight beam cone
+    }
+
+    drawSoundPing(ctx, x, y, timer = 30) {
+      const ripple = (1 - timer / 60) * 45;
+      const alpha = Math.max(0, timer / 60);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 60, 60, ${alpha * 0.75})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, 10 + ripple, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = `rgba(255, 200, 50, ${alpha})`;
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('🔊 ШУМ', x, y - 14 - ripple * 0.3);
+      ctx.restore();
+    }
+
     isTileSolid(worldX, worldY, radius = 8) {
       if (!this.mapData || !this.mapData.grid) return false;
       const TS = this.tileSize;
@@ -3103,8 +3222,21 @@
           SpriteFactory.drawMeleeSwingArc(worldCtx, this.player.x, this.player.y, this.player.angle, this.player.swingProgress);
         }
 
-        // 8. Draw AI Entities
+        // 8. Draw AI Entities with Line-of-Sight & Stealth Fog-of-War
         for (const e of this.entities) {
+          if (e.hp <= 0) continue;
+          if (e.alertTimer > 0) e.alertTimer--;
+
+          const hasLOS = this.hasLineOfSight(this.player.x, this.player.y, e.x, e.y);
+          const inLight = this.isPointInFlashlight(e.x, e.y);
+          const isLoud = (e.alertTimer && e.alertTimer > 0) || (e.isShootingTimer && e.isShootingTimer > 0);
+          const isRevealed = (hasLOS && inLight) || isLoud;
+
+          if (!isRevealed) {
+            if (isLoud) this.drawSoundPing(worldCtx, e.x, e.y, e.alertTimer || 30);
+            continue; // Hidden in fog of war stealth!
+          }
+
           if (typeof SpriteFactory !== 'undefined') {
             SpriteFactory.drawEntity(worldCtx, e, this.tick);
           }
@@ -4502,13 +4634,19 @@
       }
 
       
-      // Top Center Tactical Controls & Camera Toggle Hint Bar
-      const ctrlBarW = Math.min(540, w * 0.65);
-      const ctrlBarH = 26;
-      const ctrlBarX = (w - ctrlBarW) / 2;
-      const ctrlBarY = 16;
+      // 1. Top-Left Status Panel (РАДАР-ДЕТЕКТОР РУ-4) - Fixed 280px width, no overlap
+      const tlX = 16;
+      const tlY = 12;
+      const tlW = 280;
+      const tlH = 86;
 
-      ctx.fillStyle = 'rgba(2, 14, 5, 0.88)';
+      // Top Center Tactical Controls Hint Bar (Cleanly centered without overlapping status panel)
+      const ctrlBarW = Math.min(440, Math.max(260, w - 640));
+      const ctrlBarH = 24;
+      const ctrlBarX = Math.max(tlX + tlW + 12, Math.floor((w - ctrlBarW) / 2));
+      const ctrlBarY = 12;
+
+      ctx.fillStyle = 'rgba(2, 14, 5, 0.90)';
       ctx.fillRect(ctrlBarX, ctrlBarY, ctrlBarW, ctrlBarH);
       ctx.strokeStyle = '#1fe044';
       ctx.lineWidth = 1;
@@ -4516,16 +4654,10 @@
 
       ctx.font = 'bold 10px "Share Tech Mono", monospace';
       ctx.textAlign = 'center';
-      const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] ВИД СВЕРХУ (TDS 2D)' : '📷 [G] ВИД ОТ 1-ГО ЛИЦА (FPS 3D)';
+      const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] TDS 2D' : '📷 [G] FPS 3D';
       ctx.fillStyle = '#00ffaa';
-      ctx.fillText(`${camLabel}  |  [WASD] ДВИЖЕНИЕ  |  [F] ПИНОК  |  [R] ЗАРЯДИТЬ  |  [1/2/3] ПОЯС`, w / 2, ctrlBarY + 17);
+      ctx.fillText(`${camLabel}  |  [WASD] ДВИЖЕНИЕ  |  [F] ПИНОК  |  [R] ЗАРЯДИТЬ  |  [1/2/3] ПОЯС`, ctrlBarX + ctrlBarW / 2, ctrlBarY + 16);
       ctx.textAlign = 'left';
-
-      // 1. Top-Left Status Panel (РАДАР-ДЕТЕКТОР РУ-4)
-      const tlX = 16;
-      const tlY = 16;
-      const tlW = 340;
-      const tlH = 92;
 
       ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';
       ctx.fillRect(tlX, tlY, tlW, tlH);

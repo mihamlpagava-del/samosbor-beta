@@ -3008,7 +3008,11 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="radar-roguelike-screen" style="display: none; position: fixed; inset: 0; z-index: 99999; background: #020503; overflow: hidden; width: 100vw; height: 100vh;">
   <canvas id="radar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
   <button id="btn-toggle-gamepad-raid" class="gamepad-toggle-btn" onclick="toggleMobileTouchControls()" title="Мобильное управление [Сенсор / Геймпад]" style="position: absolute; top: 16px; left: 16px; z-index: 100020;">🎮</button>
-  <button id="btn-radar-abort" onclick="confirmExitRadarRaid()" style="position: absolute; top: 16px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.92); border: 2px solid #1fe044; color: #1fe044; padding: 8px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-shadow: 0 0 8px #1fe044; box-shadow: 0 0 12px rgba(31,224,68,0.4);">[ESC] В ЖИЛЯЧЕЙКУ</button>
+  <div class="raid-audio-toggles" style="position: absolute; top: 12px; right: 190px; display: flex; gap: 6px; z-index: 100000;">
+    <button id="btn-raid-mute-music" onclick="toggleRaidMusic()" title="Музыка" style="background: rgba(4,20,7,0.92); border: 1.5px solid #1fe044; color: #1fe044; padding: 6px 11px; font-size: 14px; cursor: pointer; border-radius: 3px; box-shadow: 0 0 8px rgba(31,224,68,0.3); font-family: monospace;">🎵</button>
+    <button id="btn-raid-mute-sfx" onclick="toggleRaidSfx()" title="Звуки" style="background: rgba(4,20,7,0.92); border: 1.5px solid #1fe044; color: #1fe044; padding: 6px 11px; font-size: 14px; cursor: pointer; border-radius: 3px; box-shadow: 0 0 8px rgba(31,224,68,0.3); font-family: monospace;">🔊</button>
+  </div>
+  <button id="btn-radar-abort" onclick="confirmExitRadarRaid()" style="position: absolute; top: 12px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.92); border: 2px solid #1fe044; color: #1fe044; padding: 7px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-shadow: 0 0 8px #1fe044; box-shadow: 0 0 12px rgba(31,224,68,0.4);">[ESC] В ЖИЛЯЧЕЙКУ</button>
 
   <!-- СЕНСОРНОЕ МОБИЛЬНОЕ УПРАВЛЕНИЕ ДЛЯ РЕЙДА -->
   <div id="radar-touch-overlay" class="radar-touch-overlay" style="display: none;">
@@ -3218,10 +3222,11 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
 <div id="map-screen" class="screen">
   <div class="panel" style="max-width: 95%;">
-    <div class="floor-controls">
+    <div class="floor-controls" style="flex-wrap: wrap; gap: 8px;">
       <button class="floor-btn" id="btn-floor-down" disabled data-i18n="btn_floor_down">▼ ВНИЗ (РЕЗЕРВНЫЙ ЛИФТ E4)</button>
       <div style="font-size: 20px; letter-spacing: 2px;"><span data-i18n="map_floor">ЭТАЖ:</span> <span id="ui-current-floor">0</span></div>
       <button class="floor-btn" id="btn-floor-up" disabled data-i18n="btn_floor_up">ВВЕРХ ▲</button>
+      <button id="btn-collect-all-robots" onclick="socket.emit('collectAllRobots')" style="display:none; padding: 6px 14px; background: rgba(0, 45, 20, 0.9); border: 1.5px solid #00ffaa; color: #00ffaa; font-family: 'Share Tech Mono', monospace; font-size: 12px; cursor: pointer; border-radius: 4px; font-weight: bold; box-shadow: 0 0 10px rgba(0,255,170,0.35);">🤖 СБОР СО ВСЕХ (0)</button>
     </div>
     <div id="map-error" style="color:var(--term-danger); font-size:13px; font-weight:bold; margin: 4px 0 8px 0; display:none; padding: 6px; border: 1px dashed var(--term-danger); background: rgba(255,50,50,0.1);"></div>
     <div class="map-grid" id="map-container"></div>
@@ -3257,10 +3262,13 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         </div>
         <div id="combat-log" style="margin-top: 10px; border-top: 1px dashed var(--term-dim); padding-top: 8px;"><span style="color:#666;" data-i18n="log_sector_quiet">В секторе пока тихо...</span></div>
       </div>
-      <div id="robot-panel" style="text-align:left; background: rgba(0,20,0,0.8); border: 1px dashed var(--term-info); padding: 10px; box-sizing: border-box; display: none;">
+      <div id="robot-panel" style="text-align:left; background: rgba(0,20,0,0.88); border: 1px dashed var(--term-info); padding: 10px; box-sizing: border-box; display: none; box-shadow: 0 0 10px rgba(0,229,255,0.2);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap: 8px; flex-wrap: wrap;">
           <span id="robot-status" style="color: var(--term-info); font-weight:bold; font-size: 13px;"></span>
-          <button id="btn-robot-action" style="margin:0; padding: 6px 10px; font-size: 12px;"></button>
+          <div style="display: flex; gap: 6px;">
+            <button id="btn-robot-action" style="margin:0; padding: 6px 10px; font-size: 12px; font-weight: bold; cursor: pointer;"></button>
+            <button id="btn-robot-dismantle" onclick="socket.emit('dismantleRobot')" style="display:none; margin:0; padding: 6px 10px; font-size: 12px; border: 1px solid #ffaa00; color: #ffaa00; background: rgba(255,170,0,0.15); font-weight: bold; cursor: pointer;" title="Демонтировать сборщик обратно в рюкзак">📦 В РЮКЗАК</button>
+          </div>
         </div>
       </div>
       <div class="game-controls" id="explore-controls"></div>
@@ -9721,16 +9729,32 @@ function updateUI(me, sectorPlayers) {
   let rp = document.getElementById('robot-panel');
   let rs = document.getElementById('robot-status');
   let rb = document.getElementById('btn-robot-action');
+  let rd = document.getElementById('btn-robot-dismantle');
   if (me.location !== 'safe_room') {
     if(rp) rp.style.display = 'block';
-    if (me.currentRobot !== null) {
-      if(rs) rs.innerHTML = isEn ? `🤖 Harvester: <span style="color:var(--term-warn);">${me.currentRobot}/250</span>` : `🤖 Сборщик: <span style="color:var(--term-warn);">${me.currentRobot}/250</span>`;
+    if (me.currentRobot !== null && me.currentRobot !== undefined) {
+      if(rs) rs.innerHTML = isEn ? `🤖 Harvester: <span style="color:var(--term-warn);">${me.currentRobot}/250</span>` : `🤖 Сборщик: <span style="color:var(--term-warn);">${me.currentRobot}/250</span> (активен)`;
       if(rb) { rb.innerText = isEn ? 'COLLECT' : 'СОБРАТЬ'; rb.onclick = () => socket.emit('collectRobot'); rb.style.borderColor = 'var(--term-info)'; rb.style.color = 'var(--term-info)'; }
+      if(rd) { rd.style.display = 'inline-block'; }
     } else {
-      if(rs) rs.innerHTML = isEn ? `🤖 Harvester not installed` : `🤖 Сборщик не установлен`;
+      if(rs) rs.innerHTML = isEn ? `🤖 Harvester not installed in this sector` : `🤖 Сборщик не установлен в этом секторе`;
       if(rb) { rb.innerText = isEn ? 'INSTALL' : 'УСТАНОВИТЬ'; rb.onclick = () => socket.emit('installRobot'); rb.style.borderColor = 'var(--term-warn)'; rb.style.color = 'var(--term-warn)'; }
+      if(rd) { rd.style.display = 'none'; }
     }
   } else { if(rp) rp.style.display = 'none'; }
+
+  // Update collect all robots button on map
+  let btnAllRobots = document.getElementById('btn-collect-all-robots');
+  if (btnAllRobots) {
+    const totalRCount = me.robots ? Object.keys(me.robots).length : 0;
+    const totalEarnings = me.totalRobotsEarnings || 0;
+    if (totalRCount > 0) {
+      btnAllRobots.style.display = 'inline-block';
+      btnAllRobots.innerText = isEn ? `🤖 HARVEST ALL (${totalEarnings})` : `🤖 СБОР СО ВСЕХ (${totalEarnings})`;
+    } else {
+      btnAllRobots.style.display = 'none';
+    }
+  }
 
   let sectorNpcBtn = '';
   if (me.locationNpc) {
@@ -9918,7 +9942,14 @@ function renderMap() {
       }
       let iconImg = (node.icon && (isUnlocked || canUnlock)) ? `<img class="node-icon" src="assets/locations/icons/${node.icon}" onerror="this.style.display='none'">` : '';
       let dLoc = getDisplayLocationName(node.name);
-      div.innerHTML = `<div class="node-content">${iconImg}<div class="node-id">${dId}</div><div class="node-name">${dLoc}</div>${lock}</div>`;
+      const floorNum = (clientMe && clientMe.floor) || 0;
+      const rKey = `${floorNum}_${id}`;
+      let robotBadge = '';
+      if (clientMe && clientMe.robots && clientMe.robots[rKey] !== undefined) {
+        const rCount = clientMe.robots[rKey];
+        robotBadge = `<div style="background: rgba(0, 45, 20, 0.95); border: 1px solid #00ffaa; color: #00ffaa; font-size: 10px; font-weight: bold; border-radius: 3px; padding: 1px 4px; margin-top: 3px; box-shadow: 0 0 6px rgba(0,255,170,0.5);">🤖 ${rCount}/250</div>`;
+      }
+      div.innerHTML = `<div class="node-content">${iconImg}<div class="node-id">${dId}</div><div class="node-name">${dLoc}</div>${robotBadge}${lock}</div>`;
       div.onclick = () => {
         playSound('click');
         socket.emit('changeLocation', id);
@@ -11452,7 +11483,30 @@ let raidMusicAudio = null;
 let raidCombatMusicAudio = null;
 let currentRaidTrack = 'explore';
 
+function toggleRaidMusic() {
+  musicEnabled = !musicEnabled;
+  const btn = document.getElementById('btn-raid-mute-music');
+  if (btn) btn.innerText = musicEnabled ? '🎵' : '🎵❌';
+  if (!musicEnabled) {
+    stopRaidMusic();
+  } else {
+    playRaidMusic(currentRaidTrack || 'explore');
+  }
+  if (typeof updateOptionsLabels === 'function') updateOptionsLabels();
+}
+
+function toggleRaidSfx() {
+  sfxEnabled = !sfxEnabled;
+  const btn = document.getElementById('btn-raid-mute-sfx');
+  if (btn) btn.innerText = sfxEnabled ? '🔊' : '🔇';
+  if (typeof RadarAudio !== 'undefined') {
+    RadarAudio.isMuted = !sfxEnabled;
+  }
+  if (typeof updateOptionsLabels === 'function') updateOptionsLabels();
+}
+
 function playRaidMusic(track = 'explore') {
+  if (typeof musicEnabled !== 'undefined' && !musicEnabled) return;
   try {
     // 1. Обязательно глушим музыку из главного меню и любые амбиенты жилой ячейки
     if (typeof AMBIENTS !== 'undefined') {

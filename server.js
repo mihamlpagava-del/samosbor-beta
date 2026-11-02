@@ -2848,7 +2848,7 @@ function broadcastGameState() {
                 bossesKilled: Math.max(p.bossesKilled || 0, Object.keys(p.bossDefeated || {}).length),
                 puzzlesSolved: Math.max(p.puzzlesSolved || 0, (p.solvedGames ? p.solvedGames.length : 0)),
                 achievements: p.achievements || {},
-                currentRobot: p.robots[locKey] !== undefined ? p.robots[locKey] : null, appearance: p.appearance, playtime: p.playtime,
+                currentRobot: p.robots[locKey] !== undefined ? p.robots[locKey] : null, robots: p.robots || {}, totalRobotsEarnings: Object.values(p.robots || {}).reduce((a, b) => a + (Number(b) || 0), 0), appearance: p.appearance, playtime: p.playtime,
                 workbenchLevel: p.workbenchLevel || 1
             },
             sectorPlayers: playersInSector, map: db.map[floor], GAME_PERKS: GAME_PERKS, GAME_ITEMS: GAME_ITEMS, MUTATIONS: MUTATIONS, BESTIARY: BASE_MONSTERS,
@@ -4861,7 +4861,7 @@ function checkLifterTrigger(player, sock, loc) {
         let locKey = `${currentFloor}_${p.location}`;
         if (p.robots[locKey] === undefined) return;
         let amount = p.robots[locKey];
-        if (amount <= 0) { socket.emit('terminalError', 'РОБОТ ПУСТ.'); return; }
+        if (amount <= 0) { socket.emit('terminalError', 'РОБОТ ПУСТ (0/250). Сборщик продолжает добычу.'); return; }
         p.robots[locKey] = 0;
         p.talons = (p.talons || 0) + amount;
         let addedSlime = false;
@@ -4871,10 +4871,59 @@ function checkLifterTrigger(player, sock, loc) {
         }
         socket.emit('playSound', 'buy');
         if (addedSlime) {
-            socket.emit('terminalError', `СОБРАНО: +${amount} ТАЛОНОВ, +1 СЛИЗЬ`);
+            socket.emit('terminalError', `СОБРАНО: +${amount} ТАЛОНОВ, +1 СЛИЗЬ. Сборщик активен!`);
         } else {
-            socket.emit('terminalError', `СОБРАНО: +${amount} ТАЛОНОВ`);
+            socket.emit('terminalError', `СОБРАНО: +${amount} ТАЛОНОВ. Сборщик активен (0/250)!`);
         }
+        saveDB(); broadcastGameState();
+    });
+
+    socket.on('dismantleRobot', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        let currentFloor = p.floor || 0;
+        let locKey = `${currentFloor}_${p.location}`;
+        if (p.robots[locKey] === undefined) {
+            socket.emit('terminalError', 'В ЭТОМ СЕКТОРЕ НЕТ ВАШЕГО СБОРЩИКА.');
+            return;
+        }
+        if (p.inventory.length >= getMaxInv(p)) {
+            socket.emit('terminalError', 'РЮКЗАК ПОЛОН! Освободите место для робота.');
+            return;
+        }
+        let leftover = p.robots[locKey] || 0;
+        if (leftover > 0) p.talons = (p.talons || 0) + leftover;
+        delete p.robots[locKey];
+        p.inventory.push('tool_robot');
+        socket.emit('playSound', 'equip');
+        socket.emit('terminalError', `СБОРЩИК ДЕМОНТИРОВАН И ВОЗВРАЩЕН В РЮКЗАК (+${leftover} талонов).`);
+        saveDB(); broadcastGameState();
+    });
+
+    socket.on('collectAllRobots', () => {
+        let auth = getAuthPlayer(); if (!auth) return;
+        let { p } = auth;
+        if (!p.robots || Object.keys(p.robots).length === 0) {
+            socket.emit('terminalError', 'НЕТ УСТАНОВЛЕННЫХ АВТОСБОРЩИКОВ.');
+            return;
+        }
+        let totalTalons = 0;
+        let robotCount = 0;
+        for (let rKey in p.robots) {
+            robotCount++;
+            totalTalons += (p.robots[rKey] || 0);
+            p.robots[rKey] = 0;
+        }
+        if (totalTalons <= 0) {
+            socket.emit('terminalError', `ВСЕ СБОРЩИКИ (${robotCount} шт.) ПУСТЫ (добыча идёт...)`);
+            return;
+        }
+        p.talons = (p.talons || 0) + totalTalons;
+        if (p.inventory.length < getMaxInv(p)) {
+            p.inventory.push('food_ration');
+        }
+        socket.emit('playSound', 'buy');
+        socket.emit('terminalError', `СОБРАНО СО ВСЕХ СБОРЩИКОВ (${robotCount} шт.): +${totalTalons} ТАЛОНОВ!`);
         saveDB(); broadcastGameState();
     });
 
@@ -6700,7 +6749,7 @@ setInterval(() => {
             if (tickCount % 4 === 0 && p.filter < 100) { p.filter++; updated = true; }
             if (tickCount % 6 === 0 && p.hp < p.maxHp && p.hp > 0 && p.hunger > 0) { p.hp++; updated = true; }
         }
-        if (tickCount % 10 === 0 && p.robots) {
+        if (tickCount % 5 === 0 && p.robots) {
             for (let rLoc in p.robots) {
                 if (p.robots[rLoc] < 250) { p.robots[rLoc]++; updated = true; }
             }
