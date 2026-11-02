@@ -762,7 +762,138 @@
       osc.stop(t + 0.85);
     }
 
+
+    playTapeRecorderAudio() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+
+      // Mechanical cassette click
+      const clickOsc = ctx.createOscillator();
+      const clickGain = ctx.createGain();
+      clickOsc.type = 'square';
+      clickOsc.frequency.setValueAtTime(1400, t);
+      clickOsc.frequency.exponentialRampToValueAtTime(120, t + 0.05);
+      clickGain.gain.setValueAtTime(0.35, t);
+      clickGain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+      clickOsc.connect(clickGain);
+      clickGain.connect(this.masterGain);
+      clickOsc.start(t);
+      clickOsc.stop(t + 0.06);
+
+      // White noise / Radio static tape hiss burst
+      const bufferSize = ctx.sampleRate * 0.8;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.18;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(1800, t);
+      noiseFilter.Q.setValueAtTime(3.0, t);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.01, t);
+      noiseGain.gain.linearRampToValueAtTime(0.28, t + 0.08);
+      noiseGain.gain.setValueAtTime(0.22, t + 0.5);
+      noiseGain.gain.exponentialRampToValueAtTime(0.005, t + 0.8);
+
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(this.masterGain);
+      noise.start(t + 0.04);
+      noise.stop(t + 0.82);
+
+      // Low garbled synthetic transmission voice tone
+      const voiceOsc = ctx.createOscillator();
+      const voiceGain = ctx.createGain();
+      voiceOsc.type = 'sawtooth';
+      voiceOsc.frequency.setValueAtTime(220, t + 0.1);
+      voiceOsc.frequency.linearRampToValueAtTime(340, t + 0.35);
+      voiceOsc.frequency.linearRampToValueAtTime(190, t + 0.7);
+      voiceGain.gain.setValueAtTime(0.12, t + 0.1);
+      voiceGain.gain.exponentialRampToValueAtTime(0.01, t + 0.75);
+      voiceOsc.connect(voiceGain);
+      voiceGain.connect(this.masterGain);
+      voiceOsc.start(t + 0.1);
+      voiceOsc.stop(t + 0.75);
+    }
+
+    playElectricArc() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+
+      // Harsh electrical zap / spark crackle
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(2400, t);
+      osc.frequency.linearRampToValueAtTime(180, t + 0.12);
+      gain.gain.setValueAtTime(0.45, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.14);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.14);
+
+      // Secondary low buzz hum
+      const hum = ctx.createOscillator();
+      const humGain = ctx.createGain();
+      hum.type = 'square';
+      hum.frequency.setValueAtTime(100, t);
+      humGain.gain.setValueAtTime(0.25, t);
+      humGain.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+      hum.connect(humGain);
+      humGain.connect(this.masterGain);
+      hum.start(t);
+      hum.stop(t + 0.18);
+    }
+
+    playBreakerSwitch() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+
+      // Heavy industrial toggle clunk
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(520, t);
+      osc.frequency.exponentialRampToValueAtTime(70, t + 0.1);
+      gain.gain.setValueAtTime(0.5, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.12);
+    }
+
+    playTentacleTrap() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+
+      // Wet fleshy squelch & slither
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(480, t);
+      osc.frequency.exponentialRampToValueAtTime(110, t + 0.25);
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.28);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.28);
+    }
+
   }
+
 
 
   global.RadarAudio = new RadarAudioSynth();

@@ -516,6 +516,321 @@
     /**
      * Render Airlock Defense Barricade
      */
+    
+    /**
+     * Render Soviet Cassette Tape Recorder «Весна-306» (PROP_RECORDER)
+     */
+    drawTapeRecorder(ctx, rec, TS, tick = 0, alpha = 1.0) {
+      if (!ctx || !rec) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const rx = rec.x;
+      const ry = rec.y;
+      const w = 26;
+      const h = 20;
+
+      // Base body - Soviet Bakelite / Gunmetal casing
+      ctx.fillStyle = '#222624';
+      ctx.fillRect(rx - w / 2, ry - h / 2, w, h);
+      ctx.strokeStyle = '#48544e';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(rx - w / 2, ry - h / 2, w, h);
+
+      // Aluminum faceplate
+      ctx.fillStyle = '#6b7570';
+      ctx.fillRect(rx - w / 2 + 3, ry - h / 2 + 3, w - 6, h - 10);
+
+      // Cassette transparent window
+      ctx.fillStyle = '#111413';
+      ctx.fillRect(rx - w / 2 + 5, ry - h / 2 + 5, w - 10, 6);
+
+      // Tape spools (spinning if playing/listened)
+      const spoolAng = rec.isPlaying ? (tick * 0.15) : 0;
+      ctx.fillStyle = '#f0f0f0';
+      ctx.beginPath();
+      ctx.arc(rx - 4, ry - h / 2 + 8, 2, 0, Math.PI * 2);
+      ctx.arc(rx + 4, ry - h / 2 + 8, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Speaker grille on bottom
+      ctx.fillStyle = '#151a18';
+      for (let g = -7; g <= 7; g += 3) {
+        ctx.fillRect(rx + g, ry + 2, 1.5, 4);
+      }
+
+      // Blinking red [REC] LED indicator
+      const blink = rec.listened ? false : ((Math.floor(tick / 16) % 2) === 0);
+      ctx.fillStyle = blink ? '#ff2222' : (rec.listened ? '#00e676' : '#551111');
+      ctx.beginPath();
+      ctx.arc(rx + w / 2 - 4, ry - h / 2 + 4, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Stencil brand name
+      ctx.fillStyle = '#9aa8a1';
+      ctx.font = 'bold 5px "Share Tech Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('ВЕСНА', rx - w / 2 + 4, ry - h / 2 + 12);
+
+      // Hover prompt if player in range
+      if (rec.inRange && !rec.isPlaying) {
+        const pulse = 0.8 + 0.2 * Math.sin(tick * 0.15);
+        ctx.fillStyle = `rgba(0, 255, 170, ${pulse})`;
+        ctx.font = 'bold 8px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('[ E ] ПРОСЛУШАТЬ ЗАПИСЬ', rx, ry - 14);
+      }
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Official Wall Dispatch Note (WALL_DECAL_NOTE)
+     */
+    drawWallNote(ctx, note, TS, tick = 0, alpha = 1.0) {
+      if (!ctx || !note) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const nx = note.x;
+      const ny = note.y;
+      const w = 18;
+      const h = 24;
+
+      // Drop shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(nx - w / 2 + 1, ny - h / 2 + 2, w, h);
+
+      // Yellowed aged Soviet paper sheet (A4 ratio)
+      ctx.fillStyle = '#ded1b4';
+      ctx.fillRect(nx - w / 2, ny - h / 2, w, h);
+      ctx.strokeStyle = '#85785a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(nx - w / 2, ny - h / 2, w, h);
+
+      // Rebar stud / rusted nail pinning top center
+      ctx.fillStyle = '#594a38';
+      ctx.beginPath();
+      ctx.arc(nx, ny - h / 2 + 2.5, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Faint lines of typed text
+      ctx.fillStyle = '#4a4435';
+      for (let l = ny - h / 2 + 6; l < ny + h / 2 - 4; l += 3) {
+        ctx.fillRect(nx - w / 2 + 2, l, w - 4, 1);
+      }
+
+      // Red Soviet round seal/stamp
+      ctx.strokeStyle = 'rgba(180, 20, 20, 0.65)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(nx + w / 2 - 5, ny + h / 2 - 5, 3, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Hover prompt
+      if (note.inRange) {
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 8px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('[ E ] ЧИТАТЬ ЗАПИСКУ', nx, ny - 16);
+      }
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Severed High-Voltage Electric Wire Trap (TRAP_ELECTRIC_WIRE)
+     */
+    drawElectricWireTrap(ctx, trap, TS, tick = 0, alpha = 1.0) {
+      if (!ctx || !trap) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const tx = trap.x;
+      const ty = trap.y;
+      const isDisabled = trap.disabled;
+      const isArcing = !isDisabled && trap.isArcing;
+
+      // Hanging dangling cables swaying slightly
+      const sway = Math.sin(tick * 0.05 + tx) * 3;
+      ctx.strokeStyle = isDisabled ? '#222' : '#1c2420';
+      ctx.lineWidth = 2.5;
+
+      ctx.beginPath();
+      ctx.moveTo(tx - 10, ty - 16);
+      ctx.quadraticCurveTo(tx - 6 + sway, ty, tx - 8 + sway, ty + 10);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(tx + 10, ty - 16);
+      ctx.quadraticCurveTo(tx + 6 - sway, ty, tx + 8 - sway, ty + 12);
+      ctx.stroke();
+
+      // Exposed copper strands
+      ctx.fillStyle = isDisabled ? '#332211' : '#b87333';
+      ctx.fillRect(tx - 9 + sway, ty + 10, 2, 4);
+      ctx.fillRect(tx + 7 - sway, ty + 12, 2, 4);
+
+      // Electrical Arc Burst
+      if (isArcing) {
+        const glow = 0.8 + Math.random() * 0.2;
+        ctx.strokeStyle = `rgba(0, 240, 255, ${glow})`;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 16;
+
+        // Jagged electric lightning arc between cable ends
+        ctx.beginPath();
+        let curX = tx - 8 + sway;
+        let curY = ty + 12;
+        ctx.moveTo(curX, curY);
+        for (let s = 0; s < 4; s++) {
+          curX += (tx + 8 - sway - curX) * 0.3 + (Math.random() - 0.5) * 8;
+          curY += (Math.random() - 0.5) * 6;
+          ctx.lineTo(curX, curY);
+        }
+        ctx.lineTo(tx + 8 - sway, ty + 14);
+        ctx.stroke();
+
+        // Blue flare glow center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc((tx - 8 + sway + tx + 8 - sway) / 2, ty + 12, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Electrical Breaker Box / Fuse Panel
+     */
+    drawBreakerBox(ctx, box, TS, tick = 0, alpha = 1.0) {
+      if (!ctx || !box) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const bx = box.x;
+      const by = box.y;
+      const w = 18;
+      const h = 22;
+      const isDisabled = box.disabled;
+
+      // Industrial metal box
+      ctx.fillStyle = isDisabled ? '#222824' : '#33443a';
+      ctx.fillRect(bx - w / 2, by - h / 2, w, h);
+      ctx.strokeStyle = isDisabled ? '#444' : '#6a8c78';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx - w / 2, by - h / 2, w, h);
+
+      // Warning hazard triangle
+      ctx.fillStyle = isDisabled ? '#554422' : '#ffcc00';
+      ctx.beginPath();
+      ctx.moveTo(bx, by - h / 2 + 3);
+      ctx.lineTo(bx - 4, by - h / 2 + 9);
+      ctx.lineTo(bx + 4, by - h / 2 + 9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Knife switch / Breaker Lever
+      ctx.strokeStyle = isDisabled ? '#555' : '#ff3b30';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      if (isDisabled) {
+        ctx.moveTo(bx, by + 1); ctx.lineTo(bx + 4, by + 7); // down position
+      } else {
+        ctx.moveTo(bx, by + 1); ctx.lineTo(bx - 4, by - 5); // up position
+      }
+      ctx.stroke();
+
+      // Indicator LED
+      ctx.fillStyle = isDisabled ? '#00e676' : ((Math.floor(tick / 12) % 2 === 0) ? '#ffaa00' : '#ff3300');
+      ctx.beginPath();
+      ctx.arc(bx + w / 2 - 3, by + h / 2 - 3, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Prompt
+      if (box.inRange && !isDisabled) {
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 8px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('[ ВЫСТРЕЛ / УДАР ] ОБЕСТОЧИТЬ', bx, by - 14);
+      }
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Biomechanical Flesh Vent Trap (TRAP_FLESH_VENT)
+     */
+    drawFleshVentTrap(ctx, trap, TS, tick = 0, alpha = 1.0) {
+      if (!ctx || !trap) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const vx = trap.x;
+      const vy = trap.y;
+      const w = 28;
+      const h = 28;
+      const isDormant = trap.dormantTimer > 0;
+      const isEntangled = trap.entangled;
+
+      // Dark drain hole underneath
+      ctx.fillStyle = '#060706';
+      ctx.fillRect(vx - w / 2, vy - h / 2, w, h);
+
+      // Pulsating organic corruption / dark slime in drain
+      if (!isDormant) {
+        const slimePulse = 0.6 + 0.4 * Math.sin(tick * 0.1 + vx);
+        ctx.fillStyle = `rgba(60, 10, 50, ${slimePulse})`;
+        ctx.beginPath();
+        ctx.arc(vx, vy, 11, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Iron drain grate bars
+      ctx.strokeStyle = '#3d3830';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(vx - w / 2, vy - h / 2, w, h);
+
+      for (let g = vx - w / 2 + 5; g < vx + w / 2; g += 6) {
+        ctx.beginPath();
+        ctx.moveTo(g, vy - h / 2 + 2);
+        ctx.lineTo(g, vy + h / 2 - 2);
+        ctx.stroke();
+      }
+
+      // Writhing tentacles reaching out if entangled or idling
+      if (isEntangled || (!isDormant && trap.inRange)) {
+        ctx.strokeStyle = '#771166';
+        ctx.lineWidth = 3;
+        for (let t = 0; t < 4; t++) {
+          const ang = t * (Math.PI / 2) + Math.sin(tick * 0.15 + t) * 0.4;
+          const reach = isEntangled ? 18 : 8;
+          ctx.beginPath();
+          ctx.moveTo(vx, vy);
+          ctx.quadraticCurveTo(
+            vx + Math.cos(ang + 0.3) * (reach * 0.6),
+            vy + Math.sin(ang + 0.3) * (reach * 0.6),
+            vx + Math.cos(ang) * reach,
+            vy + Math.sin(ang) * reach
+          );
+          ctx.stroke();
+        }
+      }
+
+      // Dormant indicator
+      if (isDormant) {
+        ctx.fillStyle = '#555';
+        ctx.font = 'bold 7px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('СПИТ', vx, vy + 3);
+      }
+
+      ctx.restore();
+    },
+
     drawBarricade(ctx, barricade, TS, tick = 0, alpha = 1.0) {
       if (!ctx || !barricade) return;
       ctx.save();

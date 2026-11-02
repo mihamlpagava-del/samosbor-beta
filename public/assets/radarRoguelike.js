@@ -441,6 +441,18 @@
       // Initialize Fog of War
       this.fogExplored = Array(H).fill(null).map(() => new Uint8Array(W));
       this.fogVisible = Array(H).fill(null).map(() => new Uint8Array(W));
+      // Environmental Lore & Interactive Dungeon Traps
+      this.recorders = this.mapData.recorders || [];
+      this.wallNotes = this.mapData.wallNotes || [];
+      this.electricTraps = this.mapData.electricTraps || [];
+      this.fleshVents = this.mapData.fleshVents || [];
+      this.activeTapeSubtitle = null;
+      this.activeWallNoteCard = null;
+      this.floorMultiplier = (this.currentRaidFloor === 2 ? 1.5 : (this.currentRaidFloor === 3 ? 2.0 : (this.currentRaidFloor >= 4 ? 3.0 : 1.0)));
+      this.lootDisplayTalons = this.player.talonsEarned || 0;
+      this.lootFlashTimer = 0;
+      this.blueDamageFlash = 0;
+
 
       // Reset Timers
       this.levelTimeLeft = 300.0;
@@ -596,6 +608,28 @@
         this.keys[e.code] = true;
         this.keys[e.key.toLowerCase()] = true;
 
+        // Close Wall Note Document if open
+        if (this.activeWallNoteCard) {
+          if (e.code === 'KeyE' || e.code === 'Escape' || e.code === 'Space') {
+            this.activeWallNoteCard = null;
+            return;
+          }
+        }
+
+        // Struggle free from Tentacle Grate Trap on Space / F
+        if (e.code === 'Space' || e.code === 'KeyF') {
+          for (const trap of (this.fleshVents || [])) {
+            if (trap.entangled) {
+              trap.entangled = false;
+              trap.dormantTimer = 30.0;
+              this.spawnFloatingNotice('ВЫ ВЫРВАЛИСЬ ИЗ ЩУПАЛЕЦ!', '#ffd700');
+              if (typeof RadarAudio !== 'undefined' && RadarAudio.playKickMelee) {
+                RadarAudio.playKickMelee(true);
+              }
+            }
+          }
+        }
+
         if (e.code === 'Digit1') {
           const nearbyWounded = this.getNearbyWoundedNPC();
           if (nearbyWounded && nearbyWounded.hasWeapon) {
@@ -604,7 +638,11 @@
             this.switchBeltSlot(1);
           }
         }
-        if (e.code === 'Digit2') {
+        if (e.code === 'Digit2' || e.code === 'Numpad2') {
+          if (this.isPlayerInElevator && !this.emergencySiegeActive && !this.isEvacuating) {
+            this.descendToNextFloor();
+            return;
+          }
           const nearbyWounded = this.getNearbyWoundedNPC();
           if (nearbyWounded && this.player.belt && this.player.belt.medkits > 0) {
             this.healWoundedNPC(nearbyWounded);
@@ -858,6 +896,30 @@
         const swingRange = 52;
         const pAng = this.player.angle;
         let hitAny = false;
+        // Check hitting Breaker Box or Flesh Vent with melee swing
+        for (const trap of (this.electricTraps || [])) {
+          const box = trap.breakerBox;
+          if (box && !box.disabled && Math.hypot(this.player.x - box.x, this.player.y - box.y) < swingRange + 16) {
+            box.disabled = true;
+            trap.disabled = true;
+            this.spawnHitParticles(box.x, box.y, '#00f0ff', 12);
+            this.spawnFloatingNotice('⚡ ЩИТОК ОБЕСТОЧЕН! ПРОВОДА БЕЗОПАСНЫ!', '#00ffaa');
+            if (typeof RadarAudio !== 'undefined' && RadarAudio.playBreakerSwitch) {
+              RadarAudio.playBreakerSwitch();
+            }
+          }
+        }
+        for (const vent of (this.fleshVents || [])) {
+          if (vent.dormantTimer <= 0 && Math.hypot(this.player.x - vent.x, this.player.y - vent.y) < swingRange + 16) {
+            vent.dormantTimer = 30.0;
+            this.spawnHitParticles(vent.x, vent.y, '#880066', 10);
+            this.spawnFloatingNotice('🦑 ЩУПАЛЬЦА ВТЯНУЛИСЬ В КОЛЛЕКТОР (-30 СЕК.)', '#bb44ee');
+            if (typeof RadarAudio !== 'undefined' && RadarAudio.playMonsterHurt) {
+              RadarAudio.playMonsterHurt();
+            }
+          }
+        }
+
 
         for (const e of this.entities) {
           if (e.type === 'liquidator') continue; // Do not hit allies
@@ -1072,6 +1134,41 @@
       }
 
       // 4. Airtight Hermetic Blast Doors (Front check in FPS, radial in TDS)
+      // Tape Recorders (PROP_RECORDER)
+      for (const rec of (this.recorders || [])) {
+        const dRec = Math.hypot(this.player.x - rec.x, this.player.y - rec.y);
+        if (dRec < 48) {
+          rec.isPlaying = true;
+          rec.listened = true;
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playTapeRecorderAudio) {
+            RadarAudio.playTapeRecorderAudio();
+          }
+          this.activeTapeSubtitle = { text: rec.text, timer: 7.0 };
+          this.player.xpEarned = (this.player.xpEarned || 0) + 25;
+          this.spawnFloatingNotice('+25 XP [КАССЕТА ЛИКВИДАТОРА]', '#00ffaa');
+
+          if (!this.player.journal) this.player.journal = [];
+          this.player.journal.push({
+            title: `Кассета №${rec.tapeId}`,
+            text: rec.text,
+            time: new Date().toLocaleTimeString()
+          });
+          return;
+        }
+      }
+
+      // Wall Decal Notes (WALL_DECAL_NOTE)
+      for (const note of (this.wallNotes || [])) {
+        const dNote = Math.hypot(this.player.x - note.x, this.player.y - note.y);
+        if (dNote < 48) {
+          this.activeWallNoteCard = note;
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
+            RadarAudio.playLootPickup();
+          }
+          return;
+        }
+      }
+
       // VOKhR Supply Crate
       if (this.vokhrCrate && !this.vokhrCrate.opened) {
         const dCrate = Math.hypot(this.player.x - (this.vokhrCrate.x + 16), this.player.y - (this.vokhrCrate.y + 12));
@@ -2559,6 +2656,30 @@
       const kickRange = this.tileSize * 1.5;
       const pAng = this.player.angle;
       let hitTarget = false;
+      // Check hitting Breaker Box or Flesh Vent with quick kick
+      for (const trap of (this.electricTraps || [])) {
+        const box = trap.breakerBox;
+        if (box && !box.disabled && Math.hypot(this.player.x - box.x, this.player.y - box.y) < kickRange + 16) {
+          box.disabled = true;
+          trap.disabled = true;
+          this.spawnHitParticles(box.x, box.y, '#00f0ff', 12);
+          this.spawnFloatingNotice('⚡ ЩИТОК ОБЕСТОЧЕН! ПРОВОДА БЕЗОПАСНЫ!', '#00ffaa');
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playBreakerSwitch) {
+            RadarAudio.playBreakerSwitch();
+          }
+        }
+      }
+      for (const vent of (this.fleshVents || [])) {
+        if (vent.dormantTimer <= 0 && Math.hypot(this.player.x - vent.x, this.player.y - vent.y) < kickRange + 16) {
+          vent.dormantTimer = 30.0;
+          this.spawnHitParticles(vent.x, vent.y, '#880066', 10);
+          this.spawnFloatingNotice('🦑 ЩУПАЛЬЦА ВТЯНУЛИСЬ В КОЛЛЕКТОР (-30 СЕК.)', '#bb44ee');
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playMonsterHurt) {
+            RadarAudio.playMonsterHurt();
+          }
+        }
+      }
+
 
       for (const e of this.entities) {
         if (e.type === 'liquidator' || e.hp <= 0) continue;
@@ -3603,6 +3724,36 @@
         p.y += p.vy;
         p.life--;
 
+        // Check hit on breaker box to disable electric wire trap
+        for (const trap of (this.electricTraps || [])) {
+          const box = trap.breakerBox;
+          if (box && !box.disabled && Math.hypot(p.x - box.x, p.y - box.y) < 18) {
+            box.disabled = true;
+            trap.disabled = true;
+            this.spawnHitParticles(box.x, box.y, '#00f0ff', 12);
+            this.spawnFloatingNotice('⚡ ЩИТОК ОБЕСТОЧЕН! ПРОВОДА БЕЗОПАСНЫ!', '#00ffaa');
+            if (typeof RadarAudio !== 'undefined' && RadarAudio.playBreakerSwitch) {
+              RadarAudio.playBreakerSwitch();
+            }
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+        }
+
+        // Check hit on flesh vent trap to force tentacles into sewer
+        for (const vent of (this.fleshVents || [])) {
+          if (vent.dormantTimer <= 0 && Math.hypot(p.x - vent.x, p.y - vent.y) < 20) {
+            vent.dormantTimer = 30.0;
+            this.spawnHitParticles(vent.x, vent.y, '#880066', 10);
+            this.spawnFloatingNotice('🦑 ЩУПАЛЬЦА ВТЯНУЛИСЬ В КОЛЛЕКТОР (-30 СЕК.)', '#bb44ee');
+            if (typeof RadarAudio !== 'undefined' && RadarAudio.playMonsterHurt) {
+              RadarAudio.playMonsterHurt();
+            }
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+        }
+
         // Check hit on explosive chemical barrels
         for (let bi = (this.explosiveBarrels || []).length - 1; bi >= 0; bi--) {
           const barrel = this.explosiveBarrels[bi];
@@ -3769,7 +3920,64 @@
         }
 
         // 2c. Draw Living Cell & Bunker Props
-        // Airlock Defense Barricades in FPS
+        // Environmental Lore: Tape Recorders in FPS
+      for (const rec of (this.recorders || [])) {
+        visibleSprites.push({
+          x: rec.x,
+          y: rec.y,
+          type: 'recorder',
+          key: 'recorder',
+          recorder: rec,
+          color: '#222624'
+        });
+      }
+
+      // Environmental Lore: Wall Notes in FPS
+      for (const note of (this.wallNotes || [])) {
+        visibleSprites.push({
+          x: note.x,
+          y: note.y,
+          type: 'wall_note',
+          key: 'wall_note',
+          note: note,
+          color: '#ded1b4'
+        });
+      }
+
+      // Interactive Dungeon Traps in FPS
+      for (const trap of (this.electricTraps || [])) {
+        visibleSprites.push({
+          x: trap.x,
+          y: trap.y,
+          type: 'electric_wire',
+          key: 'electric_wire',
+          trap: trap,
+          color: '#00f0ff'
+        });
+        if (trap.breakerBox) {
+          visibleSprites.push({
+            x: trap.breakerBox.x,
+            y: trap.breakerBox.y,
+            type: 'breaker_box',
+            key: 'breaker_box',
+            box: trap.breakerBox,
+            color: '#33443a'
+          });
+        }
+      }
+
+      for (const vent of (this.fleshVents || [])) {
+        visibleSprites.push({
+          x: vent.x,
+          y: vent.y,
+          type: 'flesh_vent',
+          key: 'flesh_vent',
+          vent: vent,
+          color: '#661155'
+        });
+      }
+
+      // Airlock Defense Barricades in FPS
       for (const bar of (this.siegeBarricades || [])) {
         visibleSprites.push({
           x: bar.x + 16,
@@ -3848,6 +4056,37 @@
         }
 
         
+        // Environmental Lore: Tape Recorders in 2D
+        for (const rec of (this.recorders || [])) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawTapeRecorder) {
+            SpriteFactory.drawTapeRecorder(worldCtx, rec, this.tileSize, this.tick, 1.0);
+          }
+        }
+
+        // Environmental Lore: Wall Notes in 2D
+        for (const note of (this.wallNotes || [])) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawWallNote) {
+            SpriteFactory.drawWallNote(worldCtx, note, this.tileSize, this.tick, 1.0);
+          }
+        }
+
+        // Interactive Dungeon Traps: Electric Wires in 2D
+        for (const trap of (this.electricTraps || [])) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawElectricWireTrap) {
+            SpriteFactory.drawElectricWireTrap(worldCtx, trap, this.tileSize, this.tick, 1.0);
+          }
+          if (trap.breakerBox && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawBreakerBox) {
+            SpriteFactory.drawBreakerBox(worldCtx, trap.breakerBox, this.tileSize, this.tick, 1.0);
+          }
+        }
+
+        // Interactive Dungeon Traps: Flesh Vents in 2D
+        for (const vent of (this.fleshVents || [])) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawFleshVentTrap) {
+            SpriteFactory.drawFleshVentTrap(worldCtx, vent, this.tileSize, this.tick, 1.0);
+          }
+        }
+
         // Airlock Defense Barricades in 2D
         for (const bar of (this.siegeBarricades || [])) {
           if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawBarricade) {
@@ -4692,6 +4931,26 @@
             } else if (sp.type === 'npc') {
               ctx.fillStyle = '#00ffaa';
               ctx.fillRect(stripeX, sprTop, colStep, sprHeight);
+            } else if (sp.type === 'recorder') {
+              const rec = sp.recorder;
+              const blink = rec && !rec.listened && (Math.floor(this.tick / 16) % 2 === 0);
+              ctx.fillStyle = blink ? '#ff2222' : '#33403a';
+              ctx.fillRect(stripeX, sprTop + sprHeight * 0.45, colStep, sprHeight * 0.55);
+            } else if (sp.type === 'wall_note') {
+              ctx.fillStyle = '#dfd3b6';
+              ctx.fillRect(stripeX, sprTop + sprHeight * 0.25, colStep, sprHeight * 0.7);
+            } else if (sp.type === 'electric_wire') {
+              const trap = sp.trap;
+              ctx.fillStyle = (trap && trap.isArcing && !trap.disabled) ? '#00f0ff' : '#1c2420';
+              ctx.fillRect(stripeX, sprTop, colStep, sprHeight * 0.9);
+            } else if (sp.type === 'breaker_box') {
+              const box = sp.box;
+              ctx.fillStyle = (box && box.disabled) ? '#00e676' : '#ff3b30';
+              ctx.fillRect(stripeX, sprTop + sprHeight * 0.35, colStep, sprHeight * 0.5);
+            } else if (sp.type === 'flesh_vent') {
+              const vent = sp.vent;
+              ctx.fillStyle = (vent && vent.dormantTimer > 0) ? '#1f1b17' : '#661155';
+              ctx.fillRect(stripeX, sprTop + sprHeight * 0.75, colStep, sprHeight * 0.25);
             } else {
               ctx.fillStyle = sp.color || '#ff3b30';
               ctx.fillRect(stripeX, sprTop + sprHeight * 0.15, colStep, sprHeight * 0.85);
@@ -4747,6 +5006,29 @@
             // Floating Speech Bubble over Peer in FPS
             if (sp.speech && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawSpeechBubble) {
               SpriteFactory.drawSpeechBubble(ctx, screenX, barY - 26, sp.speech.text, sp.name, 1.0);
+            }
+          }
+        }
+
+        // Floating 3D Interaction Prompts for Lore & Traps
+        if (anyStripeVisible) {
+          const centerBufIdx = Math.floor(screenX / colStep);
+          if (centerBufIdx >= 0 && centerBufIdx < numCols && zBuffer[centerBufIdx] >= perpDistWorld * 0.9) {
+            if (sp.recorder && sp.recorder.inRange && !sp.recorder.isPlaying) {
+              ctx.fillStyle = '#00ffaa';
+              ctx.font = 'bold 9px "Share Tech Mono", monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText('[ E ] ПРОСЛУШАТЬ ЗАПИСЬ', screenX, sprTop - 6);
+            } else if (sp.note && sp.note.inRange) {
+              ctx.fillStyle = '#ffd700';
+              ctx.font = 'bold 9px "Share Tech Mono", monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText('[ E ] ЧИТАТЬ ЗАПИСКУ', screenX, sprTop - 6);
+            } else if (sp.box && sp.box.inRange && !sp.box.disabled) {
+              ctx.fillStyle = '#ffaa00';
+              ctx.font = 'bold 9px "Share Tech Mono", monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText('[ ВЫСТРЕЛ / УДАР ] ОБЕСТОЧИТЬ', screenX, sprTop - 6);
             }
           }
         }
@@ -5453,6 +5735,226 @@
 
       
       // 1. Top-Left Status Panel (РАДАР-ДЕТЕКТОР РУ-4) - Fixed 280px width, no overlap
+      // Blue Electric Shock Flash Reaction
+      if (this.blueDamageFlash > 0) {
+        const bfAlpha = (this.blueDamageFlash / 12) * 0.45;
+        ctx.fillStyle = `rgba(0, 220, 255, ${bfAlpha.toFixed(2)})`;
+        ctx.fillRect(0, 0, w, h);
+        this.blueDamageFlash--;
+      }
+
+      // Risk vs Reward Loot HUD in Top Right
+      const rhW = 208;
+      const rhX = w - rhW - 16;
+      const rhY = 56;
+      const rhH = 74;
+
+      const targetTalons = (this.player.talonsEarned || 0);
+      if (this.lootDisplayTalons === undefined) this.lootDisplayTalons = targetTalons;
+      if (this.lootDisplayTalons < targetTalons) {
+        this.lootDisplayTalons = Math.min(targetTalons, this.lootDisplayTalons + Math.ceil((targetTalons - this.lootDisplayTalons) * 0.15) + 1);
+        this.lootFlashTimer = 15;
+      }
+      const isFlashing = (this.lootFlashTimer > 0);
+      if (this.lootFlashTimer > 0) this.lootFlashTimer--;
+
+      ctx.fillStyle = isFlashing ? 'rgba(30, 25, 5, 0.94)' : 'rgba(2, 14, 5, 0.92)';
+      ctx.fillRect(rhX, rhY, rhW, rhH);
+      ctx.strokeStyle = isFlashing ? '#ffd700' : '#1fe044';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(rhX, rhY, rhW, rhH);
+
+      ctx.fillStyle = isFlashing ? 'rgba(255, 215, 0, 0.2)' : 'rgba(31, 224, 68, 0.16)';
+      ctx.fillRect(rhX + 1, rhY + 1, rhW - 2, 18);
+      ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      ctx.fillStyle = isFlashing ? '#ffd700' : '#1fe044';
+      ctx.textAlign = 'left';
+      ctx.fillText('┌─[ ХАБАР В РЮКЗАКЕ ]', rhX + 8, rhY + 13);
+
+      ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      ctx.fillStyle = isFlashing ? '#ffffff' : '#ffd700';
+      ctx.fillText(`💰 ТАЛОНЫ: +${this.lootDisplayTalons} Т.`, rhX + 12, rhY + 34);
+
+      const lootItems = (this.player.collectedLoot || []).length;
+      ctx.fillStyle = '#00ffaa';
+      ctx.fillText(`📦 РЕДКИЙ ЛУТ: ${lootItems} ПРЕДМЕТ${lootItems === 1 ? '' : (lootItems >= 2 && lootItems <= 4 ? 'А' : 'ОВ')}`, rhX + 12, rhY + 50);
+
+      const multStr = (this.floorMultiplier && this.floorMultiplier > 1.0) ? `x${this.floorMultiplier.toFixed(1)}` : 'x1.0';
+      ctx.fillStyle = (this.floorMultiplier && this.floorMultiplier > 1.0) ? '#ffaa00' : '#88a892';
+      ctx.fillText(`⚡ МНОЖИТЕЛЬ ЭТАЖА: ${multStr}`, rhX + 12, rhY + 66);
+
+      // Elevator Platform Tactical Choice Overlay
+      if (this.isPlayerInElevator && !this.emergencySiegeActive && !this.isEvacuating) {
+        const optW = 360;
+        const optH = 54;
+        const optX = cx - optW / 2;
+        const optY = h - 165;
+
+        ctx.fillStyle = 'rgba(2, 14, 8, 0.92)';
+        ctx.fillRect(optX, optY, optW, optH);
+        ctx.strokeStyle = '#00ffaa';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(optX, optY, optW, optH);
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 10px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText('[ 1 ] ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ (УДЕРЖИВАТЬ [E])', cx, optY + 20);
+
+        const nextMult = ((this.currentRaidFloor || 1) + 1 >= 4 ? 3.0 : ((this.currentRaidFloor || 1) + 1 === 3 ? 2.0 : 1.5));
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText(`[ 2 ] СПУСК НА СЛЕДУЮЩИЙ ЭТАЖ (+1 // БОНУС x${nextMult.toFixed(1)})`, cx, optY + 40);
+      }
+
+      // Tentacle Entangled Struggle Prompt
+      if ((this.fleshVents || []).some(t => t.entangled)) {
+        ctx.fillStyle = 'rgba(40, 5, 20, 0.92)';
+        ctx.fillRect(cx - 180, cy + 60, 360, 36);
+        ctx.strokeStyle = '#ff0033';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 180, cy + 60, 360, 36);
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 12px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#ff3333';
+        ctx.fillText('⚠️ ЩУПАЛЬЦА СХВАТИЛИ ВАС! [ ПРОБЕЛ / F ] ВЫРВАТЬСЯ!', cx, cy + 83);
+      }
+
+      // Tape Recorder Subtitle Display
+      if (this.activeTapeSubtitle && this.activeTapeSubtitle.timer > 0) {
+        this.activeTapeSubtitle.timer -= (1 / 60);
+        const subW = Math.min(w - 32, 640);
+        const subH = 46;
+        const subX = cx - subW / 2;
+        const subY = h - 90;
+
+        ctx.fillStyle = 'rgba(4, 16, 8, 0.92)';
+        ctx.fillRect(subX, subY, subW, subH);
+        ctx.strokeStyle = '#00ffaa';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(subX, subY, subW, subH);
+
+        ctx.fillStyle = 'rgba(0, 255, 170, 0.12)';
+        const scanY = subY + (this.tick % 44);
+        ctx.fillRect(subX, scanY, subW, 2);
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 11px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText(this.activeTapeSubtitle.text, cx, subY + 26);
+      }
+
+      // Descent Multiplier Fullscreen Warning Banner
+      if (this.descentBanner && this.descentBanner.timer > 0) {
+        this.descentBanner.timer -= (1 / 60);
+        const banW = Math.min(w - 40, 560);
+        const banH = 92;
+        const banX = (w - banW) / 2;
+        const banY = (h - banH) / 2;
+
+        ctx.fillStyle = 'rgba(10, 5, 0, 0.95)';
+        ctx.fillRect(banX, banY, banW, banH);
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(banX, banY, banW, banH);
+
+        ctx.fillStyle = '#ffd700';
+        for (let s = banX + 4; s < banX + banW - 8; s += 16) {
+          ctx.fillRect(s, banY + 2, 8, 4);
+          ctx.fillRect(s, banY + banH - 6, 8, 4);
+        }
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText('⚠️ ВЫ СДЕЛАЛИ ВЫБОР: СПУСК В ГЛУБИНУ!', cx, banY + 30);
+
+        ctx.font = 'bold 12px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(`МНОЖИТЕЛЬ ДОБЫЧИ x${this.descentBanner.mult.toFixed(1)} АКТИВИРОВАН!`, cx, banY + 52);
+
+        ctx.font = 'bold 10px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText('ВСЕ НАЙДЕННЫЕ ТАЛОНЫ И ОПЫТ УМНОЖАЮТСЯ!', cx, banY + 72);
+      }
+
+      // Wall Note Interactive Soviet Document Card Overlay
+      if (this.activeWallNoteCard) {
+        const cardW = Math.min(w - 32, 440);
+        const cardH = 260;
+        const cardX = cx - cardW / 2;
+        const cardY = cy - cardH / 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.fillStyle = '#dfd3b6';
+        ctx.fillRect(cardX, cardY, cardW, cardH);
+        ctx.strokeStyle = '#6e5e43';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+        ctx.fillStyle = '#4a3d2c';
+        ctx.beginPath();
+        ctx.arc(cx, cardY + 12, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 9px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#3a3324';
+        ctx.fillText('СССР // ГИГАХРУЩ // СЛУЖБА БЕЗОПАСНОСТИ СЕКТОРА', cx, cardY + 32);
+
+        ctx.font = 'bold 12px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#1c170d';
+        ctx.fillText(this.activeWallNoteCard.title || 'СЛУЖЕБНАЯ ЗАПИСКА', cx, cardY + 54);
+
+        ctx.strokeStyle = '#998767';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cardX + 24, cardY + 64);
+        ctx.lineTo(cardX + cardW - 24, cardY + 64);
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 10px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#524531';
+        ctx.fillText(`КОМУ: ${this.activeWallNoteCard.header || 'ДЕЖУРНОМУ'}`, cardX + 24, cardY + 84);
+
+        ctx.font = '11px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#1a160f';
+        const words = (this.activeWallNoteCard.text || '').split(' ');
+        let line = '';
+        let lineY = cardY + 108;
+        for (let wi = 0; wi < words.length; wi++) {
+          const testLine = line + words[wi] + ' ';
+          if (ctx.measureText(testLine).width > cardW - 52) {
+            ctx.fillText(line, cardX + 24, lineY);
+            line = words[wi] + ' ';
+            lineY += 18;
+          } else {
+            line = testLine;
+          }
+        }
+        ctx.fillText(line, cardX + 24, lineY);
+
+        ctx.save();
+        ctx.translate(cardX + cardW - 75, cardY + cardH - 55);
+        ctx.rotate(-0.15);
+        ctx.strokeStyle = 'rgba(180, 20, 20, 0.75)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-45, -16, 90, 32);
+        ctx.font = 'bold 8px "Share Tech Mono", monospace';
+        ctx.fillStyle = 'rgba(180, 20, 20, 0.85)';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.activeWallNoteCard.stamp || 'СЕКРЕТНО', 0, 4);
+        ctx.restore();
+
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 10px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#807054';
+        ctx.fillText('[ E ] / [ ESC ] — ЗАКРЫТЬ ДОКУМЕНТ', cx, cardY + cardH - 14);
+      }
+
       const tlX = 16;
       const tlY = 12;
       const tlW = 280;

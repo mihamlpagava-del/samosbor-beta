@@ -329,6 +329,152 @@
         tileY: subRoom.centerY - 1
       });
 
+
+      // 14. Environmental Lore: Tape Recorders & Wall Decal Notes
+      const recorders = [];
+      const wallNotes = [];
+
+      // A. Tape Recorders (PROP_RECORDER) - 1 to 2 per floor
+      const tapePool = [
+        { tapeId: '42', text: '[Кассета №42]: Отряд 3 погиб в шлюзе B... Оно мимикрирует под шум воды... Не включайте свет...' },
+        { tapeId: '17', text: '[Кассета №17]: Самосбор пошёл раньше расписания. Комендант запер гермозатворы снаружи. Мы замурованы...' },
+        { tapeId: '08', text: '[Кассета №08]: Бетон на 4-м ярусе дышит. Стены пульсируют. Если слышите шёпот — стреляйте без предупреждения...' },
+        { tapeId: '29', text: '[Кассета №29]: Фильтры забились чёрной слизью. Дежурный по вентиляции сошёл с ума и открыл люк...' },
+        { tapeId: '55', text: '[Кассета №55]: Мы нашли склад ВОХР в секторе 7. Там ящики с патронами и бочки, но двери заклинило намертво...' }
+      ];
+
+      const numRecorders = Math.min(2, Math.max(1, rooms.length - 2));
+      for (let i = 0; i < numRecorders; i++) {
+        const rRoom = rooms[Math.min(rooms.length - 1, i + 2)];
+        const tape = tapePool[(i + (this.currentRaidFloor || 1)) % tapePool.length];
+        recorders.push({
+          id: 'recorder_' + i,
+          name: 'Магнитофон «Весна-306»',
+          tapeId: tape.tapeId,
+          text: tape.text,
+          x: (rRoom.centerX - 1) * TS + TS / 2,
+          y: (rRoom.centerY) * TS + TS / 2,
+          tileX: rRoom.centerX - 1,
+          tileY: rRoom.centerY,
+          listened: false,
+          isPlaying: false
+        });
+      }
+
+      // B. Wall Decal Notes (WALL_DECAL_NOTE) - 2 to 3 per floor
+      const noteDefs = [
+        {
+          id: 'note_armory_code',
+          title: 'СЛУЖЕБНАЯ ЗАПИСКА №1984-С',
+          header: 'ДЕЖУРНОМУ ПО СЕКТОРУ',
+          text: 'Внимание дежурному! Код от оружейной изменён на 1984. Ключ-карта спрятана за щитком подстанции в секторе C2.',
+          stamp: 'СЕКРЕТНО // ОХРАНА БЛОКА',
+          roomIdx: 1
+        },
+        {
+          id: 'note_power_hazard',
+          title: 'ПРЕДПИСАНИЕ СЛУЖБЫ ТБ',
+          header: 'ВНИМАНИЮ ЛИКВИДАТОРОВ',
+          text: 'Осторожно! В бойлерной пробило проводку, пол под напряжением. Перед проходом обесточьте распределительный щиток на стене!',
+          stamp: 'АВАРИЙНЫЙ НАДЗОР',
+          roomIdx: 2
+        },
+        {
+          id: 'note_samosbor_alert',
+          title: 'ДИРЕКТИВА №77-Б',
+          header: 'ПРИКАЗ КОМЕНДАНТА',
+          text: 'При звуках ревуна не приближаться к лифтовой шахте. Возможен обрыв грузовых тросов. В вентиляционных решётках замечена биомасса.',
+          stamp: 'УПРАВЛЕНИЕ ГИГАХРУЩА',
+          roomIdx: 3
+        }
+      ];
+
+      noteDefs.forEach((nd, idx) => {
+        const targetRoom = rooms[Math.min(rooms.length - 1, nd.roomIdx)];
+        wallNotes.push({
+          id: nd.id,
+          title: nd.title,
+          header: nd.header,
+          text: nd.text,
+          stamp: nd.stamp,
+          x: targetRoom.x * TS + TS / 2 + 16,
+          y: (targetRoom.y + 1) * TS + TS / 2,
+          tileX: targetRoom.x,
+          tileY: targetRoom.y + 1
+        });
+      });
+
+      // 15. Interactive Dungeon Traps: Electric Wires & Flesh Vents
+      const electricTraps = [];
+      const fleshVents = [];
+
+      // Find suitable corridor floor tiles for traps
+      const corridorTiles = [];
+      for (let ty = 3; ty < H - 3; ty++) {
+        for (let tx = 3; tx < W - 3; tx++) {
+          if (grid[ty][tx] === 0) {
+            // Check if in corridor (at least 2 opposing wall neighbors)
+            const horizWalls = (grid[ty][tx - 1] === 1 && grid[ty][tx + 1] === 1);
+            const vertWalls = (grid[ty - 1][tx] === 1 && grid[ty + 1][tx] === 1);
+            if (horizWalls || vertWalls) {
+              const dSpawn = Math.hypot(tx * TS - playerSpawn.x, ty * TS - playerSpawn.y);
+              if (dSpawn > 160) {
+                corridorTiles.push({ tx, ty, horizWalls, vertWalls });
+              }
+            }
+          }
+        }
+      }
+
+      // Spawn 1-2 Electric Wire Traps with Breaker Boxes
+      const numWires = Math.min(2, Math.max(1, Math.floor(corridorTiles.length / 12)));
+      for (let i = 0; i < numWires; i++) {
+        const cTile = corridorTiles[i * 5 + 2] || corridorTiles[i];
+        if (cTile) {
+          // Breaker box placed 2 tiles away along wall
+          const boxTx = cTile.horizWalls ? (cTile.tx - 1) : cTile.tx;
+          const boxTy = cTile.horizWalls ? (cTile.ty - 2) : (cTile.ty - 1);
+
+          electricTraps.push({
+            id: 'wire_trap_' + i,
+            x: cTile.tx * TS + TS / 2,
+            y: cTile.ty * TS + TS / 2,
+            tileX: cTile.tx,
+            tileY: cTile.ty,
+            disabled: false,
+            isArcing: false,
+            arcTimer: 0,
+            breakerBox: {
+              id: 'breaker_' + i,
+              x: boxTx * TS + TS / 2,
+              y: boxTy * TS + TS / 2,
+              tileX: boxTx,
+              tileY: boxTy,
+              disabled: false,
+              hp: 1
+            }
+          });
+        }
+      }
+
+      // Spawn 2-3 Biomechanical Flesh Vent Grates
+      const numVents = Math.min(3, Math.max(2, Math.floor(corridorTiles.length / 8)));
+      for (let i = 0; i < numVents; i++) {
+        const cTile = corridorTiles[corridorTiles.length - 1 - (i * 4)];
+        if (cTile) {
+          fleshVents.push({
+            id: 'flesh_vent_' + i,
+            x: cTile.tx * TS + TS / 2,
+            y: cTile.ty * TS + TS / 2,
+            tileX: cTile.tx,
+            tileY: cTile.ty,
+            entangled: false,
+            dormantTimer: 0,
+            entangleTimer: 0
+          });
+        }
+      }
+
       // Scale Mutant HP & Damage by current floor depth
       const hpScale = 1 + (this.currentRaidFloor - 1) * 0.25;
       const dmgScale = 1 + (this.currentRaidFloor - 1) * 0.15;
@@ -358,6 +504,10 @@
         keycards,
         notes,
         puzzles,
+        recorders,
+        wallNotes,
+        electricTraps,
+        fleshVents,
         currentRaidFloor: this.currentRaidFloor,
         lamps
       };
