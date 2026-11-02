@@ -5428,6 +5428,141 @@ function checkLifterTrigger(player, sock, loc) {
         broadcastGameState();
     });
 
+    // ===== MULTIPLAYER FPS MODE (25 HZ SOCKET.IO REAL-TIME SYNC) =====
+    socket.on('joinRaidFPS', (data) => {
+        let auth = getAuthPlayer();
+        let username = (data && data.username) || (auth ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4)));
+        let roomCode = (data && data.roomCode);
+
+        if (!roomCode) {
+            // Find existing open room with < 4 players created within 10 minutes
+            for (const code in raidRoomsFPS) {
+                if (Object.keys(raidRoomsFPS[code].players).length < 4 && (Date.now() - raidRoomsFPS[code].createdAt < 600000)) {
+                    roomCode = code;
+                    break;
+                }
+            }
+            if (!roomCode) {
+                roomCode = 'fps_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 4);
+            }
+        }
+
+        socket.join(roomCode);
+        socket.currentRaidRoomFPS = roomCode;
+
+        if (!raidRoomsFPS[roomCode]) {
+            raidRoomsFPS[roomCode] = {
+                id: roomCode,
+                players: {},
+                bullets: [],
+                createdAt: Date.now()
+            };
+        }
+
+        const spawnX = (data && typeof data.x === 'number') ? data.x : 200;
+        const spawnY = (data && typeof data.y === 'number') ? data.y : 200;
+
+        raidRoomsFPS[roomCode].players[socket.id] = {
+            id: socket.id,
+            name: username,
+            x: spawnX,
+            y: spawnY,
+            angle: (data && data.angle) || 0,
+            hp: (data && data.hp) || 100,
+            maxHp: 100,
+            weapon: (data && data.weapon) || 'pipe',
+            skin: (data && data.skin) || 'default'
+        };
+
+        socket.emit('initRaidFPS', {
+            yourId: socket.id,
+            roomCode: roomCode,
+            players: raidRoomsFPS[roomCode].players
+        });
+
+        socket.to(roomCode).emit('playerJoinedFPS', {
+            id: socket.id,
+            player: raidRoomsFPS[roomCode].players[socket.id]
+        });
+    });
+
+    socket.on('playerInputFPS', (input) => {
+        if (!input) return;
+        const roomCode = input.roomCode || socket.currentRaidRoomFPS;
+        if (!roomCode || !raidRoomsFPS[roomCode]) return;
+        const room = raidRoomsFPS[roomCode];
+        const p = room.players[socket.id];
+        if (!p) return;
+
+        if (typeof input.angle === 'number') p.angle = input.angle;
+        if (typeof input.hp === 'number') p.hp = input.hp;
+        if (input.weapon) p.weapon = input.weapon;
+
+        // Synchronize client predicted position
+        if (typeof input.x === 'number' && typeof input.y === 'number') {
+            p.x = input.x;
+            p.y = input.y;
+        } else {
+            const speed = 3.2;
+            if (input.forward) {
+                p.x += Math.cos(p.angle) * speed;
+                p.y += Math.sin(p.angle) * speed;
+            }
+            if (input.backward) {
+                p.x -= Math.cos(p.angle) * speed;
+                p.y -= Math.sin(p.angle) * speed;
+            }
+            if (input.strafeLeft) {
+                p.x += Math.sin(p.angle) * speed;
+                p.y -= Math.cos(p.angle) * speed;
+            }
+            if (input.strafeRight) {
+                p.x -= Math.sin(p.angle) * speed;
+                p.y += Math.cos(p.angle) * speed;
+            }
+        }
+    });
+
+    socket.on('shootFPS', (shootData) => {
+        if (!shootData) return;
+        const roomCode = shootData.roomCode || socket.currentRaidRoomFPS;
+        if (!roomCode || !raidRoomsFPS[roomCode]) return;
+
+        // Broadcast peer shot muzzle flash & audio
+        socket.to(roomCode).emit('peerShotVFX', {
+            shooterId: socket.id,
+            originX: shootData.x,
+            originY: shootData.y,
+            angle: shootData.angle,
+            weapon: shootData.weapon || 'rifle'
+        });
+    });
+
+    socket.on('chatFPS', (msg) => {
+        const roomCode = socket.currentRaidRoomFPS;
+        if (!roomCode || !raidRoomsFPS[roomCode] || !msg || !msg.text) return;
+        let auth = getAuthPlayer();
+        let username = auth ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
+        io.to(roomCode).emit('peerChatFPS', {
+            id: socket.id,
+            name: username,
+            text: String(msg.text).slice(0, 70)
+        });
+    });
+
+    socket.on('leaveRaidFPS', () => {
+        const roomCode = socket.currentRaidRoomFPS;
+        if (roomCode && raidRoomsFPS[roomCode]) {
+            delete raidRoomsFPS[roomCode].players[socket.id];
+            socket.to(roomCode).emit('playerLeftFPS', socket.id);
+            socket.leave(roomCode);
+            if (Object.keys(raidRoomsFPS[roomCode].players).length === 0) {
+                delete raidRoomsFPS[roomCode];
+            }
+            socket.currentRaidRoomFPS = null;
+        }
+    });
+
     // ===== LIVE 4-PLAYER RAID MATCHMAKING, MOVEMENT & PROXIMITY CHAT =====
     socket.on('joinLiveRaidMatch', (data) => {
         let auth = getAuthPlayer();
@@ -5501,6 +5636,15 @@ function checkLifterTrigger(player, sock, loc) {
     });
 
     socket.on('leaveLiveRaid', () => {
+        if (socket.currentRaidRoomFPS && raidRoomsFPS[socket.currentRaidRoomFPS]) {
+            const rCode = socket.currentRaidRoomFPS;
+            delete raidRoomsFPS[rCode].players[socket.id];
+            socket.to(rCode).emit('playerLeftFPS', socket.id);
+            if (Object.keys(raidRoomsFPS[rCode].players).length === 0) {
+                delete raidRoomsFPS[rCode];
+            }
+            socket.currentRaidRoomFPS = null;
+        }
         if (socket.currentLiveRaid && globalLiveRaidRooms[socket.currentLiveRaid]) {
             let rId = socket.currentLiveRaid;
             delete globalLiveRaidRooms[rId].players[socket.id];

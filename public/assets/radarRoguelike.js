@@ -556,6 +556,7 @@
               this.playerSpeech = { text: trimmed, timer: 300 };
               if (typeof socket !== 'undefined' && socket && socket.emit) {
                 socket.emit('raidPlayerChat', { text: trimmed });
+                socket.emit('chatFPS', { text: trimmed });
               }
             }
             this.isTypingChat = false;
@@ -1178,6 +1179,20 @@
         }
       }
 
+      // --- MULTIPLAYER PEER COORDINATE LINEAR INTERPOLATION (LERP) ---
+      for (const id in this.remotePlayers) {
+        const peer = this.remotePlayers[id];
+        peer.renderX = (peer.renderX || peer.targetX) + ((peer.targetX || 0) - (peer.renderX || 0)) * 0.25;
+        peer.renderY = (peer.renderY || peer.targetY) + ((peer.targetY || 0) - (peer.renderY || 0)) * 0.25;
+
+        let diff = (peer.targetAngle || 0) - (peer.renderAngle || 0);
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        peer.renderAngle = (peer.renderAngle || 0) + diff * 0.25;
+
+        if (peer.isShootingTimer > 0) peer.isShootingTimer--;
+      }
+
       // --- PROXIMITY CHAT SPEECH BUBBLE DECAY ---
       if (this.playerSpeech) {
         this.playerSpeech.timer--;
@@ -1453,69 +1468,185 @@
     /**
      * 4-Player Live Raid Networking Initialization
      */
+        /**
+     * Multiplayer FPS Mode Integration (25 Hz Socket.IO Real-Time Sync)
+     */
     initRaidNetworking() {
       if (typeof socket === 'undefined' || !socket || !socket.on) return;
       if (this._hasRaidNetwork) {
-        socket.emit('joinLiveRaidMatch', { x: this.player.x, y: this.player.y });
+        socket.emit('joinRaidFPS', {
+          roomCode: this.currentRoomCode,
+          x: Math.round(this.player.x),
+          y: Math.round(this.player.y),
+          angle: Number(this.player.angle.toFixed(2)),
+          hp: this.player.hp,
+          weapon: (this.player.weapon && this.player.weapon.gunType) || 'pipe'
+        });
         return;
       }
       this._hasRaidNetwork = true;
 
-      socket.emit('joinLiveRaidMatch', { x: this.player.x, y: this.player.y });
+      // Join FPS multiplayer session
+      socket.emit('joinRaidFPS', {
+        roomCode: this.currentRoomCode,
+        x: Math.round(this.player.x),
+        y: Math.round(this.player.y),
+        angle: Number(this.player.angle.toFixed(2)),
+        hp: this.player.hp,
+        weapon: (this.player.weapon && this.player.weapon.gunType) || 'pipe'
+      });
 
-      socket.on('liveRaidJoined', (data) => {
-        if (!data || !data.players) return;
+      // 1. Initial State from Server
+      socket.on('initRaidFPS', (data) => {
+        if (!data) return;
+        this.myNetworkId = data.yourId;
+        this.currentRoomCode = data.roomCode;
         this.remotePlayers = {};
-      this.npcs = [];
-      this.props = [];
-      this.floorDepth = 1;
-      this.activeDialog = null;
-        for (const pId in data.players) {
-          if (pId !== socket.id) {
-            this.remotePlayers[pId] = data.players[pId];
+
+        for (const id in (data.players || {})) {
+          if (id !== this.myNetworkId) {
+            const p = data.players[id];
+            this.remotePlayers[id] = {
+              id: p.id,
+              name: p.name || 'Ликвидатор',
+              renderX: p.x,
+              renderY: p.y,
+              renderAngle: p.angle || 0,
+              targetX: p.x,
+              targetY: p.y,
+              targetAngle: p.angle || 0,
+              hp: p.hp || 100,
+              maxHp: p.maxHp || 100,
+              weapon: p.weapon || 'pipe',
+              isShootingTimer: 0
+            };
           }
         }
-        const count = Object.keys(this.remotePlayers).length + 1;
-        this.spawnFloatingNotice(`👥 СЕССИЯ ВЫЛАЗКИ: ${count}/4 БОЙЦОВ`, '#33d4ff');
+        const total = Object.keys(this.remotePlayers).length + 1;
+        this.spawnFloatingNotice(`👥 КООП-РЕЙД: ${total}/4 ЛИКВИДАТОРОВ В СЕТИ`, '#33d4ff');
       });
 
-      socket.on('raidRemotePlayerJoined', (data) => {
-        if (!data || !data.id || data.id === socket.id) return;
-        this.remotePlayers[data.id] = data.player || { username: data.username, x: 200, y: 200, angle: 0, hp: 100 };
-        this.spawnFloatingNotice(`👤 ${data.username || 'Боец'} ПОДКЛЮЧИЛСЯ К ВЫЛАЗКЕ`, '#00ffaa');
-      });
-
-      socket.on('raidRemotePlayerMoved', (data) => {
-        if (!data || !data.id || data.id === socket.id) return;
-        if (!this.remotePlayers[data.id]) {
-          this.remotePlayers[data.id] = { username: data.username, x: data.x, y: data.y, angle: data.angle, hp: data.hp };
-        } else {
-          const rp = this.remotePlayers[data.id];
-          rp.x = data.x;
-          rp.y = data.y;
-          rp.angle = data.angle;
-          if (data.hp !== undefined) rp.hp = data.hp;
+      // 2. Continuous 25 Hz World State Updates from Server
+      socket.on('serverUpdateFPS', (data) => {
+        if (!data || !data.players) return;
+        for (const id in data.players) {
+          if (id === this.myNetworkId) continue;
+          const sPlayer = data.players[id];
+          if (!this.remotePlayers[id]) {
+            this.remotePlayers[id] = {
+              id: sPlayer.id,
+              name: sPlayer.name || 'Ликвидатор',
+              renderX: sPlayer.x,
+              renderY: sPlayer.y,
+              renderAngle: sPlayer.angle || 0,
+              targetX: sPlayer.x,
+              targetY: sPlayer.y,
+              targetAngle: sPlayer.angle || 0,
+              hp: sPlayer.hp || 100,
+              maxHp: sPlayer.maxHp || 100,
+              weapon: sPlayer.weapon || 'pipe',
+              isShootingTimer: 0
+            };
+          } else {
+            const peer = this.remotePlayers[id];
+            peer.targetX = sPlayer.x;
+            peer.targetY = sPlayer.y;
+            peer.targetAngle = sPlayer.angle || 0;
+            if (sPlayer.hp !== undefined) peer.hp = sPlayer.hp;
+            if (sPlayer.weapon) peer.weapon = sPlayer.weapon;
+            if (sPlayer.name) peer.name = sPlayer.name;
+          }
         }
       });
 
-      socket.on('raidOtherPlayerChat', (data) => {
-        if (!data || !data.id) return;
-        if (data.id === socket.id) return;
+      // 3. New Peer Joined
+      socket.on('playerJoinedFPS', (data) => {
+        if (!data || !data.id || data.id === this.myNetworkId) return;
+        const p = data.player || {};
+        this.remotePlayers[data.id] = {
+          id: data.id,
+          name: p.name || 'Боец',
+          renderX: p.x || 200,
+          renderY: p.y || 200,
+          renderAngle: p.angle || 0,
+          targetX: p.x || 200,
+          targetY: p.y || 200,
+          targetAngle: p.angle || 0,
+          hp: p.hp || 100,
+          maxHp: 100,
+          weapon: p.weapon || 'pipe',
+          isShootingTimer: 0
+        };
+        this.spawnFloatingNotice(`👤 ${p.name || 'Боец'} подключился к сектору`, '#00ffaa');
+      });
+
+      // 4. Peer Shot VFX & SFX
+      socket.on('peerShotVFX', (data) => {
+        if (!data || data.shooterId === this.myNetworkId) return;
+        const peer = this.remotePlayers[data.shooterId];
+        if (peer) {
+          peer.isShootingTimer = 6;
+        }
+
+        // Spatial Gunshot Audio from peer's world coordinates
+        if (typeof RadarAudio !== 'undefined') {
+          const sParam = this.getSpatialSoundParams(data.originX, data.originY);
+          if (RadarAudio.playGunshot) {
+            RadarAudio.playGunshot(data.weapon || 'pistol');
+          }
+        }
+
+        // Projectile tracer
+        const speed = 16;
+        this.projectiles.push({
+          x: data.originX + Math.cos(data.angle) * 16,
+          y: data.originY + Math.sin(data.angle) * 16,
+          vx: Math.cos(data.angle) * speed,
+          vy: Math.sin(data.angle) * speed,
+          damage: 0,
+          isPlayer: false,
+          isPeer: true,
+          life: 40,
+          color: '#ffe066'
+        });
+      });
+
+      // 5. Peer Chat Speech Bubble
+      socket.on('peerChatFPS', (data) => {
+        if (!data || !data.id || data.id === this.myNetworkId) return;
         if (!this.remotePlayers[data.id]) {
-          this.remotePlayers[data.id] = { username: data.username, x: 200, y: 200, angle: 0, hp: 100 };
+          this.remotePlayers[data.id] = { name: data.name, renderX: 200, renderY: 200, targetX: 200, targetY: 200, renderAngle: 0, targetAngle: 0, hp: 100, maxHp: 100 };
         }
         this.remotePlayers[data.id].speech = { text: data.text, timer: 300 };
-        this.spawnFloatingNotice(`💬 ${data.username}: ${data.text}`, '#ffffff');
+        this.spawnFloatingNotice(`💬 ${data.name}: ${data.text}`, '#ffffff');
       });
 
-      socket.on('raidRemotePlayerLeft', (data) => {
-        if (!data || !data.id) return;
-        if (this.remotePlayers[data.id]) {
-          const uname = this.remotePlayers[data.id].username || 'Боец';
-          delete this.remotePlayers[data.id];
-          this.spawnFloatingNotice(`🚪 ${uname} ПОКИНУЛ ВЫЛАЗКУ`, '#ffaa00');
+      // 6. Peer Left Session
+      socket.on('playerLeftFPS', (peerId) => {
+        if (this.remotePlayers[peerId]) {
+          const uname = this.remotePlayers[peerId].name || 'Боец';
+          delete this.remotePlayers[peerId];
+          this.spawnFloatingNotice(`🚪 ${uname} покинул рейд`, '#ffaa00');
         }
       });
+
+      // Fixed 25 Hz Client Input Streaming (every 40 ms)
+      if (this.netInputTimer) clearInterval(this.netInputTimer);
+      this.netInputTimer = setInterval(() => {
+        if (!this.isRunning || typeof socket === 'undefined' || !socket || !socket.emit) return;
+        socket.emit('playerInputFPS', {
+          roomCode: this.currentRoomCode,
+          forward: !!(this.keys['KeyW'] || this.keys['w'] || this.keys['ArrowUp']),
+          backward: !!(this.keys['KeyS'] || this.keys['s'] || this.keys['ArrowDown']),
+          strafeLeft: !!(this.keys['KeyA'] || this.keys['a']),
+          strafeRight: !!(this.keys['KeyD'] || this.keys['d']),
+          angle: Number(this.player.angle.toFixed(3)),
+          x: Math.round(this.player.x),
+          y: Math.round(this.player.y),
+          hp: this.player.hp,
+          weapon: (this.player.weapon && this.player.weapon.gunType) || 'pipe'
+        });
+      }, 40);
     }
 
     /**
@@ -3208,19 +3339,20 @@
         });
       }
 
-      // Remote Live Players in 4-Player Raid
+      // Remote Live Players in 4-Player FPS Raid with Interpolated Coordinates
       for (const rId in (this.remotePlayers || {})) {
         const rp = this.remotePlayers[rId];
         visibleSprites.push({
-          x: rp.x,
-          y: rp.y,
-          type: 'remote_player',
+          x: rp.renderX !== undefined ? rp.renderX : rp.x,
+          y: rp.renderY !== undefined ? rp.renderY : rp.y,
+          type: 'peer',
           key: 'liquidator',
           color: '#33d4ff',
-          name: rp.username || 'Ликвидатор',
+          name: rp.name || 'Ликвидатор',
           hp: rp.hp || 100,
           maxHp: rp.maxHp || 100,
-          speech: rp.speech
+          speech: rp.speech,
+          isShooting: (rp.isShootingTimer > 0)
         });
       }
 
@@ -3430,8 +3562,48 @@
           }
         }
 
+        // Name tag, speech bubble and health bar rendered only if sprite is visible
+        if (anyStripeVisible && sp.type === 'peer') {
+          const centerBufIdx = Math.floor(screenX / colStep);
+          if (centerBufIdx < 0 || centerBufIdx >= numCols || zBuffer[centerBufIdx] >= perpDistWorld * 0.9) {
+            const barW = Math.max(30, Math.min(75, sprWidth * 0.85));
+            const barH = 4;
+            const barX = Math.floor(screenX - barW / 2);
+            const barY = Math.max(12, sprTop - 6);
+
+            // Green ASCII Name Tag
+            ctx.fillStyle = '#00ffcc';
+            ctx.font = 'bold 10.5px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(sp.name || 'Ликвидатор', screenX, barY - 4);
+
+            // Health bar (Green Phosphor)
+            const hpPct = Math.max(0, Math.min(1, sp.hp / sp.maxHp));
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = '#1fe044';
+            ctx.fillRect(barX, barY, Math.floor(barW * hpPct), barH);
+
+            // Muzzle Flash on Peer
+            if (sp.isShooting) {
+              ctx.fillStyle = '#fff488';
+              ctx.shadowColor = '#ff9900';
+              ctx.shadowBlur = 18;
+              ctx.beginPath();
+              ctx.arc(screenX + sprWidth * 0.25, sprTop + sprHeight * 0.55, 12, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+            }
+
+            // Floating Speech Bubble over Peer in FPS
+            if (sp.speech && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawSpeechBubble) {
+              SpriteFactory.drawSpeechBubble(ctx, screenX, barY - 26, sp.speech.text, sp.name, 1.0);
+            }
+          }
+        }
+
         // Health bar rendered only if sprite is visible
-        if (anyStripeVisible && sp.hp !== undefined && sp.maxHp) {
+        if (anyStripeVisible && sp.type !== 'peer' && sp.hp !== undefined && sp.maxHp) {
           const centerBufIdx = Math.floor(screenX / colStep);
           if (centerBufIdx < 0 || centerBufIdx >= numCols || zBuffer[centerBufIdx] >= perpDistWorld * 0.9) {
             const hpPct = Math.max(0, Math.min(1, sp.hp / sp.maxHp));
