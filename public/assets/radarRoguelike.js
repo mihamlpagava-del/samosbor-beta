@@ -35,6 +35,17 @@
 
       // Extraction 5-second hold zone
       this.evacHoldTimer = 0;
+      this.emergencySiegeActive = false;
+      this.siegeTriggered = false;
+      this.siegeSurvived = false;
+      this.siegeTimer = 300;
+      this.siegePrepTimer = 15;
+      this.siegeBarricades = [];
+      this.explosiveBarrels = [];
+      this.elevatorTerminal = null;
+      this.vokhrCrate = null;
+      this.siegeAlertBanner = null;
+      this.bossSpawned = false;
       this.evacHoldRequired = 5.0;
       this.isPlayerInElevator = false;
       this.lastBeepSecond = 5;
@@ -85,6 +96,19 @@
       this.particles = [];
       this.crates = [];
       this.weaponDrops = [];
+    this.emergencySiegeActive = false;
+    this.siegeTriggered = false;
+    this.siegeSurvived = false;
+    this.siegeTimer = 300;
+    this.siegePrepTimer = 15;
+    this.siegeBarricades = [];
+    this.explosiveBarrels = [];
+    this.elevatorTerminal = null;
+    this.vokhrCrate = null;
+    this.siegeAlertBanner = null;
+    this.bossSpawned = false;
+    this.siegeSpawnTimer = 0;
+    this.forceEmergencySiege = false;
       this.doors = [];
       this.elevator = null;
       this.decals = [];
@@ -422,6 +446,17 @@
       this.levelTimeLeft = 300.0;
       this.samosborActive = false;
       this.evacHoldTimer = 0;
+      this.emergencySiegeActive = false;
+      this.siegeTriggered = false;
+      this.siegeSurvived = false;
+      this.siegeTimer = 300;
+      this.siegePrepTimer = 15;
+      this.siegeBarricades = [];
+      this.explosiveBarrels = [];
+      this.elevatorTerminal = null;
+      this.vokhrCrate = null;
+      this.siegeAlertBanner = null;
+      this.bossSpawned = false;
       this.lastBeepSecond = 5;
 
       // Position Player
@@ -1037,6 +1072,15 @@
       }
 
       // 4. Airtight Hermetic Blast Doors (Front check in FPS, radial in TDS)
+      // VOKhR Supply Crate
+      if (this.vokhrCrate && !this.vokhrCrate.opened) {
+        const dCrate = Math.hypot(this.player.x - (this.vokhrCrate.x + 16), this.player.y - (this.vokhrCrate.y + 12));
+        if (dCrate < 52) {
+          this.openVokhrCrate();
+          return;
+        }
+      }
+
       const frontDoor = this.getDoorInFront(75);
       if (frontDoor) {
         this.toggleDoor(frontDoor);
@@ -1675,6 +1719,526 @@
     /**
      * 5-Second Extraction Zone Hold
      */
+    
+    /**
+     * Emergency Event: "Elevator Failure: Airlock Defense"
+     */
+    triggerElevatorSiegeEvent() {
+      if (this.siegeTriggered || this.emergencySiegeActive) return;
+      this.siegeTriggered = true;
+      this.emergencySiegeActive = true;
+      this.evacHoldTimer = 0;
+      this.isEvacuating = false;
+      this.siegeTimer = 300; // 5:00 minutes
+      this.siegePrepTimer = 15; // 15 seconds express preparation
+      this.siegeSpawnTimer = 0;
+      this.bossSpawned = false;
+
+      // Audio: Sheared winch gear, metallic screech & wailing siren
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playWinchFailure) {
+        RadarAudio.playWinchFailure();
+      }
+
+      // Red glitch error notification
+      this.siegeAlertBanner = {
+        timer: 10.0
+      };
+
+      // Unseal all sector blast doors
+      for (const d of (this.doors || [])) {
+        d.isLocked = false;
+        d.isOpen = true;
+        d.openProgress = 1.0;
+      }
+
+      const elevCenterX = this.elevator.x + 16;
+      const elevCenterY = this.elevator.y + 16;
+
+      // Mount Hydraulic Terminal at center of elevator
+      this.elevatorTerminal = {
+        x: elevCenterX,
+        y: elevCenterY,
+        hp: 500,
+        maxHp: 500
+      };
+
+      // Place Barricade build slots at elevator room entrances
+      this.siegeBarricades = [];
+      const nearbyDoors = (this.doors || []).filter(d => Math.hypot((d.x + 16) - elevCenterX, (d.y + 16) - elevCenterY) < 260);
+      if (nearbyDoors.length > 0) {
+        nearbyDoors.forEach((d, idx) => {
+          this.siegeBarricades.push({
+            id: 'barricade_' + idx,
+            x: d.x,
+            y: d.y,
+            w: 32,
+            h: 32,
+            hp: 300,
+            maxHp: 300,
+            isConstructed: false,
+            buildProgress: 0.0,
+            canRepair: false
+          });
+        });
+      } else {
+        this.siegeBarricades.push(
+          { id: 'barricade_0', x: elevCenterX - 64, y: elevCenterY - 16, w: 32, h: 32, hp: 300, maxHp: 300, isConstructed: false, buildProgress: 0.0, canRepair: false },
+          { id: 'barricade_1', x: elevCenterX + 32, y: elevCenterY - 16, w: 32, h: 32, hp: 300, maxHp: 300, isConstructed: false, buildProgress: 0.0, canRepair: false },
+          { id: 'barricade_2', x: elevCenterX - 16, y: elevCenterY - 64, w: 32, h: 32, hp: 300, maxHp: 300, isConstructed: false, buildProgress: 0.0, canRepair: false }
+        );
+      }
+
+      // Spawn Rusted VOKhR Supply Crate inside the room
+      this.vokhrCrate = {
+        x: elevCenterX - 48,
+        y: elevCenterY - 40,
+        w: 32,
+        h: 24,
+        opened: false,
+        inRange: false
+      };
+
+      this.spawnFloatingNotice('⚠️ [ОШИБКА 77-Б] ЗАКЛИНИЛО ТРОС! ВСЕ ГЕРМОЗАТВОРЫ ОТКРЫТЫ!', '#ff0033');
+    }
+
+    openVokhrCrate() {
+      if (!this.vokhrCrate || this.vokhrCrate.opened) return;
+      this.vokhrCrate.opened = true;
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
+        RadarAudio.playLootPickup();
+      }
+      this.spawnFloatingNotice('📦 ВСКРЫТ ЯЩИК ВОХР! ВЗЯТЫ ПАТРОНЫ, АПТЕЧКА И БОЧКИ!', '#ffd700');
+
+      if (!this.player.belt) this.player.belt = { medkits: 1, ammoClips: 2 };
+      this.player.belt.medkits = (this.player.belt.medkits || 0) + 1;
+      this.player.belt.ammoClips = (this.player.belt.ammoClips || 0) + 2;
+      if (this.player.weapon && this.player.weapon.ammo !== undefined) {
+        this.player.weapon.ammo += 24;
+      }
+
+      const cx = this.vokhrCrate.x;
+      const cy = this.vokhrCrate.y;
+      this.explosiveBarrels.push(
+        { id: 'barrel_' + Date.now() + '_1', x: cx + 55, y: cy + 10, radius: 13, hp: 20 },
+        { id: 'barrel_' + Date.now() + '_2', x: cx - 25, y: cy + 65, radius: 13, hp: 20 }
+      );
+    }
+
+    detonateExplosiveBarrel(barrel) {
+      if (!barrel || barrel.exploded) return;
+      barrel.exploded = true;
+      const bIdx = this.explosiveBarrels.indexOf(barrel);
+      if (bIdx !== -1) this.explosiveBarrels.splice(bIdx, 1);
+
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playBarrelExplosion) {
+        RadarAudio.playBarrelExplosion();
+      }
+
+      const bx = barrel.x;
+      const by = barrel.y;
+      const aoeRadius = 95;
+      const aoeDamage = 140;
+
+      // Fiery shockwave particles
+      for (let i = 0; i < 28; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 5 + 2;
+        this.particles.push({
+          x: bx,
+          y: by,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          sz: Math.random() * 8 + 4,
+          color: Math.random() < 0.6 ? '#ff6600' : '#ffcc00',
+          alpha: 1.0,
+          life: 30 + Math.random() * 20
+        });
+      }
+
+      // Add toxic puddle & scorch decal
+      if (this.decals) {
+        this.decals.push({
+          x: bx,
+          y: by,
+          color: '#332211',
+          radius: 36,
+          splatters: [
+            { dx: -12, dy: 6, r: 14, color: '#ff5500' },
+            { dx: 14, dy: -8, r: 16, color: '#33aa44' },
+            { dx: 5, dy: 14, r: 12, color: '#221100' }
+          ]
+        });
+      }
+
+      // Damage mutants in AoE
+      for (let i = this.entities.length - 1; i >= 0; i--) {
+        const ent = this.entities[i];
+        if (ent.type !== 'liquidator' && ent.hp > 0) {
+          const dist = Math.hypot(ent.x - bx, ent.y - by);
+          if (dist < aoeRadius + (ent.radius || 13)) {
+            const falloff = 1.0 - (dist / (aoeRadius + 13)) * 0.5;
+            const dmg = Math.round(aoeDamage * falloff);
+            ent.hp -= dmg;
+            ent.damageFlashTimer = 12;
+            this.spawnFloatingNotice(`-${dmg} [ВЗРЫВ!]`, '#ff3300');
+            if (ent.hp <= 0) {
+              this.killMonster(ent);
+            }
+          }
+        }
+      }
+
+      // Damage player if caught
+      const pDist = Math.hypot(this.player.x - bx, this.player.y - by);
+      if (pDist < aoeRadius) {
+        const pDmg = Math.round(55 * (1.0 - pDist / aoeRadius));
+        this.damagePlayer(pDmg, 'Взрыв хим-бочки');
+      }
+
+      // Damage barricades if nearby
+      for (const bar of (this.siegeBarricades || [])) {
+        if (bar.isConstructed && bar.hp > 0) {
+          const bDist = Math.hypot(bar.x + 16 - bx, bar.y + 16 - by);
+          if (bDist < aoeRadius) {
+            bar.hp -= 40;
+            if (bar.hp <= 0) bar.hp = 0;
+          }
+        }
+      }
+    }
+
+    updateSiege(dt) {
+      if (!this.emergencySiegeActive) return;
+
+      if (this.siegeAlertBanner && this.siegeAlertBanner.timer > 0) {
+        this.siegeAlertBanner.timer -= dt;
+      }
+
+      // Handle Barricade Building & Repair when holding [E]
+      const isHoldingE = !!(this.keys['KeyE'] || this.keys['e'] || this.keys['KeyH'] || this.keys['Space']);
+      for (const b of (this.siegeBarricades || [])) {
+        const distToPlayer = Math.hypot(this.player.x - (b.x + 16), this.player.y - (b.y + 16));
+        b.canRepair = (distToPlayer < 46 && b.isConstructed && b.hp < b.maxHp);
+        if (distToPlayer < 46 && isHoldingE) {
+          if (!b.isConstructed) {
+            b.buildProgress = Math.min(1.0, (b.buildProgress || 0) + (dt / 1.6));
+            if (this.tick % 15 === 0 && typeof RadarAudio !== 'undefined' && RadarAudio.playBarricadeConstruct) {
+              RadarAudio.playBarricadeConstruct();
+            }
+            if (b.buildProgress >= 1.0) {
+              b.isConstructed = true;
+              b.hp = b.maxHp;
+              if (typeof RadarAudio !== 'undefined' && RadarAudio.playBarricadeConstruct) {
+                RadarAudio.playBarricadeConstruct();
+              }
+              this.spawnFloatingNotice('🔨 БАРРИКАДА ВОЗВЕДЕНА! [300 HP]', '#00ffaa');
+            }
+          } else if (b.isConstructed && b.hp < b.maxHp) {
+            b.hp = Math.min(b.maxHp, b.hp + 75 * dt);
+            if (this.tick % 20 === 0 && typeof RadarAudio !== 'undefined' && RadarAudio.playBarricadeConstruct) {
+              RadarAudio.playBarricadeConstruct();
+            }
+          }
+        }
+      }
+
+      // 1. Preparation Phase (15s)
+      if (this.siegePrepTimer > 0) {
+        this.siegePrepTimer -= dt;
+        if (this.siegePrepTimer <= 0) {
+          this.siegePrepTimer = 0;
+          this.spawnFloatingNotice('⚠️ ПЕРВАЯ ВОЛНА ПОШЛА! ОГОНЬ НА ПОРАЖЕНИЕ!', '#ff3333');
+          if (typeof RadarAudio !== 'undefined') RadarAudio.playSamosborAlarm();
+        }
+        return;
+      }
+
+      // 2. Active Defense Timer (300 -> 0s)
+      this.siegeTimer = Math.max(0, this.siegeTimer - dt);
+      const elapsed = 300 - this.siegeTimer;
+
+      // Hydraulic terminal check
+      if (this.elevatorTerminal && this.elevatorTerminal.hp <= 0) {
+        this.collapseElevatorShaft();
+        return;
+      }
+
+      // 3. Assault Wave Spawning
+      this.siegeSpawnTimer = (this.siegeSpawnTimer || 0) + dt;
+      const elevCenterX = this.elevator.x + 16;
+      const elevCenterY = this.elevator.y + 16;
+
+      if (elapsed < 120) {
+        // Wave 1: Fast crawling vermin
+        if (this.siegeSpawnTimer >= 3.8) {
+          this.siegeSpawnTimer = 0;
+          this.spawnSiegeMutant('vermin', elevCenterX, elevCenterY);
+        }
+      } else if (elapsed < 240) {
+        // Wave 2: Acid spitters & cultists
+        if (this.siegeSpawnTimer >= 3.2) {
+          this.siegeSpawnTimer = 0;
+          this.spawnSiegeMutant(Math.random() < 0.5 ? 'acid_spitter' : 'cultist', elevCenterX, elevCenterY);
+        }
+      } else {
+        // Wave 3: Final minute mini-boss
+        if (!this.bossSpawned) {
+          this.bossSpawned = true;
+          this.spawnMiniBossButcher(elevCenterX, elevCenterY);
+        }
+        if (this.siegeSpawnTimer >= 4.5) {
+          this.siegeSpawnTimer = 0;
+          this.spawnSiegeMutant('vermin', elevCenterX, elevCenterY);
+        }
+      }
+
+      // 4. Mutant AI assault behavior
+      for (let i = 0; i < this.entities.length; i++) {
+        const ent = this.entities[i];
+        if (ent.type !== 'liquidator' && ent.isSiegeAttacker && ent.hp > 0) {
+          const termX = this.elevatorTerminal ? this.elevatorTerminal.x : elevCenterX;
+          const termY = this.elevatorTerminal ? this.elevatorTerminal.y : elevCenterY;
+          const dTerm = Math.hypot(termX - ent.x, termY - ent.y);
+
+          let blockedBar = null;
+          for (const bar of (this.siegeBarricades || [])) {
+            if (bar.isConstructed && bar.hp > 0) {
+              const dBar = Math.hypot(bar.x + 16 - ent.x, bar.y + 16 - ent.y);
+              if (dBar < 30) {
+                blockedBar = bar;
+                break;
+              }
+            }
+          }
+
+          if (blockedBar) {
+            ent.vx = 0;
+            ent.vy = 0;
+            blockedBar.hp -= (ent.dmg || 18) * dt;
+            if (this.tick % 30 === 0 && typeof RadarAudio !== 'undefined') {
+              RadarAudio.playBarricadeHit();
+            }
+            if (blockedBar.hp <= 0) {
+              blockedBar.hp = 0;
+              blockedBar.isConstructed = false;
+              this.spawnHitParticles(blockedBar.x + 16, blockedBar.y + 16, '#ff3b30', 10);
+              this.spawnFloatingNotice('💥 БАРРИКАДА РАЗБИТА!', '#ff2222');
+            }
+          } else if (dTerm < 36 && this.elevatorTerminal) {
+            ent.vx = 0;
+            ent.vy = 0;
+            this.elevatorTerminal.hp -= (ent.dmg || 20) * dt;
+            if (this.tick % 25 === 0) {
+              this.spawnHitParticles(this.elevatorTerminal.x, this.elevatorTerminal.y, '#ff3333', 3);
+            }
+          } else {
+            const ang = Math.atan2(termY - ent.y, termX - ent.x);
+            ent.angle = ang;
+            ent.vx = Math.cos(ang) * ent.speed;
+            ent.vy = Math.sin(ang) * ent.speed;
+
+            const dPlayer = Math.hypot(this.player.x - ent.x, this.player.y - ent.y);
+            if (dPlayer < ent.radius + this.player.radius + 4) {
+              this.damagePlayer((ent.dmg || 16) * dt * 2, ent.name);
+            }
+          }
+        }
+      }
+
+      // 5. Rescued NPC ally suppression fire
+      for (const ally of (this.npcs || [])) {
+        if (ally.isLoyalFollower && ally.hp > 0) {
+          const targetBar = (this.siegeBarricades || []).find(b => b.isConstructed && b.hp > 0);
+          const guardX = targetBar ? targetBar.x + 16 : elevCenterX - 24;
+          const guardY = targetBar ? targetBar.y + 24 : elevCenterY;
+
+          const dGuard = Math.hypot(guardX - ally.x, guardY - ally.y);
+          if (dGuard > 24) {
+            const ang = Math.atan2(guardY - ally.y, guardX - ally.x);
+            ally.vx = Math.cos(ang) * (ally.speed * 1.1);
+            ally.vy = Math.sin(ang) * (ally.speed * 1.1);
+            ally.angle = ang;
+          } else {
+            ally.vx = 0;
+            ally.vy = 0;
+          }
+
+          ally.siegeFireTimer = (ally.siegeFireTimer || 0) + dt;
+          if (ally.siegeFireTimer >= 0.95) {
+            let nearestEnemy = null;
+            let nearestDist = 320;
+            for (const ent of this.entities) {
+              if (ent.type !== 'liquidator' && ent.hp > 0) {
+                const d = Math.hypot(ent.x - ally.x, ent.y - ally.y);
+                if (d < nearestDist) {
+                  nearestDist = d;
+                  nearestEnemy = ent;
+                }
+              }
+            }
+            if (nearestEnemy) {
+              ally.siegeFireTimer = 0;
+              const fAng = Math.atan2(nearestEnemy.y - ally.y, nearestEnemy.x - ally.x);
+              ally.angle = fAng;
+              if (typeof RadarAudio !== 'undefined' && RadarAudio.playGunshot) {
+                RadarAudio.playGunshot('pistol');
+              }
+              this.projectiles.push({
+                x: ally.x + Math.cos(fAng) * 16,
+                y: ally.y + Math.sin(fAng) * 16,
+                vx: Math.cos(fAng) * 14,
+                vy: Math.sin(fAng) * 14,
+                damage: 28,
+                isPlayer: true,
+                life: 50,
+                color: '#00ffaa'
+              });
+            }
+          }
+        }
+      }
+
+      // 6. Siege Resolution (00:00)
+      if (this.siegeTimer <= 0) {
+        this.emergencySiegeActive = false;
+        this.siegeSurvived = true;
+        if (typeof RadarAudio !== 'undefined' && RadarAudio.playPneumaticHorn) {
+          RadarAudio.playPneumaticHorn();
+        }
+        this.spawnFloatingNotice('🏆 ГИДРАВЛИКА ВОССТАНОВЛЕНА! ГЕРМОЗАТВОР КЛЕТИ ОТКРЫТ!', '#00ffaa');
+        this.spawnFloatingNotice('НАГРАДА ЗА ВЫЖИВАНИЕ В ОСАДЕ: +100% К ОЧКАМ И ТАЛОНАМ!', '#ffd700');
+
+        for (const ent of this.entities) {
+          if (ent.isSiegeAttacker) ent.hp = 0;
+        }
+
+        setTimeout(() => {
+          this.evacuateSuccess();
+        }, 1800);
+      }
+    }
+
+    spawnSiegeMutant(type, targetX, targetY) {
+      const TS = this.tileSize || 32;
+      const grid = this.mapData ? this.mapData.grid : null;
+      if (!grid) return;
+
+      const eTileX = Math.floor(targetX / TS);
+      const eTileY = Math.floor(targetY / TS);
+
+      let spawnTile = null;
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 10 + Math.floor(Math.random() * 8);
+        const tx = Math.floor(eTileX + Math.cos(ang) * dist);
+        const ty = Math.floor(eTileY + Math.sin(ang) * dist);
+        if (grid[ty] && grid[ty][tx] === 0) {
+          spawnTile = { x: tx * TS + TS / 2, y: ty * TS + TS / 2 };
+          break;
+        }
+      }
+      if (!spawnTile) return;
+
+      const mutantData = {
+        id: 'siege_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: 'monster',
+        isSiegeAttacker: true,
+        x: spawnTile.x,
+        y: spawnTile.y,
+        homeX: spawnTile.x,
+        homeY: spawnTile.y,
+        state: 'CHASE'
+      };
+
+      if (type === 'vermin') {
+        mutantData.name = Math.random() < 0.5 ? 'Плесень-ползун' : 'Чумная крыса';
+        mutantData.hp = 35;
+        mutantData.maxHp = 35;
+        mutantData.dmg = 14;
+        mutantData.speed = 2.4;
+        mutantData.radius = 11;
+        mutantData.color = '#ff6633';
+      } else if (type === 'acid_spitter') {
+        mutantData.name = 'Плевун кислотой';
+        mutantData.hp = 75;
+        mutantData.maxHp = 75;
+        mutantData.dmg = 24;
+        mutantData.speed = 1.6;
+        mutantData.radius = 14;
+        mutantData.color = '#9933ff';
+        mutantData.behavior = 'turret_spore';
+      } else {
+        mutantData.name = 'Обезумевший жилец';
+        mutantData.hp = 95;
+        mutantData.maxHp = 95;
+        mutantData.dmg = 26;
+        mutantData.speed = 1.9;
+        mutantData.radius = 13;
+        mutantData.color = '#ff2222';
+      }
+
+      this.entities.push(mutantData);
+    }
+
+    spawnMiniBossButcher(targetX, targetY) {
+      const TS = this.tileSize || 32;
+      const grid = this.mapData ? this.mapData.grid : null;
+      if (!grid) return;
+
+      const eTileX = Math.floor(targetX / TS);
+      const eTileY = Math.floor(targetY / TS);
+
+      let sx = targetX + 180;
+      let sy = targetY - 120;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const ang = Math.random() * Math.PI * 2;
+        const tx = Math.floor(eTileX + Math.cos(ang) * 8);
+        const ty = Math.floor(eTileY + Math.sin(ang) * 8);
+        if (grid[ty] && grid[ty][tx] === 0) {
+          sx = tx * TS + TS / 2;
+          sy = ty * TS + TS / 2;
+          break;
+        }
+      }
+
+      this.spawnFloatingNotice('⚠️ ТРЕВОГА! ИЗ ВЕНТИЛЯЦИИ ВЫВАЛИЛСЯ БРОНИРОВАННЫЙ МЯСНИК!', '#ff0033');
+      if (typeof RadarAudio !== 'undefined') RadarAudio.playSamosborAlarm();
+
+      this.entities.push({
+        id: 'boss_butcher_' + Date.now(),
+        type: 'monster',
+        name: 'Бронированный Мясник',
+        isSiegeAttacker: true,
+        isBoss: true,
+        x: sx,
+        y: sy,
+        homeX: sx,
+        homeY: sy,
+        hp: 450,
+        maxHp: 450,
+        dmg: 48,
+        speed: 1.65,
+        radius: 22,
+        color: '#cc1111',
+        state: 'CHASE'
+      });
+    }
+
+    collapseElevatorShaft() {
+      if (this.isCollapsing) return;
+      this.isCollapsing = true;
+      this.emergencySiegeActive = false;
+      if (typeof RadarAudio !== 'undefined') {
+        RadarAudio.playWinchFailure();
+        RadarAudio.playBarrelExplosion();
+      }
+      this.spawnFloatingNotice('💥 КАТАСТРОФА! ПУЛЬТ УНИЧТОЖЕН! ШАХТА ОБРУШИЛАСЬ!', '#ff0000');
+      this.damagePlayer(999, 'Обрушение шахты лифта');
+      setTimeout(() => {
+        this.finishRaid(false);
+      }, 1900);
+    }
+
     updateElevatorExtraction() {
       if (!this.elevator) return;
       const elevCenterX = this.elevator.x + 16;
@@ -1692,7 +2256,15 @@
         }
 
         if (this.evacHoldTimer >= this.evacHoldRequired) {
-          this.evacuateSuccess();
+          const floor = this.currentRaidFloor || 1;
+          const shouldTriggerSiege = !this.siegeTriggered && !this.emergencySiegeActive && !this.siegeSurvived &&
+            ((floor >= 2 && Math.random() < 0.20) || this.forceEmergencySiege);
+
+          if (shouldTriggerSiege) {
+            this.triggerElevatorSiegeEvent();
+          } else {
+            this.evacuateSuccess();
+          }
         }
       } else {
         this.isPlayerInElevator = false;
@@ -3031,6 +3603,16 @@
         p.y += p.vy;
         p.life--;
 
+        // Check hit on explosive chemical barrels
+        for (let bi = (this.explosiveBarrels || []).length - 1; bi >= 0; bi--) {
+          const barrel = this.explosiveBarrels[bi];
+          if (Math.hypot(p.x - barrel.x, p.y - barrel.y) < (barrel.radius || 13) + 4) {
+            this.detonateExplosiveBarrel(barrel);
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+        }
+
         if (this.isTileSolid(p.x, p.y, 4) || p.life <= 0) {
           this.spawnHitParticles(p.x, p.y, p.color || '#1fe044', 4);
           this.projectiles.splice(i, 1);
@@ -3187,7 +3769,61 @@
         }
 
         // 2c. Draw Living Cell & Bunker Props
-        for (const prop of (this.props || [])) {
+        // Airlock Defense Barricades in FPS
+      for (const bar of (this.siegeBarricades || [])) {
+        visibleSprites.push({
+          x: bar.x + 16,
+          y: bar.y + 16,
+          type: 'barricade',
+          key: 'barricade',
+          barricade: bar,
+          color: '#e6a100',
+          hp: bar.hp,
+          maxHp: bar.maxHp
+        });
+      }
+
+      // Explosive Chemical Barrels in FPS
+      for (const barrel of (this.explosiveBarrels || [])) {
+        if (!barrel.exploded) {
+          visibleSprites.push({
+            x: barrel.x,
+            y: barrel.y,
+            type: 'barrel',
+            key: 'barrel_explosive',
+            color: '#ffaa00',
+            name: '⚠️ ХИМ-БОЧКА'
+          });
+        }
+      }
+
+      // VOKhR Supply Crate in FPS
+      if (this.vokhrCrate && !this.vokhrCrate.opened) {
+        visibleSprites.push({
+          x: this.vokhrCrate.x + 16,
+          y: this.vokhrCrate.y + 12,
+          type: 'vokhr_crate',
+          key: 'vokhr_crate',
+          crate: this.vokhrCrate,
+          color: '#5a6b47'
+        });
+      }
+
+      // Hydraulic Elevator Terminal in FPS
+      if (this.elevatorTerminal) {
+        visibleSprites.push({
+          x: this.elevatorTerminal.x,
+          y: this.elevatorTerminal.y,
+          type: 'elevator_terminal',
+          key: 'terminal',
+          terminal: this.elevatorTerminal,
+          color: '#ff3333',
+          hp: this.elevatorTerminal.hp,
+          maxHp: this.elevatorTerminal.maxHp
+        });
+      }
+
+      for (const prop of (this.props || [])) {
           if (this.isCellExplored(prop.tileX, prop.tileY)) {
             if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawProp) {
               SpriteFactory.drawProp(worldCtx, prop, this.tileSize, this.tick, 1.0);
@@ -3212,7 +3848,31 @@
         }
 
         
+        // Airlock Defense Barricades in 2D
+        for (const bar of (this.siegeBarricades || [])) {
+          if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawBarricade) {
+            SpriteFactory.drawBarricade(worldCtx, bar, this.tileSize, this.tick, 1.0);
+          }
+        }
+
+        // VOKhR Supply Crate in 2D
+        if (this.vokhrCrate && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawVokhrCrate) {
+          SpriteFactory.drawVokhrCrate(worldCtx, this.vokhrCrate, this.tileSize, this.tick, 1.0);
+        }
+
+        // Hydraulic Elevator Terminal in 2D
+        if (this.elevatorTerminal && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawElevatorTerminal) {
+          SpriteFactory.drawElevatorTerminal(worldCtx, this.elevatorTerminal, this.tileSize, this.tick, this.siegeTimer, 1.0);
+        }
+
         // 3b. Draw Hazardous Explosive Barrels
+        for (const barrel of (this.explosiveBarrels || [])) {
+          if (!barrel.exploded) {
+            if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawExplosiveBarrel) {
+              SpriteFactory.drawExplosiveBarrel(worldCtx, barrel, this.tileSize, this.tick, 1.0);
+            }
+          }
+        }
         for (const barrel of (this.barrels || [])) {
           if (!barrel.exploded && this.isCellExplored(barrel.tileX, barrel.tileY)) {
             if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawExplosiveBarrel) {

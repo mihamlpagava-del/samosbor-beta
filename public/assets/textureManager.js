@@ -173,7 +173,9 @@
     'crate_med': 'assets/radar/tiles/crate_med.png',
     'crate_ammo': 'assets/radar/tiles/crate_ammo.png',
     'crate_supply': 'assets/radar/tiles/crate_supply.png',
-    'crate_wood': 'assets/radar/tiles/crate_wood.png'
+    'crate_wood': 'assets/radar/tiles/crate_wood.png',
+    'barrel_explosive': 'assets/radar/tiles/barrel_fuel.png',
+    'barrel_fuel': 'assets/radar/tiles/barrel_fuel.png'
   };
 
   class TextureManagerClass {

@@ -512,6 +512,293 @@
       ctx.restore();
     },
 
+    
+    /**
+     * Render Airlock Defense Barricade
+     */
+    drawBarricade(ctx, barricade, TS, tick = 0, alpha = 1.0) {
+      if (!ctx || !barricade) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const bx = barricade.x;
+      const by = barricade.y;
+      const w = barricade.w || TS;
+      const h = barricade.h || TS;
+      const hp = barricade.hp !== undefined ? barricade.hp : 300;
+      const maxHp = barricade.maxHp || 300;
+      const isConstructed = barricade.isConstructed;
+
+      if (!isConstructed) {
+        // Holographic Blueprint / Scrap Pile waiting to be constructed
+        const pulse = 0.4 + 0.3 * Math.sin(tick * 0.15);
+        ctx.strokeStyle = `rgba(255, 170, 0, ${pulse})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(bx, by, w, h);
+        ctx.setLineDash([]);
+
+        // Debris / Scaffolding silhouette
+        ctx.fillStyle = 'rgba(100, 70, 20, 0.3)';
+        ctx.fillRect(bx + 2, by + 2, w - 4, h - 4);
+
+        // Construction progress ring / bar
+        if (barricade.buildProgress > 0) {
+          const prog = Math.min(1.0, barricade.buildProgress);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(bx, by - 12, w, 8);
+          ctx.fillStyle = '#ffaa00';
+          ctx.fillRect(bx + 1, by - 11, (w - 2) * prog, 6);
+          ctx.strokeStyle = '#ffd700';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by - 12, w, 8);
+        }
+
+        // Action prompt
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 9px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('[ E ] ЗАБАРРИКАДИРОВАТЬ', bx + w / 2, by + h / 2 + 3);
+      } else if (hp <= 0) {
+        // Destroyed / Breached Barricade
+        ctx.fillStyle = '#221a12';
+        ctx.fillRect(bx, by, w, h);
+        ctx.strokeStyle = '#553311';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bx + 4, by + 4); ctx.lineTo(bx + w - 4, by + h - 4);
+        ctx.moveTo(bx + w - 4, by + 4); ctx.lineTo(bx + 4, by + h - 4);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ff3333';
+        ctx.font = 'bold 9px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('ПРОБИТО!', bx + w / 2, by + h / 2 + 3);
+      } else {
+        // Reinforced Steel Plates & Heavy Timber Beams
+        ctx.fillStyle = '#2d2822';
+        ctx.fillRect(bx, by, w, h);
+
+        // Bolted metal frame
+        ctx.strokeStyle = '#4a3f32';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx + 1, by + 1, w - 2, h - 2);
+
+        // Diagonal bracing cross-beam
+        ctx.fillStyle = '#1c1712';
+        ctx.beginPath();
+        ctx.moveTo(bx + 3, by + 3);
+        ctx.lineTo(bx + 8, by + 3);
+        ctx.lineTo(bx + w - 3, by + h - 3);
+        ctx.lineTo(bx + w - 8, by + h - 3);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(bx + w - 3, by + 3);
+        ctx.lineTo(bx + w - 8, by + 3);
+        ctx.lineTo(bx + 3, by + h - 3);
+        ctx.lineTo(bx + 8, by + h - 3);
+        ctx.closePath();
+        ctx.fill();
+
+        // Yellow-Black Hazard caution striping
+        ctx.strokeStyle = '#e6a100';
+        ctx.lineWidth = 2;
+        for (let s = bx + 4; s < bx + w - 4; s += 8) {
+          ctx.beginPath();
+          ctx.moveTo(s, by + h / 2 - 3);
+          ctx.lineTo(s + 4, by + h / 2 + 3);
+          ctx.stroke();
+        }
+
+        // Metal rivets in corners
+        ctx.fillStyle = '#8a7d6b';
+        ctx.fillRect(bx + 3, by + 3, 2, 2);
+        ctx.fillRect(bx + w - 5, by + 3, 2, 2);
+        ctx.fillRect(bx + 3, by + h - 5, 2, 2);
+        ctx.fillRect(bx + w - 5, by + h - 5, 2, 2);
+
+        // HP Bar overhead
+        const pct = Math.max(0, hp / maxHp);
+        const barW = Math.max(w, 40);
+        const barX = bx + (w - barW) / 2;
+        const barY = by - 12;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(barX, barY, barW, 7);
+
+        const hpColor = pct > 0.5 ? '#00e676' : pct > 0.25 ? '#ffaa00' : '#ff3333';
+        ctx.fillStyle = hpColor;
+        ctx.fillRect(barX + 1, barY + 1, (barW - 2) * pct, 5);
+
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, 7);
+
+        // Stencil text
+        ctx.font = 'bold 8px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`${hp}/${maxHp}`, bx + w / 2, barY - 2);
+
+        // If damaged and player can repair
+        if (hp < maxHp && barricade.canRepair) {
+          ctx.fillStyle = '#00ffaa';
+          ctx.font = 'bold 8px "Share Tech Mono", monospace';
+          ctx.fillText('[ E ] ЧИНИТЬ (+75 HP)', bx + w / 2, by + h + 11);
+        }
+      }
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Emergency Hydraulic Elevator Terminal
+     */
+    drawElevatorTerminal(ctx, terminal, TS, tick = 0, siegeTimer = 300, alpha = 1.0) {
+      if (!ctx || !terminal) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const tx = terminal.x;
+      const ty = terminal.y;
+      const hp = terminal.hp !== undefined ? terminal.hp : 500;
+      const maxHp = terminal.maxHp || 500;
+
+      // Heavy industrial pedestal
+      ctx.fillStyle = '#1a1f1d';
+      ctx.fillRect(tx - 16, ty - 14, 32, 28);
+      ctx.strokeStyle = '#384d43';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(tx - 16, ty - 14, 32, 28);
+
+      // CRT screen casing
+      ctx.fillStyle = '#080d0b';
+      ctx.fillRect(tx - 12, ty - 10, 24, 20);
+
+      // Blinking Emergency Screen (Red / Amber glitch)
+      const flash = (Math.floor(tick / 18) % 2 === 0);
+      ctx.fillStyle = flash ? '#991111' : '#330808';
+      ctx.fillRect(tx - 10, ty - 8, 20, 16);
+
+      // Glitch raster line
+      ctx.fillStyle = 'rgba(255, 200, 200, 0.3)';
+      const scanY = ty - 8 + (tick % 16);
+      ctx.fillRect(tx - 10, scanY, 20, 2);
+
+      // Error 77-B stencil on CRT
+      ctx.fillStyle = flash ? '#ffffff' : '#ff4444';
+      ctx.font = 'bold 7px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('77-Б', tx, ty + 2);
+
+      // Cable bundle running down
+      ctx.strokeStyle = '#ff9900';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(tx - 6, ty + 14);
+      ctx.lineTo(tx - 6, ty + 22);
+      ctx.moveTo(tx + 6, ty + 14);
+      ctx.lineTo(tx + 6, ty + 22);
+      ctx.stroke();
+
+      // Overhead Hydraulic Restart Gauge & Terminal HP
+      const barW = 86;
+      const barX = tx - barW / 2;
+      const barY = ty - 26;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.fillRect(barX - 2, barY - 14, barW + 4, 26);
+      ctx.strokeStyle = '#ff3333';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(barX - 2, barY - 14, barW + 4, 26);
+
+      // Time formatting
+      const mins = Math.floor(Math.max(0, siegeTimer) / 60);
+      const secs = Math.floor(Math.max(0, siegeTimer) % 60);
+      const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      ctx.fillStyle = '#ffaa00';
+      ctx.font = 'bold 9px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`ОТКАТ ГИДРАВЛИКИ: ${timeStr}`, tx, barY - 3);
+
+      // Terminal HP Bar
+      const pct = Math.max(0, hp / maxHp);
+      ctx.fillStyle = '#220000';
+      ctx.fillRect(barX, barY + 1, barW, 7);
+      ctx.fillStyle = pct > 0.4 ? '#ff3333' : '#ff1100';
+      ctx.fillRect(barX, barY + 1, barW * pct, 7);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 7px "Share Tech Mono", monospace';
+      ctx.fillText(`ПУЛЬТ: ${hp} / ${maxHp} HP`, tx, barY + 7);
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Heavy Rusted VOKhR Supply Crate
+     */
+    drawVokhrCrate(ctx, crate, TS, tick = 0, alpha = 1.0) {
+      if (!ctx || !crate) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      const cx = crate.x;
+      const cy = crate.y;
+      const w = crate.w || 32;
+      const h = crate.h || 24;
+      const isOpened = crate.opened;
+
+      if (isOpened) {
+        // Open empty crate
+        ctx.fillStyle = '#1c1a14';
+        ctx.fillRect(cx, cy, w, h);
+        ctx.strokeStyle = '#383023';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx, cy, w, h);
+
+        ctx.fillStyle = '#2e261a';
+        ctx.fillRect(cx - 2, cy - 6, w + 4, 6); // open hinged lid
+      } else {
+        // Sturdy Soviet Military Metal Chest (Olive / Khaki)
+        ctx.fillStyle = '#3a442e'; // Dark Soviet Khaki
+        ctx.fillRect(cx, cy, w, h);
+
+        // Reinforced rusted steel trim & iron corner brackets
+        ctx.strokeStyle = '#5a6b47';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx + 1, cy + 1, w - 2, h - 2);
+
+        // Center latch & padlock
+        ctx.fillStyle = '#d4af37';
+        ctx.fillRect(cx + w / 2 - 2, cy + h / 2 - 3, 4, 6);
+
+        // Soviet Red Star stencil on lid
+        ctx.fillStyle = '#cc2222';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', cx + w / 2, cy + h / 2 - 2);
+
+        // Stencil ID underneath
+        ctx.fillStyle = '#c5d1b4';
+        ctx.font = 'bold 6px "Share Tech Mono", monospace';
+        ctx.fillText('ВОХР-7', cx + w / 2, cy + h - 3);
+
+        // Action prompt if player in range
+        if (crate.inRange) {
+          ctx.fillStyle = '#ffd700';
+          ctx.font = 'bold 9px "Share Tech Mono", monospace';
+          ctx.fillText('[ E ] ВСКРЫТЬ ЯЩИК ВОХР', cx + w / 2, cy - 6);
+        }
+      }
+
+      ctx.restore();
+    },
+
     drawLootCrate(ctx, crate, TS, tick, alpha = 1.0) {
       if (!ctx || !crate || crate.opened) return;
 

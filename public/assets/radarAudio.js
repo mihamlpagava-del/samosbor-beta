@@ -642,7 +642,128 @@
       osc.start(t);
       osc.stop(t + 0.08);
     }
+
+    playWinchFailure() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      const gain2 = ctx.createGain();
+
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(950, t);
+      osc1.frequency.exponentialRampToValueAtTime(140, t + 0.65);
+      gain1.gain.setValueAtTime(0.45, t);
+      gain1.gain.exponentialRampToValueAtTime(0.01, t + 0.7);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(260, t);
+      osc2.frequency.exponentialRampToValueAtTime(45, t + 0.9);
+      gain2.gain.setValueAtTime(0.55, t);
+      gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.95);
+
+      osc1.connect(gain1);
+      gain1.connect(this.masterGain);
+      osc2.connect(gain2);
+      gain2.connect(this.masterGain);
+
+      osc1.start(t);
+      osc1.stop(t + 0.7);
+      osc2.start(t);
+      osc2.stop(t + 0.95);
+
+      setTimeout(() => {
+        this.playSamosborAlarm();
+      }, 350);
+    }
+
+    playPneumaticHorn() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(185, t);
+      osc.frequency.setValueAtTime(185, t + 0.8);
+      osc.frequency.exponentialRampToValueAtTime(140, t + 1.6);
+
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(277.5, t);
+      osc2.frequency.setValueAtTime(277.5, t + 0.8);
+      osc2.frequency.exponentialRampToValueAtTime(210, t + 1.6);
+
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.setValueAtTime(0.4, t + 1.0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 1.7);
+
+      osc.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(t);
+      osc.stop(t + 1.7);
+      osc2.start(t);
+      osc2.stop(t + 1.7);
+    }
+
+    playBarricadeConstruct() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, t);
+      osc.frequency.exponentialRampToValueAtTime(90, t + 0.12);
+      gain.gain.setValueAtTime(0.35, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.13);
+    }
+
+    playBarricadeHit() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, t);
+      osc.frequency.exponentialRampToValueAtTime(40, t + 0.18);
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.19);
+    }
+
+    playBarrelExplosion() {
+      if (!this.soundEnabled || !this.ctx) return;
+      const ctx = this.ctx;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(160, t);
+      osc.frequency.exponentialRampToValueAtTime(25, t + 0.8);
+      gain.gain.setValueAtTime(0.65, t);
+      gain.gain.exponentialRampToValueAtTime(0.005, t + 0.85);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.85);
+    }
+
   }
+
 
   global.RadarAudio = new RadarAudioSynth();
 })(typeof window !== 'undefined' ? window : this);
