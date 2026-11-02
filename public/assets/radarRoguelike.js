@@ -555,7 +555,13 @@
             this.switchBeltSlot(2);
           }
         }
-        if (e.code === 'Digit3' || e.code === 'KeyQ') {
+        if (e.code === 'Digit3' || e.code === 'Numpad3') {
+          e.preventDefault();
+          if (typeof toggleRaidMusic === 'function') toggleRaidMusic();
+        } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
+          e.preventDefault();
+          if (typeof toggleRaidSfx === 'function') toggleRaidSfx();
+        } else if (e.code === 'KeyQ') {
           this.useBeltMedkit();
         }
 
@@ -4640,24 +4646,52 @@
       const tlW = 280;
       const tlH = 86;
 
-      // Top Center Tactical Controls Hint Bar (Cleanly centered without overlapping status panel)
-      const ctrlBarW = Math.min(440, Math.max(260, w - 640));
-      const ctrlBarH = 24;
-      const ctrlBarX = Math.max(tlX + tlW + 12, Math.floor((w - ctrlBarW) / 2));
-      const ctrlBarY = 12;
+      // Vertical Tactical Controls Sidebar along Right Edge (Positioned under [ESC] button)
+      const sbW = 168;
+      const sbX = w - sbW - 16;
+      const sbY = 54;
+      const sbH = 204;
 
-      ctx.fillStyle = 'rgba(2, 14, 5, 0.90)';
-      ctx.fillRect(ctrlBarX, ctrlBarY, ctrlBarW, ctrlBarH);
+      ctx.fillStyle = 'rgba(2, 14, 5, 0.92)';
+      ctx.fillRect(sbX, sbY, sbW, sbH);
       ctx.strokeStyle = '#1fe044';
       ctx.lineWidth = 1;
-      ctx.strokeRect(ctrlBarX, ctrlBarY, ctrlBarW, ctrlBarH);
+      ctx.strokeRect(sbX, sbY, sbW, sbH);
 
+      // Header Tab
+      ctx.fillStyle = 'rgba(31, 224, 68, 0.16)';
+      ctx.fillRect(sbX + 1, sbY + 1, sbW - 2, 20);
       ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#1fe044';
       ctx.textAlign = 'center';
+      ctx.fillText('УПРАВЛЕНИЕ РЕЙДОМ', sbX + sbW / 2, sbY + 14);
+
+      // Control key mappings list
       const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] TDS 2D' : '📷 [G] FPS 3D';
-      ctx.fillStyle = '#00ffaa';
-      ctx.fillText(`${camLabel}  |  [WASD] ДВИЖЕНИЕ  |  [F] ПИНОК  |  [R] ЗАРЯДИТЬ  |  [1/2/3] ПОЯС`, ctrlBarX + ctrlBarW / 2, ctrlBarY + 16);
+      const hints = [
+        { key: camLabel, desc: '' },
+        { key: '[WASD]', desc: 'Движение' },
+        { key: '[F]', desc: 'Пинок ногой' },
+        { key: '[R]', desc: 'Перезарядка' },
+        { key: '[1] / [2]', desc: 'Оружие' },
+        { key: '[Q]', desc: 'Аптечка' },
+        { key: '[3]', desc: 'Музыка' },
+        { key: '[4]', desc: 'Звуки' }
+      ];
+
+      let rowY = sbY + 36;
       ctx.textAlign = 'left';
+      for (const hint of hints) {
+        ctx.font = 'bold 10px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText(hint.key, sbX + 10, rowY);
+        if (hint.desc) {
+          ctx.font = '10px monospace';
+          ctx.fillStyle = '#a4ffd9';
+          ctx.fillText(hint.desc, sbX + 82, rowY);
+        }
+        rowY += 20;
+      }
 
       ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';
       ctx.fillRect(tlX, tlY, tlW, tlH);
@@ -4777,7 +4811,7 @@
 
       ctx.font = 'bold 10px "Share Tech Mono", monospace';
       ctx.fillStyle = '#00ff66';
-      ctx.fillText('[3 / Q] ПОЯС', beltX + 370, beltY + 22);
+      ctx.fillText('[Q] АПТЕЧКА', beltX + 370, beltY + 22);
       const medCount = this.player.belt ? this.player.belt.medkits : 0;
       ctx.font = 'bold 10px monospace';
       ctx.fillStyle = medCount > 0 ? '#ffea00' : '#ff4444';

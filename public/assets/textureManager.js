@@ -88,6 +88,16 @@
       fallback: [165, 135, 45],
       name: 'Гермодверь'
     },
+    'door_exit': {
+      src: 'assets/radar/tiles/door_exit_heavy.png',
+      fallback: [180, 140, 50],
+      name: 'Аварийный выход'
+    },
+    'door_exit_heavy': {
+      src: 'assets/radar/tiles/door_exit_heavy.png',
+      fallback: [180, 140, 50],
+      name: 'Тяжелый гермовыход'
+    },
     'elevator_pad': {
       src: 'assets/radar/tiles/elevator_s_pad.png',
       fallback: [0, 200, 150],

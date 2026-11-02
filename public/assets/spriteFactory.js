@@ -306,7 +306,8 @@
       const openProg = (door.openProgress !== undefined) ? door.openProgress : (door.isOpen ? 1.0 : 0.0);
 
       // Check if preloaded texture is available
-      const tex = (typeof TextureManager !== 'undefined' && TextureManager.textures) ? TextureManager.textures['door_blast'] : null;
+      const doorTexKey = (door && (door.isExit || door.isEmergencyExit)) ? 'door_exit' : 'door_blast';
+      const tex = (typeof TextureManager !== 'undefined' && TextureManager.textures) ? (TextureManager.textures[doorTexKey] || TextureManager.textures['door_blast']) : null;
 
       if (openProg >= 0.95) {
         // FULLY OPEN DOOR: Sliding blast plates recessed into wall pockets
