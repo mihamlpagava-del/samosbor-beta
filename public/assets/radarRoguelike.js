@@ -289,6 +289,11 @@
     }
 
     toggleHUDVisibility() {
+      const now = Date.now();
+      if (this.lastHUDToggleTime && (now - this.lastHUDToggleTime < 250)) {
+        return;
+      }
+      this.lastHUDToggleTime = now;
       this.isHUDHidden = !this.isHUDHidden;
       this.spawnFloatingNotice(
         this.isHUDHidden ? '👁️ ИНТЕРФЕЙС: СКРЫТ [I]' : '👁️ ИНТЕРФЕЙС: ВКЛ [I]',
@@ -794,6 +799,25 @@
             return;
           }
           if (e.button === 0) {
+            // Check click on sidebar buttons in TDS mode
+            if (this.cameraMode === 'TDS' && !this.isTouchControlsActive && this.canvas && this.canvas.width > 580) {
+              const sbW = 208;
+              const sbX = this.canvas.width - sbW - 16;
+              const sbY = 138;
+              if (this.mouse.x >= sbX && this.mouse.x <= sbX + sbW) {
+                // Click on [G] Camera mode row
+                if (this.mouse.y >= sbY + 28 && this.mouse.y <= sbY + 54) {
+                  this.toggleCameraMode();
+                  return;
+                }
+                // Click on [I] Hide UI row
+                if (this.mouse.y >= sbY + 144 && this.mouse.y <= sbY + 174) {
+                  this.toggleHUDVisibility();
+                  return;
+                }
+              }
+            }
+
             // Handle Active NPC Dialog click first
             if (this.activeDialog && this.activeDialog.npc) {
               const npc = this.activeDialog.npc;
@@ -5948,12 +5972,11 @@
       const tlW = 280;
       const tlH = 86;
 
-      // Vertical Tactical Controls Sidebar along Right Edge (Positioned under [ESC] button)
-      // Automatically hidden when mobile touch controls are active so it doesn't obstruct screen
+      // Vertical Tactical Controls Sidebar along Right Edge (Positioned UNDER Loot HUD, no overlap!)
       if (!this.isTouchControlsActive && w > 580) {
-        const sbW = 168;
+        const sbW = 208;
         const sbX = w - sbW - 16;
-        const sbY = 54;
+        const sbY = 138; // Positioned cleanly below Loot HUD (54 + 76 + 8 = 138px)
         const sbH = 224;
 
         ctx.fillStyle = 'rgba(2, 14, 5, 0.92)';

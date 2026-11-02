@@ -12255,14 +12255,7 @@ function applyTouchControlsState() {
   }
 }
 
-/* Global Hotkey [I] for HUD Toggle */
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyI' || e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш') {
-    if (window.radarRoguelikeGame && window.radarRoguelikeGame.isRunning) {
-      window.radarRoguelikeGame.toggleHUDVisibility();
-    }
-  }
-});
+/* Global Hotkey [I] handled directly inside RadarRoguelikeEngine */
 
 function setupTouchOverlayEvents() {
   const baseEl = document.getElementById('touch-joystick-base');
