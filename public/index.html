@@ -271,7 +271,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 .combat-quick-slots { position: absolute; left: 6px; top: 6px; display: flex; flex-direction: column; gap: 5px; z-index: 100; }
 .combat-q-slot { width: 72px; min-height: 46px; border: 1px solid var(--term-dim); background: rgba(0,15,0,0.85); color: var(--term-green); display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; font-size: 10px; text-align: center; padding: 3px; box-sizing: border-box; transition: 0.15s; }
 .combat-q-slot:hover { border-color: var(--term-green); background: rgba(51,255,0,0.08); }
-.hub-belt-slot { flex: 1; min-height: 48px; font-size: 11px; padding: 6px 10px; border: 1px solid var(--term-green); background: rgba(0,25,0,0.92); color: var(--term-green); box-shadow: 0 0 10px rgba(31,224,68,0.25); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; cursor: pointer; border-radius: 4px; transition: 0.15s ease; box-sizing: border-box; }
+.hub-belt-slot { flex: 1; min-height: 34px; font-size: 10px; padding: 4px 8px; border: 1px solid var(--term-green); background: rgba(0,25,0,0.92); color: var(--term-green); box-shadow: 0 0 10px rgba(31,224,68,0.25); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; cursor: pointer; border-radius: 4px; transition: 0.15s ease; box-sizing: border-box; }
 .hub-belt-slot:hover { border-color: #fff; background: rgba(31,224,68,0.22); box-shadow: 0 0 16px rgba(31,224,68,0.55); transform: translateY(-2px); }
 #combat-log { height: clamp(50px, 9vh, 75px); overflow-y: auto; white-space: pre-wrap; font-size: 12px; color: #8f8; }
 .critical-hp { color: var(--term-danger) !important; }
@@ -2089,7 +2089,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="options-menu" class="options-menu">
   <button id="btn-opt-achievements" class="audio-btn opt-btn" style="color: #ffd700;" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 Достижения (Ачивки)</button>
   <button id="btn-opt-lang" class="audio-btn opt-btn" style="color: #00e5ff;" onclick="toggleLanguage()">🌐 Язык: РУССКИЙ (RU/EN)</button>
-  <button id="btn-opt-guide" class="audio-btn opt-btn" style="color: #33ff55; border-color: rgba(51,255,85,0.4); font-weight: bold;" onclick="startTutorial(true)" data-i18n="opt_guide">🎓 Обучение и Гайд</button>
+  <button id="btn-opt-guide" class="audio-btn opt-btn" style="color: #33ff55; border-color: rgba(51,255,85,0.4); font-weight: bold;" onclick="startInteractiveOnboarding()" data-i18n="opt_guide">🎓 Обучение и Гайд</button>
   <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
   <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
   <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
@@ -2435,21 +2435,19 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <!-- Правая часть: Персонаж и пояс со снаряжением в Жилячейке -->
   <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; align-self: stretch; flex: 1; max-width: 520px; min-width: 280px; height: 100%; margin-bottom: 4px; margin-right: clamp(10px, 4vw, 50px); pointer-events: auto; position: relative;">
     <!-- Спрайт персонажа в полный рост перед гермодверью -->
-    <div id="hub-player-avatar" style="height: clamp(330px, 49vh, 490px); width: clamp(230px, 28vw, 390px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible; pointer-events: none;">
+    <div id="hub-player-avatar" style="height: clamp(380px, 58vh, 600px); width: clamp(260px, 32vw, 440px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible; pointer-events: none;">
       <!-- Тень под ногами на полу гермодвери -->
       <div style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: clamp(150px, 20vw, 250px); height: 16px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 74%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
-      <img id="hub-base-skin" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 1; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
-      <img id="hub-clothes" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 2; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
-      <img id="hub-mask" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 3; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
-      <img id="hub-weapon" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 95%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 4; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-base-skin" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 1; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-clothes" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 2; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-mask" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 3; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
+      <img id="hub-weapon" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 4; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
     </div>
 
     <!-- Предметы на поясе ликвидатора -->
-    <div id="hub-belt-container" style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 380px; margin-top: 6px; z-index: 25; position: relative;">
-      <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: bold; color: var(--term-green); letter-spacing: 1.5px; margin-bottom: 5px; text-shadow: 0 0 8px var(--term-green);">
-        ⚡ ПРЕДМЕТЫ НА ПОЯСЕ [1] | [2]
-      </div>
-      <div style="display: flex; gap: 14px; width: 100%; justify-content: center; position: relative;">
+    <div id="hub-belt-container" style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 290px; margin-top: 2px; z-index: 25; position: relative;">
+      
+      <div style="display: flex; gap: 8px; width: 100%; justify-content: center; position: relative;">
         <div id="hub-qslot-0" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 0)" data-i18n="slot_empty">[ПУСТО]</div>
         <div id="hub-qslot-1" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 1)" data-i18n="slot_empty">[ПУСТО]</div>
       </div>
@@ -5138,9 +5136,9 @@ let onboardingStep = 0;
 let onboardingActive = false;
 
 function checkAutoTutorial() {
-  const done = localStorage.getItem('samosbor_onboarding_v2_done');
+  const done = localStorage.getItem('samosbor_onboarding_v3_done');
   if (!done) {
-    setTimeout(startInteractiveOnboarding, 500);
+    setTimeout(startInteractiveOnboarding, 600);
   }
 }
 
@@ -5152,11 +5150,22 @@ function startInteractiveOnboarding() {
 
 function finishOnboarding() {
   onboardingActive = false;
-  localStorage.setItem('samosbor_onboarding_v2_done', 'true');
+  localStorage.setItem('samosbor_onboarding_v3_done', 'true');
   localStorage.setItem('samosbor_tutorial_completed', 'true');
   const banner = document.getElementById('onboarding-guide-banner');
   if (banner) banner.remove();
   document.querySelectorAll('.onboarding-target-pulse').forEach(el => el.classList.remove('onboarding-target-pulse'));
+  
+  // Award starter training completion bonus
+  if (typeof clientMe !== 'undefined' && clientMe) {
+    clientMe.talons = (clientMe.talons || 0) + 100;
+    clientMe.xp = (clientMe.xp || 0) + 50;
+    if (typeof updateUI === 'function') updateUI();
+  }
+  if (typeof playSound === 'function') playSound('victory');
+  if (typeof showSystemNotice === 'function') {
+    showSystemNotice('🏆 ОБУЧЕНИЕ ЗАВЕРШЕНО: +100 ТАЛОНОВ, +50 XP!');
+  }
 }
 
 function advanceOnboarding(fromStep) {
@@ -5179,129 +5188,106 @@ function renderOnboardingStep() {
   }
 
   const isEn = (currentLang === 'en');
+
+  // STEP 1: EXIT CELL TO RAID
   if (onboardingStep === 1) {
     let exitBtn = document.getElementById('btn-exit-cell');
     if (exitBtn) exitBtn.classList.add('onboarding-target-pulse');
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 1/8) — RAID MODE' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 1/8) — РЕЙД: САМОСБОР'}</span>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'TRAINING (STEP 1/6) — EXIT CELL TO RAID' : 'ОБУЧЕНИЕ (ШАГ 1/6) — ВЫХОД ИЗ ЖИЛ-ЯЧЕЙКИ В РЕЙД'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
       <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>[EXIT LIVING CELL]:</b> Launches real-time 2D top-down raid! Sweep your flashlight to cut through pitch-black darkness, loot weapons & crates, rescue wounded liquidators with belt medkits, and extract through lift shaft [H] (5 sec)!' 
-        : '👉 <b>[ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ]:</b> Главная кнопка тактического 2D рейда! В секторе царит тьма — направляйте фонарик, чтобы видеть мутантов и ящики снабжения. Спасайте раненых союзников аптечкой с пояса и эвакуируйтесь через шахту [H] (5 сек)!'}</div>
-      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
-        <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '📖 Full Guide' : '📖 Полный справочник'}</button>
-        <button onclick="advanceOnboarding(1)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+        ? '👉 <b>[EXIT LIVING CELL]:</b> Click this button to open the Tactical Sortie Dispatcher! From there you can venture into real-time raids Solo or team up with up to 4 liquidators (PVE / PVP)!' 
+        : '👉 <b>[ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ]:</b> Нажмите эту главную кнопку, чтобы открыть диспетчер вылазок! Отсюда можно отправиться в тактический рейд в одиночку или собрать отряд ликвидаторов до 4 бойцов (PVE / PVP)!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:flex-end; gap:8px;">
+        <button onclick="advanceOnboarding(1)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
       </div>
     `;
-  } else if (onboardingStep === 2) {
-    let invBtn = document.getElementById('open-chest-btn');
-    if (invBtn) invBtn.classList.add('onboarding-target-pulse');
+  }
+  // STEP 2: CONTROLS IN RAID
+  else if (onboardingStep === 2) {
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 2/8) — INVENTORY & BELT' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 2/8) — ИНВЕНТАРЬ И ПОЯС'}</span>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'TRAINING (STEP 2/6) — RAID CONTROLS' : 'ОБУЧЕНИЕ (ШАГ 2/6) — УПРАВЛЕНИЕ В РЕЙДЕ'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>[INVENTORY / DOSSIER]:</b> Equip gas masks, armor, and weapons. Items placed on your Quick Belt (medkits, stims) carry over into the Top-Down raid on keys [1], [2], [3/Q]!' 
-        : '👉 <b>[ИНВЕНТАРЬ / ДЕЛО]:</b> Надевайте противогазы, броню и оружие. Аптечки и стимуляторы, перенесенные на пояс, берутся с собой в Top-Down рейд на клавиши [1], [2], [3/Q]!'}</div>
+      <div style="line-height:1.45;">${isEn
+        ? '🕹️ <b>Raid Controls:</b><br>• <b>[W][A][S][D]</b> — Movement & strafing.<br>• <b>[Mouse] / [LMB]</b> — Aim flashlight & fire / melee swing.<br>• <b>[R]</b> — Reload firearm.<br>• <b>[F]</b> — Quick boot kick (15 dmg, 0.8 cell knockback & 0.5s stun).<br>• <b>[1][2][3/Q]</b> — Quick belt weapon & first-aid medkits.'
+        : '🕹️ <b>Управление в рейде:</b><br>• <b>[W][A][S][D]</b> — Перемещение и маневры.<br>• <b>[Мышь] / [ЛКМ]</b> — Направление фонарика и огонь / удар трубой.<br>• <b>[R]</b> — Перезарядка магазина огнестрела.<br>• <b>[F]</b> — Быстрый пинок ботинком (15 урона, отталкивание и стан 0.5с).<br>• <b>[1][2][3/Q]</b> — Пояс: выбор оружия и применение аптечки.'}</div>
       <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
         <button onclick="onboardingStep=1; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
-        <button onclick="advanceOnboarding(2)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+        <button onclick="advanceOnboarding(2)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
       </div>
     `;
-  } else if (onboardingStep === 3) {
-    let craftBtn = document.getElementById('open-craft-btn');
-    if (craftBtn) craftBtn.classList.add('onboarding-target-pulse');
+  }
+  // STEP 3: CAMERA TOGGLE 2D TDS <-> 3D FPS (KEY G)
+  else if (onboardingStep === 3) {
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 3/8) — WORKBENCH & CRAFT' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 3/8) — ВЕРСТАК И УЛУЧШЕНИЯ'}</span>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'TRAINING (STEP 3/6) — CAMERA SWITCH [G]' : 'ОБУЧЕНИЕ (ШАГ 3/6) — СМЕНА КАМЕРЫ [КЛАВИША G]'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>[WORKBENCH]:</b> Upgrade gas masks, suits, and weapon elements (Fire, Shock, Bleed) using extra scrap and materials before venturing into sectors!' 
-        : '👉 <b>[ВЕРСТАК]:</b> Улучшайте защиту противогаза, прочность костюмов и напитывайте оружие стихиями (Огонь, Электро, Кровотечение) за счет разбора лишних вещей!'}</div>
+      <div style="line-height:1.45;">${isEn
+        ? '📷 <b>Camera Toggle [G]:</b><br>• Press <b>[G]</b> during raids to switch between <b>2D TDS (Top-Down)</b> strategic view and <b>3D FPS (First-Person Raycasting)</b> view!<br>• 💡 <b>Mouse Lock:</b> In 3D FPS, click anywhere on the canvas to lock mouse aim (Pointer Lock). Press <b>[ESC]</b> to release.'
+        : '📷 <b>Смена камеры на клавишу [G]:</b><br>• Нажмите <b>[G]</b> во время вылазки, чтобы переключаться между тактическим видом сверху <b>2D TDS</b> и видом от первого лица <b>3D FPS</b>!<br>• 💡 <b>Захват мыши:</b> В 3D FPS кликните по экрану для захвата прицела (Pointer Lock). Клавиша <b>[ESC]</b> освобождает курсор.'}</div>
       <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
         <button onclick="onboardingStep=2; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
-        <button onclick="advanceOnboarding(3)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+        <button onclick="advanceOnboarding(3)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
       </div>
     `;
-  } else if (onboardingStep === 4) {
-    let shopBtn = document.getElementById('open-shop-btn');
-    if (shopBtn) shopBtn.classList.add('onboarding-target-pulse');
-    banner.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 4/8) — SUPPLY DISPENSER' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 4/8) — РАСПРЕДЕЛИТЕЛЬ'}</span>
-        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
-      </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>[DISPENSER / SHOP]:</b> Spend earned talons on ammo, replacement filters, military first-aid medkits, and food rations.' 
-        : '👉 <b>[РАСПРЕДЕЛИТЕЛЬ]:</b> Тратьте заработанные талоны на свежие фильтры, армейские аптечки, патроны и концентраты пайков.'}</div>
-      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
-        <button onclick="onboardingStep=3; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
-        <button onclick="advanceOnboarding(4)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
-      </div>
-    `;
-  } else if (onboardingStep === 5) {
+  }
+  // STEP 4: FLOOR MAP & SECTORS
+  else if (onboardingStep === 4) {
     let mapBtn = document.getElementById('open-map-btn');
     if (mapBtn) mapBtn.classList.add('onboarding-target-pulse');
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 5/8) — FLOOR MAP & SECTORS' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 5/8) — КАРТА ЭТАЖА И ВЫЛАЗКИ'}</span>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'TRAINING (STEP 4/6) — FLOOR MAP & SECTORS' : 'ОБУЧЕНИЕ (ШАГ 4/6) — КАРТА ЭТАЖА И ВЫХОД В БЛОК'}</span>
         <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
       </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>[FLOOR MAP]:</b> Navigate sectors A0 through E4, solve airlock hacking puzzles, trade with 20 block NPCs, and collect parts for Ded Makar’s lift!' 
-        : '👉 <b>[КАРТА ЭТАЖА]:</b> Исследуйте сектора от A0 до E4, взламывайте гермодвери, общайтесь с 20 жителями (Клавдия, Михалыч) и собирайте детали для грузового лифта!'}</div>
+      <div style="line-height:1.45;">${isEn
+        ? '🗺️ <b>[EXIT TO BLOCK / FLOOR MAP]:</b> Click to open the floor sectors map (from A0 to E4). Find 20 block NPCs (Ded Makar, Klavdiya, Mikhalych) offering quests for talons, hack airlocks, and reach Sector <b>E4</b> to repair the lift!'
+        : '🗺️ <b>[ВЫХОД В БЛОК / КАРТА ЭТАЖА]:</b> Нажмите для перехода к карте секторов (от A0 до E4). Общайтесь с 20 жителями (Дед Макар, Клавдия, Михалыч) за талоны, взламывайте гермодвери и доберитесь до сектора <b>E4</b>, чтобы починить лифт!'}</div>
+      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="onboardingStep=3; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
+        <button onclick="advanceOnboarding(4)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+      </div>
+    `;
+  }
+  // STEP 5: LOCATION TRANSITION & COMBAT
+  else if (onboardingStep === 5) {
+    let expBtn = document.getElementById('btn-explore-fog');
+    if (expBtn) expBtn.classList.add('onboarding-target-pulse');
+    banner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'TRAINING (STEP 5/6) — EXPLORE & BATTLE' : 'ОБУЧЕНИЕ (ШАГ 5/6) — ПЕРЕХОД В ЛОКАЦИЮ И БОЙ'}</span>
+        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+      </div>
+      <div style="line-height:1.45;">${isEn
+        ? '⚔️ <b>Location Transition & Battle:</b> Click any unlocked sector on the map to travel there. Once inside, click <b>[⚡ EXPLORE FOG]</b> to encounter mutants! Strike the beast, dodge attacks, and watch your gas mask filter and HP!'
+        : '⚔️ <b>Переход в локацию и бой:</b> Нажмите на сектор на карте для перемещения. В секторе нажмите кнопку <b>[ ⚡ ИССЛЕДОВАТЬ ТУМАН ]</b> для встречи с мутантами! Атакуйте тварь, уклоняйтесь от ударов и следите за фильтром противогаза и здоровьем!'}</div>
       <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
         <button onclick="onboardingStep=4; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
-        <button onclick="advanceOnboarding(5)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+        <button onclick="advanceOnboarding(5)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 16px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
       </div>
     `;
-  } else if (onboardingStep === 6) {
-    let chatBtn = document.getElementById('open-chat-btn');
-    if (chatBtn) chatBtn.classList.add('onboarding-target-pulse');
+  }
+  // STEP 6: COURSE COMPLETE & REWARD
+  else if (onboardingStep === 6) {
     banner.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 6/8) — GLOBAL CHAT' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 6/8) — ОБЩИЙ ЧАТ'}</span>
-        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
+        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING COMPLETE!' : 'КУРС ВЫЖИВАНИЯ УСПЕШНО ЗАВЕРШЕН!'}</span>
       </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>[GLOBAL CHAT]:</b> Real-time radio network with other survivors. When someone mentions you or writes, the button blinks with unread notifications!' 
-        : '👉 <b>[ОБЩИЙ ЧАТ / СЕТЬ]:</b> Радиосеть между жильцами Гигахруща. При получении новых сообщений кнопка мигает красным счетчиком уведомлений!'}</div>
-      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
-        <button onclick="onboardingStep=5; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
-        <button onclick="advanceOnboarding(6)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
+      <div style="line-height:1.45;">${isEn
+        ? '🏆 <b>You are fully prepared for Gigakhrushch!</b><br>• Launch real-time raids and toggle perspectives with <b>[G]</b>.<br>• Explore floor sectors from A0 to E4.<br>• Defeat floor bosses and repair the freight elevator with Ded Makar!'
+        : '🏆 <b>Вы полностью готовы к выживанию в Гигахруще!</b><br>• Выходите в рейды и переключайте камеру по клавише <b>[G]</b>.<br>• Исследуйте сектора этажа от A0 до E4.<br>• Побеждайте этажных боссов и чините грузовой лифт у Деда Макара!'}</div>
+      <div style="margin: 6px 0; color: #ffd700; font-size: 11px; font-weight: bold;">
+        🎁 ${isEn ? 'TRAINING BONUS: +100 TALONS, +50 XP!' : 'НАГРАДА ЗА ОБУЧЕНИЕ: +100 ТАЛОНОВ, +50 XP!'}
       </div>
-    `;
-  } else if (onboardingStep === 7) {
-    let raidBtn = document.getElementById('open-raid-btn');
-    if (raidBtn) raidBtn.classList.add('onboarding-target-pulse');
-    banner.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING (STEP 7/8) — CO-OP SQUADS' : 'СТАРТОВОЕ ОБУЧЕНИЕ (ШАГ 7/8) — СОВМЕСТНЫЕ ВЫЛАЗКИ'}</span>
-        <button onclick="finishOnboarding()" style="background:none; border:none; color:#888; cursor:pointer; font-size:11px;">${isEn ? '[✕ Skip]' : '[✕ Пропустить]'}</button>
-      </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '👉 <b>[CO-OP SORTIES]:</b> Team up with up to 4 players to battle through 11 deadly monster waves and giant floor bosses with special VFX & mechanics!' 
-        : '👉 <b>[СОВМЕСТНАЯ ВЫЛАЗКА]:</b> Собирайте отряд до 4 ликвидаторов для сражения против 11 волн тварей Самосбора и гигантских боссов этажей со спец-приемами!'}</div>
-      <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
-        <button onclick="onboardingStep=6; renderOnboardingStep();" style="background:none; border:1px solid #888; color:#aaa; padding:2px 8px; font-size:11px; cursor:pointer;">${isEn ? '◀ BACK' : '◀ НАЗАД'}</button>
-        <button onclick="advanceOnboarding(7)" style="background:var(--term-warn); color:#000; border:none; font-weight:bold; padding:4px 14px; cursor:pointer; font-size:11px;">${isEn ? 'NEXT ▶' : 'ДАЛЕЕ ▶'}</button>
-      </div>
-    `;
-  } else if (onboardingStep === 8) {
-    banner.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <span style="color:var(--term-warn); font-weight:bold; font-size:12px; letter-spacing:1px;">🎓 ${isEn ? 'STARTER TRAINING COMPLETE!' : 'КУРС МОЛОДОГО БОЙЦА ЗАВЕРШЕН!'}</span>
-      </div>
-      <div style="line-height:1.45;">${isEn 
-        ? '🏆 <b>You are prepared for Gigakhrushch!</b><br>• Enter 2D raids with <b>[EXIT LIVING CELL]</b> to find weapons and save liquidators.<br>• Reach Sector <b>E4</b> and repair the freight elevator with Ded Makar.<br>• Trade on the <b>Flea Market</b> and talk to all 20 block NPCs.' 
-        : '🏆 <b>Вы готовы к выживанию в Гигахруще!</b><br>• Выходите в 2D рейд по кнопке <b>[ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ]</b> за оружием и спасением бойцов.<br>• Доберитесь до сектора <b>E4</b> и почините грузовой лифт у Деда Макара.<br>• Торгуйте на <b>Барахолке</b> и общайтесь с 20 жителями блока.'}</div>
       <div style="margin-top:8px; display:flex; justify-content:flex-end; gap:8px;">
-        <button onclick="startTutorial(true)" style="background:none; border:1px solid #33d4ff; color:#33d4ff; padding:4px 12px; font-size:12px; cursor:pointer;">${isEn ? '📖 Open Full Guide' : '📖 Открыть Полный Гайд'}</button>
-        <button onclick="finishOnboarding()" style="background:#ffaa00 !important; color:#000000 !important; border:2px solid #ffffff !important; font-weight:900 !important; padding:8px 22px !important; cursor:pointer !important; font-size:13px !important; box-shadow:0 0 18px rgba(255,170,0,0.9) !important; border-radius:4px; text-transform:uppercase;">${isEn ? 'COMPLETE TUTORIAL ✓' : 'ЗАВЕРШИТЬ ОБУЧЕНИЕ ✓'}</button>
+        <button onclick="finishOnboarding()" style="background:#ffaa00 !important; color:#000000 !important; border:2px solid #ffffff !important; font-weight:900 !important; padding:8px 24px !important; cursor:pointer !important; font-size:13px !important; box-shadow:0 0 18px rgba(255,170,0,0.9) !important; border-radius:4px; text-transform:uppercase;">${isEn ? 'COMPLETE TUTORIAL ✓' : 'ЗАВЕРШИТЬ ОБУЧЕНИЕ ✓'}</button>
       </div>
     `;
   }

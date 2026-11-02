@@ -4461,6 +4461,26 @@
         ctx.fillRect(0, 0, w, h);
       }
 
+      
+      // Top Center Tactical Controls & Camera Toggle Hint Bar
+      const ctrlBarW = Math.min(540, w * 0.65);
+      const ctrlBarH = 26;
+      const ctrlBarX = (w - ctrlBarW) / 2;
+      const ctrlBarY = 16;
+
+      ctx.fillStyle = 'rgba(2, 14, 5, 0.88)';
+      ctx.fillRect(ctrlBarX, ctrlBarY, ctrlBarW, ctrlBarH);
+      ctx.strokeStyle = '#1fe044';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ctrlBarX, ctrlBarY, ctrlBarW, ctrlBarH);
+
+      ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] ВИД СВЕРХУ (TDS 2D)' : '📷 [G] ВИД ОТ 1-ГО ЛИЦА (FPS 3D)';
+      ctx.fillStyle = '#00ffaa';
+      ctx.fillText(`${camLabel}  |  [WASD] ДВИЖЕНИЕ  |  [F] ПИНОК  |  [R] ЗАРЯДИТЬ  |  [1/2/3] ПОЯС`, w / 2, ctrlBarY + 17);
+      ctx.textAlign = 'left';
+
       // 1. Top-Left Status Panel (РАДАР-ДЕТЕКТОР РУ-4)
       const tlX = 16;
       const tlY = 16;
