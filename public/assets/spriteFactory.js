@@ -413,39 +413,69 @@
     },
 
     /**
-     * Render Dropped Weapon on Floor
+     * Render Dropped Weapon / Item on Floor (2D TDS)
      */
     drawDroppedWeapon(ctx, drop, TS, tick, alpha = 1.0) {
       if (!ctx || !drop || drop.pickedUp) return;
 
       const x = drop.x;
       const y = drop.y;
-      const pulse = Math.sin(tick * 0.14) * 2;
+      const pulse = Math.sin(tick * 0.12) * 3;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0.2, Math.min(1.0, alpha));
 
-      // Amber halo
-      ctx.fillStyle = 'rgba(255, 170, 0, 0.25)';
+      // Radial pulsing pickup halo
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, 16 + pulse);
+      grad.addColorStop(0, 'rgba(255, 180, 0, 0.45)');
+      grad.addColorStop(0.65, 'rgba(255, 140, 0, 0.2)');
+      grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(x, y, 15 + pulse, 0, Math.PI * 2);
+      ctx.arc(x, y, 16 + pulse, 0, Math.PI * 2);
       ctx.fill();
 
-      // Gun shape
-      ctx.strokeStyle = '#ffb703';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x - 8, y);
-      ctx.lineTo(x + 8, y);
-      ctx.lineTo(x + 8, y + 4);
-      ctx.lineTo(x + 3, y + 4);
-      ctx.lineTo(x + 3, y + 8);
-      ctx.stroke();
+      // Compact 18x18 item icon
+      let icon = null;
+      if (typeof TextureManager !== 'undefined' && TextureManager.getSprite) {
+        let key = 'loot_crate';
+        if (drop.weapon) {
+          const wId = (drop.weapon.id || drop.weapon.type || '').toLowerCase();
+          if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) key = 'weapon_shotgun';
+          else if (wId.includes('pipe') || wId.includes('crowbar') || wId.includes('melee')) key = 'weapon_pipe';
+          else if (wId.includes('flame') || wId.includes('fire')) key = 'weapon_flamethrower';
+          else if (wId.includes('rifle') || wId.includes('ak')) key = 'weapon_rifle';
+          else key = 'weapon_pistol';
+        } else if (drop.item) {
+          const iId = (drop.item.id || drop.item.type || '').toLowerCase();
+          if (iId.includes('med') || iId.includes('heal')) key = 'food_medkit';
+          else if (iId.includes('ammo')) key = 'ammo_box';
+          else if (iId.includes('filter')) key = 'gas_filter';
+          else key = 'loot_crate';
+        }
+        icon = TextureManager.getSprite(key);
+      }
 
+      if (icon && icon.complete && icon.naturalWidth > 0) {
+        ctx.drawImage(icon, x - 9, y - 9, 18, 18);
+      } else {
+        // Fallback gun shape
+        ctx.strokeStyle = '#ffb703';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y);
+        ctx.lineTo(x + 8, y);
+        ctx.lineTo(x + 8, y + 4);
+        ctx.lineTo(x + 3, y + 4);
+        ctx.lineTo(x + 3, y + 8);
+        ctx.stroke();
+      }
+
+      const dropLabel = drop.weapon ? (drop.weapon.name || 'ОРУЖИЕ').slice(0, 14) : (drop.item ? (drop.item.name || 'ПРЕДМЕТ').slice(0, 14) : 'ХАБАР');
       ctx.fillStyle = '#ffb703';
       ctx.font = 'bold 8px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(drop.weapon ? drop.weapon.name.slice(0, 12) : 'ОРУЖИЕ', x, y - 13);
+      ctx.fillText(dropLabel, x, y - 13);
 
       ctx.restore();
     },

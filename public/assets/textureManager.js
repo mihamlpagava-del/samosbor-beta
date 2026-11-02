@@ -90,12 +90,45 @@
     }
   };
 
+  const SPRITE_DEFS = {
+    // Monsters
+    'black_slime': 'assets/monsters/m_slime.png',
+    'feral_inhabitant': 'assets/monsters/m_madman.png',
+    'voice_mimic': 'assets/monsters/m_cultist.png',
+    'spore_pod': 'assets/monsters/m_mold.png',
+    'rogue_liquidator': 'assets/monsters/m_liquidator.png',
+    'six_legged_horror': 'assets/monsters/m_centipede.png',
+    'mutant_default': 'assets/monsters/m_slime.png',
+
+    // Allies & NPCs
+    'liquidator': 'assets/monsters/m_liquidator.png',
+    'npc_liquidator': 'assets/monsters/m_liquidator.png',
+
+    // Items & Loot
+    'weapon_pipe': 'assets/icons/weapon_pipe.png',
+    'weapon_shotgun': 'assets/icons/weapon_shotgun.png',
+    'weapon_pistol': 'assets/icons/weapon_pistol.png',
+    'weapon_ak74': 'assets/icons/weapon_pistol.png',
+    'weapon_axe': 'assets/icons/weapon_axe.png',
+    'weapon_crowbar': 'assets/icons/weapon_crowbar.png',
+    'weapon_default': 'assets/icons/weapon_pipe.png',
+    'food_medkit': 'assets/icons/food_medkit.png',
+    'food_ration': 'assets/icons/food_ration.png',
+    'loot_crate': 'assets/radar/tiles/crate_tech.png',
+    'crate_tech': 'assets/radar/tiles/crate_tech.png',
+    'crate_med': 'assets/radar/tiles/crate_med.png',
+    'crate_ammo': 'assets/radar/tiles/crate_ammo.png',
+    'crate_supply': 'assets/radar/tiles/crate_supply.png',
+    'crate_wood': 'assets/radar/tiles/crate_wood.png'
+  };
+
   class TextureManagerClass {
     constructor() {
       this.textures = {};
+      this.sprites = {};
       this.patterns = {};
       this.loadedCount = 0;
-      this.totalCount = Object.keys(MATERIAL_DEFS).length;
+      this.totalCount = Object.keys(MATERIAL_DEFS).length + Object.keys(SPRITE_DEFS).length;
       this.isReady = false;
       this.init();
     }
@@ -103,6 +136,7 @@
     init() {
       if (typeof window === 'undefined') return;
 
+      // 1. Load Environment Material Textures
       for (const [key, def] of Object.entries(MATERIAL_DEFS)) {
         const img = new Image();
         img.onload = () => {
@@ -112,12 +146,32 @@
           }
         };
         img.onerror = () => {
-          console.warn(`[TextureManager] Failed to load ${def.src}, fallback will be used.`);
+          console.warn(`[TextureManager] Failed to load material ${def.src}`);
         };
         img.src = def.src;
         this.textures[key] = {
           img,
           def,
+          isLoaded: () => img.complete && img.naturalWidth > 0
+        };
+      }
+
+      // 2. Load Monster, NPC and Item Billboard Sprites
+      for (const [key, src] of Object.entries(SPRITE_DEFS)) {
+        const img = new Image();
+        img.onload = () => {
+          this.loadedCount++;
+          if (this.loadedCount >= this.totalCount) {
+            this.isReady = true;
+          }
+        };
+        img.onerror = () => {
+          console.warn(`[TextureManager] Failed to load sprite ${src}`);
+        };
+        img.src = src;
+        this.sprites[key] = {
+          img,
+          src,
           isLoaded: () => img.complete && img.naturalWidth > 0
         };
       }
@@ -127,6 +181,23 @@
       const entry = this.textures[key];
       if (entry && entry.isLoaded()) {
         return entry.img;
+      }
+      return null;
+    }
+
+    getSprite(key) {
+      const entry = this.sprites[key];
+      if (entry && entry.isLoaded()) {
+        return entry.img;
+      }
+      // Try generic fallbacks
+      if (key && (key.includes('slime') || key.includes('mutant'))) {
+        const def = this.sprites['mutant_default'];
+        if (def && def.isLoaded()) return def.img;
+      }
+      if (key && (key.includes('gun') || key.includes('weapon'))) {
+        const def = this.sprites['weapon_default'];
+        if (def && def.isLoaded()) return def.img;
       }
       return null;
     }
@@ -181,3 +252,4 @@
   global.TextureManager = instance;
 
 })(typeof window !== 'undefined' ? window : this);
+

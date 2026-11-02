@@ -985,6 +985,11 @@
             const step = 0.08;
             if (d.openProgress < target) d.openProgress = Math.min(target, d.openProgress + step);
             else d.openProgress = Math.max(target, d.openProgress - step);
+
+            // Synchronize grid matrix state (2 = closed/closing, 3 = fully open)
+            if (this.mapData && this.mapData.grid && this.mapData.grid[d.tileY]) {
+              this.mapData.grid[d.tileY][d.tileX] = (d.openProgress >= 0.95) ? 3 : 2;
+            }
           }
         }
       }
@@ -1395,10 +1400,14 @@
         const ty = Math.floor(pt.y / TS);
 
         if (tx < 0 || tx >= W || ty < 0 || ty >= H) return true;
-        if (this.mapData.grid[ty][tx] === 1) return true;
-
-        for (const d of this.doors) {
-          if (!d.isOpen && d.tileX === tx && d.tileY === ty) {
+        const cell = this.mapData.grid[ty][tx];
+        if (cell === 1) return true;
+        if (cell === 2) {
+          const d = this.doors.find(dr => dr.tileX === tx && dr.tileY === ty);
+          if (d) {
+            const prog = (d.openProgress !== undefined) ? d.openProgress : (d.isOpen ? 1 : 0);
+            if (prog < 0.8) return true;
+          } else {
             return true;
           }
         }
@@ -2166,16 +2175,32 @@
             hitTile = 1;
           } else if (cell === 2) {
             const door = this.doors.find(dr => dr.tileX === mapX && dr.tileY === mapY);
-            if (door) {
-              const openProg = (door.openProgress !== undefined) ? door.openProgress : (door.isOpen ? 1 : 0);
-              if (openProg < 0.95) {
+            const openProg = door ? ((door.openProgress !== undefined) ? door.openProgress : (door.isOpen ? 1 : 0)) : 0;
+            if (openProg < 0.02) {
+              hit = 1;
+              hitTile = 2;
+              hitDoor = door;
+            } else if (openProg >= 0.98) {
+              // Completely open, ray passes right through!
+            } else {
+              // Sliding door: calculate wallX at this boundary
+              let curPerp;
+              if (side === 0) {
+                curPerp = (mapX - px / TS + (1 - stepX) / 2) / (cos || 0.00001);
+              } else {
+                curPerp = (mapY - py / TS + (1 - stepY) / 2) / (sin || 0.00001);
+              }
+              let dWallX = (side === 0) ? (py / TS + curPerp * sin) : (px / TS + curPerp * cos);
+              dWallX -= Math.floor(dWallX);
+              if (dWallX < 0) dWallX += 1.0;
+              const halfGap = openProg * 0.5;
+              if (dWallX >= (0.5 - halfGap) && dWallX <= (0.5 + halfGap)) {
+                // Ray passes through sliding gap into the room behind
+              } else {
                 hit = 1;
                 hitTile = 2;
                 hitDoor = door;
               }
-            } else {
-              hit = 1;
-              hitTile = 2;
             }
           }
         }
@@ -2213,6 +2238,16 @@
         let matKey = 'concrete_old';
         if (isDoor) {
           matKey = 'door_blast';
+          const openProg = (hitDoor && hitDoor.openProgress !== undefined) ? hitDoor.openProgress : 0;
+          if (openProg > 0 && openProg < 0.98) {
+            const halfGap = openProg * 0.5;
+            if (wallX < 0.5) {
+              wallX = (wallX / Math.max(0.01, (0.5 - halfGap))) * 0.5;
+            } else {
+              wallX = 0.5 + ((wallX - (0.5 + halfGap)) / Math.max(0.01, (0.5 - halfGap))) * 0.5;
+            }
+            wallX = Math.max(0, Math.min(0.999, wallX));
+          }
         } else if (this.mapData.wallMaterials && this.mapData.wallMaterials[mapY]) {
           matKey = this.mapData.wallMaterials[mapY][mapX] || 'concrete_old';
         }
@@ -2225,11 +2260,6 @@
         let texX = Math.floor(wallX * texW);
         if (side === 0 && cos > 0) texX = texW - texX - 1;
         if (side === 1 && sin < 0) texX = texW - texX - 1;
-
-        // Door slide animation offset
-        if (isDoor && hitDoor && hitDoor.openProgress > 0) {
-          texX = (texX + Math.floor(hitDoor.openProgress * texW)) % texW;
-        }
         if (texX < 0) texX = 0;
         if (texX >= texW) texX = texW - 1;
 
@@ -2237,13 +2267,27 @@
         if (texImg && texImg.complete && texImg.naturalWidth > 0) {
           ctx.drawImage(texImg, texX, 0, 1, texH, screenX, drawStart, colStep, drawEnd - drawStart);
         } else {
-          // Reliable Material Fallback
-          const fb = (typeof TextureManager !== 'undefined') 
-            ? TextureManager.getFallback(matKey) 
-            : (isDoor ? [165, 135, 45] : [55, 65, 60]);
+          // Atmospheric Material Fallback
           const sideDarken = side === 1 ? 0.72 : 1.0;
-          ctx.fillStyle = `rgb(${Math.floor(fb[0] * sideDarken)}, ${Math.floor(fb[1] * sideDarken)}, ${Math.floor(fb[2] * sideDarken)})`;
-          ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+          if (isDoor) {
+            // Authentic Samosbor blast door fallback with hazard stripes & lock wheel
+            const isHazardStripe = (Math.floor(wallX * 8 + (drawEnd - drawStart) * 0.05) % 2 === 0);
+            const stripeColor = isHazardStripe ? [190, 150, 20] : [35, 42, 38];
+            ctx.fillStyle = `rgb(${Math.floor(stripeColor[0] * sideDarken)}, ${Math.floor(stripeColor[1] * sideDarken)}, ${Math.floor(stripeColor[2] * sideDarken)})`;
+            ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+
+            // Center locking seal line
+            if (Math.abs(wallX - 0.5) < 0.06) {
+              ctx.fillStyle = '#111813';
+              ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+            }
+          } else {
+            const fb = (typeof TextureManager !== 'undefined') 
+              ? TextureManager.getFallback(matKey) 
+              : [55, 65, 60];
+            ctx.fillStyle = `rgb(${Math.floor(fb[0] * sideDarken)}, ${Math.floor(fb[1] * sideDarken)}, ${Math.floor(fb[2] * sideDarken)})`;
+            ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+          }
         }
 
         // --- DYNAMIC LIGHTING, SHADING & DISTANCE FOG ---
@@ -2292,7 +2336,7 @@
         }
       }
 
-      // 3. Billboard Entities (Sort back to front)
+      // 3. Billboard Entities (Monsters, Allies, Loot, Crates, Elevator)
       const visibleSprites = [];
 
       if (this.elevator) {
@@ -2300,6 +2344,7 @@
           x: this.elevator.x + 16,
           y: this.elevator.y + 16,
           type: 'elevator',
+          key: 'loot_crate',
           color: '#33d4ff',
           name: '[E] ШАХТА ЭВАКУАЦИИ'
         });
@@ -2311,6 +2356,7 @@
             x: crate.x,
             y: crate.y,
             type: 'crate',
+            key: 'loot_crate',
             color: '#f5a623'
           });
         }
@@ -2318,10 +2364,26 @@
 
       for (const drop of this.weaponDrops) {
         if (!drop.pickedUp) {
+          let itemKey = 'loot_crate';
+          if (drop.weapon) {
+            const wId = (drop.weapon.id || drop.weapon.type || '').toLowerCase();
+            if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) itemKey = 'weapon_shotgun';
+            else if (wId.includes('pipe') || wId.includes('crowbar') || wId.includes('melee')) itemKey = 'weapon_pipe';
+            else if (wId.includes('flame') || wId.includes('fire')) itemKey = 'weapon_flamethrower';
+            else if (wId.includes('rifle') || wId.includes('ak')) itemKey = 'weapon_rifle';
+            else itemKey = 'weapon_pistol';
+          } else if (drop.item) {
+            const iId = (drop.item.id || drop.item.type || '').toLowerCase();
+            if (iId.includes('med') || iId.includes('heal')) itemKey = 'food_medkit';
+            else if (iId.includes('ammo')) itemKey = 'ammo_box';
+            else if (iId.includes('filter')) itemKey = 'gas_filter';
+            else itemKey = 'loot_crate';
+          }
           visibleSprites.push({
             x: drop.x,
             y: drop.y,
             type: 'weapon',
+            key: itemKey,
             color: '#00ffaa'
           });
         }
@@ -2332,6 +2394,7 @@
           x: ally.x,
           y: ally.y,
           type: 'ally',
+          key: 'liquidator',
           color: '#1fe044',
           hp: ally.hp,
           maxHp: ally.maxHp
@@ -2340,10 +2403,20 @@
 
       for (const ent of this.entities) {
         if (ent.hp > 0) {
+          let mKey = 'black_slime';
+          const eType = (ent.type || '').toLowerCase();
+          if (eType.includes('madman') || eType.includes('feral')) mKey = 'feral_inhabitant';
+          else if (eType.includes('cult') || eType.includes('mimic')) mKey = 'voice_mimic';
+          else if (eType.includes('pod') || eType.includes('mold') || eType.includes('spore')) mKey = 'spore_pod';
+          else if (eType.includes('liquidator')) mKey = 'rogue_liquidator';
+          else if (eType.includes('centipede') || eType.includes('horror')) mKey = 'six_legged_horror';
+          else mKey = 'black_slime';
+
           visibleSprites.push({
             x: ent.x,
             y: ent.y,
             type: 'monster',
+            key: mKey,
             color: ent.color || '#ff3b30',
             hp: ent.hp,
             maxHp: ent.maxHp
@@ -2352,65 +2425,142 @@
       }
 
       for (const sp of visibleSprites) {
-        sp.dist = Math.hypot(sp.x - px, sp.y - py);
-        let ang = Math.atan2(sp.y - py, sp.x - px) - pAngle;
+        const dx = sp.x - px;
+        const dy = sp.y - py;
+        sp.dist = Math.hypot(dx, dy);
+
+        let ang = Math.atan2(dy, dx) - pAngle;
         while (ang < -Math.PI) ang += 2 * Math.PI;
         while (ang > Math.PI) ang -= 2 * Math.PI;
         sp.angle = ang;
+        sp.perpDist = sp.dist * Math.cos(ang);
       }
 
-      visibleSprites.sort((a, b) => b.dist - a.dist);
+      // Filter sprites in front of camera
+      const inFrontSprites = visibleSprites.filter(sp => sp.perpDist > 8 && Math.cos(sp.angle) > 0.08 && Math.abs(sp.angle) < fov * 0.95);
 
-      for (const sp of visibleSprites) {
-        if (sp.dist < 8) continue;
-        if (Math.abs(sp.angle) > fov * 0.72) continue;
+      // Sort furthest to nearest by perpendicular distance
+      inFrontSprites.sort((a, b) => b.perpDist - a.perpDist);
 
-        const screenX = Math.floor((w / 2) + Math.tan(sp.angle) * (w / 2));
-        const sprHeight = Math.min(h * 2, Math.floor((h / (sp.dist / TS)) * 0.9));
-        const sprWidth = Math.floor(sprHeight * 0.75);
-        const sprTop = Math.floor(halfH - sprHeight / 2);
+      for (const sp of inFrontSprites) {
+        const screenX = Math.floor((w / 2) + Math.tan(sp.angle) * (w / 2) / Math.tan(fov / 2));
+        const sprHeight = Math.min(h * 2.2, Math.floor((h / (sp.perpDist / TS)) * 0.88));
+        const aspect = (sp.type === 'weapon' || sp.type === 'crate') ? 0.65 : 0.82;
+        const sprWidth = Math.max(4, Math.floor(sprHeight * aspect));
+
+        // Ground firmly on floor base
+        const wallBase = halfH + Math.floor(((h / (sp.perpDist / TS)) * 0.95) / 2);
+        const sprTop = Math.floor(wallBase - sprHeight);
         const sprLeft = Math.floor(screenX - sprWidth / 2);
+        const sprRight = sprLeft + sprWidth;
 
-        const bufIdx = Math.floor(screenX / colStep);
-        if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < sp.dist) {
-          continue; // Occluded by concrete wall
+        if (sprRight <= 0 || sprLeft >= w) continue;
+
+        const perpDistWorld = sp.perpDist;
+        const shade = Math.max(0.08, Math.min(1.0, 1.0 - perpDistWorld / (TS * 18)));
+        const darkAlpha = 1.0 - shade;
+
+        let sprImg = null;
+        if (typeof TextureManager !== 'undefined' && TextureManager.getSprite && sp.key) {
+          sprImg = TextureManager.getSprite(sp.key);
         }
 
-        const shade = Math.max(0.15, Math.min(1.0, 1.0 - sp.dist / (TS * 16)));
-        ctx.fillStyle = sp.color;
-        ctx.shadowColor = sp.color;
-        ctx.shadowBlur = 8 * shade;
+        let anyStripeVisible = false;
 
-        if (sp.type === 'monster') {
-          // Hostile mutated creature billboard
-          ctx.fillRect(sprLeft, sprTop + sprHeight * 0.2, sprWidth, sprHeight * 0.8);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(sprLeft + sprWidth * 0.25, sprTop + sprHeight * 0.35, sprWidth * 0.15, sprHeight * 0.1);
-          ctx.fillRect(sprLeft + sprWidth * 0.6, sprTop + sprHeight * 0.35, sprWidth * 0.15, sprHeight * 0.1);
-        } else if (sp.type === 'elevator') {
-          // Luminous extraction cargo beacon
-          ctx.fillStyle = 'rgba(51, 212, 255, 0.4)';
-          ctx.fillRect(sprLeft - sprWidth * 0.3, sprTop, sprWidth * 1.6, sprHeight);
-          ctx.strokeStyle = '#33d4ff';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(sprLeft - sprWidth * 0.3, sprTop, sprWidth * 1.6, sprHeight);
-        } else {
-          ctx.fillRect(sprLeft, sprTop + sprHeight * 0.3, sprWidth, sprHeight * 0.7);
+        // PER-COLUMN STRIPE RENDERING & Z-BUFFER OCCLUSION (NO X-RAY GLITCH)
+        for (let stripeX = Math.max(0, sprLeft); stripeX < Math.min(w, sprRight); stripeX += colStep) {
+          const bufIdx = Math.floor(stripeX / colStep);
+          if (bufIdx >= 0 && bufIdx < numCols && zBuffer[bufIdx] < perpDistWorld) {
+            // Occluded by wall or blast door!
+            continue;
+          }
+
+          anyStripeVisible = true;
+          const u = (stripeX - sprLeft) / sprWidth;
+
+          if (sprImg && sprImg.complete && sprImg.naturalWidth > 0) {
+            const srcX = Math.floor(u * sprImg.naturalWidth);
+            ctx.drawImage(sprImg, srcX, 0, 1, sprImg.naturalHeight, stripeX, sprTop, colStep, sprHeight);
+          } else {
+            // Fallback billboard
+            if (sp.type === 'elevator') {
+              ctx.fillStyle = 'rgba(51, 212, 255, 0.45)';
+              ctx.fillRect(stripeX, sprTop, colStep, sprHeight);
+            } else {
+              ctx.fillStyle = sp.color || '#ff3b30';
+              ctx.fillRect(stripeX, sprTop + sprHeight * 0.15, colStep, sprHeight * 0.85);
+            }
+          }
+
+          // Shading overlay
+          if (darkAlpha > 0.05) {
+            ctx.fillStyle = `rgba(1, 8, 4, ${darkAlpha.toFixed(2)})`;
+            ctx.fillRect(stripeX, sprTop, colStep, sprHeight);
+          }
         }
-        ctx.shadowBlur = 0;
 
-        if (sp.hp !== undefined && sp.maxHp) {
-          const hpPct = Math.max(0, Math.min(1, sp.hp / sp.maxHp));
-          const barW = sprWidth;
-          const barH = Math.max(3, Math.floor(sprHeight * 0.07));
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(sprLeft, sprTop - barH - 4, barW, barH);
-          ctx.fillStyle = sp.color;
-          ctx.fillRect(sprLeft, sprTop - barH - 4, barW * hpPct, barH);
+        // Health bar rendered only if sprite is visible
+        if (anyStripeVisible && sp.hp !== undefined && sp.maxHp) {
+          const centerBufIdx = Math.floor(screenX / colStep);
+          if (centerBufIdx < 0 || centerBufIdx >= numCols || zBuffer[centerBufIdx] >= perpDistWorld * 0.9) {
+            const hpPct = Math.max(0, Math.min(1, sp.hp / sp.maxHp));
+            const barW = Math.max(22, Math.min(68, sprWidth * 0.85));
+            const barH = Math.max(3, Math.floor(sprHeight * 0.06));
+            const barX = Math.floor(screenX - barW / 2);
+            const barY = Math.max(8, sprTop - barH - 4);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = (sp.type === 'ally') ? '#1fe044' : '#ff3b30';
+            ctx.fillRect(barX, barY, Math.floor(barW * hpPct), barH);
+          }
         }
       }
 
-      // 4. First-Person Weapon Model & Hands
+      // 4. Tactical Crosshair (Turns red when aiming at enemy)
+      let isAimingAtEnemy = false;
+      const centerBufIdx = Math.floor((w / 2) / colStep);
+      const wallDistAtCenter = (centerBufIdx >= 0 && centerBufIdx < numCols) ? zBuffer[centerBufIdx] : 9999;
+
+      for (const ent of this.entities) {
+        if (ent.hp > 0) {
+          const dx = ent.x - px;
+          const dy = ent.y - py;
+          const dist = Math.hypot(dx, dy);
+          let ang = Math.atan2(dy, dx) - pAngle;
+          while (ang < -Math.PI) ang += 2 * Math.PI;
+          while (ang > Math.PI) ang -= 2 * Math.PI;
+          if (Math.abs(ang) < 0.055 && dist < wallDistAtCenter) {
+            isAimingAtEnemy = true;
+            break;
+          }
+        }
+      }
+
+      const chX = Math.floor(w / 2);
+      const chY = Math.floor(h / 2);
+      const chColor = isAimingAtEnemy ? '#ff3333' : '#33ff00';
+
+      ctx.save();
+      ctx.strokeStyle = chColor;
+      ctx.fillStyle = chColor;
+      ctx.lineWidth = 1.5;
+
+      // 12x12 px crosshair with 2px gap at center
+      ctx.beginPath();
+      ctx.moveTo(chX - 7, chY);
+      ctx.lineTo(chX - 2, chY);
+      ctx.moveTo(chX + 2, chY);
+      ctx.lineTo(chX + 7, chY);
+      ctx.moveTo(chX, chY - 7);
+      ctx.lineTo(chX, chY - 2);
+      ctx.moveTo(chX, chY + 2);
+      ctx.lineTo(chX, chY + 7);
+      ctx.stroke();
+
+      ctx.fillRect(chX - 0.5, chY - 0.5, 1, 1);
+      ctx.restore();
+
+      // 5. First-Person Weapon Model & Hands
       this.drawFPSWeapon(ctx, w, h);
     }
 
@@ -2419,55 +2569,100 @@
      */
     drawFPSWeapon(ctx, w, h) {
       const isMoving = (this.player.vx !== 0 || this.player.vy !== 0);
-      const bobX = isMoving ? Math.sin(this.tick * 0.18) * 9 : 0;
-      const bobY = isMoving ? Math.abs(Math.cos(this.tick * 0.18)) * 7 : 0;
+      const bobX = isMoving ? Math.sin(this.tick * 0.18) * 8 : 0;
+      const bobY = isMoving ? Math.abs(Math.cos(this.tick * 0.18)) * 6 : 0;
 
-      const recoil = this.player.isShooting ? (1.0 - (this.player.shootProgress || 0)) * 26 : 0;
-      const swingOffset = this.player.isSwinging ? Math.sin((this.player.swingProgress || 0) * Math.PI) * 70 : 0;
+      const recoil = this.player.isShooting ? (1.0 - (this.player.shootProgress || 0)) * 28 : 0;
+      const swingOffset = this.player.isSwinging ? Math.sin((this.player.swingProgress || 0) * Math.PI) * 75 : 0;
 
       const gunX = w / 2 + 55 + bobX - swingOffset;
-      const gunY = h - 50 + bobY - recoil;
+      const gunY = h - 45 + bobY - recoil;
 
       const weapon = this.player.weapon || this.player.baseWeapon;
-      const isRanged = weapon && weapon.isRanged;
+      const wId = (weapon && (weapon.id || weapon.type || weapon.gunType || weapon.name || '')).toLowerCase();
+      const isRanged = weapon && (weapon.isRanged || wId.includes('shotgun') || wId.includes('rifle') || wId.includes('pistol') || wId.includes('ks23'));
 
       ctx.save();
       if (isRanged) {
-        // Firearm barrel & receiver
-        ctx.fillStyle = '#1c2e22';
-        ctx.fillRect(gunX - 22, gunY - 95, 34, 115);
-        ctx.fillStyle = '#2d4c38';
-        ctx.fillRect(gunX - 16, gunY - 130, 22, 40);
+        if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) {
+          // --- KS-23 Heavy Riot Shotgun ---
+          // Heavy steel barrel
+          ctx.fillStyle = '#1e2822';
+          ctx.fillRect(gunX - 26, gunY - 110, 38, 130);
+          ctx.fillStyle = '#2f3f35';
+          ctx.fillRect(gunX - 20, gunY - 145, 26, 45);
+          // Ribbed pump slide (wooden / bakelite grip)
+          ctx.fillStyle = '#52341b';
+          ctx.fillRect(gunX - 24, gunY - 80, 34, 32);
+          for (let ry = gunY - 76; ry < gunY - 52; ry += 6) {
+            ctx.fillStyle = '#3a2312';
+            ctx.fillRect(gunX - 24, ry, 34, 2);
+          }
+          // Brass bead front sight
+          ctx.fillStyle = '#ffd700';
+          ctx.fillRect(gunX - 8, gunY - 148, 4, 4);
+        } else {
+          // --- Makarov / Pistol / Rifle ---
+          ctx.fillStyle = '#1c2e22';
+          ctx.fillRect(gunX - 20, gunY - 95, 32, 115);
+          ctx.fillStyle = '#2d4c38';
+          ctx.fillRect(gunX - 15, gunY - 130, 22, 40);
+          // Green phosphor tritium sights
+          ctx.fillStyle = '#1fe044';
+          ctx.shadowColor = '#1fe044';
+          ctx.shadowBlur = 6;
+          ctx.fillRect(gunX - 6, gunY - 133, 4, 4);
+        }
 
-        // Green phosphor tritium sights
-        ctx.fillStyle = '#1fe044';
-        ctx.shadowColor = '#1fe044';
-        ctx.shadowBlur = 6;
-        ctx.fillRect(gunX - 7, gunY - 133, 4, 4);
-
-        // Muzzle Flash
+        // Muzzle Flash VFX
         if (this.player.isShooting && (this.player.shootProgress || 0) < 0.35) {
           ctx.fillStyle = '#fff488';
           ctx.shadowColor = '#ff9900';
-          ctx.shadowBlur = 24;
+          ctx.shadowBlur = 26;
           ctx.beginPath();
-          ctx.arc(gunX - 5, gunY - 146, 22, 0, Math.PI * 2);
+          ctx.arc(gunX - 6, gunY - 152, 24, 0, Math.PI * 2);
           ctx.fill();
 
           ctx.fillStyle = '#ff6600';
           ctx.beginPath();
-          ctx.moveTo(gunX - 5, gunY - 180);
-          ctx.lineTo(gunX + 16, gunY - 135);
-          ctx.lineTo(gunX - 26, gunY - 135);
+          ctx.moveTo(gunX - 6, gunY - 188);
+          ctx.lineTo(gunX + 18, gunY - 140);
+          ctx.lineTo(gunX - 28, gunY - 140);
           ctx.closePath();
           ctx.fill();
+
+          // Sparks
+          ctx.fillStyle = '#ffffff';
+          for (let spk = 0; spk < 4; spk++) {
+            const sx = gunX - 6 + (Math.random() - 0.5) * 40;
+            const sy = gunY - 152 - Math.random() * 35;
+            ctx.fillRect(sx, sy, 2, 2);
+          }
         }
       } else {
-        // Heavy steel pipe / melee weapon
-        ctx.fillStyle = '#445548';
-        ctx.fillRect(gunX - 16, gunY - 120, 24, 140);
-        ctx.fillStyle = '#88ff9e';
-        ctx.fillRect(gunX - 20, gunY - 126, 32, 10);
+        // --- Heavy Steel Pipe with Red Valve (Melee) ---
+        // Massive angled pipe
+        ctx.fillStyle = '#3e4e44';
+        ctx.fillRect(gunX - 18, gunY - 130, 28, 150);
+        // Pipe sheen highlight
+        ctx.fillStyle = '#657e6e';
+        ctx.fillRect(gunX - 12, gunY - 130, 8, 150);
+        // Threaded joint rings
+        ctx.fillStyle = '#25322b';
+        ctx.fillRect(gunX - 22, gunY - 110, 36, 12);
+        ctx.fillRect(gunX - 22, gunY - 40, 36, 12);
+        // Red industrial valve wheel
+        ctx.fillStyle = '#d62828';
+        ctx.beginPath();
+        ctx.arc(gunX - 4, gunY - 75, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1c221e';
+        ctx.beginPath();
+        ctx.arc(gunX - 4, gunY - 75, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d62828';
+        ctx.fillRect(gunX - 6, gunY - 92, 4, 34);
+        ctx.fillRect(gunX - 21, gunY - 77, 34, 4);
       }
       ctx.restore();
     }

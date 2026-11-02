@@ -23,8 +23,9 @@
 
     TILE_FLOOR: 0,
     TILE_WALL: 1,
-    TILE_DOOR: 2,
-    TILE_ELEVATOR: 3,
+    TILE_DOOR_CLOSED: 2,
+    TILE_DOOR_OPEN: 3,
+    TILE_ELEVATOR: 4,
 
     ROOM_THEMES: [
       { id: 'living', name: 'Жилые боксы 4-го яруса', type: 'living', color: '#1a2920' },
@@ -400,6 +401,7 @@
           const key = `${pt.x},${pt.y}`;
           if (isNarrowDoorway && !doorSet.has(key)) {
             doorSet.add(key);
+            grid[pt.y][pt.x] = this.TILE_DOOR_CLOSED;
             doors.push({
               x: pt.x * TS,
               y: pt.y * TS,
@@ -408,7 +410,8 @@
               w: TS,
               h: TS,
               isOpen: false,
-              isLocked: false
+              isLocked: false,
+              openProgress: 0.0
             });
             break; // Max 1-2 doors per room perimeter
           }
