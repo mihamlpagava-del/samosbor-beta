@@ -975,6 +975,20 @@
         this.spawnFloatingNotice('ВНИМАНИЕ! САМОСБОР ПРОРВАЛ СЕКТОР!', '#ff0033');
       }
 
+      // 1b. Airtight Blast Door Smooth Slide Animations
+      if (this.doors) {
+        for (let di = 0; di < this.doors.length; di++) {
+          const d = this.doors[di];
+          if (d.openProgress === undefined) d.openProgress = d.isOpen ? 1.0 : 0.0;
+          const target = d.isOpen ? 1.0 : 0.0;
+          if (d.openProgress !== target) {
+            const step = 0.08;
+            if (d.openProgress < target) d.openProgress = Math.min(target, d.openProgress + step);
+            else d.openProgress = Math.max(target, d.openProgress - step);
+          }
+        }
+      }
+
       if (this.samosborActive && this.tick % 60 === 0) {
         this.damagePlayer(12, 'САМОСБОР');
       }
@@ -2061,18 +2075,32 @@
       const halfFov = fov / 2;
       const halfH = h / 2;
 
-      // 1. Concrete ceiling and industrial floor
+      // 1. Perspective industrial ceiling and floor
       const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
       ceilGrad.addColorStop(0, '#040d06');
-      ceilGrad.addColorStop(1, '#0c1f10');
+      ceilGrad.addColorStop(1, '#0c1a10');
       ctx.fillStyle = ceilGrad;
       ctx.fillRect(0, 0, w, halfH);
+
+      // Overhead concrete crossbeams and conduit shadow lines
+      ctx.fillStyle = 'rgba(20, 36, 26, 0.4)';
+      for (let cy = 12; cy < halfH; cy += Math.max(6, Math.floor(cy * 0.28))) {
+        const beamH = Math.max(1, Math.floor(cy * 0.04));
+        ctx.fillRect(0, cy, w, beamH);
+      }
 
       const flrGrad = ctx.createLinearGradient(0, halfH, 0, h);
       flrGrad.addColorStop(0, '#09150c');
       flrGrad.addColorStop(1, '#020503');
       ctx.fillStyle = flrGrad;
       ctx.fillRect(0, halfH, w, halfH);
+
+      // Floor plate perspective seam lines
+      ctx.fillStyle = 'rgba(26, 44, 32, 0.35)';
+      for (let fy = halfH + 8; fy < h; fy += Math.max(5, Math.floor((fy - halfH) * 0.22))) {
+        const seamH = Math.max(1, Math.floor((fy - halfH) * 0.03));
+        ctx.fillRect(0, fy, w, seamH);
+      }
 
       // 2. DDA Raycaster for vertical wall strips
       const colStep = 2; // High density 2px columns
@@ -2113,6 +2141,7 @@
         let hit = 0;
         let side = 0;
         let hitTile = 1;
+        let hitDoor = null;
         let maxSteps = 42;
 
         while (hit === 0 && maxSteps-- > 0) {
@@ -2137,7 +2166,14 @@
             hitTile = 1;
           } else if (cell === 2) {
             const door = this.doors.find(dr => dr.tileX === mapX && dr.tileY === mapY);
-            if (!door || !door.isOpen) {
+            if (door) {
+              const openProg = (door.openProgress !== undefined) ? door.openProgress : (door.isOpen ? 1 : 0);
+              if (openProg < 0.95) {
+                hit = 1;
+                hitTile = 2;
+                hitDoor = door;
+              }
+            } else {
               hit = 1;
               hitTile = 2;
             }
@@ -2162,25 +2198,98 @@
         const drawStart = Math.max(0, Math.floor(halfH - lineH / 2));
         const drawEnd = Math.min(h, Math.floor(halfH + lineH / 2));
 
-        const maxShadeDist = 18;
-        const shade = Math.max(0.08, Math.min(1.0, 1.0 - perpDist / maxShadeDist));
-        let r, g, b;
-
-        if (hitTile === 2) {
-          // Hermetic door (steel amber)
-          r = Math.floor(180 * shade);
-          g = Math.floor(140 * shade);
-          b = Math.floor(45 * shade);
+        // Calculate exact wall hit U-coordinate (wallX in [0.0 .. 1.0))
+        let wallX;
+        if (side === 0) {
+          wallX = (py / TS) + perpDist * sin;
         } else {
-          // Monolithic concrete block wall
-          const sideDarken = side === 1 ? 0.72 : 1.0;
-          r = Math.floor(35 * shade * sideDarken);
-          g = Math.floor(145 * shade * sideDarken);
-          b = Math.floor(65 * shade * sideDarken);
+          wallX = (px / TS) + perpDist * cos;
+        }
+        wallX -= Math.floor(wallX);
+        if (wallX < 0) wallX += 1.0;
+
+        // Material key resolution
+        const isDoor = (hitTile === 2);
+        let matKey = 'concrete_old';
+        if (isDoor) {
+          matKey = 'door_blast';
+        } else if (this.mapData.wallMaterials && this.mapData.wallMaterials[mapY]) {
+          matKey = this.mapData.wallMaterials[mapY][mapX] || 'concrete_old';
         }
 
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+        // Texture retrieval from TextureManager
+        const texImg = (typeof TextureManager !== 'undefined') ? TextureManager.get(matKey) : null;
+        const texW = (texImg && texImg.naturalWidth) ? texImg.naturalWidth : 128;
+        const texH = (texImg && texImg.naturalHeight) ? texImg.naturalHeight : 128;
+
+        let texX = Math.floor(wallX * texW);
+        if (side === 0 && cos > 0) texX = texW - texX - 1;
+        if (side === 1 && sin < 0) texX = texW - texX - 1;
+
+        // Door slide animation offset
+        if (isDoor && hitDoor && hitDoor.openProgress > 0) {
+          texX = (texX + Math.floor(hitDoor.openProgress * texW)) % texW;
+        }
+        if (texX < 0) texX = 0;
+        if (texX >= texW) texX = texW - 1;
+
+        // Draw Textured Wall Strip
+        if (texImg && texImg.complete && texImg.naturalWidth > 0) {
+          ctx.drawImage(texImg, texX, 0, 1, texH, screenX, drawStart, colStep, drawEnd - drawStart);
+        } else {
+          // Reliable Material Fallback
+          const fb = (typeof TextureManager !== 'undefined') 
+            ? TextureManager.getFallback(matKey) 
+            : (isDoor ? [165, 135, 45] : [55, 65, 60]);
+          const sideDarken = side === 1 ? 0.72 : 1.0;
+          ctx.fillStyle = `rgb(${Math.floor(fb[0] * sideDarken)}, ${Math.floor(fb[1] * sideDarken)}, ${Math.floor(fb[2] * sideDarken)})`;
+          ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+        }
+
+        // --- DYNAMIC LIGHTING, SHADING & DISTANCE FOG ---
+        const maxShadeDist = 18;
+        let shade = Math.max(0.04, Math.min(1.0, 1.0 - perpDist / maxShadeDist));
+        if (side === 1) shade *= 0.76; // 3D side shadow depth
+
+        // Local wall lanterns volumetric illumination
+        if (this.lamps && this.lamps.length > 0) {
+          const hitWorldX = px + cos * (perpDist * TS);
+          const hitWorldY = py + sin * (perpDist * TS);
+          for (let li = 0; li < this.lamps.length; li++) {
+            const lamp = this.lamps[li];
+            const ld = Math.hypot(hitWorldX - lamp.x, hitWorldY - lamp.y);
+            if (ld < 110) {
+              const lampFactor = (1.0 - ld / 110) * 0.42;
+              const flicker = Math.sin(this.tick * 0.16 + lamp.tileX * 5) * 0.06;
+              shade = Math.min(1.0, shade + Math.max(0, lampFactor + flicker));
+            }
+          }
+        }
+
+        // Smooth darkness falloff overlay
+        const darkAlpha = 1.0 - shade;
+        if (darkAlpha > 0.02) {
+          ctx.fillStyle = `rgba(1, 8, 4, ${darkAlpha.toFixed(2)})`;
+          ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+        }
+
+        // Samosbor Emergency Siren Pulsing Tint
+        if (this.samosborActive) {
+          const pulse = 0.35 + Math.sin(this.tick * 0.2) * 0.25;
+          ctx.fillStyle = `rgba(180, 20, 20, ${pulse.toFixed(2)})`;
+          ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
+        }
+
+        // Hermetic Door Electronic Status Indicator (LED)
+        if (isDoor) {
+          const doorLedY = drawStart + lineH * 0.14;
+          const doorLedH = Math.max(2, Math.floor(lineH * 0.045));
+          const isOpened = (hitDoor && hitDoor.isOpen);
+          const isLocked = (hitDoor && hitDoor.isLocked);
+          const ledColor = isOpened ? '#1fe044' : isLocked ? '#ffcc00' : '#ff3b30';
+          ctx.fillStyle = ledColor;
+          ctx.fillRect(screenX, doorLedY, colStep, doorLedH);
+        }
       }
 
       // 3. Billboard Entities (Sort back to front)

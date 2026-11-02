@@ -50,12 +50,16 @@
       const H = this.GRID_HEIGHT;
       const TS = this.TILE_SIZE;
 
-      // 1. Initialize full solid wall grid
+      // 1. Initialize full solid wall grid and material maps
       const grid = [];
+      const wallMaterials = [];
+      const floorMaterials = [];
       for (let y = 0; y < H; y++) {
         const row = new Uint8Array(W);
         row.fill(this.TILE_WALL);
         grid.push(row);
+        wallMaterials.push(new Array(W).fill('concrete_old'));
+        floorMaterials.push(new Array(W).fill('floor_concrete'));
       }
 
       // 2. Binary Space Partitioning (BSP)
@@ -108,10 +112,23 @@
         leaf.room = room;
         rooms.push(room);
 
-        // Carve room floor
+        const wallMat = (typeof TextureManager !== 'undefined') ? TextureManager.getRoomMaterial(room.type) : 'concrete_old';
+        const floorMat = (typeof TextureManager !== 'undefined') ? TextureManager.getFloorMaterial(room.type) : 'floor_concrete';
+
+        // Carve room floor and assign materials
         for (let y = ry; y < ry + rh; y++) {
           for (let x = rx; x < rx + rw; x++) {
             grid[y][x] = this.TILE_FLOOR;
+            floorMaterials[y][x] = floorMat;
+          }
+        }
+
+        // Tag perimeter walls with the room's architectural material
+        for (let y = Math.max(0, ry - 1); y <= Math.min(H - 1, ry + rh); y++) {
+          for (let x = Math.max(0, rx - 1); x <= Math.min(W - 1, rx + rw); x++) {
+            if (grid[y][x] === this.TILE_WALL) {
+              wallMaterials[y][x] = wallMat;
+            }
           }
         }
       }
@@ -196,6 +213,8 @@
 
       return {
         grid,
+        wallMaterials,
+        floorMaterials,
         width: W,
         height: H,
         tileSize: TS,
