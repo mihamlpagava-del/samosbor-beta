@@ -3077,6 +3077,64 @@ app.post('/vk-payment', (req, res) => {
     }
 });
 
+
+// ============================================================================
+// GLOBAL FPS MULTIPLAYER & LOBBY SYSTEM (SHARED ACROSS ALL CONNECTED PLAYERS)
+// ============================================================================
+const fpsLobbies = {};
+const raidRoomsFPS = {};
+
+function getOpenFPSLobbiesList() {
+    const list = [];
+    for (const id in fpsLobbies) {
+        const l = fpsLobbies[id];
+        if (l && l.status === 'waiting') {
+            list.push({
+                id: l.id,
+                name: l.name,
+                mode: l.mode,
+                maxPlayers: l.maxPlayers,
+                hostId: l.hostId,
+                hostName: l.hostName,
+                playerCount: l.members.length,
+                members: l.members.map(m => ({ id: m.id, name: m.name, isHost: m.id === l.hostId }))
+            });
+        }
+    }
+    return list;
+}
+
+function leaveFPSLobbyInternal(socket) {
+    const lobbyId = socket.currentFPSLobby;
+    if (!lobbyId || !fpsLobbies[lobbyId]) return;
+    const lobby = fpsLobbies[lobbyId];
+    lobby.members = lobby.members.filter(m => m.id !== socket.id);
+    try { socket.leave(lobbyId); } catch(e) {}
+    socket.currentFPSLobby = null;
+
+    if (lobby.members.length === 0) {
+        delete fpsLobbies[lobbyId];
+    } else {
+        if (lobby.hostId === socket.id) {
+            lobby.hostId = lobby.members[0].id;
+            lobby.hostName = lobby.members[0].name;
+            lobby.members[0].isHost = true;
+            if (typeof io !== 'undefined') {
+                io.to(lobby.id).emit('fpsLobbyHostChanged', { newHostId: lobby.hostId, newHostName: lobby.hostName });
+            }
+        }
+        if (typeof io !== 'undefined') {
+            io.to(lobby.id).emit('fpsLobbyUpdated', {
+                members: lobby.members,
+                hostName: lobby.hostName
+            });
+        }
+    }
+    if (typeof io !== 'undefined') {
+        io.emit('fpsLobbiesList', getOpenFPSLobbiesList());
+    }
+}
+
 io.on('connection', (socket) => {
     if (!Array.isArray(db.chatHistory)) db.chatHistory = [];
     chatHistory = db.chatHistory;
@@ -5428,62 +5486,6 @@ function checkLifterTrigger(player, sock, loc) {
         broadcastGameState();
     });
 
-// ===== FPS LOBBY SYSTEM (PVE 4-PLAYERS & PVP 16-PLAYERS WITH HOST) =====
-const fpsLobbies = {};
-if (typeof raidRoomsFPS === 'undefined') {
-    global.raidRoomsFPS = {};
-}
-
-function getOpenFPSLobbiesList() {
-    const list = [];
-    for (const id in fpsLobbies) {
-        const l = fpsLobbies[id];
-        if (l.status === 'waiting') {
-            list.push({
-                id: l.id,
-                name: l.name,
-                mode: l.mode,
-                maxPlayers: l.maxPlayers,
-                hostId: l.hostId,
-                hostName: l.hostName,
-                playerCount: l.members.length,
-                members: l.members.map(m => ({ id: m.id, name: m.name, isHost: m.id === l.hostId }))
-            });
-        }
-    }
-    return list;
-}
-
-function leaveFPSLobbyInternal(socket) {
-    const lobbyId = socket.currentFPSLobby;
-    if (!lobbyId || !fpsLobbies[lobbyId]) return;
-    const lobby = fpsLobbies[lobbyId];
-    lobby.members = lobby.members.filter(m => m.id !== socket.id);
-    socket.leave(lobbyId);
-    socket.currentFPSLobby = null;
-
-    if (lobby.members.length === 0) {
-        delete fpsLobbies[lobbyId];
-    } else {
-        if (lobby.hostId === socket.id) {
-            lobby.hostId = lobby.members[0].id;
-            lobby.hostName = lobby.members[0].name;
-            lobby.members[0].isHost = true;
-            if (typeof io !== 'undefined') {
-                io.to(lobby.id).emit('fpsLobbyHostChanged', { newHostId: lobby.hostId, newHostName: lobby.hostName });
-            }
-        }
-        if (typeof io !== 'undefined') {
-            io.to(lobby.id).emit('fpsLobbyUpdated', {
-                members: lobby.members,
-                hostName: lobby.hostName
-            });
-        }
-    }
-    if (typeof io !== 'undefined') {
-        io.emit('fpsLobbiesList', getOpenFPSLobbiesList());
-    }
-}
 
     // ===== MULTIPLAYER FPS MODE (25 HZ SOCKET.IO REAL-TIME SYNC) =====
     // --- FPS LOBBY DISPATCHER (HOST, PVE & PVP) ---
@@ -5516,6 +5518,7 @@ function leaveFPSLobbyInternal(socket) {
         };
 
         fpsLobbies[lobbyId] = newLobby;
+        writeLog(`[FPS ЛОББИ] Игрок ${username} (${socket.id}) создал лобби ${lobbyId} [${mode}]`);
         socket.currentFPSLobby = lobbyId;
         socket.join(lobbyId);
 
@@ -5558,6 +5561,7 @@ function leaveFPSLobbyInternal(socket) {
         let username = (auth && auth.username) ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
 
         lobby.members.push({ id: socket.id, name: username, isHost: false });
+        writeLog(`[FPS ЛОББИ] Игрок ${username} (${socket.id}) присоединился к лобби ${lobby.id} (${lobby.members.length}/${lobby.maxPlayers})`);
         socket.currentFPSLobby = lobby.id;
         socket.join(lobby.id);
 
