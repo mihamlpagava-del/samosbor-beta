@@ -1755,19 +1755,7 @@
         }
       }
       
-      // Explosive Chemical Barrels
-      for (const barrel of (this.barrels || [])) {
-        if (!barrel.exploded) {
-          visibleSprites.push({
-            x: barrel.x,
-            y: barrel.y,
-            type: 'barrel',
-            key: 'barrel_explosive',
-            color: '#ffaa00',
-            name: '⚠️ ХИМ-БОЧКА'
-          });
-        }
-      }
+
 
       for (const crate of this.crates) {
         if (!crate.opened && Math.hypot(this.player.x - crate.x, this.player.y - crate.y) < 22) {
@@ -3920,118 +3908,7 @@
         }
 
         // 2c. Draw Living Cell & Bunker Props
-        // Environmental Lore: Tape Recorders in FPS
-      for (const rec of (this.recorders || [])) {
-        visibleSprites.push({
-          x: rec.x,
-          y: rec.y,
-          type: 'recorder',
-          key: 'recorder',
-          recorder: rec,
-          color: '#222624'
-        });
-      }
-
-      // Environmental Lore: Wall Notes in FPS
-      for (const note of (this.wallNotes || [])) {
-        visibleSprites.push({
-          x: note.x,
-          y: note.y,
-          type: 'wall_note',
-          key: 'wall_note',
-          note: note,
-          color: '#ded1b4'
-        });
-      }
-
-      // Interactive Dungeon Traps in FPS
-      for (const trap of (this.electricTraps || [])) {
-        visibleSprites.push({
-          x: trap.x,
-          y: trap.y,
-          type: 'electric_wire',
-          key: 'electric_wire',
-          trap: trap,
-          color: '#00f0ff'
-        });
-        if (trap.breakerBox) {
-          visibleSprites.push({
-            x: trap.breakerBox.x,
-            y: trap.breakerBox.y,
-            type: 'breaker_box',
-            key: 'breaker_box',
-            box: trap.breakerBox,
-            color: '#33443a'
-          });
-        }
-      }
-
-      for (const vent of (this.fleshVents || [])) {
-        visibleSprites.push({
-          x: vent.x,
-          y: vent.y,
-          type: 'flesh_vent',
-          key: 'flesh_vent',
-          vent: vent,
-          color: '#661155'
-        });
-      }
-
-      // Airlock Defense Barricades in FPS
-      for (const bar of (this.siegeBarricades || [])) {
-        visibleSprites.push({
-          x: bar.x + 16,
-          y: bar.y + 16,
-          type: 'barricade',
-          key: 'barricade',
-          barricade: bar,
-          color: '#e6a100',
-          hp: bar.hp,
-          maxHp: bar.maxHp
-        });
-      }
-
-      // Explosive Chemical Barrels in FPS
-      for (const barrel of (this.explosiveBarrels || [])) {
-        if (!barrel.exploded) {
-          visibleSprites.push({
-            x: barrel.x,
-            y: barrel.y,
-            type: 'barrel',
-            key: 'barrel_explosive',
-            color: '#ffaa00',
-            name: '⚠️ ХИМ-БОЧКА'
-          });
-        }
-      }
-
-      // VOKhR Supply Crate in FPS
-      if (this.vokhrCrate && !this.vokhrCrate.opened) {
-        visibleSprites.push({
-          x: this.vokhrCrate.x + 16,
-          y: this.vokhrCrate.y + 12,
-          type: 'vokhr_crate',
-          key: 'vokhr_crate',
-          crate: this.vokhrCrate,
-          color: '#5a6b47'
-        });
-      }
-
-      // Hydraulic Elevator Terminal in FPS
-      if (this.elevatorTerminal) {
-        visibleSprites.push({
-          x: this.elevatorTerminal.x,
-          y: this.elevatorTerminal.y,
-          type: 'elevator_terminal',
-          key: 'terminal',
-          terminal: this.elevatorTerminal,
-          color: '#ff3333',
-          hp: this.elevatorTerminal.hp,
-          maxHp: this.elevatorTerminal.maxHp
-        });
-      }
-
-      for (const prop of (this.props || [])) {
+        for (const prop of (this.props || [])) {
           if (this.isCellExplored(prop.tileX, prop.tileY)) {
             if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawProp) {
               SpriteFactory.drawProp(worldCtx, prop, this.tileSize, this.tick, 1.0);
@@ -4814,6 +4691,117 @@
             chest: chest
           });
         }
+      }
+
+      // Environmental Lore: Tape Recorders in FPS
+      for (const rec of (this.recorders || [])) {
+        visibleSprites.push({
+          x: rec.x,
+          y: rec.y,
+          type: 'recorder',
+          key: 'recorder',
+          recorder: rec,
+          color: '#222624'
+        });
+      }
+
+      // Environmental Lore: Wall Notes in FPS
+      for (const note of (this.wallNotes || [])) {
+        visibleSprites.push({
+          x: note.x,
+          y: note.y,
+          type: 'wall_note',
+          key: 'wall_note',
+          note: note,
+          color: '#ded1b4'
+        });
+      }
+
+      // Interactive Dungeon Traps in FPS
+      for (const trap of (this.electricTraps || [])) {
+        visibleSprites.push({
+          x: trap.x,
+          y: trap.y,
+          type: 'electric_wire',
+          key: 'electric_wire',
+          trap: trap,
+          color: '#00f0ff'
+        });
+        if (trap.breakerBox) {
+          visibleSprites.push({
+            x: trap.breakerBox.x,
+            y: trap.breakerBox.y,
+            type: 'breaker_box',
+            key: 'breaker_box',
+            box: trap.breakerBox,
+            color: '#33443a'
+          });
+        }
+      }
+
+      for (const vent of (this.fleshVents || [])) {
+        visibleSprites.push({
+          x: vent.x,
+          y: vent.y,
+          type: 'flesh_vent',
+          key: 'flesh_vent',
+          vent: vent,
+          color: '#661155'
+        });
+      }
+
+      // Airlock Defense Barricades in FPS
+      for (const bar of (this.siegeBarricades || [])) {
+        visibleSprites.push({
+          x: bar.x + 16,
+          y: bar.y + 16,
+          type: 'barricade',
+          key: 'barricade',
+          barricade: bar,
+          color: '#e6a100',
+          hp: bar.hp,
+          maxHp: bar.maxHp
+        });
+      }
+
+      // Explosive Chemical Barrels in FPS
+      for (const barrel of (this.explosiveBarrels || [])) {
+        if (!barrel.exploded) {
+          visibleSprites.push({
+            x: barrel.x,
+            y: barrel.y,
+            type: 'barrel',
+            key: 'barrel_explosive',
+            color: '#ffaa00',
+            name: '⚠️ ХИМ-БОЧКА'
+          });
+        }
+      }
+
+      // VOKhR Supply Crate in FPS
+      if (this.vokhrCrate && !this.vokhrCrate.opened) {
+        visibleSprites.push({
+          x: this.vokhrCrate.x + 16,
+          y: this.vokhrCrate.y + 12,
+          type: 'vokhr_crate',
+          key: 'vokhr_crate',
+          crate: this.vokhrCrate,
+          color: '#5a6b47'
+        });
+      }
+
+      // Hydraulic Elevator Terminal in FPS
+      if (this.elevatorTerminal) {
+        visibleSprites.push({
+          x: this.elevatorTerminal.x,
+          y: this.elevatorTerminal.y,
+          type: 'elevator_terminal',
+          key: 'terminal',
+          terminal: this.elevatorTerminal,
+          color: '#ff3333',
+          hp: this.elevatorTerminal.hp,
+          maxHp: this.elevatorTerminal.maxHp
+        });
       }
 
       for (const sp of visibleSprites) {
