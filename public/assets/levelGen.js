@@ -66,7 +66,11 @@
      * @param {number} playerLevel Current hero level for bestiary scaling
      * @returns {Object} Map data
      */
-    generate(playerLevel = 1) {
+    generate(playerLevel = 1, currentRaidFloor = 1, seed = null) {
+      if (seed !== null && seed !== undefined) {
+        this.setSeed(seed);
+      }
+      this.currentRaidFloor = Math.max(1, currentRaidFloor || 1);
       const W = this.GRID_WIDTH;
       const H = this.GRID_HEIGHT;
       const TS = this.TILE_SIZE;
@@ -256,6 +260,84 @@
       const props = [];
       this.populateProps(rooms, grid, props, TS);
 
+      // 13. Security Keycards, Notes & In-Run Puzzles Spawn
+      const keycards = [];
+      const notes = [];
+      const puzzles = [];
+
+      // Spawn Blue Keycard in workshop/archive room
+      const blueRoom = rooms[Math.min(rooms.length - 1, 2)];
+      keycards.push({
+        id: 'keycard_blue',
+        color: 'BLUE',
+        name: 'Синяя ключ-карта Инженера',
+        x: (blueRoom.centerX + 1) * TS + TS / 2,
+        y: (blueRoom.centerY) * TS + TS / 2,
+        tileX: blueRoom.centerX + 1,
+        tileY: blueRoom.centerY
+      });
+
+      // Spawn Yellow Keycard in medbay/living room
+      const yellowRoom = rooms[Math.min(rooms.length - 1, 3)];
+      keycards.push({
+        id: 'keycard_yellow',
+        color: 'YELLOW',
+        name: 'Желтая ключ-карта Снабжения',
+        x: (yellowRoom.centerX - 1) * TS + TS / 2,
+        y: (yellowRoom.centerY + 1) * TS + TS / 2,
+        tileX: yellowRoom.centerX - 1,
+        tileY: yellowRoom.centerY + 1
+      });
+
+      // Spawn Commandant's Note with Code 1984
+      const noteRoom = rooms[Math.min(rooms.length - 1, 1)];
+      notes.push({
+        id: 'note_commandant_1984',
+        name: 'Записка коменданта',
+        text: 'Код от секретного бункера — год закладки блока (1984)',
+        code: '1984',
+        x: noteRoom.centerX * TS + TS / 2,
+        y: (noteRoom.centerY - 1) * TS + TS / 2,
+        tileX: noteRoom.centerX,
+        tileY: noteRoom.centerY - 1
+      });
+
+      // Spawn Archivist's Punched Card in corridor/room
+      const punchRoom = rooms[Math.min(rooms.length - 1, 4)];
+      notes.push({
+        id: 'item_punched_card',
+        name: 'Перфокарта Директивы 74-Б',
+        isPunchedCard: true,
+        x: (punchRoom.centerX + 1) * TS + TS / 2,
+        y: (punchRoom.centerY - 1) * TS + TS / 2,
+        tileX: punchRoom.centerX + 1,
+        tileY: punchRoom.centerY - 1
+      });
+
+      // Spawn Voltage Calibration Substation Terminal
+      const subRoom = rooms[Math.min(rooms.length - 1, 2)];
+      puzzles.push({
+        id: 'puzzle_voltage',
+        type: 'VOLTAGE',
+        targetVoltage: 80,
+        currentVoltage: 0,
+        solved: false,
+        name: 'Щит подстанции // Калибровка 80W',
+        x: (subRoom.centerX - 1) * TS + TS / 2,
+        y: (subRoom.centerY - 1) * TS + TS / 2,
+        tileX: subRoom.centerX - 1,
+        tileY: subRoom.centerY - 1
+      });
+
+      // Scale Mutant HP & Damage by current floor depth
+      const hpScale = 1 + (this.currentRaidFloor - 1) * 0.25;
+      const dmgScale = 1 + (this.currentRaidFloor - 1) * 0.15;
+      for (const m of mutants) {
+        m.maxHp = Math.round(m.maxHp * hpScale);
+        m.hp = m.maxHp;
+        m.dmg = Math.round((m.dmg || 16) * dmgScale);
+      }
+
       return {
         grid,
         wallMaterials,
@@ -273,7 +355,10 @@
         weaponDrops,
         chests,
         npcs,
-        props,
+        keycards,
+        notes,
+        puzzles,
+        currentRaidFloor: this.currentRaidFloor,
         lamps
       };
     },
@@ -449,7 +534,44 @@
           if (isNarrowDoorway && !doorSet.has(key)) {
             doorSet.add(key);
             grid[pt.y][pt.x] = this.TILE_DOOR_CLOSED;
-            const isKeycardDoor = (doors.length === 2 || doors.length === 5);
+            
+            // Assign security door types: RED (Armory), BLUE (Workshop), YELLOW (Medbay), CODE (Command bunker)
+            let secType = 'NORMAL';
+            let isLocked = false;
+            let reqKey = null;
+            let reqCode = null;
+            let secColor = '#00ffaa';
+
+            if (doors.length === 1) {
+              secType = 'RED';
+              isLocked = true;
+              reqKey = 'RED';
+              secColor = '#ff3b30';
+              room.specialType = 'ARMORY';
+              room.name = 'Оружейный арсенал ВОХР';
+            } else if (doors.length === 2) {
+              secType = 'BLUE';
+              isLocked = true;
+              reqKey = 'BLUE';
+              secColor = '#00e5ff';
+              room.specialType = 'WORKSHOP';
+              room.name = 'Инженерный отсек / Мастерская';
+            } else if (doors.length === 4) {
+              secType = 'YELLOW';
+              isLocked = true;
+              reqKey = 'YELLOW';
+              secColor = '#ffd700';
+              room.specialType = 'MEDBAY';
+              room.name = 'Склад продовольствия и медикаментов';
+            } else if (doors.length === 5) {
+              secType = 'CODE';
+              isLocked = true;
+              reqCode = '1984';
+              secColor = '#ffaa00';
+              room.specialType = 'COMMAND';
+              room.name = 'Секретный командный пункт';
+            }
+
             doors.push({
               x: pt.x * TS,
               y: pt.y * TS,
@@ -458,8 +580,11 @@
               w: TS,
               h: TS,
               isOpen: false,
-              isLocked: isKeycardDoor,
-              requiresKeycard: isKeycardDoor,
+              isLocked: isLocked,
+              securityType: secType,
+              requiresKeycard: reqKey,
+              requiresCode: reqCode,
+              color: secColor,
               openProgress: 0.0
             });
             break; // Max 1-2 doors per room perimeter
@@ -586,81 +711,79 @@
      * Populate friendly NPCs with dialogues and procedural quests
      */
     populateNPCs(rooms, startRoom, npcs, TS) {
-      // 1. Старшина Семеныч (Комендант жилячейки)
-      npcs.push({
-        id: 'npc_semenych',
-        name: 'Старшина Семеныч',
-        role: 'Комендант блока',
-        x: (startRoom.centerX - 1) * TS + TS / 2,
-        y: (startRoom.centerY - 1) * TS + TS / 2,
-        radius: 14,
-        type: 'npc',
-        portrait: 'assets/monsters/m_liquidator.png',
-        dialogue: 'Здорово, боец! Самосбор усиливается с каждой минутой. Если зачистишь этот этаж от мутантов — я щедро отсыплю 300 талонов и боекомплект 12/76!',
-        quest: {
-          id: 'quest_clean_sector',
-          title: 'Зачистка сектора от мутантов',
-          desc: 'Уничтожить 5 мутантов на этаже',
-          targetKills: 5,
-          currentKills: 0,
-          rewardTalons: 300,
-          rewardAmmo: 25,
-          rewardXp: 100,
-          completed: false,
-          turnedIn: false
-        }
-      });
-
-      // 2. Медсестра Клавдия (Полевой санитар) в соседней жилой комнате
-      if (rooms.length > 2) {
-        const medRoom = rooms[1];
+      // 1. Раненый ликвидатор (Просит аптечку -> встает союзником + дает Красную Карту ВОХР)
+      if (rooms.length > 1) {
+        const rRoom = rooms[1];
         npcs.push({
-          id: 'npc_klavdiya',
-          name: 'Медсестра Клавдия',
-          role: 'Полевой санитар',
-          x: medRoom.centerX * TS + TS / 2,
-          y: medRoom.centerY * TS + TS / 2,
+          id: 'npc_wounded_liquidator',
+          name: 'Рядовой Грачев',
+          role: 'Раненый ликвидатор ВОХР',
+          x: rRoom.centerX * TS - TS,
+          y: rRoom.centerY * TS,
           radius: 14,
-          type: 'npc',
+          type: 'npc_wounded',
+          isWounded: true,
+          hasAided: false,
           portrait: 'assets/monsters/m_liquidator.png',
-          dialogue: 'Береги фильтр противогаза, сынок. На этаже полно заразы. Принеси мне электронную ключ-карту от шлюза — выдам 250 талонов и 3 армейские аптечки!',
+          dialogue: 'Брат... Задело кислотой при прорыве слизи. Поделись военной аптечкой [Q]... У меня осталась красная ключ-карта от арсенала ВОХР — отдам её тебе, и пойду с тобой зачищать этот этаж!',
           quest: {
-            id: 'quest_find_keycard',
-            title: 'Электронный доступ к шлюзу',
-            desc: 'Найти электронную ключ-карту допуска',
-            requiresKeycard: true,
-            rewardMedkits: 3,
-            rewardTalons: 250,
-            rewardXp: 90,
+            id: 'quest_heal_liquidator',
+            type: 'HEAL_MEDKIT',
+            title: 'Полевая перевязка ликвидатора',
+            desc: 'Дать армейскую аптечку [Q / 1]',
+            rewardKeycard: 'RED',
+            rewardFollower: true,
             completed: false,
             turnedIn: false
           }
         });
       }
 
-      // 3. Техник Михалыч (Инженер узла связи)
-      if (rooms.length > 3) {
-        const techRoom = rooms[2];
+      // 2. Безумный архивариус НИИ (Ищет потерянную перфокарту с Директивой)
+      if (rooms.length > 2) {
+        const archRoom = rooms[2];
         npcs.push({
-          id: 'npc_mikhalych',
-          name: 'Техник Михалыч',
-          role: 'Инженер узла связи',
-          x: techRoom.centerX * TS + TS / 2,
-          y: techRoom.centerY * TS + TS / 2,
+          id: 'npc_mad_archivist',
+          name: 'Доцент Лисовский',
+          role: 'Безумный архивариус НИИ',
+          x: archRoom.centerX * TS + TS / 2,
+          y: archRoom.centerY * TS + TS / 2,
           radius: 14,
-          type: 'npc',
-          portrait: 'assets/monsters/m_liquidator.png',
-          dialogue: 'Привет, боец! Взрывной клапан заблокировал сектор, а в опечатанном ящике остался аварийный ремкомплект. Вскрой ящик снабжения [E] — получишь мой личный карабин КС-23 и солидную премию 350 талонов!',
+          type: 'npc_archivist',
+          portrait: 'assets/monsters/m_madman.png',
+          dialogue: 'Стой! Не подходи к шкафам! Я обронил перфокарту с Директивой 74-Б... Без неё комендант скормит меня туману! Отыщи её в соседних комнатах — я отдам тебе чертеж модификации оружия и связку талонов (+150 талонов)!',
           quest: {
-            id: 'quest_open_crate',
-            title: 'Аварийный ремкомплект узла связи',
-            desc: 'Вскрыть опечатанный ящик снабжения [E]',
-            requiresChest: true,
-            rewardWeapon: { id: 'gun_ks23', name: 'Карабин КС-23', dmg: 55, isRanged: true, ammo: 30, maxAmmo: 30, gunType: 'shotgun' },
-            rewardTalons: 350,
-            rewardXp: 120,
+            id: 'quest_find_punched_card',
+            type: 'FIND_ITEM',
+            itemKey: 'punched_card',
+            title: 'Утраченная директива Главснаба',
+            desc: 'Найти перфокарту в соседних комнатах',
+            rewardTalons: 150,
+            rewardXp: 80,
             completed: false,
             turnedIn: false
+          }
+        });
+      }
+
+      // 3. Бродячий барыга из тумана (Обмен слизи на патроны и фильтры)
+      if (rooms.length > 3) {
+        const traderRoom = rooms[3];
+        npcs.push({
+          id: 'npc_fog_trader',
+          name: 'Хромой Сёма',
+          role: 'Бродячий барыга из тумана',
+          x: traderRoom.centerX * TS,
+          y: traderRoom.centerY * TS - TS / 2,
+          radius: 14,
+          type: 'npc_trader',
+          portrait: 'assets/monsters/m_cultist.png',
+          dialogue: 'Пс-с, ликвидатор... Живой еще? Слизь с тварей собираешь? Могу обменять свежие брикеты слизи на патроны для дробовика или новый фильтр противогаза.',
+          quest: {
+            id: 'quest_barter_trade',
+            type: 'BARTER',
+            title: 'Нелегальный бартер в тумане',
+            desc: 'Обменять собранную слизь на припасы'
           }
         });
       }
@@ -747,11 +870,11 @@
           isLocked: isLockedKeycard,
           requiresKeycard: isLockedKeycard,
           loot: {
-            talons: isLockedKeycard ? 320 : 85 + Math.floor(this.random() * 70),
-            ammo: isLockedKeycard ? 36 : 14 + Math.floor(this.random() * 12),
+            talons: Math.round((isLockedKeycard ? 350 : 95 + Math.floor(this.random() * 70)) * (1 + (this.currentRaidFloor - 1) * 0.40)),
+            ammo: Math.round((isLockedKeycard ? 40 : 16 + Math.floor(this.random() * 14)) * (1 + (this.currentRaidFloor - 1) * 0.20)),
             medkits: isLockedKeycard ? 2 : 1,
             hasKeycard: (!isLockedKeycard && i === 0),
-            weapon: isLockedKeycard ? { id: 'gun_ks23', name: 'Карабин КС-23', dmg: 55, isRanged: true, ammo: 18, gunType: 'shotgun' } : null
+            weapon: isLockedKeycard ? { id: 'gun_ks23', name: 'Карабин КС-23', dmg: Math.round(55 * (1 + (this.currentRaidFloor - 1) * 0.15)), isRanged: true, ammo: 24, gunType: 'shotgun' } : null
           }
         });
       }

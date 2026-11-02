@@ -393,9 +393,9 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
 
 /* Tactical Load-Bearing Belt Container (Directly Under Character's Feet) */
 .hub-tactical-belt {
-  max-width: 270px;
+  max-width: 220px;
   width: 100%;
-  margin: 4px auto 0 auto;
+  margin: 2px auto 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -403,16 +403,16 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
 }
 .hub-belt-slot {
   flex: 1;
-  min-height: 32px;
-  background: rgba(3, 18, 9, 0.92);
-  border: 1.5px solid rgba(0, 255, 170, 0.5);
-  border-radius: 4px;
+  min-height: 26px;
+  background: rgba(3, 18, 9, 0.94);
+  border: 1px solid rgba(0, 255, 170, 0.45);
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-size: 11px;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
   color: #a4ffd9;
   font-family: 'Share Tech Mono', monospace;
   font-weight: bold;
@@ -3183,7 +3183,7 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
         <button id="open-chat-btn" class="term-key-btn" data-i18n="btn_chat">💬 ОБЩИЙ ЧАТ</button>
         <button id="open-leaderboard-btn" class="term-key-btn" data-i18n="btn_leaderboard">🏆 ДОСКА ПОЧЕТА</button>
         <button id="open-achievements-btn" class="term-key-btn term-btn-gold" onclick="openAchievementsModal()" data-i18n="btn_achievements">🎖️ ДОСТИЖЕНИЯ</button>
-        <button id="open-raid-btn" class="term-key-btn term-btn-cyan" onclick="openRaidModal()" data-i18n="btn_raid">👥 СОВМЕСТНАЯ ВЫЛАЗКА</button>
+        <button id="open-raid-btn" class="term-key-btn term-btn-cyan" onclick="openFPSDispatcherModal()" data-i18n="btn_raid">👥 СОВМЕСТНАЯ ВЫЛАЗКА</button>
         <button id="open-story-btn" class="term-key-btn term-btn-story" onclick="openStorySimulationModal()" data-i18n="btn_story_simulation">📟 ХРОНИКИ ГИГАХРУЩА</button>
         <button id="open-map-btn" class="term-key-btn term-btn-map" data-i18n="btn_map">🗺️ КАРТА ЭТАЖА</button>
       </div>
@@ -3193,9 +3193,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   <!-- Правая часть: Персонаж и пояс со снаряжением в Жилячейке -->
   <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; align-self: stretch; flex: 1; max-width: 520px; min-width: 280px; height: 100%; margin-bottom: 4px; margin-right: clamp(15px, 6vw, 80px); margin-left: auto; pointer-events: auto; position: relative;">
     <!-- Спрайт персонажа в полный рост перед гермодверью -->
-    <div id="hub-player-avatar" style="height: clamp(380px, 58vh, 600px); width: clamp(260px, 32vw, 440px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible; pointer-events: none;">
+    <div id="hub-player-avatar" style="height: clamp(520px, 78vh, 840px); width: clamp(330px, 42vw, 540px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible; pointer-events: none;">
       <!-- Мягкая овальная тень на полу под ногами бойца -->
-      <div style="position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: clamp(180px, 22vw, 290px); height: 22px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
+      <div style="position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: clamp(220px, 28vw, 360px); height: 26px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
       <img id="hub-base-skin" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 1; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
       <img id="hub-clothes" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 2; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
       <img id="hub-mask" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 3; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
@@ -11596,6 +11596,7 @@ function launchRadarRoguelike(options = {}) {
         radarRoguelikeGame = new RadarRoguelikeEngine();
         radarRoguelikeGame.isPvP = !!options.isPvP;
         radarRoguelikeGame.currentRoomCode = options.roomCode || null;
+        radarRoguelikeGame.mapSeed = options.seed || null;
         radarRoguelikeGame.raidMode = options.mode || 'SOLO';
         radarRoguelikeGame.isHost = !!options.isHost;
         radarRoguelikeGame.init(canvas, (completed) => {
@@ -11996,6 +11997,7 @@ if (typeof socket !== 'undefined' && socket && socket.on) {
 
   socket.on('fpsLobbyError', (err) => {
     alert(err || 'Ошибка лобби');
+    if (typeof refreshFPSLobbiesList === 'function') refreshFPSLobbiesList();
   });
 
   // Launch Raid Event for all lobby members!
@@ -12004,6 +12006,7 @@ if (typeof socket !== 'undefined' && socket && socket.on) {
     launchRadarRoguelike({
       isPvP: !!data.isPvP,
       roomCode: data.roomCode,
+      seed: data.seed,
       mode: data.mode,
       isHost: (currentFPSLobby && currentFPSLobby.isHost)
     });

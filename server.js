@@ -5609,6 +5609,38 @@ function checkLifterTrigger(player, sock, loc) {
         const lobby = fpsLobbies[data.lobbyId];
         if (!lobby) {
             socket.emit('fpsLobbyError', 'Лобби не найдено или уже закрыто.');
+            socket.emit('fpsLobbiesList', getOpenFPSLobbiesList());
+            return;
+        }
+
+        let auth = getAuthPlayer();
+        let username = (auth && auth.username) ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
+
+        // Reconnect handler: if player is already in lobby, rebind socket id
+        const existingMember = lobby.members.find(m => m.name === username || m.id === socket.id);
+        if (existingMember) {
+            existingMember.id = socket.id;
+            if (existingMember.isHost || lobby.hostName === username) {
+                lobby.hostId = socket.id;
+                existingMember.isHost = true;
+            }
+            socket.currentFPSLobby = lobby.id;
+            socket.join(lobby.id);
+            socket.emit('fpsLobbyJoined', {
+                lobby: {
+                    id: lobby.id,
+                    name: lobby.name,
+                    mode: lobby.mode,
+                    maxPlayers: lobby.maxPlayers,
+                    isHost: existingMember.isHost,
+                    hostName: lobby.hostName,
+                    members: lobby.members
+                }
+            });
+            io.to(lobby.id).emit('fpsLobbyUpdated', {
+                members: lobby.members,
+                hostName: lobby.hostName
+            });
             return;
         }
         if (lobby.status !== 'waiting') {
@@ -5623,9 +5655,6 @@ function checkLifterTrigger(player, sock, loc) {
         if (socket.currentFPSLobby && fpsLobbies[socket.currentFPSLobby]) {
             leaveFPSLobbyInternal(socket);
         }
-
-        let auth = getAuthPlayer();
-        let username = (auth && auth.username) ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
 
         lobby.members.push({ id: socket.id, name: username, isHost: false });
         writeLog(`[FPS ЛОББИ] Игрок ${username} (${socket.id}) присоединился к лобби ${lobby.id} (${lobby.members.length}/${lobby.maxPlayers})`);
@@ -5668,11 +5697,13 @@ function checkLifterTrigger(player, sock, loc) {
         lobby.status = 'in_raid';
 
         const roomCode = 'raid_' + lobby.id;
+        const raidSeed = Math.floor(Math.random() * 899999) + 100000;
         raidRoomsFPS[roomCode] = {
             id: roomCode,
             mode: lobby.mode,
             isPvP: (lobby.mode === 'PVP'),
             maxPlayers: lobby.maxPlayers,
+            seed: raidSeed,
             players: {},
             bullets: [],
             createdAt: Date.now()
@@ -5681,6 +5712,7 @@ function checkLifterTrigger(player, sock, loc) {
         io.to(lobby.id).emit('launchFPSRaid', {
             lobbyId: lobby.id,
             roomCode: roomCode,
+            seed: raidSeed,
             mode: lobby.mode,
             isPvP: (lobby.mode === 'PVP'),
             members: lobby.members
@@ -5749,6 +5781,7 @@ function checkLifterTrigger(player, sock, loc) {
         socket.emit('initRaidFPS', {
             yourId: socket.id,
             roomCode: roomCode,
+            seed: raidRoomsFPS[roomCode].seed || null,
             players: raidRoomsFPS[roomCode].players
         });
 
@@ -5999,6 +6032,7 @@ function checkLifterTrigger(player, sock, loc) {
     });
 
     socket.on('disconnect', () => {
+        leaveFPSLobbyInternal(socket);
         let u = onlinePlayers[socket.id];
         if (u) {
             writeLog(`[СЕССИЯ] Отключение сокета ${socket.id} (игрок: ${u}) - сохранение прогресса`);

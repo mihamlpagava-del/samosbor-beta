@@ -383,7 +383,7 @@
       this.player.level = pLvl;
 
       if (typeof LevelGen !== 'undefined') {
-        this.mapData = LevelGen.generate(pLvl);
+        this.mapData = LevelGen.generate(pLvl, this.currentRaidFloor || 1, this.mapSeed || null);
       } else {
         return;
       }
