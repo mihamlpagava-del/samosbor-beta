@@ -100,6 +100,8 @@
       this.isPointerLocked = false;
       this.currentRoomName = 'Жилая ячейка №556';
       this.lastAttackTime = 0;
+      this.touchMoveVector = { x: 0, y: 0, active: false };
+      this.isTouchControlsActive = false;
 
       // CRT Collapse Animation
       this.isCollapsing = false;
@@ -110,6 +112,7 @@
 
     init(canvasElement, onExit) {
       this.canvas = canvasElement;
+      window.radarRoguelikeGame = this;
       this.ctx = canvasElement.getContext('2d');
       this.onExitCallback = onExit;
 
@@ -245,6 +248,33 @@
         if (typeof RadarAudio !== 'undefined') RadarAudio.playWeaponSwitch();
         const wName = (this.player.weapon && this.player.weapon.name) ? String(this.player.weapon.name) : 'ОРУЖИЕ';
         this.spawnFloatingNotice(`[2] ${wName.toUpperCase()}`, '#33d4ff');
+      }
+    }
+
+    toggleBeltSlot() {
+      if (!this.player.belt) return;
+      const current = this.player.belt.activeSlot || 1;
+      const target = (current === 1) ? 2 : 1;
+      if (target === 2 && !this.player.belt.slot2) {
+        this.switchBeltSlot(1);
+      } else {
+        this.switchBeltSlot(target);
+      }
+    }
+
+    toggleCameraMode() {
+      if (this.cameraMode === 'TDS') {
+        this.cameraMode = 'FPS';
+        if (!this.isTouchControlsActive) {
+          try { this.canvas.requestPointerLock(); } catch(err){}
+        }
+        this.spawnFloatingNotice('📷 КАМЕРА: [FPS 3D]', '#00ffaa');
+      } else {
+        this.cameraMode = 'TDS';
+        if (document.pointerLockElement === this.canvas) {
+          try { document.exitPointerLock(); } catch(err){}
+        }
+        this.spawnFloatingNotice('📷 КАМЕРА: [TDS 2D]', '#00ffaa');
       }
     }
 
@@ -587,17 +617,7 @@
           return;
         }
         if (e.code === 'KeyG') {
-          if (this.cameraMode === 'TDS') {
-            this.cameraMode = 'FPS';
-            try { this.canvas.requestPointerLock(); } catch(err){}
-            this.spawnFloatingNotice('📷 КАМЕРА: [FPS 3D]', '#00ffaa');
-          } else {
-            this.cameraMode = 'TDS';
-            if (document.pointerLockElement === this.canvas) {
-              try { document.exitPointerLock(); } catch(err){}
-            }
-            this.spawnFloatingNotice('📷 КАМЕРА: [TDS 2D]', '#00ffaa');
-          }
+          this.toggleCameraMode();
         }
         if (e.code === 'F2') {
           if (typeof AsciiRenderer !== 'undefined') {
@@ -1452,6 +1472,9 @@
       // 4. Player Input Movement & Inertia (only if alive)
       let moveX = 0, moveY = 0;
       if (!this.player.isDead) {
+        let touchX = (this.touchMoveVector && this.touchMoveVector.active) ? this.touchMoveVector.x : 0;
+        let touchY = (this.touchMoveVector && this.touchMoveVector.active) ? this.touchMoveVector.y : 0;
+
         if (this.cameraMode === 'FPS') {
           const cos = Math.cos(this.player.angle);
           const sin = Math.sin(this.player.angle);
@@ -1462,6 +1485,13 @@
           if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) strafe -= 1;
           if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) strafe += 1;
 
+          // Touch joystick input (y < 0 is forward, y > 0 is backward)
+          fwd += -touchY;
+          strafe += touchX;
+
+          fwd = Math.max(-1, Math.min(1, fwd));
+          strafe = Math.max(-1, Math.min(1, strafe));
+
           moveX = fwd * cos - strafe * sin;
           moveY = fwd * sin + strafe * cos;
         } else {
@@ -1469,6 +1499,16 @@
           if (this.keys['KeyS'] || this.keys['ArrowDown'] || this.keys['s']) moveY += 1;
           if (this.keys['KeyA'] || this.keys['ArrowLeft'] || this.keys['a']) moveX -= 1;
           if (this.keys['KeyD'] || this.keys['ArrowRight'] || this.keys['d']) moveX += 1;
+
+          moveX += touchX;
+          moveY += touchY;
+
+          // In TDS mode, if moving via touch joystick, update player face angle towards movement vector
+          if (this.touchMoveVector && this.touchMoveVector.active && (Math.abs(touchX) > 0.15 || Math.abs(touchY) > 0.15)) {
+            if (!this.mouse.isDown) {
+              this.player.angle = Math.atan2(touchY, touchX);
+            }
+          }
         }
       }
 
@@ -1828,10 +1868,10 @@
         if (!this.isRunning || typeof socket === 'undefined' || !socket || !socket.emit) return;
         socket.emit('playerInputFPS', {
           roomCode: this.currentRoomCode,
-          forward: !!(this.keys['KeyW'] || this.keys['w'] || this.keys['ArrowUp']),
-          backward: !!(this.keys['KeyS'] || this.keys['s'] || this.keys['ArrowDown']),
-          strafeLeft: !!(this.keys['KeyA'] || this.keys['a']),
-          strafeRight: !!(this.keys['KeyD'] || this.keys['d']),
+          forward: !!(this.keys['KeyW'] || this.keys['w'] || this.keys['ArrowUp'] || (this.touchMoveVector && this.touchMoveVector.active && this.touchMoveVector.y < -0.2)),
+          backward: !!(this.keys['KeyS'] || this.keys['s'] || this.keys['ArrowDown'] || (this.touchMoveVector && this.touchMoveVector.active && this.touchMoveVector.y > 0.2)),
+          strafeLeft: !!(this.keys['KeyA'] || this.keys['a'] || (this.touchMoveVector && this.touchMoveVector.active && this.touchMoveVector.x < -0.2)),
+          strafeRight: !!(this.keys['KeyD'] || this.keys['d'] || (this.touchMoveVector && this.touchMoveVector.active && this.touchMoveVector.x > 0.2)),
           angle: Number(this.player.angle.toFixed(3)),
           x: Math.round(this.player.x),
           y: Math.round(this.player.y),

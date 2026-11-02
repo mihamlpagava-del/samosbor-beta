@@ -88,6 +88,11 @@
       fallback: [165, 135, 45],
       name: 'Гермодверь'
     },
+    'elevator_pad': {
+      src: 'assets/radar/tiles/elevator_s_pad.png',
+      fallback: [0, 200, 150],
+      name: 'Шахта лифта // Эвакуация S'
+    },
     // Floor & Ceiling Materials
     'floor_concrete': {
       src: 'assets/radar/tiles/floor_concrete.png',
@@ -151,6 +156,8 @@
     'ammo_box': 'assets/icons/ammo_box.png',
     'keycard': 'assets/icons/keycard.png',
     'food_ration': 'assets/icons/food_ration.png',
+    'chest_military': 'assets/radar/props/chest_military_box.png',
+    'keycard_pass': 'assets/radar/props/keycard_pass.png',
     'loot_crate': 'assets/radar/tiles/crate_tech.png',
     'crate_tech': 'assets/radar/tiles/crate_tech.png',
     'crate_med': 'assets/radar/tiles/crate_med.png',

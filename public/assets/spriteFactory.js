@@ -288,58 +288,99 @@
       const y = door.y;
       const w = door.w || TS;
       const h = door.h || TS;
+      const cx = x + w / 2;
+      const cy = y + h / 2;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      if (door.isOpen) {
-        // OPEN DOOR: Recessed sliding plates into wall frame
-        ctx.fillStyle = 'rgba(6, 26, 12, 0.5)';
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#1fe044';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+      // Doorway Threshold / Archway Base
+      ctx.fillStyle = '#06130a';
+      ctx.fillRect(x, y, w, h);
 
-        // Green pathway lights
-        ctx.fillStyle = '#1fe044';
-        ctx.fillRect(x + 2, y + h / 2 - 2, 4, 4);
-        ctx.fillRect(x + w - 6, y + h / 2 - 2, 4, 4);
+      // Yellow/Black Hazard Border on Archway Frame
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+      const openProg = (door.openProgress !== undefined) ? door.openProgress : (door.isOpen ? 1.0 : 0.0);
+
+      // Check if preloaded texture is available
+      const tex = (typeof TextureManager !== 'undefined' && TextureManager.textures) ? TextureManager.textures['door_blast'] : null;
+
+      if (openProg >= 0.95) {
+        // FULLY OPEN DOOR: Sliding blast plates recessed into wall pockets
+        ctx.fillStyle = 'rgba(0, 40, 18, 0.45)';
+        ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+
+        // Flashing green LED pathway guides
+        const greenPulse = 0.6 + Math.sin(tick * 0.15) * 0.4;
+        ctx.fillStyle = `rgba(0, 255, 170, ${greenPulse})`;
+        ctx.shadowColor = '#00ffaa';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(x + 2, cy - 3, 4, 6);
+        ctx.fillRect(x + w - 6, cy - 3, 4, 6);
+        ctx.shadowBlur = 0;
+
+        // Recessed metal door edges
+        ctx.fillStyle = '#445548';
+        ctx.fillRect(x, y + 1, 3, h - 2);
+        ctx.fillRect(x + w - 3, y + 1, 3, h - 2);
       } else {
-        // CLOSED BLAST DOOR: Heavy reinforced steel with locking wheel & hazard stripes
-        ctx.fillStyle = '#261b10';
-        ctx.fillRect(x, y, w, h);
+        // CLOSED OR SLIDING BLAST DOOR
+        if (tex && tex.isLoaded && tex.isLoaded()) {
+          // If door is sliding, split into two sliding halves
+          if (openProg > 0) {
+            const slideOffset = (w * 0.45) * openProg;
+            // Left half
+            ctx.drawImage(tex.img, 0, 0, tex.img.width / 2, tex.img.height, x - slideOffset, y, w / 2, h);
+            // Right half
+            ctx.drawImage(tex.img, tex.img.width / 2, 0, tex.img.width / 2, tex.img.height, cx + slideOffset, y, w / 2, h);
+          } else {
+            ctx.drawImage(tex.img, x, y, w, h);
+          }
+        } else {
+          // Procedural high-detail hermetic door
+          ctx.fillStyle = '#1e1c18';
+          ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
 
-        ctx.strokeStyle = '#ff9900';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+          // Diagonal hazard warning stripes along top & bottom
+          ctx.fillStyle = '#ffaa00';
+          for (let d = 2; d < w - 4; d += 8) {
+            ctx.fillRect(x + d, y + 2, 4, 3);
+            ctx.fillRect(x + d, y + h - 5, 4, 3);
+          }
 
-        // Hazard warning border
-        ctx.fillStyle = '#ffaa00';
-        for (let d = 2; d < w - 4; d += 8) {
-          ctx.fillRect(x + d, y + 2, 4, 3);
-          ctx.fillRect(x + d, y + h - 5, 4, 3);
+          // Central locking pressure wheel
+          ctx.strokeStyle = '#ffcc00';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+          ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+          ctx.stroke();
+
+          // Lock Status LED: Red = locked, Amber = unlockable
+          ctx.fillStyle = door.requiresKeycard ? '#ff3b30' : '#ff9900';
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
         }
 
-        // Central locking wheel
-        const cx = x + w / 2;
-        const cy = y + h / 2;
-        ctx.strokeStyle = '#ffcc00';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 7, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(cx - 7, cy);
-        ctx.lineTo(cx + 7, cy);
-        ctx.moveTo(cx, cy - 7);
-        ctx.lineTo(cx, cy + 7);
-        ctx.stroke();
-
-        ctx.fillStyle = '#ff3b30'; // Red lock indicator
-        ctx.beginPath();
-        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-        ctx.fill();
+        // Stencil "ШЛЮЗ" or "ВЫХОД"
+        if (openProg < 0.3) {
+          ctx.fillStyle = 'rgba(255, 200, 0, 0.75)';
+          ctx.font = 'bold 7px "Share Tech Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(door.requiresKeycard ? '🔒 КАРТА' : 'ШЛЮЗ', cx, y + 5);
+        }
       }
 
       ctx.restore();
@@ -355,42 +396,58 @@
       const y = elevator.y;
       const w = elevator.w || TS * 2;
       const h = elevator.h || TS * 2;
+      const cx = x + w / 2;
+      const cy = y + h / 2;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      // 1. Teal decontamination base
-      ctx.fillStyle = '#0a2324';
-      ctx.fillRect(x, y, w, h);
+      // Check if elevator texture is loaded
+      const tex = (typeof TextureManager !== 'undefined' && TextureManager.textures) ? TextureManager.textures['elevator_pad'] : null;
+      if (tex && tex.isLoaded && tex.isLoaded()) {
+        ctx.drawImage(tex.img, x, y, w, h);
+      } else {
+        // Deep industrial steel platform
+        ctx.fillStyle = '#071813';
+        ctx.fillRect(x, y, w, h);
 
-      // 2. Yellow-black hazard perimeter
-      ctx.strokeStyle = '#ffd700';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+        // Yellow-black hazard perimeter stripes
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
 
-      // 3. Central lift platform
-      const cx = x + w / 2;
-      const cy = y + h / 2;
+        // Hexagonal mesh circle
+        ctx.fillStyle = '#0d2b24';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
-      ctx.fillStyle = '#10383a';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 26, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Pulsing teal evacuation circle
+      // Pulsing cyan & neon green energy field
       const pulse = 0.5 + Math.sin(tick * 0.12) * 0.5;
-      ctx.strokeStyle = `rgba(0, 229, 255, ${0.4 + pulse * 0.6})`;
+      const hoverY = Math.sin(tick * 0.08) * 3;
+
+      ctx.strokeStyle = `rgba(0, 255, 170, ${0.4 + pulse * 0.6})`;
       ctx.lineWidth = 3;
+      ctx.shadowColor = '#00ffaa';
+      ctx.shadowBlur = 14;
       ctx.beginPath();
-      ctx.arc(cx, cy, 24 + pulse * 3, 0, Math.PI * 2);
+      ctx.arc(cx, cy + hoverY, 22 + pulse * 4, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Bold 'H' / Elevator Symbol
-      ctx.fillStyle = '#00e5ff';
-      ctx.font = 'bold 22px "Share Tech Mono", monospace';
+      // Floating, Glowing Neon "S" Glyph (Samosbor Extraction / Descent)
+      ctx.fillStyle = '#00ffaa';
+      ctx.font = 'bold 28px "Share Tech Mono", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('H', cx, cy);
+      ctx.fillText('S', cx, cy + hoverY);
+
+      // Stencil label underneath
+      ctx.shadowBlur = 6;
+      ctx.font = 'bold 8px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#7affb8';
+      ctx.fillText('ЭВАКУАЦИЯ', cx, cy + hoverY + 18);
+      ctx.shadowBlur = 0;
 
       ctx.restore();
     },

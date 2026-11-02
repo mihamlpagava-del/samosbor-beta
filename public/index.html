@@ -75,6 +75,649 @@ body.crt-enabled::before { content: ""; display: block; position: absolute; inse
 .lang-btn:hover { background: rgba(0, 229, 255, 0.3); border-color: #00e5ff; box-shadow: 0 0 10px rgba(0, 229, 255, 0.6); transform: translateY(-1px); }
 .support-btn { padding: 4px 10px; font-size: 11px; background: rgba(39, 135, 245, 0.15); color: #61b0ff; border: 1px solid #2787f5; cursor: pointer; text-shadow: 0 0 5px rgba(39, 135, 245, 0.6); font-family: inherit; letter-spacing: 0.5px; transition: 0.15s; border-radius: 2px; }
 .support-btn:hover { background: rgba(39, 135, 245, 0.3); border-color: #61b0ff; box-shadow: 0 0 10px rgba(97, 176, 255, 0.5); }
+
+/* ===================================================================== */
+/* DIEGETIC LIVING CELL UI & TOUCH CONTROLS OVERHAUL                     */
+/* ===================================================================== */
+
+/* Gamepad Toggle Button */
+.gamepad-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 28px;
+  padding: 2px 7px;
+  font-size: 15px;
+  background: rgba(3, 18, 9, 0.85);
+  color: #7affb0;
+  border: 1.5px solid rgba(0, 255, 170, 0.45);
+  border-radius: 3px;
+  cursor: pointer;
+  text-shadow: 0 0 6px rgba(0, 255, 170, 0.5);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  touch-action: manipulation;
+}
+.gamepad-toggle-btn:hover {
+  background: rgba(0, 255, 170, 0.2);
+  border-color: #00ffaa;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.gamepad-toggle-btn.active {
+  background: rgba(0, 255, 170, 0.32) !important;
+  border-color: #00ffaa !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 10px #00ffaa, 0 0 20px #00ffaa !important;
+  box-shadow: 0 0 16px #00ffaa, inset 0 0 10px rgba(0, 255, 170, 0.5) !important;
+  animation: gamepadGlowPulse 2.2s infinite ease-in-out;
+}
+@keyframes gamepadGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(0, 255, 170, 0.7), inset 0 0 8px rgba(0, 255, 170, 0.4);
+    border-color: #00ffaa;
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 170, 1), inset 0 0 14px rgba(0, 255, 170, 0.7);
+    border-color: #7affb0;
+  }
+}
+
+/* Atmospheric Lighting & Soft Vignette */
+#hub-lamp-glow {
+  position: absolute;
+  top: 15%;
+  left: 68%;
+  transform: translate(-50%, -50%);
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(230, 255, 150, 0.22) 0%, rgba(100, 255, 80, 0.08) 45%, transparent 75%);
+  pointer-events: none;
+  z-index: 2;
+  animation: lampFlicker 7s infinite ease-in-out;
+}
+@keyframes lampFlicker {
+  0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.0); }
+  22% { opacity: 0.95; transform: translate(-50%, -50%) scale(1.04); }
+  48% { opacity: 0.65; transform: translate(-50%, -50%) scale(0.97); }
+  50% { opacity: 0.92; transform: translate(-50%, -50%) scale(1.02); }
+  78% { opacity: 0.75; transform: translate(-50%, -50%) scale(0.98); }
+}
+.hub-screen-vignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.88);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Diegetic CRT Computer Station (Left Desk Unit) */
+.hub-terminal-station {
+  width: 480px;
+  max-width: 48vw;
+  margin: 0;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 15;
+  box-sizing: border-box;
+}
+
+.terminal-crt-frame {
+  background: linear-gradient(150deg, #18281d 0%, #0d1a10 50%, #08120a 100%);
+  border: 3px solid #233f2a;
+  border-radius: 8px 8px 4px 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.15);
+  padding: 8px 10px 10px 10px;
+}
+
+.crt-bezel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px 6px 4px;
+  border-bottom: 1px solid rgba(0, 255, 170, 0.15);
+  margin-bottom: 6px;
+}
+.crt-brand-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #7affb0;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 6px rgba(0, 255, 170, 0.4);
+}
+.crt-power-led {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  color: #88ffbb;
+  font-family: 'Share Tech Mono', monospace;
+}
+.crt-led-glow {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00ffaa;
+  box-shadow: 0 0 8px #00ffaa;
+  animation: pwrPulse 2s infinite ease-in-out;
+}
+@keyframes pwrPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.5; }
+}
+
+.crt-screen-inner {
+  background: #011408;
+  border: 2px solid #00ffaa;
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: inset 0 0 25px rgba(0, 255, 170, 0.25), 0 0 12px rgba(0, 255, 170, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+.crt-glass-glare {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 40%, transparent 60%);
+  pointer-events: none;
+  border-radius: 5px 5px 0 0;
+}
+
+.crt-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.crt-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.crt-label {
+  color: #6edaa0;
+  font-size: 11px;
+}
+.crt-val-warn {
+  color: var(--term-warn);
+  font-weight: bold;
+}
+.crt-val-green {
+  color: #00ffaa;
+  font-weight: bold;
+}
+.crt-sub {
+  color: #88aa90;
+  font-size: 11px;
+}
+
+.crt-gauges-section {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.crt-gauge-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.crt-gauge-dual {
+  display: flex;
+  gap: 10px;
+}
+.crt-gauge-label {
+  font-size: 11px;
+  color: #a4ffd9;
+  display: flex;
+  justify-content: space-between;
+}
+
+.crt-session-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 255, 170, 0.25);
+  font-size: 11px;
+  color: #88ccaa;
+}
+.crt-error-line {
+  color: var(--term-danger);
+  font-size: 12px;
+  min-height: 14px;
+  margin-top: 3px;
+  font-weight: bold;
+}
+
+/* Desk Control Console & Hazard Emergency Button */
+.terminal-deck-console {
+  background: linear-gradient(to bottom, #111e15, #08110b);
+  border: 2px solid #1a3823;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 9px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.85);
+}
+
+.btn-hazard-sortie {
+  width: 100%;
+  box-sizing: border-box;
+  background: repeating-linear-gradient(45deg, rgba(255,170,0,0.18), rgba(255,170,0,0.18) 12px, rgba(0,0,0,0.85) 12px, rgba(0,0,0,0.85) 24px);
+  border: 2.5px solid #ffaa00;
+  box-shadow: 0 0 16px rgba(255,170,0,0.4), inset 0 0 10px rgba(255,170,0,0.2);
+  color: #ffcc00;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1.2px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-shadow: 0 0 10px #ffaa00;
+  transition: all 0.12s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.btn-hazard-sortie:hover {
+  background: repeating-linear-gradient(45deg, rgba(255,170,0,0.3), rgba(255,170,0,0.3) 12px, rgba(15,10,0,0.9) 12px, rgba(15,10,0,0.9) 24px);
+  border-color: #ffd700;
+  color: #ffffff;
+  box-shadow: 0 0 22px rgba(255,215,0,0.65), inset 0 0 12px rgba(255,215,0,0.3);
+  transform: translateY(-1px);
+}
+.btn-hazard-sortie:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 8px rgba(255,170,0,0.6);
+}
+
+.terminal-buttons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+.term-key-btn {
+  background: rgba(3, 18, 9, 0.88);
+  border: 1.5px solid rgba(0, 255, 120, 0.4);
+  color: #88ffaa;
+  padding: 7px 6px;
+  font-size: 11.5px;
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.term-key-btn:hover {
+  background: rgba(0, 255, 120, 0.2);
+  border-color: #00ffaa;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0,255,170,0.5);
+  transform: translateY(-1px);
+}
+.term-key-btn:active {
+  transform: translateY(1px);
+}
+.term-btn-gold {
+  color: #ffd700;
+  border-color: rgba(255,215,0,0.5);
+}
+.term-btn-cyan {
+  color: #33d4ff;
+  border-color: rgba(51, 212, 255, 0.6);
+  background: rgba(0, 30, 45, 0.6);
+}
+.term-btn-story {
+  color: #00ffaa;
+  border-color: rgba(0,255,170,0.6);
+  background: rgba(0, 35, 25, 0.7);
+}
+.term-btn-map {
+  color: #e0ffd0;
+  border-color: rgba(120, 220, 100, 0.5);
+}
+
+/* Tactical Load-Bearing Belt Container (Directly Under Character's Feet) */
+.hub-tactical-belt {
+  max-width: 270px;
+  width: 100%;
+  margin: 4px auto 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 25;
+}
+.hub-belt-slot {
+  flex: 1;
+  min-height: 32px;
+  background: rgba(3, 18, 9, 0.92);
+  border: 1.5px solid rgba(0, 255, 170, 0.5);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #a4ffd9;
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+.hub-belt-slot:hover {
+  background: rgba(0, 255, 170, 0.2);
+  border-color: #00ffaa;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(0,255,170,0.6);
+}
+
+/* Header Compact Audio Controls (4 Buttons Only) */
+.audio-controls {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 200;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.audio-controls .audio-btn {
+  padding: 4px 9px;
+  font-size: 11px;
+  background: rgba(0, 20, 5, 0.75);
+  color: #88ffae;
+  border: 1px solid rgba(0, 255, 120, 0.35);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+  text-shadow: none;
+}
+.audio-controls .audio-btn:hover {
+  border-color: #00ffaa;
+  background: rgba(0, 255, 120, 0.2);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 255, 170, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Options Modal Dialog (Hidden by Default) */
+.options-modal-panel {
+  position: fixed;
+  top: 44px;
+  right: 12px;
+  width: 330px;
+  max-width: 90vw;
+  background: rgba(2, 14, 6, 0.98);
+  border: 1.5px solid #00ffaa;
+  box-shadow: 0 0 30px rgba(0, 255, 170, 0.35), 0 10px 30px rgba(0,0,0,0.9);
+  border-radius: 5px;
+  padding: 12px;
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  backdrop-filter: blur(6px);
+}
+.options-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 255, 170, 0.25);
+  padding-bottom: 6px;
+  color: #00ffaa;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12.5px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.options-close-x {
+  background: none;
+  border: none;
+  color: #ff5555;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: bold;
+  padding: 0 4px;
+}
+.options-close-x:hover {
+  color: #ff8888;
+}
+.options-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+/* Radar Raid Touch Controls Overlay */
+.radar-touch-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100010;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.touch-joystick-zone {
+  position: absolute;
+  bottom: clamp(16px, 4vh, 40px);
+  left: clamp(16px, 4vw, 40px);
+  width: 146px;
+  height: 146px;
+  pointer-events: auto;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-joystick-base {
+  position: relative;
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 35, 16, 0.45) 0%, rgba(2, 16, 8, 0.75) 100%);
+  border: 2px solid rgba(0, 255, 170, 0.55);
+  box-shadow: 0 0 20px rgba(0, 255, 170, 0.25), inset 0 0 16px rgba(0, 255, 170, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.touch-joystick-arrow {
+  position: absolute;
+  color: rgba(0, 255, 170, 0.45);
+  font-size: 11px;
+  pointer-events: none;
+  text-shadow: 0 0 6px rgba(0, 255, 170, 0.4);
+}
+.touch-arrow-up { top: 6px; left: 50%; transform: translateX(-50%); }
+.touch-arrow-down { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.touch-arrow-left { left: 8px; top: 50%; transform: translateY(-50%); }
+.touch-arrow-right { right: 8px; top: 50%; transform: translateY(-50%); }
+
+.touch-joystick-knob {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #00ffaa 0%, #00a860 70%, #004422 100%);
+  border: 2.5px solid #d4ffea;
+  box-shadow: 0 0 16px rgba(0, 255, 170, 0.8), inset 0 0 8px rgba(255, 255, 255, 0.6);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.04s ease-out;
+}
+.touch-knob-core {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 8px #ffffff;
+}
+
+.touch-actions-cluster {
+  position: absolute;
+  bottom: clamp(14px, 3vh, 32px);
+  right: clamp(14px, 3vw, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.touch-actions-top-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.touch-actions-main-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.touch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  font-family: 'Share Tech Mono', monospace;
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.8);
+  transition: transform 0.08s ease, filter 0.08s ease;
+  padding: 0;
+}
+.touch-btn:active {
+  transform: scale(0.92);
+  filter: brightness(1.25);
+}
+.touch-btn .touch-icon {
+  line-height: 1;
+  pointer-events: none;
+}
+.touch-btn .touch-label {
+  pointer-events: none;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.touch-btn-fire {
+  width: 76px;
+  height: 76px;
+  background: radial-gradient(circle, rgba(255, 60, 60, 0.4) 0%, rgba(120, 15, 15, 0.9) 100%);
+  border-color: #ff4d4d;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(255, 77, 77, 0.7);
+}
+.touch-btn-fire .touch-icon { font-size: 26px; }
+.touch-btn-fire .touch-label { font-size: 10px; margin-top: 2px; color: #ffb8b8; text-shadow: 0 0 6px #ff4d4d; }
+
+.touch-btn-interact {
+  width: 62px;
+  height: 62px;
+  background: radial-gradient(circle, rgba(0, 255, 170, 0.35) 0%, rgba(0, 45, 25, 0.88) 100%);
+  border-color: #00ffaa;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(0, 255, 170, 0.65);
+}
+.touch-btn-interact .touch-icon { font-size: 22px; }
+.touch-btn-interact .touch-label { font-size: 9px; margin-top: 2px; color: #a4ffd9; text-shadow: 0 0 6px #00ffaa; }
+
+.touch-btn-util {
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(circle, rgba(160, 60, 255, 0.3) 0%, rgba(45, 15, 75, 0.85) 100%);
+  border-color: #bb55ff;
+  color: #f0c4ff;
+  box-shadow: 0 0 12px rgba(187, 85, 255, 0.5);
+}
+.touch-btn-util .touch-icon { font-size: 18px; }
+.touch-btn-util .touch-label { font-size: 8px; margin-top: 1px; }
+
+.touch-btn-kick {
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(circle, rgba(255, 140, 0, 0.3) 0%, rgba(70, 35, 0, 0.85) 100%);
+  border-color: #ff9900;
+  color: #ffe0a3;
+  box-shadow: 0 0 12px rgba(255, 153, 0, 0.5);
+}
+.touch-btn-kick .touch-icon { font-size: 18px; }
+.touch-btn-kick .touch-label { font-size: 8px; margin-top: 1px; }
+
+.touch-btn-medkit {
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle, rgba(0, 200, 255, 0.3) 0%, rgba(0, 45, 75, 0.85) 100%);
+  border-color: #00d4ff;
+  color: #c4f4ff;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.55);
+}
+.touch-btn-medkit .touch-icon { font-size: 19px; }
+.touch-btn-medkit .touch-label { font-size: 8px; margin-top: 1px; }
+
+.touch-btn-weapon {
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, rgba(70, 55, 0, 0.85) 100%);
+  border-color: #ffd700;
+  color: #fff2a8;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.55);
+}
+.touch-btn-weapon .touch-icon { font-size: 19px; }
+.touch-btn-weapon .touch-label { font-size: 8px; margin-top: 1px; }
+
+@media (max-width: 640px), (max-height: 480px) {
+  .touch-joystick-zone { bottom: 10px; left: 10px; width: 120px; height: 120px; }
+  .touch-joystick-base { width: 112px; height: 112px; }
+  .touch-joystick-knob { width: 48px; height: 48px; }
+  .touch-actions-cluster { bottom: 8px; right: 8px; gap: 8px; }
+  .touch-actions-top-row { gap: 6px; }
+  .touch-btn-fire { width: 68px; height: 68px; }
+  .touch-btn-interact { width: 56px; height: 56px; }
+  .touch-btn-util, .touch-btn-kick, .touch-btn-medkit, .touch-btn-weapon { width: 42px; height: 42px; }
+}
+
 .donate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
 .donate-card { border: 1px solid #2787f5; background: rgba(39, 135, 245, 0.08); padding: 12px 6px; text-align: center; border-radius: 3px; cursor: pointer; transition: 0.15s; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px; }
 .donate-card:hover { background: rgba(39, 135, 245, 0.22); border-color: #61b0ff; box-shadow: 0 0 12px rgba(97, 176, 255, 0.4); transform: translateY(-2px); }
@@ -2026,7 +2669,8 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div class="support-controls">
-  <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 EN</button>
+  <button id="btn-toggle-gamepad-hub" class="gamepad-toggle-btn" onclick="toggleMobileTouchControls()" title="Мобильное управление [Сенсор / Геймпад]">🎮</button>
+  <button id="btn-lang-toggle" class="lang-btn" onclick="toggleLanguage()" title="Switch Language / Сменить язык">🌐 RU</button>
   <button id="btn-vk-community" class="telegram-btn" style="background: rgba(39, 135, 245, 0.2); border-color: #2787f5; color: #61b0ff; cursor: pointer;" onclick="if(typeof vkBridge!=='undefined'&&vkBridge.send){vkBridge.send('VKWebAppJoinGroup',{group_id:228026116}).catch(()=>{});}else{window.open('https://vk.com/club228026116','_blank');}" title="Официальное сообщество ВКонтакте">
     <span>🔵</span> <span data-i18n="btn_vk_community">СООБЩЕСТВО VK</span>
   </button>
@@ -2080,30 +2724,36 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 </div>
 
 <div class="audio-controls">
-  
-  <button id="btn-feedback" class="audio-btn" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);" data-i18n="btn_feedback">⚠️ БАГИ / ИДЕИ [Shift+P]</button>
-  <button id="btn-bestiary" class="audio-btn" style="display:none;" data-i18n="btn_bestiary">📖 БЕСТИАРИЙ</button>
-  <button id="btn-info" class="audio-btn" data-i18n="btn_info">ℹ️ СПРАВКА</button>
-  <button id="btn-options" class="audio-btn" data-i18n="btn_options">⚙️ ОПЦИИ</button>
+  <button id="btn-bestiary" class="audio-btn" onclick="document.getElementById('bestiary-modal').style.display='flex';" data-i18n="btn_bestiary">📖 БЕСТИАРИЙ</button>
+  <button id="btn-info" class="audio-btn" onclick="document.getElementById('info-modal').style.display='flex';" data-i18n="btn_info">ℹ️ СПРАВКА</button>
+  <button id="btn-options" class="audio-btn" onclick="toggleOptionsMenu()" data-i18n="btn_options">⚙️ ОПЦИИ</button>
+  <button id="btn-feedback" class="audio-btn" onclick="document.getElementById('feedback-modal').style.display='flex';" style="border-color: rgba(255,170,0,0.5); color: var(--term-warn);" data-i18n="btn_feedback">⚠️ БАГИ</button>
 </div>
-<div id="options-menu" class="options-menu">
-  <button id="btn-opt-achievements" class="audio-btn opt-btn" style="color: #ffd700;" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 Достижения (Ачивки)</button>
-  <button id="btn-opt-lang" class="audio-btn opt-btn" style="color: #00e5ff;" onclick="toggleLanguage()">🌐 Язык: РУССКИЙ (RU/EN)</button>
-  <button id="btn-opt-guide" class="audio-btn opt-btn" style="color: #33ff55; border-color: rgba(51,255,85,0.4); font-weight: bold;" onclick="startInteractiveOnboarding()" data-i18n="opt_guide">🎓 Обучение и Гайд</button>
-  <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
-  <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
-  <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
-  <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true)" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
-  <button id="btn-opt-story" class="audio-btn opt-btn" style="color: #00ffaa; border-color: rgba(0,255,170,0.5); font-weight: bold;" onclick="openStorySimulationModal()" data-i18n="opt_story_mode">📟 «С.С.Р.С. Хроники Гигахруща»</button>
+
+<div id="options-menu" class="options-modal-panel" style="display: none;">
+  <div class="options-modal-header">
+    <span>⚙️ НАСТРОЙКИ СИСТЕМЫ</span>
+    <button onclick="toggleOptionsMenu()" class="options-close-x">[X]</button>
+  </div>
+  <div class="options-modal-body">
+    <button id="btn-opt-achievements" class="audio-btn opt-btn" style="color: #ffd700;" onclick="openAchievementsModal(); toggleOptionsMenu();" data-i18n="btn_achievements">🏆 Достижения (Ачивки)</button>
+    <button id="btn-opt-lang" class="audio-btn opt-btn" style="color: #00e5ff;" onclick="toggleLanguage()">🌐 Язык: РУССКИЙ (RU/EN)</button>
+    <button id="btn-opt-guide" class="audio-btn opt-btn" style="color: #33ff55; border-color: rgba(51,255,85,0.4); font-weight: bold;" onclick="startInteractiveOnboarding(); toggleOptionsMenu();" data-i18n="opt_guide">🎓 Обучение и Гайд</button>
+    <button id="btn-toggle-music" class="audio-btn opt-btn">🎵 Музыка (ВКЛ)</button>
+    <button id="btn-toggle-sfx" class="audio-btn opt-btn">🔊 Звуки (ВКЛ)</button>
+    <button id="btn-toggle-crt" class="audio-btn opt-btn">📺 CRT-эффект (ВКЛ)</button>
+    <button id="btn-opt-video" class="audio-btn opt-btn" style="color: #ffaa00;" onclick="playVideoIntro(null, true); toggleOptionsMenu();" data-i18n="opt_intro_video">🎬 Заставка Самосбора</button>
+    <button id="btn-opt-story" class="audio-btn opt-btn" style="color: #00ffaa; border-color: rgba(0,255,170,0.5); font-weight: bold;" onclick="openStorySimulationModal(); toggleOptionsMenu();" data-i18n="opt_story_mode">📟 «С.С.Р.С. Хроники Гигахруща»</button>
     <button id="btn-opt-vk" class="audio-btn opt-btn" style="color: #61b0ff; border-color: rgba(39,135,245,0.4); text-align: left; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="if(typeof vkBridge!=='undefined'&&vkBridge.send){vkBridge.send('VKWebAppJoinGroup',{group_id:228026116}).catch(()=>{});}else{window.open('https://vk.com/club228026116','_blank');}">
-    <span>🔵</span> <span data-i18n="opt_vk_community">Сообщество ВКонтакте</span>
-  </button>
-  <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
-  <button id="btn-opt-donate" class="audio-btn opt-btn" style="display: none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex';" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
-  <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
-  <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
-  <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareStory()" data-i18n="opt_story">📖 В Истории (VK)</button>
-  <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()" data-i18n="opt_fav">⭐ В закладки (VK)</button>
+      <span>🔵</span> <span data-i18n="opt_vk_community">Сообщество ВКонтакте</span>
+    </button>
+    <button id="btn-opt-feedback" class="audio-btn opt-btn" style="color: var(--term-warn);" onclick="document.getElementById('feedback-modal').style.display='flex'; toggleOptionsMenu();" data-i18n="opt_feedback">📝 Баг-репорт / Предложение [Shift+P]</button>
+    <button id="btn-opt-donate" class="audio-btn opt-btn" style="display: none; color: #61b0ff;" onclick="document.getElementById('donate-modal').style.display='flex'; toggleOptionsMenu();" data-i18n="opt_donate">💎 Поддержать проект (VK)</button>
+    <button id="btn-pkb-rewarded" class="audio-btn opt-btn" style="display:none; color: #8ae035; border-color: rgba(115,185,38,0.5);" onclick="watchPikabuRewardedAd()">📺 Снабжение (+50 талонов за рекламу)</button>
+    <button id="btn-vk-invite" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkInviteFriends()" data-i18n="opt_invite">👥 Позвать друга (VK)</button>
+    <button id="btn-vk-wall" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkShareStory()" data-i18n="opt_story">📖 В Истории (VK)</button>
+    <button id="btn-vk-fav" class="audio-btn opt-btn" style="display:none; color: #61b0ff;" onclick="vkAddToFavorites()" data-i18n="opt_fav">⭐ В закладки (VK)</button>
+  </div>
 </div>
 
 <div id="login-screen" class="screen active-screen">
@@ -2357,7 +3007,57 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <!-- ПОЛНОЭКРАННЫЙ РЕЖИМ 2D TOP-DOWN RADAR SHOOTER («РЕЙД: САМОСБОР») -->
 <div id="radar-roguelike-screen" style="display: none; position: fixed; inset: 0; z-index: 99999; background: #020503; overflow: hidden; width: 100vw; height: 100vh;">
   <canvas id="radar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+  <button id="btn-toggle-gamepad-raid" class="gamepad-toggle-btn" onclick="toggleMobileTouchControls()" title="Мобильное управление [Сенсор / Геймпад]" style="position: absolute; top: 16px; left: 16px; z-index: 100020;">🎮</button>
   <button id="btn-radar-abort" onclick="confirmExitRadarRaid()" style="position: absolute; top: 16px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.92); border: 2px solid #1fe044; color: #1fe044; padding: 8px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-shadow: 0 0 8px #1fe044; box-shadow: 0 0 12px rgba(31,224,68,0.4);">[ESC] В ЖИЛЯЧЕЙКУ</button>
+
+  <!-- СЕНСОРНОЕ МОБИЛЬНОЕ УПРАВЛЕНИЕ ДЛЯ РЕЙДА -->
+  <div id="radar-touch-overlay" class="radar-touch-overlay" style="display: none;">
+    <!-- Левый виртуальный стик перемещения -->
+    <div id="touch-joystick-zone" class="touch-joystick-zone">
+      <div id="touch-joystick-base" class="touch-joystick-base">
+        <div class="touch-joystick-arrow touch-arrow-up">▲</div>
+        <div class="touch-joystick-arrow touch-arrow-down">▼</div>
+        <div class="touch-joystick-arrow touch-arrow-left">◀</div>
+        <div class="touch-joystick-arrow touch-arrow-right">▶</div>
+        <div id="touch-joystick-knob" class="touch-joystick-knob">
+          <div class="touch-knob-core"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Правый кластер действий: стрельба, взаимодействие, аптечка, оружие, пинок, камера -->
+    <div id="touch-actions-cluster" class="touch-actions-cluster">
+      <div class="touch-actions-top-row">
+        <button id="btn-touch-camera" class="touch-btn touch-btn-util" title="Режим камеры (2D / 3D)">
+          <span class="touch-icon">📷</span>
+          <span class="touch-label">2D/3D</span>
+        </button>
+        <button id="btn-touch-kick" class="touch-btn touch-btn-kick" title="Удар ботинком [F]">
+          <span class="touch-icon">👢</span>
+          <span class="touch-label">[F]</span>
+        </button>
+        <button id="btn-touch-medkit" class="touch-btn touch-btn-medkit" title="Применить аптечку [Q]">
+          <span class="touch-icon">💉</span>
+          <span class="touch-label">АПТЕЧКА</span>
+        </button>
+        <button id="btn-touch-weapon" class="touch-btn touch-btn-weapon" title="Сменить оружие [1/2]">
+          <span class="touch-icon">🔄</span>
+          <span class="touch-label">ОРУЖИЕ</span>
+        </button>
+      </div>
+
+      <div class="touch-actions-main-row">
+        <button id="btn-touch-interact" class="touch-btn touch-btn-interact" title="Взаимодействие [E]">
+          <span class="touch-icon">🖐️</span>
+          <span class="touch-label">[E] ВЗЯТЬ</span>
+        </button>
+        <button id="btn-touch-fire" class="touch-btn touch-btn-fire" title="Огонь / Атака">
+          <span class="touch-icon">🎯</span>
+          <span class="touch-label">ОГОНЬ</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ВЫХОДА / ПРЕДУПРЕЖДЕНИЕ О ПОТЕРЕ ХАБАРА -->
   <div id="radar-abort-confirm-modal" style="display: none; position: absolute; inset: 0; background: rgba(0, 5, 2, 0.9); z-index: 100005; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
@@ -2397,59 +3097,120 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
   </div>
 </div>
 
-<div id="hub-screen" class="screen" style="flex-direction: row; justify-content: space-between; align-items: flex-end; padding: clamp(12px, 2.5vw, 32px); box-sizing: border-box; overflow-y: auto;">
-  <!-- Левая панель: Терминал Жилячейки -->
-  <div class="panel" style="width: 520px; max-width: 55%; margin: 0; max-height: 94vh; overflow-y: auto;">
-    <h2 style="font-size: 20px; margin-top: 0; letter-spacing: 2px;" data-i18n="hub_title">ЖИЛЯЧЕЙКА</h2>
-    <div class="stats" id="hub-stats-panel" style="position:relative;">
-      <div><span data-i18n="lbl_level">УРОВЕНЬ:</span> <span class="ui-level" style="color: var(--term-warn);">1</span> (XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</div>
-      <div style="margin-top: 6px;"><span data-i18n="lbl_talons">ТАЛОНЫ:</span> <span class="ui-score" style="color: var(--term-warn);">0</span> | HP: <span class="ui-hp">100</span>/<span class="ui-maxhp">100</span></div>
-      <div style="margin-top: 6px;"><span data-i18n="lbl_filter">ФИЛЬТР:</span> <span class="ui-filter">100</span>%</div>
-      <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
-      <div style="margin-top: 6px; font-size: 14px;"><span data-i18n="lbl_hunger">ГОЛОД:</span> <span class="ui-hunger" style="color: var(--term-warn);">100</span>% | <span data-i18n="lbl_tox">ЗАРАЖЕНИЕ:</span> <span class="ui-tox" style="color:#aa33ff;">0</span>%</div>
-      <div style="display:flex; gap:10px;">
-        <div class="progress-bar bar-hunger"><div class="progress-fill fill-hunger hunger-bar"></div></div>
-        <div class="progress-bar bar-tox"><div class="progress-fill fill-tox tox-bar" style="width:0%;"></div></div>
+<div id="hub-screen" class="screen" style="flex-direction: row; justify-content: space-between; align-items: flex-end; padding: clamp(12px, 2.5vw, 32px); box-sizing: border-box; overflow-y: auto; position: relative;">
+  <!-- Тусклый мерцающий свет от настенного плафона над гермодверью -->
+  <div id="hub-lamp-glow"></div>
+  <div class="hub-screen-vignette"></div>
+
+  <!-- Левая часть: Терминал связи и рабочий стол НИИ (Diegetic CRT Computer Station) -->
+  <div id="hub-terminal-station" class="hub-terminal-station">
+    
+    <!-- 1. Верхний блок: Экран ЭЛТ-монитора «СИГНАЛ-4М» -->
+    <div class="terminal-crt-frame">
+      <div class="crt-bezel-header">
+        <div class="crt-brand-text">📟 СИГНАЛ-4М // ТЕРМИНАЛ ЖИЛЯЧЕЙКИ</div>
+        <div class="crt-power-led"><span class="crt-led-glow"></span>PWR</div>
       </div>
-      <div class="rating-box">
-        <div style="margin-bottom: 4px;"><span data-i18n="lbl_time">ВРЕМЯ:</span> <span class="ui-playtime">00:00:00</span></div>
-        <div><span data-i18n="lbl_kills">УБИТО:</span> <span class="ui-kills" style="color: var(--term-warn);">0</span> | <span data-i18n="lbl_rooms">КОМНАТ:</span> <span class="ui-rooms" style="color: var(--term-warn);">0</span></div>
-        <div><span data-i18n="lbl_rating">РЕЙТИНГ:</span> <span class="ui-rating" style="color: var(--term-warn);">0</span> | <span class="ui-title">ЗАКЛЮЧЕННЫЙ</span> (#<span class="ui-rank">0</span>)</div>
+      
+      <div class="crt-screen-inner" id="hub-stats-panel">
+        <div class="crt-glass-glare"></div>
+        
+        <div class="crt-status-row">
+          <div class="crt-stat-item">
+            <span class="crt-label" data-i18n="lbl_level">УРОВЕНЬ:</span> 
+            <span class="ui-level crt-val-warn">1</span> 
+            <span class="crt-sub">(XP: <span class="ui-xp">0</span>/<span class="ui-max-xp">100</span>)</span>
+          </div>
+          <div class="crt-stat-item">
+            <span class="crt-label" data-i18n="lbl_talons">ТАЛОНЫ:</span> 
+            <span class="ui-score crt-val-warn">0</span>
+          </div>
+        </div>
+        
+        <div class="crt-status-row" style="margin-top: 4px;">
+          <div class="crt-stat-item">
+            <span class="crt-label">HP:</span> 
+            <span class="ui-hp crt-val-green">100</span>/<span class="ui-maxhp">100</span>
+          </div>
+          <div class="crt-stat-item">
+            <span class="crt-label" data-i18n="lbl_rating">РЕЙТИНГ:</span> 
+            <span class="ui-rating crt-val-warn">0</span> 
+            <span class="crt-sub">(<span class="ui-title">ЗАКЛЮЧЕННЫЙ</span> #<span class="ui-rank">0</span>)</span>
+          </div>
+        </div>
+
+        <div class="crt-gauges-section">
+          <div class="crt-gauge-line">
+            <div class="crt-gauge-label"><span data-i18n="lbl_filter">ФИЛЬТР:</span> <span class="ui-filter">100</span>%</div>
+            <div class="progress-bar"><div class="progress-fill filter-bar"></div></div>
+          </div>
+          
+          <div class="crt-gauge-dual">
+            <div style="flex: 1;">
+              <div class="crt-gauge-label"><span data-i18n="lbl_hunger">ГОЛОД:</span> <span class="ui-hunger crt-val-warn">100</span>%</div>
+              <div class="progress-bar bar-hunger"><div class="progress-fill fill-hunger hunger-bar"></div></div>
+            </div>
+            <div style="flex: 1;">
+              <div class="crt-gauge-label"><span data-i18n="lbl_tox">ЗАРАЖЕНИЕ:</span> <span class="ui-tox" style="color:#cc55ff;">0</span>%</div>
+              <div class="progress-bar bar-tox"><div class="progress-fill fill-tox tox-bar" style="width:0%;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="crt-session-bar">
+          <div><span data-i18n="lbl_time">СМЕНА:</span> <span class="ui-playtime">00:00:00</span></div>
+          <div><span data-i18n="lbl_kills">УБИТО:</span> <span class="ui-kills crt-val-warn">0</span></div>
+          <div><span data-i18n="lbl_rooms">СЕКТОРОВ:</span> <span class="ui-rooms crt-val-warn">0</span></div>
+        </div>
+
+        <div id="hub-error" class="crt-error-line"></div>
       </div>
-      <div id="hub-error" style="color: var(--term-danger); margin-top: 5px; font-size: 13px; min-height: 18px;"></div>
     </div>
-    <div class="game-controls" style="margin-top: 15px;">
-      <button id="btn-exit-cell" class="btn-primary-radar" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell">[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]</button>
-      <div class="row-2"><button id="open-notebook-btn" data-i18n="btn_notebook">БЛОКНОТ</button><button id="open-chest-btn" data-i18n="btn_chest">СУНДУК</button></div>
-      <div class="row-2"><button id="open-shop-btn" data-i18n="btn_shop">РАСПРЕДЕЛИТЕЛЬ</button><button id="open-craft-btn" data-i18n="btn_craft">ВЕРСТАК</button></div>
-      <div class="row-2"><button id="open-chat-btn" data-i18n="btn_chat">СЕТЬ</button><button id="open-leaderboard-btn" data-i18n="btn_leaderboard">РЕЙТИНГ</button></div>
-      <div class="row-2">
-        <button id="open-achievements-btn" style="color: #ffd700; border-color: rgba(255,215,0,0.5);" onclick="openAchievementsModal()" data-i18n="btn_achievements">🏆 ДОСТИЖЕНИЯ</button>
-        <button id="open-raid-btn" style="color: #33d4ff; border-color: rgba(51, 212, 255, 0.6); font-weight: bold; background: rgba(0, 30, 45, 0.6);" onclick="openRaidModal()" data-i18n="btn_raid">👥 СОВМЕСТНАЯ ВЫЛАЗКА</button>
+
+    <!-- 2. Нижний блок: Клавиатурная консоль / Пульт управления со стола -->
+    <div class="terminal-deck-console">
+      <button id="btn-exit-cell" class="btn-hazard-sortie" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell">
+        <span>///</span>
+        <span style="letter-spacing: 1.5px;">⚠️ [ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ] ⚠️</span>
+        <span>///</span>
+      </button>
+
+      <div class="terminal-buttons-grid">
+        <button id="open-notebook-btn" class="term-key-btn" data-i18n="btn_notebook">📓 ДНЕВНИК</button>
+        <button id="open-chest-btn" class="term-key-btn" data-i18n="btn_chest">🎒 ИНВЕНТАРЬ / ДЕЛО</button>
+        <button id="open-shop-btn" class="term-key-btn" data-i18n="btn_shop">🛒 ТОРГОВЕЦ</button>
+        <button id="open-craft-btn" class="term-key-btn" data-i18n="btn_craft">⚒️ ВЕРСТАК</button>
+        <button id="open-chat-btn" class="term-key-btn" data-i18n="btn_chat">💬 ОБЩИЙ ЧАТ</button>
+        <button id="open-leaderboard-btn" class="term-key-btn" data-i18n="btn_leaderboard">🏆 ДОСКА ПОЧЕТА</button>
+        <button id="open-achievements-btn" class="term-key-btn term-btn-gold" onclick="openAchievementsModal()" data-i18n="btn_achievements">🎖️ ДОСТИЖЕНИЯ</button>
+        <button id="open-raid-btn" class="term-key-btn term-btn-cyan" onclick="openRaidModal()" data-i18n="btn_raid">👥 СОВМЕСТНАЯ ВЫЛАЗКА</button>
+        <button id="open-story-btn" class="term-key-btn term-btn-story" onclick="openStorySimulationModal()" data-i18n="btn_story_simulation">📟 ХРОНИКИ ГИГАХРУЩА</button>
+        <button id="open-map-btn" class="term-key-btn term-btn-map" data-i18n="btn_map">🗺️ КАРТА ЭТАЖА</button>
       </div>
-      <button id="open-story-btn" style="margin-top: 6px; width: 100%; color: #00ffaa; border-color: rgba(0,255,170,0.6); font-weight: bold; background: rgba(0, 35, 25, 0.7); letter-spacing: 1px;" onclick="openStorySimulationModal()" data-i18n="btn_story_simulation">📟 С.С.Р.С. // ХРОНИКИ ГИГАХРУЩА</button>
-      <button id="open-map-btn" data-i18n="btn_map">ВЫХОД В БЛОК</button>
     </div>
   </div>
 
   <!-- Правая часть: Персонаж и пояс со снаряжением в Жилячейке -->
-  <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; align-self: stretch; flex: 1; max-width: 520px; min-width: 280px; height: 100%; margin-bottom: 4px; margin-right: clamp(10px, 4vw, 50px); pointer-events: auto; position: relative;">
+  <div id="hub-character-side" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; align-self: stretch; flex: 1; max-width: 520px; min-width: 280px; height: 100%; margin-bottom: 4px; margin-right: clamp(15px, 6vw, 80px); margin-left: auto; pointer-events: auto; position: relative;">
     <!-- Спрайт персонажа в полный рост перед гермодверью -->
     <div id="hub-player-avatar" style="height: clamp(380px, 58vh, 600px); width: clamp(260px, 32vw, 440px); position: relative; display: flex; justify-content: center; align-items: flex-end; overflow: visible; pointer-events: none;">
-      <!-- Тень под ногами на полу гермодвери -->
-      <div style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: clamp(150px, 20vw, 250px); height: 16px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 74%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
+      <!-- Мягкая овальная тень на полу под ногами бойца -->
+      <div style="position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: clamp(180px, 22vw, 290px); height: 22px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
       <img id="hub-base-skin" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 1; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
       <img id="hub-clothes" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 2; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
       <img id="hub-mask" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 3; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
       <img id="hub-weapon" style="position: absolute; bottom: -2%; left: 50%; transform: translateX(-50%); height: 104%; width: auto; max-width: none; object-fit: contain; pointer-events: none; z-index: 4; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.85));" src="" alt="">
     </div>
 
-    <!-- Предметы на поясе ликвидатора -->
-    <div id="hub-belt-container" style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 290px; margin-top: 2px; z-index: 25; position: relative;">
-      
+    <!-- Тактический разгрузочный пояс со слотами [1] и [2] прямо под ногами бойца -->
+    <div id="hub-belt-container" class="hub-tactical-belt">
       <div style="display: flex; gap: 8px; width: 100%; justify-content: center; position: relative;">
-        <div id="hub-qslot-0" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 0)" data-i18n="slot_empty">[ПУСТО]</div>
-        <div id="hub-qslot-1" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 1)" data-i18n="slot_empty">[ПУСТО]</div>
+        <div id="hub-qslot-0" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 0)" data-i18n="slot_empty">
+          <span style="color:#00ffaa;">[1]</span> <span class="slot-name">[ПУСТО]</span>
+        </div>
+        <div id="hub-qslot-1" class="hub-belt-slot" onclick="socket.emit('useQuickSlot', 1)" data-i18n="slot_empty">
+          <span style="color:#00ffaa;">[2]</span> <span class="slot-name">[ПУСТО]</span>
+        </div>
       </div>
     </div>
   </div>
@@ -10818,6 +11579,7 @@ function launchRadarRoguelike(options = {}) {
   const summaryModal = document.getElementById('raid-summary-modal');
   if (summaryModal) summaryModal.style.display = 'none';
   screen.style.display = 'block';
+  if (typeof applyTouchControlsState === 'function') applyTouchControlsState();
 
   // Запускаем фоновую музыку рейда
   playRaidMusic();
@@ -10902,6 +11664,7 @@ function closeRadarRoguelikeModal() {
   if (summaryModal) summaryModal.style.display = 'none';
   const screen = document.getElementById('radar-roguelike-screen');
   if (screen) screen.style.display = 'none';
+  if (typeof applyTouchControlsState === 'function') applyTouchControlsState();
   
   cancelExitRadarRaid();
   stopRaidMusic();
@@ -11316,6 +12079,296 @@ function submitChatReport() {
     alert('Жалоба успешно отправлена модераторам. Сообщение скрыто.');
   }
 }
+
+// =====================================================================
+// MOBILE TOUCH CONTROLS & OPTIONS MODAL CONTROLLER
+// =====================================================================
+function toggleOptionsMenu() {
+  const m = document.getElementById('options-menu');
+  if (!m) return;
+  m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+}
+
+// Close options modal when clicking outside
+document.addEventListener('click', (e) => {
+  const m = document.getElementById('options-menu');
+  const btn = document.getElementById('btn-options');
+  if (m && m.style.display === 'flex') {
+    if (!m.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      m.style.display = 'none';
+    }
+  }
+});
+
+let isTouchControlsActive = false;
+
+function initTouchControls() {
+  const saved = localStorage.getItem('samosbor_touch_controls');
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  if (saved !== null) {
+    isTouchControlsActive = (saved === 'true');
+  } else {
+    isTouchControlsActive = isTouchDevice;
+  }
+  applyTouchControlsState();
+  setupTouchOverlayEvents();
+}
+
+function toggleMobileTouchControls() {
+  isTouchControlsActive = !isTouchControlsActive;
+  localStorage.setItem('samosbor_touch_controls', String(isTouchControlsActive));
+  applyTouchControlsState();
+  if (radarRoguelikeGame && typeof radarRoguelikeGame.spawnFloatingNotice === 'function') {
+    radarRoguelikeGame.spawnFloatingNotice(
+      isTouchControlsActive ? '🎮 МОБИЛЬНОЕ УПРАВЛЕНИЕ: ВКЛ' : '🎮 МОБИЛЬНОЕ УПРАВЛЕНИЕ: ВЫКЛ',
+      isTouchControlsActive ? '#00ffaa' : '#888888'
+    );
+  }
+}
+
+function applyTouchControlsState() {
+  const hubBtn = document.getElementById('btn-toggle-gamepad-hub');
+  const raidBtn = document.getElementById('btn-toggle-gamepad-raid');
+  const overlay = document.getElementById('radar-touch-overlay');
+
+  if (hubBtn) {
+    if (isTouchControlsActive) hubBtn.classList.add('active');
+    else hubBtn.classList.remove('active');
+  }
+  if (raidBtn) {
+    if (isTouchControlsActive) raidBtn.classList.add('active');
+    else raidBtn.classList.remove('active');
+  }
+  if (overlay) {
+    const raidScreen = document.getElementById('radar-roguelike-screen');
+    const isRaidOpen = raidScreen && raidScreen.style.display !== 'none';
+    overlay.style.display = (isTouchControlsActive && isRaidOpen) ? 'block' : 'none';
+  }
+  if (radarRoguelikeGame) {
+    radarRoguelikeGame.isTouchControlsActive = isTouchControlsActive;
+  }
+}
+
+function setupTouchOverlayEvents() {
+  const baseEl = document.getElementById('touch-joystick-base');
+  const knobEl = document.getElementById('touch-joystick-knob');
+  const zoneEl = document.getElementById('touch-joystick-zone');
+  if (!baseEl || !knobEl || !zoneEl) return;
+
+  let joystickTouchId = null;
+  let joystickCenter = { x: 0, y: 0 };
+  const maxRadius = 42;
+
+  function updateKnob(clientX, clientY) {
+    let dx = clientX - joystickCenter.x;
+    let dy = clientY - joystickCenter.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxRadius) {
+      dx = (dx / dist) * maxRadius;
+      dy = (dy / dist) * maxRadius;
+    }
+    knobEl.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    const normX = dx / maxRadius;
+    const normY = dy / maxRadius;
+    if (radarRoguelikeGame) {
+      radarRoguelikeGame.touchMoveVector = {
+        x: normX,
+        y: normY,
+        active: (Math.hypot(normX, normY) > 0.08)
+      };
+    }
+  }
+
+  zoneEl.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (joystickTouchId === null) {
+        joystickTouchId = t.identifier;
+        const rect = baseEl.getBoundingClientRect();
+        joystickCenter = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        };
+        updateKnob(t.clientX, t.clientY);
+        break;
+      }
+    }
+  }, { passive: false });
+
+  zoneEl.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (joystickTouchId === null) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (t.identifier === joystickTouchId) {
+        updateKnob(t.clientX, t.clientY);
+        break;
+      }
+    }
+  }, { passive: false });
+
+  const resetJoystick = (e) => {
+    if (joystickTouchId === null) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (t.identifier === joystickTouchId) {
+        joystickTouchId = null;
+        knobEl.style.transform = 'translate(-50%, -50%)';
+        if (radarRoguelikeGame) {
+          radarRoguelikeGame.touchMoveVector = { x: 0, y: 0, active: false };
+        }
+        break;
+      }
+    }
+  };
+
+  zoneEl.addEventListener('touchend', resetJoystick, { passive: false });
+  zoneEl.addEventListener('touchcancel', resetJoystick, { passive: false });
+
+  // Right Side Touch Buttons
+  const btnFire = document.getElementById('btn-touch-fire');
+  const btnInteract = document.getElementById('btn-touch-interact');
+  const btnMedkit = document.getElementById('btn-touch-medkit');
+  const btnWeapon = document.getElementById('btn-touch-weapon');
+  const btnKick = document.getElementById('btn-touch-kick');
+  const btnCamera = document.getElementById('btn-touch-camera');
+
+  let fireInterval = null;
+  if (btnFire) {
+    const startFire = (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame) {
+        radarRoguelikeGame.handlePlayerAttack();
+        if (!fireInterval) {
+          fireInterval = setInterval(() => {
+            if (radarRoguelikeGame) radarRoguelikeGame.handlePlayerAttack();
+          }, 140);
+        }
+      }
+    };
+    const stopFire = (e) => {
+      e.preventDefault();
+      if (fireInterval) {
+        clearInterval(fireInterval);
+        fireInterval = null;
+      }
+    };
+    btnFire.addEventListener('touchstart', startFire, { passive: false });
+    btnFire.addEventListener('touchend', stopFire, { passive: false });
+    btnFire.addEventListener('touchcancel', stopFire, { passive: false });
+    btnFire.addEventListener('mousedown', startFire);
+    btnFire.addEventListener('mouseup', stopFire);
+  }
+
+  if (btnInteract) {
+    btnInteract.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame) {
+        if (radarRoguelikeGame.player && (radarRoguelikeGame.player.isDead || radarRoguelikeGame.player.hp <= 0)) {
+          if (typeof handleRadarFleeCell === 'function') handleRadarFleeCell();
+          else radarRoguelikeGame.finishRaid(false);
+        } else {
+          radarRoguelikeGame.interactNearby();
+        }
+      }
+    }, { passive: false });
+  }
+
+  if (btnMedkit) {
+    btnMedkit.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame) radarRoguelikeGame.useBeltMedkit();
+    }, { passive: false });
+  }
+
+  if (btnWeapon) {
+    btnWeapon.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame) {
+        if (typeof radarRoguelikeGame.toggleBeltSlot === 'function') {
+          radarRoguelikeGame.toggleBeltSlot();
+        } else {
+          radarRoguelikeGame.switchBeltSlot(radarRoguelikeGame.player.belt && radarRoguelikeGame.player.belt.activeSlot === 1 ? 2 : 1);
+        }
+      }
+    }, { passive: false });
+  }
+
+  if (btnKick) {
+    btnKick.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame && typeof radarRoguelikeGame.quickKick === 'function') {
+        radarRoguelikeGame.quickKick();
+      }
+    }, { passive: false });
+  }
+
+  if (btnCamera) {
+    btnCamera.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (radarRoguelikeGame && typeof radarRoguelikeGame.toggleCameraMode === 'function') {
+        radarRoguelikeGame.toggleCameraMode();
+      }
+    }, { passive: false });
+  }
+
+  // Swipe-to-look for 3D FPS raycaster on touch devices
+  const touchOverlay = document.getElementById('radar-touch-overlay');
+  let lookTouchId = null;
+  let lastLookX = 0;
+  let lastLookY = 0;
+
+  if (touchOverlay) {
+    touchOverlay.addEventListener('touchstart', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        // Only accept touches on the right/top half outside buttons
+        if (t.clientX > window.innerWidth * 0.35 && !e.target.closest('.touch-btn') && !e.target.closest('#touch-joystick-zone')) {
+          if (lookTouchId === null) {
+            lookTouchId = t.identifier;
+            lastLookX = t.clientX;
+            lastLookY = t.clientY;
+            break;
+          }
+        }
+      }
+    }, { passive: true });
+
+    touchOverlay.addEventListener('touchmove', (e) => {
+      if (lookTouchId === null || !radarRoguelikeGame || radarRoguelikeGame.cameraMode !== 'FPS') return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === lookTouchId) {
+          const dx = t.clientX - lastLookX;
+          const dy = t.clientY - lastLookY;
+          lastLookX = t.clientX;
+          lastLookY = t.clientY;
+          radarRoguelikeGame.player.angle += dx * 0.0075;
+          radarRoguelikeGame.horizonOffset = Math.max(-100, Math.min(100, (radarRoguelikeGame.horizonOffset || 0) - dy * 0.8));
+          break;
+        }
+      }
+    }, { passive: true });
+
+    const endLook = (e) => {
+      if (lookTouchId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === lookTouchId) {
+          lookTouchId = null;
+          break;
+        }
+      }
+    };
+    touchOverlay.addEventListener('touchend', endLook, { passive: true });
+    touchOverlay.addEventListener('touchcancel', endLook, { passive: true });
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initTouchControls();
+});
+
 </script>
 
 </body>
