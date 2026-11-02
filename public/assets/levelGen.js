@@ -17,8 +17,8 @@
   'use strict';
 
   const LevelGen = {
-    GRID_WIDTH: 48,
-    GRID_HEIGHT: 48,
+    GRID_WIDTH: 72,
+    GRID_HEIGHT: 72,
     TILE_SIZE: 32,
 
     TILE_FLOOR: 0,
@@ -66,7 +66,7 @@
       // 2. Binary Space Partitioning (BSP)
       const rootNode = { x: 2, y: 2, w: W - 4, h: H - 4 };
       const leaves = [];
-      this.splitBsp(rootNode, leaves, 0, 4);
+      this.splitBsp(rootNode, leaves, 0, 5);
 
       // 3. Carve rooms inside BSP leaf partitions (7 to 12 rooms, 4x4 to 10x10)
       const rooms = [];
@@ -111,6 +111,11 @@
         };
 
         leaf.room = room;
+        if (i > 1 && i % 4 === 0) {
+          room.isSecret = true;
+          room.name = '🔒 Секретный схрон ликвидаторов';
+          room.type = 'armory';
+        }
         rooms.push(room);
 
         const wallMat = (typeof TextureManager !== 'undefined') ? TextureManager.getRoomMaterial(room.type) : 'concrete_old';
@@ -128,14 +133,19 @@
         for (let y = Math.max(0, ry - 1); y <= Math.min(H - 1, ry + rh); y++) {
           for (let x = Math.max(0, rx - 1); x <= Math.min(W - 1, rx + rw); x++) {
             if (grid[y][x] === this.TILE_WALL) {
-              wallMaterials[y][x] = wallMat;
+              let assigned = wallMat;
+              const rRoll = Math.random();
+              if (rRoll < 0.08) assigned = 'concrete_ussr';
+              else if (rRoll < 0.15) assigned = 'concrete_warning';
+              else if (rRoll < 0.22) assigned = 'concrete_vent';
+              wallMaterials[y][x] = assigned;
             }
           }
         }
       }
 
       // Ensure minimum 7 rooms, fallback if needed
-      if (rooms.length < 7) {
+      if (rooms.length < 14) {
         return this.generate(playerLevel); // Retry BSP with alternate split rolls
       }
 
@@ -212,6 +222,10 @@
         }
       ];
 
+            // 9b. Supply Chests (openable with [E]) & Keycard Spawn
+      const chests = [];
+      this.populateChests(rooms, startRoom, chests, weaponDrops, TS);
+
       return {
         grid,
         wallMaterials,
@@ -227,6 +241,7 @@
         allies,
         lootCrates,
         weaponDrops,
+        chests,
         lamps
       };
     },
@@ -402,6 +417,7 @@
           if (isNarrowDoorway && !doorSet.has(key)) {
             doorSet.add(key);
             grid[pt.y][pt.x] = this.TILE_DOOR_CLOSED;
+            const isKeycardDoor = (doors.length === 2 || doors.length === 5);
             doors.push({
               x: pt.x * TS,
               y: pt.y * TS,
@@ -410,7 +426,8 @@
               w: TS,
               h: TS,
               isOpen: false,
-              isLocked: false,
+              isLocked: isKeycardDoor,
+              requiresKeycard: isKeycardDoor,
               openProgress: 0.0
             });
             break; // Max 1-2 doors per room perimeter
@@ -500,13 +517,59 @@
     /**
      * Place atmospheric amber lanterns along walls
      */
+
+    /**
+     * Populate interactive supply chests & keycard drop
+     */
+    populateChests(rooms, startRoom, chests, weaponDrops, TS) {
+      const eligibleRooms = rooms.filter(r => r.id !== startRoom.id);
+      const shuffled = [...eligibleRooms].sort(() => Math.random() - 0.5);
+
+      // Keycard item drop in one of the mid-distance rooms
+      if (shuffled.length > 2) {
+        const keycardRoom = shuffled[1];
+        weaponDrops.push({
+          id: 'drop_keycard_' + Math.random().toString(36).substr(2, 6),
+          isKeycard: true,
+          name: '🔑 Электронная ключ-карта допуска',
+          x: (keycardRoom.centerX) * TS + TS / 2,
+          y: (keycardRoom.centerY) * TS + TS / 2,
+          tileX: keycardRoom.centerX,
+          tileY: keycardRoom.centerY,
+          pickedUp: false,
+          color: '#33d4ff'
+        });
+      }
+
+      // Spawn 3-5 openable supply chests
+      const chestCount = Math.min(shuffled.length, 3 + Math.floor(Math.random() * 3));
+      for (let i = 0; i < chestCount; i++) {
+        const room = shuffled[i];
+        const isSecretChest = !!room.isSecret;
+        chests.push({
+          id: 'chest_' + i,
+          x: (room.centerX + (i % 2 === 0 ? 1 : -1)) * TS + TS / 2,
+          y: (room.centerY + (i % 2 === 0 ? -1 : 1)) * TS + TS / 2,
+          tileX: room.centerX + (i % 2 === 0 ? 1 : -1),
+          tileY: room.centerY + (i % 2 === 0 ? -1 : 1),
+          opened: false,
+          isSecret: isSecretChest,
+          loot: {
+            talons: isSecretChest ? 250 : 80 + Math.floor(Math.random() * 70),
+            ammo: isSecretChest ? 32 : 12 + Math.floor(Math.random() * 14),
+            medkits: isSecretChest ? 2 : 1,
+            hasKeycard: (i === 0)
+          }
+        });
+      }
+    },
     placeLanterns(grid, rooms, TS) {
       const lamps = [];
       const W = this.GRID_WIDTH;
       const H = this.GRID_HEIGHT;
 
+      // 1. Place lanterns in each room
       for (const room of rooms) {
-        // Place lantern at top wall of room
         const lx = room.centerX;
         const ly = room.y;
         if (ly > 0 && grid[ly - 1][lx] === this.TILE_WALL) {
@@ -514,10 +577,40 @@
             x: lx * TS + TS / 2,
             y: ly * TS + 6,
             tileX: lx,
-            tileY: ly
+            tileY: ly,
+            flicker: (Math.random() < 0.4),
+            radius: 190 + Math.random() * 60
           });
         }
       }
+
+      // 2. Place flickering corridor lamps every 8-10 tiles along corridors
+      for (let y = 3; y < H - 3; y += 8) {
+        for (let x = 3; x < W - 3; x += 8) {
+          if (grid[y][x] === this.TILE_FLOOR) {
+            if (grid[y - 1][x] === this.TILE_WALL) {
+              lamps.push({
+                x: x * TS + TS / 2,
+                y: y * TS + 6,
+                tileX: x,
+                tileY: y,
+                flicker: true,
+                radius: 175
+              });
+            } else if (grid[y + 1][x] === this.TILE_WALL) {
+              lamps.push({
+                x: x * TS + TS / 2,
+                y: (y + 1) * TS - 6,
+                tileX: x,
+                tileY: y,
+                flicker: true,
+                radius: 175
+              });
+            }
+          }
+        }
+      }
+
       return lamps;
     }
   };

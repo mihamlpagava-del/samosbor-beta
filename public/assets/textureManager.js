@@ -24,6 +24,22 @@
       fallback: [55, 65, 62],
       name: 'Старый бетон'
     },
+    // 3b. Wall Graffiti & Variations
+    'concrete_ussr': {
+      src: 'assets/radar/tiles/wall_concrete_old.png',
+      fallback: [90, 45, 45],
+      name: 'Бетон: Граффити СССР'
+    },
+    'concrete_warning': {
+      src: 'assets/radar/tiles/wall_concrete_old.png',
+      fallback: [160, 140, 30],
+      name: 'Бетон: Предупреждающие полосы'
+    },
+    'concrete_vent': {
+      src: 'assets/radar/tiles/wall_grate_industrial.png',
+      fallback: [38, 48, 52],
+      name: 'Вентиляционная решётка'
+    },
     // 4. Reinforced Concrete
     'concrete_reinforced': {
       src: 'assets/radar/tiles/wall_concrete_reinforced.png',
@@ -113,6 +129,8 @@
     'weapon_crowbar': 'assets/icons/weapon_crowbar.png',
     'weapon_default': 'assets/icons/weapon_pipe.png',
     'food_medkit': 'assets/icons/food_medkit.png',
+    'ammo_box': 'assets/icons/ammo_box.png',
+    'keycard': 'assets/icons/keycard.png',
     'food_ration': 'assets/icons/food_ration.png',
     'loot_crate': 'assets/radar/tiles/crate_tech.png',
     'crate_tech': 'assets/radar/tiles/crate_tech.png',

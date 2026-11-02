@@ -462,9 +462,17 @@
       const y = drop.y;
 
       const isMed = !!(drop.isMedkit || (drop.item && (drop.item.id === 'food_medkit' || drop.item.type === 'heal')) || (drop.name && drop.name.includes('Аптечк')));
+      const isKeycard = !!(drop.isKeycard || (drop.item && (drop.item.id === 'keycard' || drop.item.type === 'keycard')) || (drop.name && drop.name.includes('Ключ')));
+      const isAmmo = !!(drop.isAmmo || (drop.item && (drop.item.id === 'ammo_box' || drop.item.type === 'ammo')) || (drop.name && drop.name.includes('Патрон')));
+
+      const wId = drop.weapon ? (drop.weapon.id || drop.weapon.type || drop.weapon.gunType || '').toLowerCase() : '';
+      const isShotgun = wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga');
+      const isPistol = !isShotgun && (wId.includes('pm') || wId.includes('pistol') || wId.includes('gun'));
+      const isPipe = !isShotgun && !isPistol && (wId.includes('pipe') || wId.includes('crowbar') || wId.includes('melee'));
+
       const now = Date.now();
 
-      // Dynamic Y-Axis Hover & Pseudo-3D Y-Axis Rotation
+      // Dynamic Y-Axis Hover & Pseudo-3D Rotation
       const hoverY = Math.sin(now * 0.003 + (drop.x % 10)) * 4;
       const rawScaleX = Math.cos(now * 0.004 + (drop.y % 10));
       const scaleX = Math.abs(rawScaleX);
@@ -477,13 +485,21 @@
 
       // 1. Floor Ground Light Halo
       const haloGrad = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, pulseRad);
-      if (isMed) {
-        haloGrad.addColorStop(0, 'rgba(51, 255, 100, 0.42)');
-        haloGrad.addColorStop(0.65, 'rgba(40, 220, 80, 0.18)');
+      if (isKeycard) {
+        haloGrad.addColorStop(0, 'rgba(0, 229, 255, 0.55)');
+        haloGrad.addColorStop(0.65, 'rgba(0, 160, 220, 0.22)');
+        haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      } else if (isMed) {
+        haloGrad.addColorStop(0, 'rgba(51, 255, 100, 0.48)');
+        haloGrad.addColorStop(0.65, 'rgba(40, 220, 80, 0.2)');
+        haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      } else if (isShotgun) {
+        haloGrad.addColorStop(0, 'rgba(255, 110, 0, 0.48)');
+        haloGrad.addColorStop(0.65, 'rgba(230, 80, 0, 0.2)');
         haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       } else {
-        haloGrad.addColorStop(0, 'rgba(255, 170, 0, 0.42)');
-        haloGrad.addColorStop(0.65, 'rgba(240, 130, 0, 0.18)');
+        haloGrad.addColorStop(0, 'rgba(255, 185, 0, 0.45)');
+        haloGrad.addColorStop(0.65, 'rgba(240, 140, 0, 0.2)');
         haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       }
       ctx.fillStyle = haloGrad;
@@ -491,61 +507,98 @@
       ctx.ellipse(x, y + 4, pulseRad, pulseRad * 0.55, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Rotating Item Icon
-      let icon = null;
-      if (typeof TextureManager !== 'undefined' && TextureManager.getSprite) {
-        let key = isMed ? 'food_medkit' : 'loot_crate';
-        if (drop.weapon) {
-          const wId = (drop.weapon.id || drop.weapon.type || '').toLowerCase();
-          if (wId.includes('shotgun') || wId.includes('ks23') || wId.includes('saiga')) key = 'weapon_shotgun';
-          else if (wId.includes('pipe') || wId.includes('crowbar') || wId.includes('melee')) key = 'weapon_pipe';
-          else if (wId.includes('flame') || wId.includes('fire')) key = 'weapon_flamethrower';
-          else if (wId.includes('rifle') || wId.includes('ak')) key = 'weapon_rifle';
-          else key = 'weapon_pistol';
-        } else if (drop.item) {
-          const iId = (drop.item.id || drop.item.type || '').toLowerCase();
-          if (iId.includes('med') || iId.includes('heal')) key = 'food_medkit';
-          else if (iId.includes('ammo')) key = 'ammo_box';
-          else if (iId.includes('filter')) key = 'gas_filter';
-          else key = 'loot_crate';
-        }
-        icon = TextureManager.getSprite(key);
-      }
-
-      const itemW = Math.max(3, Math.floor(18 * scaleX));
-      const itemH = 18;
+      // 2. Distinct Item & Weapon Icons
+      const itemW = Math.max(4, Math.floor((isShotgun ? 24 : 18) * scaleX));
+      const itemH = isShotgun ? 12 : 18;
       const itemX = x - itemW / 2;
       const itemY = y - 8 + hoverY;
 
-      if (icon && icon.complete && icon.naturalWidth > 0) {
-        ctx.drawImage(icon, itemX, itemY, itemW, itemH);
+      if (isKeycard) {
+        // High-Security Electronic RFID Keycard
+        ctx.fillStyle = '#0a2e38';
+        ctx.fillRect(itemX, itemY + 2, itemW, 14);
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(itemX, itemY + 2, itemW, 14);
+
+        // Gold chip & access badge
+        if (scaleX > 0.35) {
+          ctx.fillStyle = '#ffd700';
+          ctx.fillRect(x - 3 * scaleX, itemY + 6, 6 * scaleX, 5);
+          ctx.fillStyle = '#00e5ff';
+          ctx.fillRect(x - 5 * scaleX, itemY + 12, 10 * scaleX, 2);
+        }
       } else if (isMed) {
         // Detailed Army Medkit with Red Cross
-        ctx.fillStyle = '#f0f0f0';
+        ctx.fillStyle = '#e8ece9';
         ctx.fillRect(itemX, itemY + 2, itemW, 14);
-        ctx.strokeStyle = '#222';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#2d4734';
+        ctx.lineWidth = 1.5;
         ctx.strokeRect(itemX, itemY + 2, itemW, 14);
         if (scaleX > 0.3) {
           ctx.fillStyle = '#d32f2f';
           ctx.fillRect(x - 2 * scaleX, itemY + 4, 4 * scaleX, 10);
           ctx.fillRect(x - 5 * scaleX, itemY + 7, 10 * scaleX, 4);
         }
+      } else if (isAmmo) {
+        // Military Ribbed Ammo Tin
+        ctx.fillStyle = '#2d4427';
+        ctx.fillRect(itemX, itemY + 3, itemW, 12);
+        ctx.strokeStyle = '#47683d';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(itemX, itemY + 3, itemW, 12);
+        if (scaleX > 0.35) {
+          ctx.fillStyle = '#ffcc00';
+          ctx.font = 'bold 6px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('AMMO', x, itemY + 11);
+        }
+      } else if (isShotgun) {
+        // --- Heavy Riot Shotgun KS-23 (Long heavy ribbed barrel, wooden pump forend & buttstock) ---
+        ctx.save();
+        // Barrel & magazine tube
+        ctx.fillStyle = '#1c2620';
+        ctx.fillRect(itemX, itemY + 4, itemW, 4);
+        // Wooden buttstock
+        ctx.fillStyle = '#5c351c';
+        ctx.fillRect(itemX, itemY + 5, itemW * 0.35, 6);
+        // Ribbed pump forend
+        ctx.fillStyle = '#7a4524';
+        ctx.fillRect(itemX + itemW * 0.45, itemY + 6, itemW * 0.3, 4);
+        // Barrel band
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(itemX + itemW * 0.85, itemY + 3, 2, 6);
+        ctx.restore();
+      } else if (isPistol) {
+        // --- Makarov Pistol PM (Compact steel slide, brown bakelite grip) ---
+        ctx.save();
+        // Steel Slide
+        ctx.fillStyle = '#232f27';
+        ctx.fillRect(itemX + itemW * 0.2, itemY + 4, itemW * 0.75, 5);
+        // Textured Bakelite Grip
+        ctx.fillStyle = '#6e301d';
+        ctx.fillRect(itemX + itemW * 0.2, itemY + 8, itemW * 0.38, 7);
+        // Front post
+        ctx.fillStyle = '#1fe044';
+        ctx.fillRect(itemX + itemW * 0.88, itemY + 3, 2, 2);
+        ctx.restore();
       } else {
-        // Fallback gun shape
-        ctx.strokeStyle = '#ffb703';
-        ctx.lineWidth = 2;
+        // Pipe / Melee weapon
+        ctx.strokeStyle = '#4e6354';
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(x - 8 * scaleX, itemY + 8);
-        ctx.lineTo(x + 8 * scaleX, itemY + 8);
-        ctx.lineTo(x + 8 * scaleX, itemY + 12);
-        ctx.lineTo(x + 3 * scaleX, itemY + 12);
-        ctx.lineTo(x + 3 * scaleX, itemY + 16);
+        ctx.moveTo(itemX, itemY + 14);
+        ctx.lineTo(itemX + itemW, itemY + 4);
         ctx.stroke();
+        // Red valve wheel
+        ctx.fillStyle = '#d32f2f';
+        ctx.beginPath();
+        ctx.arc(x, itemY + 9, 3.5, 0, Math.PI * 2);
+        ctx.fill();
       }
 
-      const dropLabel = drop.weapon ? (drop.weapon.name || 'ОРУЖИЕ').slice(0, 14) : (isMed ? 'АПТЕЧКА' : (drop.item ? (drop.item.name || 'ПРЕДМЕТ').slice(0, 14) : 'ХАБАР'));
-      ctx.fillStyle = isMed ? '#33ff77' : '#ffb703';
+      const dropLabel = drop.weapon ? (drop.weapon.name || 'ОРУЖИЕ').slice(0, 16) : (isKeycard ? 'КЛЮЧ-КАРТА' : (isMed ? 'АПТЕЧКА' : (isAmmo ? 'ПАТРОНЫ' : (drop.item ? (drop.item.name || 'ПРЕДМЕТ').slice(0, 14) : 'ХАБАР'))));
+      ctx.fillStyle = isKeycard ? '#00e5ff' : (isMed ? '#33ff77' : (isShotgun ? '#ff8800' : '#ffb703'));
       ctx.font = 'bold 8px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(dropLabel, x, itemY - 4);
@@ -554,9 +607,111 @@
     },
 
     /**
-     * Render Floor Blood / Slime Decal
+     * Render Interactive Openable Chest / Bunker Container
      */
-    drawDecal(ctx, decal) {
+    drawChest(ctx, chest, TS, tick) {
+      if (!ctx || !chest) return;
+      const cx = chest.x;
+      const cy = chest.y;
+      const isOpened = !!chest.opened;
+
+      ctx.save();
+      // Chest shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 8, 14, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Industrial container body
+      ctx.fillStyle = isOpened ? '#2a3b30' : '#3d5244';
+      ctx.fillRect(cx - 12, cy - 8, 24, 16);
+      ctx.strokeStyle = '#1a261f';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(cx - 12, cy - 8, 24, 16);
+
+      // Steel reinforcement bands
+      ctx.fillStyle = '#1c2620';
+      ctx.fillRect(cx - 10, cy - 8, 3, 16);
+      ctx.fillRect(cx + 7, cy - 8, 3, 16);
+
+      if (isOpened) {
+        // Open lid shifted up
+        ctx.fillStyle = '#223228';
+        ctx.fillRect(cx - 13, cy - 14, 26, 6);
+        ctx.strokeStyle = '#141e18';
+        ctx.strokeRect(cx - 13, cy - 14, 26, 6);
+
+        // Golden interior loot gleam
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Locked hasp & lock
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(cx - 2, cy - 1, 4, 5);
+
+        // Pulsing interaction prompt
+        const pulse = Math.sin(tick * 0.15) * 2;
+        ctx.fillStyle = '#00ffcc';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('[E] СУНДУК', cx, cy - 12 + pulse);
+      }
+
+      ctx.restore();
+    },
+
+    /**
+     * Render Speech Bubble above player head
+     */
+    drawSpeechBubble(ctx, x, y, text, name, alpha = 1.0) {
+      if (!ctx || !text) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      ctx.font = 'bold 10px "Share Tech Mono", monospace';
+      const textMetrics = ctx.measureText(text);
+      const bubbleW = Math.max(60, textMetrics.width + 16);
+      const bubbleH = 22;
+      const bx = x - bubbleW / 2;
+      const by = y - 38;
+
+      // Dark translucent backing with terminal border
+      ctx.fillStyle = 'rgba(8, 22, 14, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bubbleW, bubbleH, 4);
+      ctx.fill();
+
+      ctx.strokeStyle = '#1fe044';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Triangle pointer down to head
+      ctx.fillStyle = 'rgba(8, 22, 14, 0.92)';
+      ctx.beginPath();
+      ctx.moveTo(x - 5, by + bubbleH);
+      ctx.lineTo(x + 5, by + bubbleH);
+      ctx.lineTo(x, by + bubbleH + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#1fe044';
+      ctx.beginPath();
+      ctx.moveTo(x - 5, by + bubbleH);
+      ctx.lineTo(x, by + bubbleH + 6);
+      ctx.lineTo(x + 5, by + bubbleH);
+      ctx.stroke();
+
+      // Text
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, x, by + 15);
+
+      ctx.restore();
+    },
+
+    /**
+     * drawDecal(ctx, decal) {
       if (!ctx || !decal) return;
       ctx.save();
       const x = decal.x;

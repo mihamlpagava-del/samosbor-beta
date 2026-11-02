@@ -342,6 +342,289 @@
       osc.stop(t + 0.23);
     }
 
+    /**
+     * Create Spatial Audio routing node with Stereo Panning & Distance Attenuation
+     */
+    createSpatialNode(pan = 0, volume = 1.0) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return null;
+
+      const gain = ctx.createGain();
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(Math.max(0.01, Math.min(1.0, volume)), t);
+
+      if (ctx.createStereoPanner) {
+        const panner = ctx.createStereoPanner();
+        const clampedPan = Math.max(-1.0, Math.min(1.0, pan));
+        panner.pan.setValueAtTime(clampedPan, t);
+        gain.connect(panner);
+        panner.connect(this.masterGain);
+      } else {
+        gain.connect(this.masterGain);
+      }
+      return gain;
+    }
+
+    /**
+     * Metallic brass shell casing bouncing and settling on concrete floor
+     */
+    playShellCasingDrop(pan = 0.35) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const dest = this.createSpatialNode(pan, 0.45);
+      if (!dest) return;
+
+      const t = ctx.currentTime;
+      // High pitch metallic clinks (bounce 1 and bounce 2)
+      [0, 0.08, 0.15].forEach((delay, idx) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        const baseFreq = 2200 + Math.random() * 400 - idx * 250;
+        osc.frequency.setValueAtTime(baseFreq, t + delay);
+        osc.frequency.exponentialRampToValueAtTime(1400, t + delay + 0.04);
+
+        const gain = ctx.createGain();
+        const vol = 0.35 / (idx + 1);
+        gain.gain.setValueAtTime(vol, t + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.045);
+
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(t + delay);
+        osc.stop(t + delay + 0.05);
+      });
+    }
+
+    /**
+     * Weapon Reload: magazine release click, insert & slide/bolt rack
+     */
+    playWeaponReload() {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      // 1. Magazine release click (t + 0.1)
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(320, t + 0.1);
+      osc1.frequency.exponentialRampToValueAtTime(90, t + 0.18);
+      const g1 = ctx.createGain();
+      g1.gain.setValueAtTime(0.4, t + 0.1);
+      g1.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+      osc1.connect(g1);
+      g1.connect(this.masterGain);
+      osc1.start(t + 0.1);
+      osc1.stop(t + 0.19);
+
+      // 2. Fresh magazine insertion clack (t + 0.55)
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(240, t + 0.55);
+      osc2.frequency.exponentialRampToValueAtTime(60, t + 0.65);
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.5, t + 0.55);
+      g2.gain.exponentialRampToValueAtTime(0.01, t + 0.65);
+      osc2.connect(g2);
+      g2.connect(this.masterGain);
+      osc2.start(t + 0.55);
+      osc2.stop(t + 0.66);
+
+      // 3. Bolt / Slide rack metallic pull & snap (t + 0.9)
+      const osc3 = ctx.createOscillator();
+      osc3.type = 'sawtooth';
+      osc3.frequency.setValueAtTime(580, t + 0.9);
+      osc3.frequency.linearRampToValueAtTime(1100, t + 0.98);
+      osc3.frequency.exponentialRampToValueAtTime(180, t + 1.08);
+      const g3 = ctx.createGain();
+      g3.gain.setValueAtTime(0.45, t + 0.9);
+      g3.gain.exponentialRampToValueAtTime(0.01, t + 1.08);
+      osc3.connect(g3);
+      g3.connect(this.masterGain);
+      osc3.start(t + 0.9);
+      osc3.stop(t + 1.1);
+    }
+
+    /**
+     * Quick Melee Kick: swift swoosh followed by heavy boot impact
+     */
+    playKickMelee(hit = false) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      // Air swoosh
+      const bufSize = Math.floor(ctx.sampleRate * 0.14);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(650, t);
+      filter.frequency.exponentialRampToValueAtTime(140, t + 0.13);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.6, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.13);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+      noise.start(t);
+
+      // Impact thud
+      if (hit) {
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(130, t + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(32, t + 0.22);
+        const hg = ctx.createGain();
+        hg.gain.setValueAtTime(0.9, t + 0.08);
+        hg.gain.exponentialRampToValueAtTime(0.01, t + 0.22);
+        osc.connect(hg);
+        hg.connect(this.masterGain);
+        osc.start(t + 0.08);
+        osc.stop(t + 0.23);
+      }
+    }
+
+    /**
+     * Spatial Monster Hurt Groan
+     */
+    playSpatialMonsterHurt(pan = 0, distFactor = 1.0) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const dest = this.createSpatialNode(pan, distFactor * 0.7);
+      if (!dest) return;
+
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.linearRampToValueAtTime(75, t + 0.18);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.5, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t);
+      osc.stop(t + 0.19);
+    }
+
+    /**
+     * Spatial Acid Spit Splat
+     */
+    playSpatialAcidSpit(pan = 0, distFactor = 1.0) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const dest = this.createSpatialNode(pan, distFactor * 0.6);
+      if (!dest) return;
+
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(480, t);
+      osc.frequency.exponentialRampToValueAtTime(120, t + 0.2);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t);
+      osc.stop(t + 0.21);
+    }
+
+    /**
+     * Spatial Door Pneumatic Clank
+     */
+    playSpatialDoor(pan = 0, distFactor = 1.0, isOpen = true) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const dest = this.createSpatialNode(pan, distFactor * 0.75);
+      if (!dest) return;
+
+      const t = ctx.currentTime;
+      const bufSize = Math.floor(ctx.sampleRate * 0.22);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(isOpen ? 550 : 1100, t);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
+      noise.start(t);
+
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(isOpen ? 115 : 80, t + 0.06);
+      const clankGain = ctx.createGain();
+      clankGain.gain.setValueAtTime(0.45, t + 0.06);
+      clankGain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      osc.connect(clankGain);
+      clankGain.connect(dest);
+      osc.start(t + 0.06);
+      osc.stop(t + 0.23);
+    }
+
+    /**
+     * Keycard Access Granted / Denied Chimes
+     */
+    playKeycardUnlock() {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+      const t = ctx.currentTime;
+      [880, 1320, 1760].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t + idx * 0.06);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.3, t + idx * 0.06);
+        g.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.06 + 0.12);
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(t + idx * 0.06);
+        osc.stop(t + idx * 0.06 + 0.13);
+      });
+    }
+
+    playDoorDenied() {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+      const t = ctx.currentTime;
+      [180, 150].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, t + idx * 0.1);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.35, t + idx * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.1 + 0.12);
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(t + idx * 0.1);
+        osc.stop(t + idx * 0.1 + 0.13);
+      });
+    }
+
     playWeaponSwitch() {
       const ctx = this.ensureContext();
       if (!ctx || this.isMuted) return;

@@ -549,6 +549,41 @@
         if (e.code === 'KeyE' || e.code === 'Space') {
           this.interactNearby();
         }
+        if (this.isTypingChat) {
+          if (e.code === 'Enter') {
+            const trimmed = (this.chatInput || '').trim();
+            if (trimmed.length > 0) {
+              this.playerSpeech = { text: trimmed, timer: 300 };
+              if (typeof socket !== 'undefined' && socket && socket.emit) {
+                socket.emit('raidPlayerChat', { text: trimmed });
+              }
+            }
+            this.isTypingChat = false;
+            this.chatInput = '';
+          } else if (e.code === 'Escape') {
+            this.isTypingChat = false;
+            this.chatInput = '';
+          } else if (e.code === 'Backspace') {
+            this.chatInput = this.chatInput.slice(0, -1);
+          } else if (e.key && e.key.length === 1) {
+            if (this.chatInput.length < 60) this.chatInput += e.key;
+          }
+          e.preventDefault();
+          return;
+        }
+
+        if (e.code === 'KeyR') {
+          this.reloadWeapon();
+        }
+        if (e.code === 'KeyF') {
+          this.quickKick();
+        }
+        if (e.code === 'KeyT') {
+          this.isTypingChat = !this.isTypingChat;
+          this.chatInput = '';
+          e.preventDefault();
+          return;
+        }
         if (e.code === 'KeyG') {
           if (this.cameraMode === 'TDS') {
             this.cameraMode = 'FPS';
@@ -1080,10 +1115,97 @@
         this.spawnFloatingNotice('ВНИМАНИЕ! САМОСБОР ПРОРВАЛ СЕКТОР!', '#ff0033');
       }
 
+      // --- FPS CAMERA ROLL & PROCEDURAL RECOIL DECAY ---
+      let strafeDir = 0;
+      if (this.keys['KeyA'] || this.keys['a']) strafeDir -= 1;
+      if (this.keys['KeyD'] || this.keys['d']) strafeDir += 1;
+      const targetRoll = strafeDir * 0.035;
+      this.cameraRoll = (this.cameraRoll || 0) + (targetRoll - (this.cameraRoll || 0)) * 0.1;
+
+      this.recoilY = (this.recoilY || 0) * 0.85; // lerp(recoilY, 0, 0.15)
+      this.recoilX = (this.recoilX || 0) * 0.85;
+      if (Math.abs(this.recoilY) < 0.01) this.recoilY = 0;
+      if (Math.abs(this.recoilX) < 0.01) this.recoilX = 0;
+
+      // --- WEAPON RELOAD PROGRESS ---
+      if (this.isReloading) {
+        this.reloadProgress = (this.reloadProgress || 0) + (1 / 60) / 1.1;
+        if (this.reloadProgress >= 1.0) {
+          this.isReloading = false;
+          this.reloadProgress = 0;
+          if (this.player.weapon) {
+            this.player.weapon.mag = this.player.weapon.magCapacity || 8;
+          }
+          this.spawnFloatingNotice('✅ ПЕРЕЗАРЯЖЕНО', '#00ffaa');
+        }
+      }
+
+      // --- QUICK MELEE KICK PROGRESS ---
+      if (this.isKicking) {
+        this.kickProgress = (this.kickProgress || 0) + (1 / 60) / 0.28;
+        if (this.kickProgress >= 1.0) {
+          this.isKicking = false;
+          this.kickProgress = 0;
+        }
+      }
+
+      // --- PARTICLE SHELL CASINGS SIMULATION ---
+      if (this.casings && this.casings.length > 0) {
+        for (let ci = this.casings.length - 1; ci >= 0; ci--) {
+          const c = this.casings[ci];
+          c.screenX += c.vx;
+          c.screenY += c.vy;
+          c.vy += 0.65; // gravity
+          c.rot += c.vrot;
+          if (c.screenY >= c.floorY) {
+            c.screenY = c.floorY;
+            if (!c.bounced) {
+              c.bounced = true;
+              c.vy = -c.vy * 0.38;
+              c.vx *= 0.6;
+              c.vrot *= 0.5;
+              if (typeof RadarAudio !== 'undefined' && RadarAudio.playShellCasingDrop) {
+                RadarAudio.playShellCasingDrop(0.35);
+              }
+            } else {
+              c.vx *= 0.8;
+              c.vy = 0;
+              c.vrot = 0;
+            }
+          }
+          c.life -= 0.012;
+          if (c.life <= 0) this.casings.splice(ci, 1);
+        }
+      }
+
+      // --- PROXIMITY CHAT SPEECH BUBBLE DECAY ---
+      if (this.playerSpeech) {
+        this.playerSpeech.timer--;
+        if (this.playerSpeech.timer <= 0) this.playerSpeech = null;
+      }
+      for (const rId in this.remotePlayers) {
+        const rp = this.remotePlayers[rId];
+        if (rp.speech) {
+          rp.speech.timer--;
+          if (rp.speech.timer <= 0) rp.speech = null;
+        }
+      }
+
       // 1a. Viewmodel Bobbing & Screen Feedback Timers
       const isPlayerMoving = (this.player.vx !== 0 || this.player.vy !== 0);
-      if (isPlayerMoving) this.bobTimer = (this.bobTimer || 0) + 0.16;
-      else this.bobTimer = (this.bobTimer || 0) * 0.85;
+      if (isPlayerMoving) {
+        this.bobTimer = (this.bobTimer || 0) + (1 / 60) * 8;
+        this.weaponBobX = Math.cos(this.bobTimer) * 6;
+        this.weaponBobY = Math.abs(Math.sin(this.bobTimer)) * 6;
+      } else {
+        this.weaponBobX = (this.weaponBobX || 0) * 0.85;
+        this.weaponBobY = (this.weaponBobY || 0) * 0.85;
+      }
+
+      // Player Damage Red Vignette Decay
+      if (this.playerDamageVignette > 0) {
+        this.playerDamageVignette = Math.max(0, this.playerDamageVignette - 0.05);
+      }
 
       if (this.screenFlashTimer > 0) this.screenFlashTimer--;
       if (this.screenShakeTimer > 0) this.screenShakeTimer--;
@@ -1158,6 +1280,16 @@
       if (this.tick % 30 === 0 && typeof playRaidMusic === 'function') {
         const hasCombat = this.entities.some(e => e.type === 'monster' && e.hp > 0 && (e.state === 'CHASE' || Math.hypot(e.x - this.player.x, e.y - this.player.y) < 240));
         playRaidMusic(hasCombat ? 'combat' : 'explore');
+      }
+
+      // Emit live position to raid session every 5 ticks (12 fps netrate)
+      if (this.tick % 5 === 0 && typeof socket !== 'undefined' && socket && socket.emit) {
+        socket.emit('raidPlayerMove', {
+          x: Math.round(this.player.x),
+          y: Math.round(this.player.y),
+          angle: Number(this.player.angle.toFixed(2)),
+          hp: this.player.hp
+        });
       }
 
       // 2. Radar Sweep Angle Rotation
@@ -1317,6 +1449,307 @@
     /**
      * End of Raid: Death vs Evacuation
      */
+
+    /**
+     * 4-Player Live Raid Networking Initialization
+     */
+    initRaidNetworking() {
+      if (typeof socket === 'undefined' || !socket || !socket.on) return;
+      if (this._hasRaidNetwork) {
+        socket.emit('joinLiveRaidMatch', { x: this.player.x, y: this.player.y });
+        return;
+      }
+      this._hasRaidNetwork = true;
+
+      socket.emit('joinLiveRaidMatch', { x: this.player.x, y: this.player.y });
+
+      socket.on('liveRaidJoined', (data) => {
+        if (!data || !data.players) return;
+        this.remotePlayers = {};
+        for (const pId in data.players) {
+          if (pId !== socket.id) {
+            this.remotePlayers[pId] = data.players[pId];
+          }
+        }
+        const count = Object.keys(this.remotePlayers).length + 1;
+        this.spawnFloatingNotice(`👥 СЕССИЯ ВЫЛАЗКИ: ${count}/4 БОЙЦОВ`, '#33d4ff');
+      });
+
+      socket.on('raidRemotePlayerJoined', (data) => {
+        if (!data || !data.id || data.id === socket.id) return;
+        this.remotePlayers[data.id] = data.player || { username: data.username, x: 200, y: 200, angle: 0, hp: 100 };
+        this.spawnFloatingNotice(`👤 ${data.username || 'Боец'} ПОДКЛЮЧИЛСЯ К ВЫЛАЗКЕ`, '#00ffaa');
+      });
+
+      socket.on('raidRemotePlayerMoved', (data) => {
+        if (!data || !data.id || data.id === socket.id) return;
+        if (!this.remotePlayers[data.id]) {
+          this.remotePlayers[data.id] = { username: data.username, x: data.x, y: data.y, angle: data.angle, hp: data.hp };
+        } else {
+          const rp = this.remotePlayers[data.id];
+          rp.x = data.x;
+          rp.y = data.y;
+          rp.angle = data.angle;
+          if (data.hp !== undefined) rp.hp = data.hp;
+        }
+      });
+
+      socket.on('raidOtherPlayerChat', (data) => {
+        if (!data || !data.id) return;
+        if (data.id === socket.id) return;
+        if (!this.remotePlayers[data.id]) {
+          this.remotePlayers[data.id] = { username: data.username, x: 200, y: 200, angle: 0, hp: 100 };
+        }
+        this.remotePlayers[data.id].speech = { text: data.text, timer: 300 };
+        this.spawnFloatingNotice(`💬 ${data.username}: ${data.text}`, '#ffffff');
+      });
+
+      socket.on('raidRemotePlayerLeft', (data) => {
+        if (!data || !data.id) return;
+        if (this.remotePlayers[data.id]) {
+          const uname = this.remotePlayers[data.id].username || 'Боец';
+          delete this.remotePlayers[data.id];
+          this.spawnFloatingNotice(`🚪 ${uname} ПОКИНУЛ ВЫЛАЗКУ`, '#ffaa00');
+        }
+      });
+    }
+
+    /**
+     * Weapon Reload Mechanic ('R')
+     */
+    reloadWeapon() {
+      const weapon = this.player.weapon;
+      if (!weapon || !weapon.isRanged || this.isReloading || this.isKicking) return;
+      this.isReloading = true;
+      this.reloadProgress = 0;
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playWeaponReload) {
+        RadarAudio.playWeaponReload();
+      }
+      this.spawnFloatingNotice('🔄 ПЕРЕЗАРЯДКА...', '#ffd700');
+    }
+
+    /**
+     * Quick Melee Combat Boot Kick ('F')
+     */
+    quickKick() {
+      if (this.isKicking || this.player.isDead) return;
+      this.isKicking = true;
+      this.kickProgress = 0;
+
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playKickMelee) {
+        RadarAudio.playKickMelee(false);
+      }
+
+      // 1.5 tiles kick range (48px)
+      const kickRange = this.tileSize * 1.5;
+      const pAng = this.player.angle;
+      let hitTarget = false;
+
+      for (const e of this.entities) {
+        if (e.type === 'liquidator' || e.hp <= 0) continue;
+        const dist = Math.hypot(e.x - this.player.x, e.y - this.player.y);
+        if (dist <= kickRange + (e.radius || 12)) {
+          const angToE = Math.atan2(e.y - this.player.y, e.x - this.player.x);
+          let diff = Math.abs(angToE - pAng);
+          if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+          if (diff < 0.75) { // ~43 degree forward cone
+            hitTarget = true;
+            e.hp -= 15;
+            e.damageFlashTimer = 10;
+            e.flinchX = Math.cos(angToE) * 14;
+            e.flinchY = Math.sin(angToE) * 14;
+
+            // Stun & Interrupt attack preparation for 500ms (30 frames at 60fps)
+            e.attackWindup = 0;
+            e.stunTimer = 30;
+
+            // Knockback by 1 tile (32px), checking collision with solid walls
+            const pushDist = this.tileSize * 1.0;
+            const nx = e.x + Math.cos(angToE) * pushDist;
+            const ny = e.y + Math.sin(angToE) * pushDist;
+            const ntx = Math.floor(nx / this.tileSize);
+            const nty = Math.floor(ny / this.tileSize);
+            if (this.mapData && this.mapData.grid && this.mapData.grid[nty] && this.mapData.grid[nty][ntx] !== 1) {
+              e.x = nx;
+              e.y = ny;
+            }
+
+            this.spawnHitParticles(e.x, e.y, '#ff3b30', 10);
+            this.spawnFloatingNotice('-15 [ПИНОК!]', '#ffcc00');
+
+            if (typeof RadarAudio !== 'undefined') {
+              RadarAudio.playKickMelee(true);
+              const p = this.getSpatialSoundParams(e.x, e.y);
+              if (RadarAudio.playSpatialMonsterHurt) {
+                RadarAudio.playSpatialMonsterHurt(p.pan, p.distFactor);
+              }
+            }
+
+            if (e.hp <= 0) {
+              this.killMonster(e);
+            }
+            break; // Kick hits frontmost target
+          }
+        }
+      }
+    }
+
+    /**
+     * Spatial Stereo Sound Angle & Distance Calculation
+     */
+    getSpatialSoundParams(soundX, soundY) {
+      const dx = soundX - this.player.x;
+      const dy = soundY - this.player.y;
+      const soundAngle = Math.atan2(dy, dx) - this.player.angle;
+      const pan = Math.sin(soundAngle); // -1.0 (left) to +1.0 (right)
+      const dist = Math.hypot(dx, dy);
+      const distFactor = Math.max(0.06, Math.min(1.0, 1.0 - (dist / (this.tileSize * 16))));
+      return { pan, distFactor, dist };
+    }
+
+    /**
+     * Render Particle Brass Shell Casings in FPS Mode
+     */
+    drawFPSCasings(ctx) {
+      if (!this.casings || this.casings.length === 0) return;
+      ctx.save();
+      for (let i = 0; i < this.casings.length; i++) {
+        const c = this.casings[i];
+        ctx.save();
+        ctx.translate(c.screenX, c.screenY);
+        ctx.rotate(c.rot);
+
+        // Drop shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(-c.width / 2 + 2, -c.size / 2 + 3, c.width, c.size);
+
+        // Casing Body
+        ctx.fillStyle = c.color;
+        ctx.fillRect(-c.width / 2, -c.size / 2, c.width, c.size);
+
+        // Metallic Rim / Primer Cap
+        ctx.fillStyle = c.capColor || '#ffd700';
+        ctx.fillRect(-c.width / 2, c.size / 2 - 2.5, c.width, 2.5);
+
+        ctx.restore();
+      }
+      // Floating Quick Chat Input Box
+      if (this.isTypingChat) {
+        const cw = Math.min(520, w * 0.88);
+        const ch = 38;
+        const cx = (w - cw) / 2;
+        const cy = h - 140;
+        ctx.fillStyle = 'rgba(4, 18, 8, 0.94)';
+        ctx.fillRect(cx, cy, cw, ch);
+        ctx.strokeStyle = '#00ffaa';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx, cy, cw, ch);
+        ctx.font = 'bold 13px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText(`[T] ЧАТ: ${this.chatInput}_`, cx + 12, cy + 24);
+      }
+
+      // Draw speech bubble over player
+      if (this.playerSpeech && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawSpeechBubble) {
+        const cam = this.getCameraOffset();
+        const sx = (this.cameraMode === 'FPS') ? (w / 2) : (this.player.x - cam.x);
+        const sy = (this.cameraMode === 'FPS') ? (h * 0.38) : (this.player.y - cam.y - 34);
+        SpriteFactory.drawSpeechBubble(ctx, sx, sy, this.playerSpeech.text, 'Вы', 1.0);
+      }
+
+      ctx.restore();
+    }
+
+    /**
+     * Render Quick Melee Combat Boot Kick Animation
+     */
+    drawFPSKick(ctx, w, h) {
+      const p = this.kickProgress || 0;
+      const ease = Math.sin(p * Math.PI); // 0 -> 1 -> 0
+
+      const kickX = w * 0.42 + ease * 40;
+      const kickY = h + 120 - ease * (h * 0.55);
+
+      ctx.save();
+      ctx.translate(kickX, kickY);
+      ctx.rotate(-0.25 + ease * 0.45);
+
+      // Heavy Combat Boot (Liquidator Hazmat Leg)
+      // Murky green trouser leg
+      ctx.fillStyle = '#324233';
+      ctx.beginPath();
+      ctx.moveTo(-35, 120);
+      ctx.lineTo(25, 120);
+      ctx.lineTo(15, -40);
+      ctx.lineTo(-25, -40);
+      ctx.closePath();
+      ctx.fill();
+
+      // Boot shaft (Heavy reinforced black leather)
+      ctx.fillStyle = '#171c19';
+      ctx.fillRect(-26, -55, 48, 55);
+
+      // Metal shin buckle & strap
+      ctx.fillStyle = '#4c5c50';
+      ctx.fillRect(-28, -42, 52, 6);
+      ctx.fillStyle = '#9cb3a0';
+      ctx.fillRect(-6, -44, 12, 10);
+
+      // Boot Foot & Sole
+      ctx.fillStyle = '#111613';
+      ctx.beginPath();
+      ctx.moveTo(-28, 0);
+      ctx.lineTo(45, 0);
+      ctx.lineTo(55, -28); // Toe
+      ctx.lineTo(-28, -28); // Heel
+      ctx.closePath();
+      ctx.fill();
+
+      // Steel Toe Cap
+      ctx.fillStyle = '#677f6f';
+      ctx.beginPath();
+      ctx.arc(42, -14, 15, -Math.PI / 2, Math.PI / 2);
+      ctx.fill();
+
+      // Deep tread sole lugs
+      ctx.fillStyle = '#080c09';
+      for (let lx = -25; lx < 45; lx += 10) {
+        ctx.fillRect(lx, 0, 6, 6);
+      }
+
+      ctx.restore();
+
+      // Motion swoosh trail
+      if (ease > 0.4) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(w * 0.45, h * 0.6, 95, -0.6, 0.4);
+        ctx.stroke();
+      }
+    }
+
+    /**
+     * Interactive Supply Chest Open
+     */
+    openChest(chest) {
+      if (!chest || chest.opened) return;
+      chest.opened = true;
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
+        RadarAudio.playLootPickup();
+      }
+      const l = chest.loot || { talons: 100, ammo: 15, medkits: 1 };
+      this.player.talonsEarned += (l.talons || 0);
+      this.player.xpEarned += 35;
+      if (l.hasKeycard) {
+        this.player.hasKeycard = true;
+        this.spawnFloatingNotice('🔑 В СУНДУКЕ НАЙДЕНА КЛЮЧ-КАРТА ДОСТУПА!', '#00ffaa');
+      } else {
+        this.spawnFloatingNotice(`📦 СУНДУК: +${l.talons} ТАЛОНОВ, +${l.ammo || 0} ПАТРОНОВ`, '#ffd700');
+      }
+    }
+
     finishRaid(won) {
       try {
         this.stop();
@@ -1925,6 +2358,9 @@
       this.screenFlashTimer = 10;
       this.screenShakeTimer = 8;
       this.screenShakeIntensity = Math.min(8, 3 + Math.floor(amount / 8));
+      this.playerDamageVignette = 1.0;
+      // Camera angle pitch twitch (+/- 2 degrees)
+      this.player.angle += (Math.random() - 0.5) * (4 * Math.PI / 180);
 
       if (typeof RadarAudio !== 'undefined') {
         RadarAudio.playPlayerHurt();
@@ -2282,10 +2718,18 @@
 
       const px = this.player.x;
       const py = this.player.y;
-      const pAngle = this.player.angle;
+      const pAngle = this.player.angle + ((this.recoilX || 0) * 0.004);
       const fov = 1.15; // ~66 degrees field of view
       const halfFov = fov / 2;
-      const halfH = h / 2;
+      const halfH = Math.floor(h / 2 - (this.recoilY || 0));
+
+      ctx.save();
+      // Apply Camera Roll on strafing
+      if (Math.abs(this.cameraRoll || 0) > 0.0005) {
+        ctx.translate(w / 2, h / 2);
+        ctx.rotate(this.cameraRoll);
+        ctx.translate(-w / 2, -h / 2);
+      }
 
       // 1. Perspective industrial ceiling and floor
       const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
@@ -2635,6 +3079,22 @@
         });
       }
 
+      // Remote Live Players in 4-Player Raid
+      for (const rId in (this.remotePlayers || {})) {
+        const rp = this.remotePlayers[rId];
+        visibleSprites.push({
+          x: rp.x,
+          y: rp.y,
+          type: 'remote_player',
+          key: 'liquidator',
+          color: '#33d4ff',
+          name: rp.username || 'Ликвидатор',
+          hp: rp.hp || 100,
+          maxHp: rp.maxHp || 100,
+          speech: rp.speech
+        });
+      }
+
       for (const ent of this.entities) {
         if (ent.hp > 0) {
           let mKey = 'black_slime';
@@ -2847,6 +3307,16 @@
 
       // 5. First-Person Weapon Model & Liquidator Hazmat Hands
       this.drawFPSWeapon(ctx, w, h);
+
+      // 6. Particle Brass Shell Casings
+      this.drawFPSCasings(ctx);
+
+      // 7. Quick Melee Combat Boot Kick
+      if (this.isKicking) {
+        this.drawFPSKick(ctx, w, h);
+      }
+
+      ctx.restore(); // Restore Camera Roll transformation
     }
 
     /**
@@ -2940,6 +3410,117 @@
           ctx.arc(w / 2 - 20, h / 2 + 30, 110, -0.8 + p * 1.5, 0.4 + p * 1.5);
           ctx.stroke();
         }
+      } else if (wId.includes('rifle') || wId.includes('ak') || wId.includes('flame') || wId.includes('auto')) {
+        // --- AK-74 / Flamethrower Assault Rig (Dual Hands, Slanted Muzzle Brake & Curved Mag) ---
+        const isFlame = wId.includes('flame') || wId.includes('fire');
+        const reloadDip = this.isReloading ? Math.sin((this.reloadProgress || 0) * Math.PI) * (h * 0.42) : 0;
+        const recoil = this.player.isShooting ? Math.sin((this.player.shootProgress || 0) * Math.PI) * 26 : 0;
+        const recoilRot = this.player.isShooting ? -Math.sin((this.player.shootProgress || 0) * Math.PI) * 0.12 : 0;
+
+        const gunX = w / 2 + 55 + bobX;
+        const gunY = h - 45 + bobY - recoil + reloadDip;
+
+        ctx.save();
+        ctx.translate(gunX, gunY);
+        ctx.rotate(recoilRot);
+
+        // Long barrel & receiver
+        ctx.fillStyle = '#1c241e';
+        ctx.fillRect(-22, -180, 28, 205);
+        ctx.fillStyle = '#2a362e';
+        ctx.fillRect(-17, -210, 18, 45);
+
+        // Slanted Muzzle Brake / Flamethrower Nozzle
+        if (isFlame) {
+          ctx.fillStyle = '#b87333';
+          ctx.fillRect(-24, -225, 32, 18);
+          ctx.fillStyle = '#33aaff';
+          ctx.beginPath();
+          ctx.arc(-8, -230, 4 + Math.sin(Date.now() * 0.02) * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#131b15';
+          ctx.fillRect(-20, -222, 24, 15);
+          ctx.fillStyle = '#445749';
+          ctx.fillRect(-12, -226, 8, 4);
+        }
+
+        // Wood / Polymer Handguard
+        ctx.fillStyle = isFlame ? '#2a3a30' : '#6b3a1d';
+        ctx.fillRect(-24, -130, 32, 55);
+
+        // Curved Magazine / Fuel canister
+        ctx.fillStyle = isFlame ? '#992222' : '#8a4b22';
+        ctx.beginPath();
+        ctx.moveTo(-16, -45);
+        ctx.quadraticCurveTo(-45, -15, -35, 35);
+        ctx.lineTo(-18, 28);
+        ctx.quadraticCurveTo(-28, -10, -10, -45);
+        ctx.closePath();
+        ctx.fill();
+
+        // Left hand gripping handguard forward
+        ctx.fillStyle = '#232a26';
+        ctx.beginPath();
+        ctx.ellipse(-14, -105, 16, 22, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        // Left sleeve
+        ctx.fillStyle = '#324233';
+        ctx.beginPath();
+        ctx.moveTo(-28, -98);
+        ctx.lineTo(-8, -92);
+        ctx.lineTo(-75, 140);
+        ctx.lineTo(-120, 140);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right hand on pistol grip & trigger
+        ctx.fillStyle = '#232a26';
+        ctx.beginPath();
+        ctx.ellipse(6, 18, 18, 24, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+        // Right sleeve
+        ctx.fillStyle = '#324233';
+        ctx.beginPath();
+        ctx.moveTo(-8, 30);
+        ctx.lineTo(24, 24);
+        ctx.lineTo(75, 140);
+        ctx.lineTo(25, 140);
+        ctx.closePath();
+        ctx.fill();
+
+        // Muzzle Flash / Flamethrower Jet
+        if (this.player.isShooting && (this.player.shootProgress || 0) < 0.4) {
+          if (isFlame) {
+            const fGrad = ctx.createRadialGradient(-8, -260, 10, -8, -260, 75);
+            fGrad.addColorStop(0, '#ffffff');
+            fGrad.addColorStop(0.3, '#ffcc00');
+            fGrad.addColorStop(0.7, '#ff4400');
+            fGrad.addColorStop(1, 'rgba(255, 40, 0, 0)');
+            ctx.fillStyle = fGrad;
+            ctx.beginPath();
+            ctx.arc(-8, -260, 75, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = '#fff275';
+            ctx.shadowColor = '#ffaa00';
+            ctx.shadowBlur = 25;
+            ctx.beginPath();
+            ctx.arc(-8, -232, 18, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ff6600';
+            ctx.beginPath();
+            ctx.moveTo(-8, -270);
+            ctx.lineTo(16, -225);
+            ctx.lineTo(-32, -225);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+        }
+
+        ctx.restore();
       } else if (isShotgun) {
         // --- KS-23 Heavy Riot Shotgun (Dual Hands) ---
         const recoil = this.player.isShooting ? Math.sin((this.player.shootProgress || 0) * Math.PI) * 36 : 0;
@@ -2947,8 +3528,9 @@
         const pumpProg = (this.player.isShooting && this.player.shootProgress > 0.45 && this.player.shootProgress < 0.85)
           ? Math.sin((this.player.shootProgress - 0.45) / 0.4 * Math.PI) * 18 : 0;
 
+        const reloadDip = this.isReloading ? Math.sin((this.reloadProgress || 0) * Math.PI) * (h * 0.42) : 0;
         const gunX = w / 2 + 50 + bobX;
-        const gunY = h - 45 + bobY - recoil;
+        const gunY = h - 45 + bobY - recoil + reloadDip;
 
         ctx.save();
         ctx.translate(gunX, gunY);
@@ -3046,8 +3628,9 @@
         const recoil = this.player.isShooting ? Math.sin((this.player.shootProgress || 0) * Math.PI) * 22 : 0;
         const recoilRot = this.player.isShooting ? -Math.sin((this.player.shootProgress || 0) * Math.PI) * 0.18 : 0;
 
+        const reloadDipPistol = this.isReloading ? Math.sin((this.reloadProgress || 0) * Math.PI) * (h * 0.42) : 0;
         const gunX = w / 2 + 60 + bobX;
-        const gunY = h - 45 + bobY - recoil;
+        const gunY = h - 45 + bobY - recoil + reloadDipPistol;
 
         ctx.save();
         ctx.translate(gunX, gunY);
@@ -3259,6 +3842,16 @@
       ctx.save();
       const cx = w / 2;
       const cy = h / 2;
+
+      // 0. Player Damage Red Vignette Reaction
+      if (this.playerDamageVignette > 0.01) {
+        const vGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.45, cx, cy, Math.max(w, h) * 0.82);
+        vGrad.addColorStop(0, 'rgba(255, 0, 0, 0)');
+        vGrad.addColorStop(0.7, `rgba(180, 0, 0, ${(this.playerDamageVignette * 0.45).toFixed(2)})`);
+        vGrad.addColorStop(1, `rgba(220, 10, 10, ${(this.playerDamageVignette * 0.85).toFixed(2)})`);
+        ctx.fillStyle = vGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
 
       // 1. Top-Left Status Panel (РАДАР-ДЕТЕКТОР РУ-4)
       const tlX = 16;

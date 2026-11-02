@@ -5428,6 +5428,91 @@ function checkLifterTrigger(player, sock, loc) {
         broadcastGameState();
     });
 
+    // ===== LIVE 4-PLAYER RAID MATCHMAKING, MOVEMENT & PROXIMITY CHAT =====
+    socket.on('joinLiveRaidMatch', (data) => {
+        let auth = getAuthPlayer();
+        let username = auth ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
+
+        // Find existing room with < 4 players created within 5 minutes
+        let targetRoom = null;
+        for (let rId in globalLiveRaidRooms) {
+            let room = globalLiveRaidRooms[rId];
+            if (Object.keys(room.players).length < 4 && (Date.now() - room.createdAt < 300000)) {
+                targetRoom = rId;
+                break;
+            }
+        }
+        if (!targetRoom) {
+            targetRoom = 'live_raid_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            globalLiveRaidRooms[targetRoom] = {
+                id: targetRoom,
+                createdAt: Date.now(),
+                players: {}
+            };
+        }
+
+        socket.currentLiveRaid = targetRoom;
+        socket.join(targetRoom);
+
+        let roomObj = globalLiveRaidRooms[targetRoom];
+        roomObj.players[socket.id] = {
+            id: socket.id,
+            username: username,
+            x: (data && data.x) || 200,
+            y: (data && data.y) || 200,
+            angle: 0,
+            hp: 100,
+            maxHp: 100
+        };
+
+        socket.emit('liveRaidJoined', {
+            roomId: targetRoom,
+            players: roomObj.players
+        });
+
+        socket.to(targetRoom).emit('raidRemotePlayerJoined', {
+            id: socket.id,
+            username: username,
+            player: roomObj.players[socket.id]
+        });
+    });
+
+    socket.on('raidPlayerMove', (pos) => {
+        if (!socket.currentLiveRaid || !globalLiveRaidRooms[socket.currentLiveRaid]) return;
+        let room = globalLiveRaidRooms[socket.currentLiveRaid];
+        if (room.players[socket.id]) {
+            Object.assign(room.players[socket.id], pos);
+        }
+        socket.to(socket.currentLiveRaid).emit('raidRemotePlayerMoved', {
+            id: socket.id,
+            ...pos
+        });
+    });
+
+    socket.on('raidPlayerChat', (msg) => {
+        if (!socket.currentLiveRaid || !msg || !msg.text) return;
+        let auth = getAuthPlayer();
+        let username = auth ? auth.username : ('Ликвидатор-' + socket.id.substr(0, 4));
+        io.to(socket.currentLiveRaid).emit('raidOtherPlayerChat', {
+            id: socket.id,
+            username: username,
+            text: String(msg.text).slice(0, 70)
+        });
+    });
+
+    socket.on('leaveLiveRaid', () => {
+        if (socket.currentLiveRaid && globalLiveRaidRooms[socket.currentLiveRaid]) {
+            let rId = socket.currentLiveRaid;
+            delete globalLiveRaidRooms[rId].players[socket.id];
+            socket.to(rId).emit('raidRemotePlayerLeft', { id: socket.id });
+            socket.leave(rId);
+            if (Object.keys(globalLiveRaidRooms[rId].players).length === 0) {
+                delete globalLiveRaidRooms[rId];
+            }
+            socket.currentLiveRaid = null;
+        }
+    });
+
     socket.on('disconnect', () => {
         let u = onlinePlayers[socket.id];
         if (u) {
