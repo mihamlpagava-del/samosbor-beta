@@ -2782,109 +2782,6 @@
 
         ctx.restore();
       }
-      // --- NPC DIALOGUE & QUEST OVERLAY MODAL ---
-      if (this.activeDialog && this.activeDialog.npc) {
-        const npc = this.activeDialog.npc;
-        const dw = Math.min(540, w * 0.92);
-        const dh = 190;
-        const dx = (w - dw) / 2;
-        const dy = (h - dh) / 2;
-
-        ctx.fillStyle = 'rgba(4, 18, 9, 0.96)';
-        ctx.fillRect(dx, dy, dw, dh);
-        ctx.strokeStyle = '#00ffaa';
-        ctx.lineWidth = 2.5;
-        ctx.strokeRect(dx, dy, dw, dh);
-
-        // Header bar
-        ctx.fillStyle = 'rgba(0, 255, 170, 0.18)';
-        ctx.fillRect(dx + 2, dy + 2, dw - 4, 26);
-        ctx.font = 'bold 13px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#00ffaa';
-        ctx.fillText(`[ СВЯЗЬ ] ${npc.name} // ${npc.role || 'Ликвидатор'}`, dx + 14, dy + 19);
-
-        // Dialogue speech
-        ctx.font = '12.5px monospace';
-        ctx.fillStyle = '#d0ebd4';
-        const words = npc.dialogue.split(' ');
-        let line = '';
-        let lineY = dy + 52;
-        for (let wi = 0; wi < words.length; wi++) {
-          const testLine = line + words[wi] + ' ';
-          if (ctx.measureText(testLine).width > dw - 28) {
-            ctx.fillText(line, dx + 14, lineY);
-            line = words[wi] + ' ';
-            lineY += 18;
-          } else {
-            line = testLine;
-          }
-        }
-        ctx.fillText(line, dx + 14, lineY);
-
-        // Quest status & button
-        if (npc.quest) {
-          const q = npc.quest;
-          const statusY = dy + 130;
-          ctx.fillStyle = q.completed ? '#00ffaa' : '#ffd700';
-          ctx.font = 'bold 12px "Share Tech Mono", monospace';
-          const progStr = q.targetKills ? `(${q.currentKills || 0}/${q.targetKills})` : (q.requiresKeycard ? (this.player.hasKeycard ? '[ЕСТЬ КАРТА]' : '[ИЩИТЕ КАРТУ]') : '');
-          ctx.fillText(`📜 ${q.title}: ${q.desc || ''} ${progStr}`, dx + 14, statusY);
-
-          // Action prompt button
-          ctx.fillStyle = q.turnedIn ? '#666666' : q.completed ? '#00ffaa' : '#ffd700';
-          ctx.fillText(q.turnedIn ? '✅ ЗАДАНИЕ ЗАВЕРШЕНО' : q.completed ? '[ E ] СДАТЬ ЗАДАНИЕ И ПОЛУЧИТЬ НАГРАДУ!' : '[ E / КЛИК ] ПРИНЯТО К ИСПОЛНЕНИЮ', dx + 14, dy + 162);
-        }
-      }
-
-      // --- ELEVATOR MULTI-FLOOR DESCENT PROMPT ---
-      if (this.isPlayerInElevator && !this.activeDialog) {
-        const ew = Math.min(480, w * 0.90);
-        const eh = 96;
-        const ex = (w - ew) / 2;
-        const ey = h - 210;
-
-        ctx.fillStyle = 'rgba(2, 16, 12, 0.94)';
-        ctx.fillRect(ex, ey, ew, eh);
-        ctx.strokeStyle = '#33d4ff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(ex, ey, ew, eh);
-
-        ctx.font = 'bold 13px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#33d4ff';
-        ctx.fillText(`⚡ ШАХТА ЛИФТА «S» // ЭТАЖ ${this.floorDepth || 1}`, ex + 14, ey + 24);
-
-        ctx.font = '11.5px monospace';
-        ctx.fillStyle = '#00ffaa';
-        ctx.fillText(`[1 / E] СПУСТИТЬСЯ ГЛУБЖЕ НА ЭТАЖ ${(this.floorDepth || 1) + 1} (+100 XP)`, ex + 14, ey + 48);
-
-        ctx.fillStyle = '#ffaa00';
-        ctx.fillText('[2 / ESC] ЭВАКУАЦИЯ В ЖИЛЯЧЕЙКУ (СОХРАНИТЬ ВЕСЬ ХАБАР)', ex + 14, ey + 72);
-      }
-
-      // Floating Quick Chat Input Box
-      if (this.isTypingChat) {
-        const cw = Math.min(520, w * 0.88);
-        const ch = 38;
-        const cx = (w - cw) / 2;
-        const cy = h - 140;
-        ctx.fillStyle = 'rgba(4, 18, 8, 0.94)';
-        ctx.fillRect(cx, cy, cw, ch);
-        ctx.strokeStyle = '#00ffaa';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(cx, cy, cw, ch);
-        ctx.font = 'bold 13px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#00ffaa';
-        ctx.fillText(`[T] ЧАТ: ${this.chatInput}_`, cx + 12, cy + 24);
-      }
-
-      // Draw speech bubble over player
-      if (this.playerSpeech && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawSpeechBubble) {
-        const cam = this.getCameraOffset();
-        const sx = (this.cameraMode === 'FPS') ? (w / 2) : (this.player.x - cam.x);
-        const sy = (this.cameraMode === 'FPS') ? (h * 0.38) : (this.player.y - cam.y - 34);
-        SpriteFactory.drawSpeechBubble(ctx, sx, sy, this.playerSpeech.text, 'Вы', 1.0);
-      }
-
       ctx.restore();
     }
 
@@ -5100,29 +4997,8 @@
         }
       }
 
-      const chX = Math.floor(w / 2);
-      const chY = Math.floor(h / 2);
-      const chColor = isAimingAtEnemy ? '#ff3333' : '#33ff00';
-
-      ctx.save();
-      ctx.strokeStyle = chColor;
-      ctx.fillStyle = chColor;
-      ctx.lineWidth = 1.5;
-
-      // 12x12 px crosshair with 2px gap at center
-      ctx.beginPath();
-      ctx.moveTo(chX - 7, chY);
-      ctx.lineTo(chX - 2, chY);
-      ctx.moveTo(chX + 2, chY);
-      ctx.lineTo(chX + 7, chY);
-      ctx.moveTo(chX, chY - 7);
-      ctx.lineTo(chX, chY - 2);
-      ctx.moveTo(chX, chY + 2);
-      ctx.lineTo(chX, chY + 7);
-      ctx.stroke();
-
-      ctx.fillRect(chX - 0.5, chY - 0.5, 1, 1);
-      ctx.restore();
+      // Synchronize aim state to unified tactical crosshair
+      this.mouse.isOverEnemy = isAimingAtEnemy;
 
       // --- VOLUMETRIC FLASHLIGHT BEAM & DUST PARTICLES ---
       ctx.save();
@@ -5718,6 +5594,137 @@
       }
     }
 
+
+    /**
+     * Active Quest Tracker Banner (Positioned high at top, persists even when HUD is hidden)
+     */
+    drawActiveQuestBanner(ctx, w, h) {
+      // Find active NPC quest on this floor
+      let activeQuest = null;
+      let activeNPC = null;
+      for (const n of (this.npcs || [])) {
+        if (n.quest && !n.quest.turnedIn) {
+          activeQuest = n.quest;
+          activeNPC = n;
+          break;
+        }
+      }
+      if (!activeQuest) return;
+
+      const q = activeQuest;
+      const isDone = q.completed;
+      const progStr = q.targetKills ? `(${q.currentKills || 0}/${q.targetKills})` : (q.requiresKeycard ? (this.player.hasKeycard ? '[КАРТА НАЙДЕНА]' : '[ИЩИТЕ КАРТУ]') : '');
+      const text = isDone ? `🏆 КВЕСТ ВЫПОЛНЕН: ${q.title}! ВЕРНИТЕСЬ К ${activeNPC.name}! [E]` : `📜 КВЕСТ: ${q.title} — ${q.desc || ''} ${progStr}`;
+
+      ctx.save();
+      ctx.font = 'bold 11px "Share Tech Mono", monospace';
+      const textW = ctx.measureText(text).width;
+      const barW = Math.min(w - 32, Math.max(340, textW + 36));
+      const barH = 26;
+      const barX = (w - barW) / 2;
+      const barY = 12; // Raised high at the top!
+
+      // Glowing cyber-frame
+      ctx.fillStyle = isDone ? 'rgba(0, 32, 16, 0.94)' : 'rgba(4, 18, 9, 0.92)';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.strokeStyle = isDone ? '#00ffaa' : '#ffd700';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(barX, barY, barW, barH);
+
+      // Left accent badge
+      ctx.fillStyle = isDone ? '#00ffaa' : '#ffd700';
+      ctx.fillRect(barX + 2, barY + 2, 4, barH - 4);
+
+      // Text
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = isDone ? '#00ffaa' : '#ffd700';
+      ctx.fillText(text, w / 2, barY + barH / 2);
+
+      ctx.restore();
+    }
+
+    /**
+     * NPC Dialogue & Quest Modal (Raised higher up, persists even when HUD is hidden)
+     */
+    drawNPCDialogModal(ctx, w, h) {
+      if (!this.activeDialog || !this.activeDialog.npc) return;
+      const npc = this.activeDialog.npc;
+      const dw = Math.min(560, w * 0.92);
+      const dh = 180;
+      const dx = (w - dw) / 2;
+      const dy = Math.max(42, Math.floor(h * 0.08)); // Positioned just below quest tracker banner
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(4, 18, 9, 0.96)';
+      ctx.fillRect(dx, dy, dw, dh);
+      ctx.strokeStyle = '#00ffaa';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(dx, dy, dw, dh);
+
+      // Header bar
+      ctx.fillStyle = 'rgba(0, 255, 170, 0.18)';
+      ctx.fillRect(dx + 2, dy + 2, dw - 4, 26);
+      ctx.font = 'bold 13px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#00ffaa';
+      ctx.textAlign = 'left';
+      ctx.fillText(`[ СВЯЗЬ ] ${npc.name} // ${npc.role || 'Ликвидатор'}`, dx + 14, dy + 19);
+
+      // Dialogue speech (Word wrapped)
+      ctx.font = '12px monospace';
+      ctx.fillStyle = '#d0ebd4';
+      const words = (npc.dialogue || '').split(' ');
+      let line = '';
+      let lineY = dy + 50;
+      for (let wi = 0; wi < words.length; wi++) {
+        const testLine = line + words[wi] + ' ';
+        if (ctx.measureText(testLine).width > dw - 28) {
+          ctx.fillText(line, dx + 14, lineY);
+          line = words[wi] + ' ';
+          lineY += 17;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, dx + 14, lineY);
+
+      // Quest status & action button
+      if (npc.quest) {
+        const q = npc.quest;
+        const statusY = dy + 128;
+        ctx.fillStyle = q.completed ? '#00ffaa' : '#ffd700';
+        ctx.font = 'bold 12px "Share Tech Mono", monospace';
+        const progStr = q.targetKills ? `(${q.currentKills || 0}/${q.targetKills})` : (q.requiresKeycard ? (this.player.hasKeycard ? '[ЕСТЬ КАРТА]' : '[ИЩИТЕ КАРТУ]') : '');
+        ctx.fillText(`📜 ${q.title}: ${q.desc || ''} ${progStr}`, dx + 14, statusY);
+
+        ctx.fillStyle = q.turnedIn ? '#666666' : q.completed ? '#00ffaa' : '#ffd700';
+        ctx.fillText(q.turnedIn ? '✅ ЗАДАНИЕ ЗАВЕРШЕНО' : q.completed ? '[ E / КЛИК ] СДАТЬ ЗАДАНИЕ И ПОЛУЧИТЬ НАГРАДУ!' : '[ E / КЛИК ] ПРИНЯТО К ИСПОЛНЕНИЮ', dx + 14, dy + 158);
+      }
+
+      ctx.restore();
+    }
+
+    /**
+     * Floating Quick Chat Input Box
+     */
+    drawQuickChat(ctx, w, h) {
+      const cw = Math.min(520, w * 0.88);
+      const ch = 38;
+      const cx = (w - cw) / 2;
+      const cy = h - 140;
+      ctx.save();
+      ctx.fillStyle = 'rgba(4, 18, 8, 0.94)';
+      ctx.fillRect(cx, cy, cw, ch);
+      ctx.strokeStyle = '#00ffaa';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx, cy, cw, ch);
+      ctx.font = 'bold 13px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#00ffaa';
+      ctx.textAlign = 'left';
+      ctx.fillText(`[T] ЧАТ: ${this.chatInput}_`, cx + 12, cy + 24);
+      ctx.restore();
+    }
+
     drawRadarHUD(ctx, w, h) {
       ctx.save();
       const cx = w / 2;
@@ -5733,14 +5740,21 @@
         ctx.fillRect(0, 0, w, h);
       }
 
-      // If HUD is hidden via [I] (Cinematic immersion mode)
+      // --- PERSISTENT QUEST & DIALOG (Visible even when UI is hidden via [I]!) ---
+      this.drawActiveQuestBanner(ctx, w, h);
+      this.drawNPCDialogModal(ctx, w, h);
+      if (this.isTypingChat) {
+        this.drawQuickChat(ctx, w, h);
+      }
+      if (this.playerSpeech && typeof SpriteFactory !== 'undefined' && SpriteFactory.drawSpeechBubble) {
+        const cam = this.getCameraOffset();
+        const sx = (this.cameraMode === 'FPS') ? (w / 2) : (this.player.x - cam.x);
+        const sy = (this.cameraMode === 'FPS') ? (h * 0.38) : (this.player.y - cam.y - 34);
+        SpriteFactory.drawSpeechBubble(ctx, sx, sy, this.playerSpeech.text, 'Вы', 1.0);
+      }
+
+      // If HUD is hidden via [I] (Cinematic immersion mode - Quest banner & dialog remain active!)
       if (this.isHUDHidden) {
-        if (this.cameraMode === 'FPS') {
-          ctx.fillStyle = 'rgba(0, 255, 170, 0.45)';
-          ctx.beginPath();
-          ctx.arc(cx, cy + (this.horizonOffset || 0), 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
         ctx.restore();
         return;
       }
