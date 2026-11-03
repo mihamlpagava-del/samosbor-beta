@@ -29,8 +29,24 @@ class SamosborFXSystem {
       fx,
       worldX,
       worldY,
-      scale
+      scale,
+      isScreenSpace: false
     });
+  }
+
+  // Спавн экранного эффекта (например, quake при выстреле врага или летающий череп {x: 160, y: 120})
+  triggerScreen(effectModule, screenX = 160, screenY = 120, scale = 1.0) {
+    if (typeof pixelFx === 'undefined' || !pixelFx.createFx) return null;
+    const fx = pixelFx.createFx(effectModule, { x: screenX, y: screenY, scale });
+    const item = {
+      fx,
+      screenX,
+      screenY,
+      scale,
+      isScreenSpace: true
+    };
+    this.effects.push(item);
+    return item;
   }
 
   updateAndRender(dt, cameraMode, player, zBuffer, numRays) {
@@ -45,7 +61,11 @@ class SamosborFXSystem {
     for (let i = this.effects.length - 1; i >= 0; i--) {
       const item = this.effects[i];
 
-      if (cameraMode === 'FPS') {
+      if (item.isScreenSpace) {
+        // Прямое позиционирование в буфере кадра (320x180)
+        item.fx.x = Math.floor(item.screenX !== undefined ? item.screenX : (FX_WIDTH / 2));
+        item.fx.y = Math.floor(item.screenY !== undefined ? item.screenY : (FX_HEIGHT / 2));
+      } else if (cameraMode === 'FPS') {
         // Проекция в пространство камеры от первого лица
         const dx = item.worldX - player.x;
         const dy = item.worldY - player.y;
@@ -99,3 +119,4 @@ class SamosborFXSystem {
 if (typeof window !== 'undefined') {
   window.SamosborFXSystem = SamosborFXSystem;
 }
+

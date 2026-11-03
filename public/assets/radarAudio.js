@@ -89,6 +89,36 @@
       osc.stop(t + 0.13);
     }
 
+    /**
+     * Boomer Shooter Hit Confirmation Tick (Warhammer 40K: Boltgun style)
+     */
+    playHitmarkerTick() {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(2200, t);
+      osc.frequency.exponentialRampToValueAtTime(1400, t + 0.04);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2000, t);
+      filter.Q.setValueAtTime(4.0, t);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.65, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(t);
+      osc.stop(t + 0.05);
+    }
+
     playGunshot(type = 'pistol') {
       const ctx = this.ensureContext();
       if (!ctx || this.isMuted) return;
@@ -223,25 +253,76 @@
       osc.stop(t + 0.17);
     }
 
-    playPlayerHurt() {
+    /**
+     * Visceral Player Damage Impact:
+     * Heavy blunt-force trauma thud, ceramic armor crunch, muffled gas mask grunt, and tinnitus ring
+     */
+    playPlayerHurt(heavy = false) {
       const ctx = this.ensureContext();
       if (!ctx || this.isMuted) return;
 
       const t = ctx.currentTime;
-      // Low grunt + static burst
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(95, t);
-      osc.frequency.exponentialRampToValueAtTime(35, t + 0.2);
 
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.7, t);
-      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+      // 1. Heavy Sub-bass Flesh/Armor Thud (160Hz -> 36Hz)
+      const subOsc = ctx.createOscillator();
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(160, t);
+      subOsc.frequency.exponentialRampToValueAtTime(36, t + 0.22);
+      const subGain = ctx.createGain();
+      subGain.gain.setValueAtTime(0.85, t);
+      subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+      subOsc.connect(subGain);
+      subGain.connect(this.masterGain);
+      subOsc.start(t);
+      subOsc.stop(t + 0.25);
 
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      osc.start(t);
-      osc.stop(t + 0.21);
+      // 2. Ballistic Armor / Bone Impact Transient (Resonant noise burst)
+      const noiseLen = 0.08;
+      const noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * noiseLen), ctx.sampleRate);
+      const nData = noiseBuf.getChannelData(0);
+      for (let i = 0; i < nData.length; i++) {
+        nData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.02));
+      }
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = noiseBuf;
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(1400, t);
+      noiseFilter.Q.setValueAtTime(3.5, t);
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.7, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, t + noiseLen);
+      noiseSource.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(this.masterGain);
+      noiseSource.start(t);
+
+      // 3. Muffled Gas Mask Grunt / Breath Intake (Vocal Formant 360Hz -> 140Hz)
+      const gruntOsc = ctx.createOscillator();
+      gruntOsc.type = 'triangle';
+      gruntOsc.frequency.setValueAtTime(340, t + 0.02);
+      gruntOsc.frequency.exponentialRampToValueAtTime(110, t + 0.26);
+      const gruntGain = ctx.createGain();
+      gruntGain.gain.setValueAtTime(0.45, t + 0.02);
+      gruntGain.gain.exponentialRampToValueAtTime(0.001, t + 0.27);
+      gruntOsc.connect(gruntGain);
+      gruntGain.connect(this.masterGain);
+      gruntOsc.start(t + 0.02);
+      gruntOsc.stop(t + 0.28);
+
+      // 4. Critical Damage Tinnitus Ring on heavy hits
+      if (heavy) {
+        const tinOsc = ctx.createOscillator();
+        tinOsc.type = 'sine';
+        tinOsc.frequency.setValueAtTime(3450, t + 0.05);
+        const tinGain = ctx.createGain();
+        tinGain.gain.setValueAtTime(0.18, t + 0.05);
+        tinGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.75);
+        tinOsc.connect(tinGain);
+        tinGain.connect(this.masterGain);
+        tinOsc.start(t + 0.05);
+        tinOsc.stop(t + 0.76);
+      }
     }
 
     playAcidSpit() {
@@ -304,24 +385,252 @@
       osc.stop(t + 0.82);
     }
 
+    /**
+     * Soviet Military AI-2 Medkit / Auto-injector Audio Sequence:
+     * 1. Orange plastic case latch click
+     * 2. High-pressure pneumatic syringe trigger
+     * 3. Pressurized medicinal aerosol gas hiss
+     * 4. Resonant biosensor vital-sign chimes
+     * 5. Stabilized respirator exhale
+     */
     playHeal() {
       const ctx = this.ensureContext();
       if (!ctx || this.isMuted) return;
 
       const t = ctx.currentTime;
-      // Dual ascending chime + hiss
-      [330, 495, 660, 880].forEach((freq, idx) => {
+
+      // 1. Mechanical Pouch / Case Latch Snap (t)
+      const snapOsc = ctx.createOscillator();
+      snapOsc.type = 'triangle';
+      snapOsc.frequency.setValueAtTime(2200, t);
+      snapOsc.frequency.exponentialRampToValueAtTime(320, t + 0.035);
+      const snapGain = ctx.createGain();
+      snapGain.gain.setValueAtTime(0.5, t);
+      snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      snapOsc.connect(snapGain);
+      snapGain.connect(this.masterGain);
+      snapOsc.start(t);
+      snapOsc.stop(t + 0.045);
+
+      // 2. Pneumatic Auto-injector Spring Click (t + 0.06)
+      const clickOsc = ctx.createOscillator();
+      clickOsc.type = 'sine';
+      clickOsc.frequency.setValueAtTime(3100, t + 0.06);
+      clickOsc.frequency.exponentialRampToValueAtTime(450, t + 0.11);
+      const clickGain = ctx.createGain();
+      clickGain.gain.setValueAtTime(0.65, t + 0.06);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      clickOsc.connect(clickGain);
+      clickGain.connect(this.masterGain);
+      clickOsc.start(t + 0.06);
+      clickOsc.stop(t + 0.13);
+
+      // 3. Pressurized Medicinal Gas Hiss (t + 0.10)
+      const hissLen = 0.42;
+      const hissBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * hissLen), ctx.sampleRate);
+      const hData = hissBuf.getChannelData(0);
+      for (let i = 0; i < hData.length; i++) {
+        hData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.18));
+      }
+      const hissSource = ctx.createBufferSource();
+      hissSource.buffer = hissBuf;
+      const hissFilter = ctx.createBiquadFilter();
+      hissFilter.type = 'bandpass';
+      hissFilter.frequency.setValueAtTime(2600, t + 0.1);
+      hissFilter.frequency.exponentialRampToValueAtTime(800, t + 0.1 + hissLen);
+      hissFilter.Q.setValueAtTime(2.2, t + 0.1);
+      const hissGain = ctx.createGain();
+      hissGain.gain.setValueAtTime(0.42, t + 0.1);
+      hissGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1 + hissLen);
+      hissSource.connect(hissFilter);
+      hissFilter.connect(hissGain);
+      hissGain.connect(this.masterGain);
+      hissSource.start(t + 0.1);
+
+      // 4. Biosensor Harmonic Recovery Chimes (C5, E5, G5, C6) (t + 0.22)
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+        const chimeStart = t + 0.22 + idx * 0.065;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, t + idx * 0.06);
-        gain.gain.setValueAtTime(0.2, t + idx * 0.06);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.06 + 0.22);
+        osc.frequency.setValueAtTime(freq, chimeStart);
+        gain.gain.setValueAtTime(0.25, chimeStart);
+        gain.gain.exponentialRampToValueAtTime(0.0005, chimeStart + 0.28);
         osc.connect(gain);
         gain.connect(this.masterGain);
-        osc.start(t + idx * 0.06);
-        osc.stop(t + idx * 0.06 + 0.23);
+        osc.start(chimeStart);
+        osc.stop(chimeStart + 0.29);
       });
+    }
+
+    playMedkit() {
+      this.playHeal();
+    }
+
+    /**
+     * Supersonic bullet near-miss whiz & crack
+     */
+    playBulletWhiz(pan = 0) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      const dest = this.createSpatialNode(pan, 0.55);
+      if (!dest) return;
+
+      // Doppler sweep 2800Hz -> 520Hz
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(2800, t);
+      osc.frequency.exponentialRampToValueAtTime(520, t + 0.11);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.01, t);
+      gain.gain.linearRampToValueAtTime(0.55, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t);
+      osc.stop(t + 0.13);
+    }
+
+    /**
+     * Metallic deflection ping when armor deflects a bullet
+     */
+    playArmorDeflect(pan = 0) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      const dest = this.createSpatialNode(pan, 0.6);
+      if (!dest) return;
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1750, t);
+      osc.frequency.exponentialRampToValueAtTime(980, t + 0.18);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.65, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t);
+      osc.stop(t + 0.21);
+    }
+
+    /**
+     * Visceral binaural heartbeat when health is critical (HP < 30%)
+     */
+    playLowHealthHeartbeat() {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      // Double thump: lub (t) - DUB (t + 0.11)
+      [0, 0.11].forEach((delay, idx) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        const startFreq = idx === 0 ? 68 : 82;
+        osc.frequency.setValueAtTime(startFreq, t + delay);
+        osc.frequency.exponentialRampToValueAtTime(34, t + delay + 0.12);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(idx === 0 ? 0.65 : 0.85, t + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.14);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(t + delay);
+        osc.stop(t + delay + 0.15);
+      });
+    }
+
+    /**
+     * Screech of anomalous Flying Skull Boss
+     */
+    playBossScreech() {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc2.type = 'sawtooth';
+
+      osc1.frequency.setValueAtTime(650, t);
+      osc1.frequency.linearRampToValueAtTime(1450, t + 0.2);
+      osc1.frequency.exponentialRampToValueAtTime(380, t + 0.65);
+
+      osc2.frequency.setValueAtTime(658, t); // Detuned for ghastly chorusing
+      osc2.frequency.linearRampToValueAtTime(1468, t + 0.2);
+      osc2.frequency.exponentialRampToValueAtTime(372, t + 0.65);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.68);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc1.start(t);
+      osc2.start(t);
+      osc1.stop(t + 0.7);
+      osc2.stop(t + 0.7);
+    }
+
+    /**
+     * CRT TV Switch ON / OFF sound (Cathode ray tube magnetic discharge, whine & pop)
+     */
+    playCrtSwitch(turnOn = false) {
+      const ctx = this.ensureContext();
+      if (!ctx || this.isMuted) return;
+
+      const t = ctx.currentTime;
+      if (turnOn) {
+        // High voltage power-on whine: 400Hz -> 15734Hz (NTSC line frequency) + degauss thud
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, t);
+        osc.frequency.exponentialRampToValueAtTime(7800, t + 0.28);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.33);
+      } else {
+        // Collapse pop & dying discharge
+        const popOsc = ctx.createOscillator();
+        popOsc.type = 'triangle';
+        popOsc.frequency.setValueAtTime(180, t);
+        popOsc.frequency.exponentialRampToValueAtTime(30, t + 0.16);
+        const popGain = ctx.createGain();
+        popGain.gain.setValueAtTime(0.6, t);
+        popGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        popOsc.connect(popGain);
+        popGain.connect(this.masterGain);
+        popOsc.start(t);
+        popOsc.stop(t + 0.2);
+
+        // Dying static click
+        const clickOsc = ctx.createOscillator();
+        clickOsc.type = 'sine';
+        clickOsc.frequency.setValueAtTime(2400, t + 0.12);
+        clickOsc.frequency.exponentialRampToValueAtTime(120, t + 0.24);
+        const clickGain = ctx.createGain();
+        clickGain.gain.setValueAtTime(0.3, t + 0.12);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        clickOsc.connect(clickGain);
+        clickGain.connect(this.masterGain);
+        clickOsc.start(t + 0.12);
+        clickOsc.stop(t + 0.26);
+      }
     }
 
     playBuzzer() {

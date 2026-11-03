@@ -19,6 +19,14 @@
 (function (global) {
   'use strict';
 
+  // 4x4 Bayer Dithering Matrix for Warhammer 40K: Boltgun Boomer Shooter Style
+  const BAYER_4X4 = [
+    [ 0,  8,  2, 10],
+    [12,  4, 14,  6],
+    [ 3, 11,  1,  9],
+    [15,  7, 13,  5]
+  ];
+
   class RadarRoguelikeEngine {
     constructor() {
       this.canvas = null;
@@ -26,6 +34,19 @@
       this.isRunning = false;
       this.tick = 0;
       this.animFrameId = null;
+
+      // Boltgun Mode (Key '7') — Retro Boomer Shooter Shader & Pixel Shading
+      this.isBoltgunMode = false;
+      try {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('samosbor_boltgun_mode') === 'true') {
+          this.isBoltgunMode = true;
+        }
+      } catch(e) {}
+      this.hitmarkerTimer = 0;
+      this.centerToast = null;
+      this.flyingSkullBossSpawned = false;
+      this.braziers = [];
+      this.laserGrids = [];
 
       // Radar & Time Limits
       this.radarAngle = 0;
@@ -323,6 +344,13 @@
         if (!this.isTouchControlsActive) {
           try { this.canvas.requestPointerLock(); } catch(err){}
         }
+        if (this.fxSystem && typeof pixelFx !== 'undefined') {
+          const onMod = pixelFx.fx.crtOn || pixelFx.fx['transitions/crt-on'];
+          if (onMod) this.fxSystem.triggerScreen(onMod, 160, 90, 1.0);
+        }
+        if (typeof RadarAudio !== 'undefined' && RadarAudio.playCrtSwitch) {
+          RadarAudio.playCrtSwitch(true);
+        }
         this.spawnFloatingNotice('📷 КАМЕРА: [FPS 3D]', '#00ffaa');
       } else {
         this.cameraMode = 'TDS';
@@ -330,6 +358,88 @@
           try { document.exitPointerLock(); } catch(err){}
         }
         this.spawnFloatingNotice('📷 КАМЕРА: [TDS 2D]', '#00ffaa');
+      }
+    }
+
+    showCenterToast(text, color = '#ffcc00') {
+      this.centerToast = {
+        text,
+        color,
+        timer: 100
+      };
+      this.spawnFloatingNotice(text, color);
+    }
+
+    toggleBoltgunMode() {
+      this.isBoltgunMode = !this.isBoltgunMode;
+      try { localStorage.setItem('samosbor_boltgun_mode', this.isBoltgunMode); } catch(err){}
+      this.showCenterToast(this.isBoltgunMode ? "⚡ РЕЖИМ: BOLTGUN (40K)" : "📟 РЕЖИМ: ТЕРМИНАЛ САМОСБОРА");
+      this.updateRenderPipeline();
+    }
+
+    updateRenderPipeline() {
+      if (this.isBoltgunMode) {
+        if (typeof AsciiRenderer !== 'undefined') {
+          AsciiRenderer.enabled = false;
+        }
+      } else {
+        if (typeof AsciiRenderer !== 'undefined') {
+          AsciiRenderer.enabled = true;
+        }
+      }
+      if (typeof updateAllBoltgunButtons === 'function') {
+        updateAllBoltgunButtons(this.isBoltgunMode);
+      }
+    }
+
+    triggerHitmarker() {
+      this.hitmarkerTimer = 5; // ~80ms at 60fps
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playHitmarkerTick) {
+        RadarAudio.playHitmarkerTick();
+      }
+    }
+
+    spawnFlyingSkullBoss() {
+      if (this.flyingSkullBossSpawned) return;
+      this.flyingSkullBossSpawned = true;
+      const bX = this.player.x + 96;
+      const bY = this.player.y + 96;
+      this.entities.push({
+        x: bX,
+        y: bY,
+        type: 'boss_flying_skull',
+        name: '💀 ПАРИРУЮЩИЙ ЧЕРЕП БЕЗДНЫ',
+        hp: 350,
+        maxHp: 350,
+        dmg: 28,
+        cost: 15,
+        radius: 24,
+        color: '#ff2255',
+        speed: 1.8
+      });
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playBossScreech) {
+        RadarAudio.playBossScreech();
+      }
+      if (this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.flyingSkull) {
+        this.fxSystem.trigger(pixelFx.fx.flyingSkull, bX, bY);
+      }
+      this.spawnFloatingNotice('⚠️ АНОМАЛИЯ: ЛЕТАЮЩИЙ ЧЕРЕП В СЕКТОРЕ!', '#ff0055');
+    }
+
+    triggerEnemyShootQuake(sourceX, sourceY) {
+      if (this.fxSystem && typeof pixelFx !== 'undefined') {
+        const quakeMod = pixelFx.fx.quake || pixelFx.fx['nature/quake'];
+        if (quakeMod) {
+          this.fxSystem.triggerScreen(quakeMod, 160, 120, 1.3);
+        }
+      }
+      this.screenShakeTimer = Math.max(this.screenShakeTimer || 0, 8);
+      this.screenShakeIntensity = 4;
+      if (typeof RadarAudio !== 'undefined' && RadarAudio.playBulletWhiz) {
+        const pAngle = this.player.angle;
+        const relAngle = Math.atan2(sourceY - this.player.y, sourceX - this.player.x) - pAngle;
+        const pan = Math.max(-1, Math.min(1, Math.sin(relAngle)));
+        RadarAudio.playBulletWhiz(pan);
       }
     }
 
@@ -356,7 +466,16 @@
       this.player.belt.medkits--;
       const healAmount = 45;
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmount);
-      if (typeof RadarAudio !== 'undefined') RadarAudio.playHeal();
+      if (typeof RadarAudio !== 'undefined') {
+        if (RadarAudio.playMedkit) RadarAudio.playMedkit();
+        else if (RadarAudio.playHeal) RadarAudio.playHeal();
+      }
+      if (this.fxSystem && typeof pixelFx !== 'undefined') {
+        const healMod = pixelFx.fx.healAoe || pixelFx.fx['holy/heal-aoe'];
+        if (healMod) {
+          this.fxSystem.triggerScreen(healMod, 160, 120, 1.4);
+        }
+      }
       this.spawnFloatingNotice(`+${healAmount} HP [АПТЕЧКА С ПОЯСА]`, '#00ff66');
 
       for (let i = 0; i < 8; i++) {
@@ -417,7 +536,14 @@
       this.player.talonsEarned += 30;
       this.player.xpEarned += 45;
 
-      if (typeof RadarAudio !== 'undefined') RadarAudio.playHeal();
+      if (typeof RadarAudio !== 'undefined') {
+        if (RadarAudio.playMedkit) RadarAudio.playMedkit();
+        else if (RadarAudio.playHeal) RadarAudio.playHeal();
+      }
+      if (this.fxSystem && typeof pixelFx !== 'undefined') {
+        const healMod = pixelFx.fx.healAoe || pixelFx.fx['holy/heal-aoe'];
+        if (healMod) this.fxSystem.trigger(healMod, npc.x, npc.y, 1.4);
+      }
       this.spawnFloatingNotice(`💚 БОЕЦ СПАСЕН! ТЕПЕРЬ ОН ПРИКРЫВАЕТ ВАС! (+45 XP, +30 ТАЛОНОВ)`, '#00ff66');
 
       for (let i = 0; i < 12; i++) {
@@ -455,6 +581,21 @@
       this.wallNotes = this.mapData.wallNotes || [];
       this.electricTraps = this.mapData.electricTraps || [];
       this.fleshVents = this.mapData.fleshVents || [];
+      this.braziers = [];
+      this.laserGrids = [];
+      this.flyingSkullBossSpawned = false;
+      if (this.mapData.rooms) {
+        for (let ri = 0; ri < this.mapData.rooms.length; ri++) {
+          const rm = this.mapData.rooms[ri];
+          const rx = (rm.x + Math.floor(rm.w / 2)) * this.tileSize + 16;
+          const ry = (rm.y + Math.floor(rm.h / 2)) * this.tileSize + 16;
+          if (ri % 2 === 0) {
+            this.braziers.push({ x: rx, y: ry });
+          } else {
+            this.laserGrids.push({ x: rx, y: ry, active: true });
+          }
+        }
+      }
       this.activeTapeSubtitle = null;
       this.activeWallNoteCard = null;
       this.floorMultiplier = (this.currentRaidFloor === 2 ? 1.5 : (this.currentRaidFloor === 3 ? 2.0 : (this.currentRaidFloor >= 4 ? 3.0 : 1.0)));
@@ -673,6 +814,9 @@
         } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
           e.preventDefault();
           if (typeof toggleRaidSfx === 'function') toggleRaidSfx();
+        } else if (e.code === 'Digit7' || e.code === 'Numpad7' || e.key === '7') {
+          e.preventDefault();
+          this.toggleBoltgunMode();
         } else if (e.code === 'KeyQ') {
           this.useBeltMedkit();
         }
@@ -873,6 +1017,11 @@
                   if (typeof toggleRaidSfx === 'function') toggleRaidSfx();
                   return;
                 }
+                // Click on [7] Boltgun Mode row (Row 9)
+                if (clickY >= sbY + 220 && clickY <= sbY + 248) {
+                  this.toggleBoltgunMode();
+                  return;
+                }
               }
             }
 
@@ -1015,6 +1164,7 @@
               e.hp -= weapon.dmg || 28;
               e.damageFlashTimer = 10;
               hitAny = true;
+              this.triggerHitmarker();
 
               // Knockback
               e.x += Math.cos(angToE) * 16;
@@ -1047,6 +1197,7 @@
                 const meleeDmg = weapon.dmg || 35;
                 rp.hp = Math.max(0, (rp.hp || 100) - meleeDmg);
                 rp.damageFlashTimer = 10;
+                this.triggerHitmarker();
                 this.spawnHitParticles(rp.renderX, rp.renderY, '#ff3b30', 10);
                 this.spawnFloatingNotice(`💥 УДАР: -${meleeDmg} HP [${rp.name || 'Боец'}]`, '#ff3366');
                 if (typeof RadarAudio !== 'undefined') RadarAudio.playMeleeHit();
@@ -1187,6 +1338,11 @@
             r: 1.5 + Math.random() * 2.5
           }))
         });
+
+        // PixelFX: Sizzling toxic acid puddle left on floor after killing slime
+        if (isSlimeDecal && this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.toxicPuddle) {
+          this.fxSystem.trigger(pixelFx.fx.toxicPuddle, monster.x, monster.y);
+        }
         if (this.decals.length > 50) this.decals.shift();
 
         // 35% chance to drop Medical Kit or Ammo Box
@@ -1904,6 +2060,46 @@
       // 9. Update Particles
       this.updateParticles();
 
+      if (this.hitmarkerTimer > 0) this.hitmarkerTimer--;
+
+      // Low HP Heartbeat sound
+      if (this.player.hp > 0 && this.player.hp < this.player.maxHp * 0.3) {
+        if (!this.lastHeartbeatTime || Date.now() - this.lastHeartbeatTime > 1200) {
+          this.lastHeartbeatTime = Date.now();
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playLowHealthHeartbeat) {
+            RadarAudio.playLowHealthHeartbeat();
+          }
+        }
+      }
+
+      // Check high-voltage laser grid traps
+      for (const lg of (this.laserGrids || [])) {
+        if (lg.active && Math.hypot(this.player.x - lg.x, this.player.y - lg.y) < 22) {
+          this.damagePlayer(18, 'Лазерная решётка');
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playElectricArc) {
+            RadarAudio.playElectricArc();
+          }
+          if (this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.parry) {
+            this.fxSystem.trigger(pixelFx.fx.parry, this.player.x, this.player.y);
+          }
+        }
+      }
+
+      // Check flesh vents (damage + poison cloud)
+      for (const vent of (this.fleshVents || [])) {
+        if (vent.dormantTimer <= 0 && Math.hypot(this.player.x - vent.x, this.player.y - vent.y) < 20) {
+          this.damagePlayer(8, 'Токсичный кокон');
+          if (this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.poisonCloud) {
+            this.fxSystem.triggerScreen(pixelFx.fx.poisonCloud, 160, 130);
+          }
+        }
+      }
+
+      // Flying Skull Boss random encounter
+      if (!this.flyingSkullBossSpawned && this.currentRaidFloor >= 1 && this.levelTimeLeft < 220 && Math.random() < 0.002) {
+        this.spawnFlyingSkullBoss();
+      }
+
       // 10. Check Player Death
       if (this.player.hp <= 0 && !this.player.isDead) {
         this.player.isDead = true;
@@ -2554,7 +2750,13 @@
       if (this.isEvacuating) return;
       this.isEvacuating = true;
       this.isCollapsing = true;
-      if (typeof RadarAudio !== 'undefined') RadarAudio.playLootPickup();
+      if (this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.crtOff) {
+        this.fxSystem.triggerScreen(pixelFx.fx.crtOff, 160, 90);
+      }
+      if (typeof RadarAudio !== 'undefined') {
+        RadarAudio.playLootPickup();
+        if (RadarAudio.playCrtSwitch) RadarAudio.playCrtSwitch(false);
+      }
       this.spawnFloatingNotice('🏆 ЭВАКУАЦИЯ УСПЕШНА! ВЫХОД В ЖИЛЯЧЕЙКУ...', '#ffd700');
       setTimeout(() => this.finishRaid(true), 1100);
     }
@@ -2886,6 +3088,7 @@
             hitTarget = true;
             e.hp -= 15;
             e.damageFlashTimer = 10;
+            this.triggerHitmarker();
             e.flinchX = Math.cos(angToE) * 14;
             e.flinchY = Math.sin(angToE) * 14;
 
@@ -3058,6 +3261,9 @@
       }
 
       chest.opened = true;
+      if (this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.chestOpen) {
+        this.fxSystem.triggerScreen(pixelFx.fx.chestOpen, 160, 120);
+      }
       if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
         RadarAudio.playLootPickup();
       }
@@ -3783,7 +3989,7 @@
       this.player.angle += (Math.random() - 0.5) * (4 * Math.PI / 180);
 
       if (typeof RadarAudio !== 'undefined') {
-        RadarAudio.playPlayerHurt();
+        if (RadarAudio.playPlayerHurt) RadarAudio.playPlayerHurt(actualDmg > 20);
       }
 
       for (let i = 0; i < 7; i++) {
@@ -3802,7 +4008,13 @@
         this.player.isDead = true;
         this.player.deathTick = 0;
         this.isCollapsing = false;
-        if (typeof RadarAudio !== 'undefined') RadarAudio.playPlayerHurt();
+        if (this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.crtOff) {
+          this.fxSystem.triggerScreen(pixelFx.fx.crtOff, 160, 90);
+        }
+        if (typeof RadarAudio !== 'undefined') {
+          if (RadarAudio.playPlayerHurt) RadarAudio.playPlayerHurt(true);
+          if (RadarAudio.playCrtSwitch) RadarAudio.playCrtSwitch(false);
+        }
         this.showDeathPrompt();
       }
     }
@@ -3855,6 +4067,14 @@
         }
 
         if (this.isTileSolid(p.x, p.y, 4) || p.life <= 0) {
+          if (this.isTileSolid(p.x, p.y, 4)) {
+            if (this.fxSystem && typeof pixelFx !== 'undefined' && pixelFx.fx && pixelFx.fx.parry) {
+              this.fxSystem.trigger(pixelFx.fx.parry, p.x, p.y);
+            }
+            if (typeof RadarAudio !== 'undefined' && RadarAudio.playArmorDeflect) {
+              RadarAudio.playArmorDeflect();
+            }
+          }
           this.spawnHitParticles(p.x, p.y, p.color || '#1fe044', 4);
           this.projectiles.splice(i, 1);
           continue;
@@ -3872,6 +4092,7 @@
                 const dmg = p.damage || 30;
                 rp.hp = Math.max(0, (rp.hp || 100) - dmg);
                 rp.damageFlashTimer = 10;
+                this.triggerHitmarker();
                 this.spawnHitParticles(p.x, p.y, '#ff3b30', 8);
                 this.spawnFloatingNotice(`💥 ПОПАДАНИЕ: -${dmg} HP [${rp.name || 'Боец'}]`, '#ff3366');
                 if (typeof RadarAudio !== 'undefined') RadarAudio.playMonsterHurt();
@@ -3900,6 +4121,7 @@
               if (Math.hypot(p.x - e.x, p.y - e.y) < e.radius + 6) {
                 e.hp -= p.damage;
                 e.damageFlashTimer = 8;
+                this.triggerHitmarker();
                 this.spawnHitParticles(p.x, p.y, '#ff3b30', 6);
                 if (typeof RadarAudio !== 'undefined') RadarAudio.playMonsterHurt();
                 hit = true;
@@ -3933,6 +4155,26 @@
         }
       }
 
+      // Chunky Gibs in Warhammer 40K: Boltgun Style (3x3 - 4x4 blood & meat squares with gravity)
+      if (this.isBoltgunMode && (color === '#ff3b30' || color === '#ff3333' || color === '#880066')) {
+        const gibColors = ['#990011', '#bb1122', '#660008', '#dd2233', '#ddccbb'];
+        for (let g = 0; g < count * 2; g++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = Math.random() * 4.2 + 1.2;
+          this.particles.push({
+            x,
+            y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 2.8,
+            gravity: 0.35,
+            color: gibColors[Math.floor(Math.random() * gibColors.length)],
+            alpha: 1.0,
+            sz: 3.5,
+            isGib: true
+          });
+        }
+      }
+
       for (let i = 0; i < count; i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = Math.random() * 3 + 1;
@@ -3951,9 +4193,12 @@
     updateParticles() {
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const pt = this.particles[i];
+        if (pt.gravity) {
+          pt.vy = (pt.vy || 0) + pt.gravity;
+        }
         pt.x += pt.vx || 0;
         pt.y += pt.vy || 0;
-        pt.alpha -= pt.isText ? 0.02 : 0.04;
+        pt.alpha -= pt.isText ? 0.02 : (pt.isGib ? 0.025 : 0.04);
         if (pt.alpha <= 0) {
           this.particles.splice(i, 1);
         }
@@ -3979,7 +4224,7 @@
       let worldCtx = this.ctx;
       let offscreenCanvas = null;
 
-      if (typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+      if (!this.isBoltgunMode && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
         const off = AsciiRenderer.getOffscreen(w, h);
         worldCtx = off.ctx;
         offscreenCanvas = off.canvas;
@@ -4225,7 +4470,7 @@
       }
 
       // 12. Full-Color Swaggerfall (ANSI Text-Mode) Shader Post-Process!
-      if (offscreenCanvas && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+      if (!this.isBoltgunMode && offscreenCanvas && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
         AsciiRenderer.render(offscreenCanvas, this.ctx, w, h);
       }
 
@@ -4260,7 +4505,7 @@
       if (typeof SpriteFactory !== 'undefined' && SpriteFactory.drawCrosshair) {
         const crosshairX = (this.cameraMode === 'FPS') ? (w / 2) : this.mouse.x;
         const crosshairY = (this.cameraMode === 'FPS') ? (h / 2) : this.mouse.y;
-        SpriteFactory.drawCrosshair(this.ctx, crosshairX, crosshairY, this.tick, this.mouse.isOverEnemy);
+        SpriteFactory.drawCrosshair(this.ctx, crosshairX, crosshairY, this.tick, this.mouse.isOverEnemy, this.hitmarkerTimer || 0);
       }
 
       // 14. Death / Wounded Screen Banner
@@ -4339,6 +4584,10 @@
       const halfH = Math.floor(h / 2 - (this.recoilY || 0) + (this.horizonOffset || 0));
 
       ctx.save();
+      if (this.isBoltgunMode) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.filter = 'contrast(1.25) saturate(1.3)';
+      }
       // Apply Camera Roll on strafing
       if (Math.abs(this.cameraRoll || 0) > 0.0005) {
         ctx.translate(w / 2, h / 2);
@@ -4346,51 +4595,98 @@
         ctx.translate(-w / 2, -h / 2);
       }
 
-      // 1. High-Performance Hardware-Accelerated Ceiling & Floor (Zero-allocation 60+ FPS)
-      const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
-      ceilGrad.addColorStop(0, '#040d07');
-      ceilGrad.addColorStop(0.35, '#08170e');
-      ceilGrad.addColorStop(0.85, '#030805');
-      ceilGrad.addColorStop(1, '#010402');
-      ctx.fillStyle = ceilGrad;
-      ctx.fillRect(0, 0, w, halfH);
+      // 1. High-Performance Hardware-Accelerated Ceiling & Floor
+      if (this.isBoltgunMode) {
+        // Full RGB Boomer Shooter Industrial Palette
+        const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
+        ceilGrad.addColorStop(0, '#101214');
+        ceilGrad.addColorStop(0.35, '#1e2228');
+        ceilGrad.addColorStop(0.85, '#0e1013');
+        ceilGrad.addColorStop(1, '#060708');
+        ctx.fillStyle = ceilGrad;
+        ctx.fillRect(0, 0, w, halfH);
 
-      const floorGrad = ctx.createLinearGradient(0, halfH, 0, h);
-      floorGrad.addColorStop(0, '#010402');
-      floorGrad.addColorStop(0.12, '#06130a');
-      floorGrad.addColorStop(0.55, '#122618');
-      floorGrad.addColorStop(0.85, '#193822');
-      floorGrad.addColorStop(1, '#21472b');
-      ctx.fillStyle = floorGrad;
-      ctx.fillRect(0, halfH, w, h - halfH);
+        const floorGrad = ctx.createLinearGradient(0, halfH, 0, h);
+        floorGrad.addColorStop(0, '#0a0a0b');
+        floorGrad.addColorStop(0.12, '#1a1816');
+        floorGrad.addColorStop(0.55, '#2e2723');
+        floorGrad.addColorStop(0.85, '#3b322c');
+        floorGrad.addColorStop(1, '#483c34');
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, halfH, w, h - halfH);
 
-      // Fast vector perspective concrete seams (2 draw calls total)
-      ctx.strokeStyle = 'rgba(0, 255, 120, 0.055)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let row = 1; row <= 12; row++) {
-        const t = row / 12;
-        const py = halfH + Math.pow(t, 2.0) * (h - halfH);
-        ctx.moveTo(0, py);
-        ctx.lineTo(w, py);
-      }
-      for (let col = -4; col <= 4; col++) {
-        const bx = w / 2 + col * (w * 0.16);
-        ctx.moveTo(w / 2, halfH);
-        ctx.lineTo(bx, h);
-      }
-      ctx.stroke();
+        // Industrial rust-orange perspective grid seams
+        ctx.strokeStyle = 'rgba(255, 120, 20, 0.08)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let row = 1; row <= 12; row++) {
+          const t = row / 12;
+          const py = halfH + Math.pow(t, 2.0) * (h - halfH);
+          ctx.moveTo(0, py);
+          ctx.lineTo(w, py);
+        }
+        for (let col = -4; col <= 4; col++) {
+          const bx = w / 2 + col * (w * 0.16);
+          ctx.moveTo(w / 2, halfH);
+          ctx.lineTo(bx, h);
+        }
+        ctx.stroke();
 
-      // Fast vector perspective ceiling cable trays (1 draw call)
-      ctx.strokeStyle = 'rgba(0, 180, 80, 0.035)';
-      ctx.beginPath();
-      for (let row = 1; row <= 8; row++) {
-        const t = row / 8;
-        const cy = halfH - Math.pow(t, 2.0) * halfH;
-        ctx.moveTo(0, cy);
-        ctx.lineTo(w, cy);
+        ctx.strokeStyle = 'rgba(255, 80, 20, 0.05)';
+        ctx.beginPath();
+        for (let row = 1; row <= 8; row++) {
+          const t = row / 8;
+          const cy = halfH - Math.pow(t, 2.0) * halfH;
+          ctx.moveTo(0, cy);
+          ctx.lineTo(w, cy);
+        }
+        ctx.stroke();
+      } else {
+        const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
+        ceilGrad.addColorStop(0, '#040d07');
+        ceilGrad.addColorStop(0.35, '#08170e');
+        ceilGrad.addColorStop(0.85, '#030805');
+        ceilGrad.addColorStop(1, '#010402');
+        ctx.fillStyle = ceilGrad;
+        ctx.fillRect(0, 0, w, halfH);
+
+        const floorGrad = ctx.createLinearGradient(0, halfH, 0, h);
+        floorGrad.addColorStop(0, '#010402');
+        floorGrad.addColorStop(0.12, '#06130a');
+        floorGrad.addColorStop(0.55, '#122618');
+        floorGrad.addColorStop(0.85, '#193822');
+        floorGrad.addColorStop(1, '#21472b');
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, halfH, w, h - halfH);
+
+        // Fast vector perspective concrete seams (2 draw calls total)
+        ctx.strokeStyle = 'rgba(0, 255, 120, 0.055)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let row = 1; row <= 12; row++) {
+          const t = row / 12;
+          const py = halfH + Math.pow(t, 2.0) * (h - halfH);
+          ctx.moveTo(0, py);
+          ctx.lineTo(w, py);
+        }
+        for (let col = -4; col <= 4; col++) {
+          const bx = w / 2 + col * (w * 0.16);
+          ctx.moveTo(w / 2, halfH);
+          ctx.lineTo(bx, h);
+        }
+        ctx.stroke();
+
+        // Fast vector perspective ceiling cable trays (1 draw call)
+        ctx.strokeStyle = 'rgba(0, 180, 80, 0.035)';
+        ctx.beginPath();
+        for (let row = 1; row <= 8; row++) {
+          const t = row / 8;
+          const cy = halfH - Math.pow(t, 2.0) * halfH;
+          ctx.moveTo(0, cy);
+          ctx.lineTo(w, cy);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
 
       // 2. DDA Raycaster for vertical wall strips
       const colStep = 3; // Optimized 3px columns (matches 6px ASCII grid)
@@ -4575,7 +4871,15 @@
         const sideDarken = (side === 1) ? 0.75 : 1.0;
         let shade = Math.max(0.04, Math.min(1.0, 1.0 - perpDist / maxShadeDist)) * sideDarken;
 
-        
+        if (this.isBoltgunMode) {
+          // Bayer 4x4 Ordered Dithering Matrix for chunky retro lighting steps
+          const steps = 12;
+          const colIdx = Math.floor(screenX / colStep);
+          const dRow = Math.floor(halfH / 4) & 3;
+          const dNoise = ((BAYER_4X4[dRow][colIdx & 3] / 16.0) - 0.5) * (1.0 / steps);
+          shade = Math.max(0.04, Math.min(1.0, Math.floor((shade + dNoise) * steps) / steps));
+        }
+
         // Wall Bullet Impact Decal overlay
         if (this.wallDecals && this.wallDecals.length > 0) {
           for (let wdi = 0; wdi < this.wallDecals.length; wdi++) {
@@ -4612,7 +4916,11 @@
         // Smooth darkness falloff overlay
         const darkAlpha = 1.0 - shade;
         if (darkAlpha > 0.02) {
-          ctx.fillStyle = `rgba(1, 8, 4, ${darkAlpha.toFixed(2)})`;
+          if (this.isBoltgunMode) {
+            ctx.fillStyle = `rgba(5, 5, 7, ${darkAlpha.toFixed(2)})`;
+          } else {
+            ctx.fillStyle = `rgba(1, 8, 4, ${darkAlpha.toFixed(2)})`;
+          }
           ctx.fillRect(screenX, drawStart, colStep, drawEnd - drawStart);
         }
 
@@ -5474,6 +5782,30 @@
             ctx.beginPath();
             ctx.arc(-8, -260, 75, 0, Math.PI * 2);
             ctx.fill();
+          } else if (this.isBoltgunMode) {
+            // Comic-Style Starburst Muzzle Flash (Warhammer 40K: Boltgun)
+            ctx.save();
+            ctx.translate(-8, -232);
+            ctx.fillStyle = '#ffea00';
+            ctx.strokeStyle = '#ff4400';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const pts = 8;
+            for (let pIdx = 0; pIdx < pts * 2; pIdx++) {
+              const r = (pIdx % 2 === 0) ? 36 : 14;
+              const a = (pIdx / (pts * 2)) * Math.PI * 2;
+              if (pIdx === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+              else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
           } else {
             ctx.fillStyle = '#fff275';
             ctx.shadowColor = '#ffaa00';
@@ -5565,33 +5897,58 @@
 
         // Muzzle blast fireball & sparks
         if (this.player.isShooting && (this.player.shootProgress || 0) < 0.32) {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(-6, -208, 16, 0, Math.PI * 2);
-          ctx.fill();
+          if (this.isBoltgunMode) {
+            ctx.save();
+            ctx.translate(-6, -214);
+            ctx.fillStyle = '#ffcc00';
+            ctx.strokeStyle = '#ff3300';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            const pts = 10;
+            for (let pIdx = 0; pIdx < pts * 2; pIdx++) {
+              const r = (pIdx % 2 === 0) ? 46 : 18;
+              const a = (pIdx / (pts * 2)) * Math.PI * 2;
+              if (pIdx === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+              else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
 
-          ctx.fillStyle = '#ff9900';
-          ctx.shadowColor = '#ff6600';
-          ctx.shadowBlur = 28;
-          ctx.beginPath();
-          ctx.arc(-6, -214, 30, 0, Math.PI * 2);
-          ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-6, -208, 16, 0, Math.PI * 2);
+            ctx.fill();
 
-          ctx.fillStyle = '#ff4400';
-          ctx.beginPath();
-          ctx.moveTo(-6, -255);
-          ctx.lineTo(24, -195);
-          ctx.lineTo(-36, -195);
-          ctx.closePath();
-          ctx.fill();
-          ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ff9900';
+            ctx.shadowColor = '#ff6600';
+            ctx.shadowBlur = 28;
+            ctx.beginPath();
+            ctx.arc(-6, -214, 30, 0, Math.PI * 2);
+            ctx.fill();
 
-          // Flying sparks
-          ctx.fillStyle = '#ffffff';
-          for (let spk = 0; spk < 6; spk++) {
-            const sx = -6 + (Math.random() - 0.5) * 55;
-            const sy = -215 - Math.random() * 45;
-            ctx.fillRect(sx, sy, 2.5, 2.5);
+            ctx.fillStyle = '#ff4400';
+            ctx.beginPath();
+            ctx.moveTo(-6, -255);
+            ctx.lineTo(24, -195);
+            ctx.lineTo(-36, -195);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Flying sparks
+            ctx.fillStyle = '#ffffff';
+            for (let spk = 0; spk < 6; spk++) {
+              const sx = -6 + (Math.random() - 0.5) * 55;
+              const sy = -215 - Math.random() * 45;
+              ctx.fillRect(sx, sy, 2.5, 2.5);
+            }
           }
         }
 
@@ -5644,21 +6001,46 @@
 
         // Muzzle Flash
         if (this.player.isShooting && (this.player.shootProgress || 0) < 0.35) {
-          ctx.fillStyle = '#fff488';
-          ctx.shadowColor = '#ff9900';
-          ctx.shadowBlur = 24;
-          ctx.beginPath();
-          ctx.arc(-4, -170, 20, 0, Math.PI * 2);
-          ctx.fill();
+          if (this.isBoltgunMode) {
+            ctx.save();
+            ctx.translate(-4, -170);
+            ctx.fillStyle = '#ffea00';
+            ctx.strokeStyle = '#ff5500';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            const pts = 8;
+            for (let pIdx = 0; pIdx < pts * 2; pIdx++) {
+              const r = (pIdx % 2 === 0) ? 30 : 11;
+              const a = (pIdx / (pts * 2)) * Math.PI * 2;
+              if (pIdx === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+              else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
 
-          ctx.fillStyle = '#ff6600';
-          ctx.beginPath();
-          ctx.moveTo(-4, -205);
-          ctx.lineTo(16, -160);
-          ctx.lineTo(-24, -160);
-          ctx.closePath();
-          ctx.fill();
-          ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          } else {
+            ctx.fillStyle = '#fff488';
+            ctx.shadowColor = '#ff9900';
+            ctx.shadowBlur = 24;
+            ctx.beginPath();
+            ctx.arc(-4, -170, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ff6600';
+            ctx.beginPath();
+            ctx.moveTo(-4, -205);
+            ctx.lineTo(16, -160);
+            ctx.lineTo(-24, -160);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
         }
 
         ctx.restore();
@@ -5947,6 +6329,34 @@
       const cx = w / 2;
       const cy = h / 2;
 
+      // Center Toast Notification Banner (e.g. Boltgun Mode Toggle)
+      if (this.centerToast && this.centerToast.timer > 0) {
+        this.centerToast.timer--;
+        const tAlpha = Math.min(1.0, this.centerToast.timer / 15);
+        const tW = 340;
+        const tH = 38;
+        const tX = cx - tW / 2;
+        const tY = 88;
+
+        ctx.save();
+        ctx.globalAlpha = tAlpha;
+        ctx.fillStyle = 'rgba(4, 18, 10, 0.95)';
+        ctx.fillRect(tX, tY, tW, tH);
+        ctx.strokeStyle = this.centerToast.color || '#ffcc00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tX, tY, tW, tH);
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 13px "Share Tech Mono", monospace';
+        ctx.fillStyle = this.centerToast.color || '#ffcc00';
+        ctx.shadowColor = this.centerToast.color || '#ffcc00';
+        ctx.shadowBlur = 10;
+        ctx.fillText(this.centerToast.text, cx, tY + tH / 2);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
       // 0. Player Damage Red Vignette Reaction
       if (this.playerDamageVignette > 0.01) {
         const vGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.45, cx, cy, Math.max(w, h) * 0.82);
@@ -6224,7 +6634,7 @@
         const sbW = 208;
         const sbX = w - sbW - 16;
         const sbY = 175; // Positioned cleanly below Loot HUD (56 + 74 = 130 + 45px padding)
-        const sbH = 224;
+        const sbH = 246;
 
         ctx.fillStyle = 'rgba(2, 14, 5, 0.92)';
         ctx.fillRect(sbX, sbY, sbW, sbH);
@@ -6242,6 +6652,7 @@
 
         // Control key mappings list
         const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] TDS 2D' : '📷 [G] FPS 3D';
+        const boltLabel = this.isBoltgunMode ? '⚡ [7] BOLTGUN' : '📟 [7] ANSI CRT';
         const hints = [
           { key: camLabel, desc: '' },
           { key: '[WASD]', desc: 'Движение' },
@@ -6251,14 +6662,15 @@
           { key: '[Q]', desc: 'Аптечка' },
           { key: '[I]', desc: 'Скрыть UI' },
           { key: '[3]', desc: 'Музыка' },
-          { key: '[4]', desc: 'Звуки' }
+          { key: '[4]', desc: 'Звуки' },
+          { key: boltLabel, desc: 'Шейдер' }
         ];
 
         let rowY = sbY + 36;
         ctx.textAlign = 'left';
         for (const hint of hints) {
           ctx.font = 'bold 10px "Share Tech Mono", monospace';
-          ctx.fillStyle = '#00ffaa';
+          ctx.fillStyle = hint.key.includes('BOLTGUN') ? '#ffcc00' : '#00ffaa';
           ctx.fillText(hint.key, sbX + 10, rowY);
           if (hint.desc) {
             ctx.font = '10px monospace';

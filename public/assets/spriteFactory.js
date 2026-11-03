@@ -419,16 +419,26 @@
         ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
       }
 
-      // Upward volumetric light cone from elevator platform
-      const conePulse = 0.4 + Math.sin(tick * 0.1) * 0.35;
-      const coneGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 46);
-      coneGrad.addColorStop(0, `rgba(0, 255, 136, ${(0.35 * conePulse).toFixed(2)})`);
-      coneGrad.addColorStop(0.65, `rgba(0, 255, 136, ${(0.12 * conePulse).toFixed(2)})`);
-      coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = coneGrad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 46, 0, Math.PI * 2);
-      ctx.fill();
+      // Upward volumetric loot beam (pixelfx/fx/pickups/loot-beam)
+      const beamPulse = 0.75 + Math.sin(tick * 0.12) * 0.25;
+      const beamGrad = ctx.createLinearGradient(cx - 16, cy, cx + 16, cy);
+      beamGrad.addColorStop(0, 'rgba(0, 255, 170, 0)');
+      beamGrad.addColorStop(0.5, `rgba(0, 255, 170, ${(0.45 * beamPulse).toFixed(2)})`);
+      beamGrad.addColorStop(1, 'rgba(0, 255, 170, 0)');
+      ctx.fillStyle = beamGrad;
+      ctx.fillRect(cx - 18, cy - 80, 36, 80);
+
+      // Spiraling orbit rings
+      for (let r = 0; r < 3; r++) {
+        const ringProg = ((tick * 0.04 + r * 0.33) % 1.0);
+        const ringY = cy - ringProg * 70;
+        const ringAlpha = (1.0 - ringProg) * 0.6;
+        ctx.strokeStyle = `rgba(180, 255, 230, ${ringAlpha.toFixed(2)})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(cx, ringY, 16 * (1.0 - ringProg * 0.3), 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       // Pulsing cyan & neon green energy field
       const pulse = 0.5 + Math.sin(tick * 0.12) * 0.5;
@@ -1389,16 +1399,72 @@
       const itemX = x - itemW / 2;
       const itemY = y - 8 + hoverY;
 
+      // 2. PixelFX Heart & Keycard Animated Pickups
+      if (isMed) {
+        // Pixel-art beating heart with medical cross (pixelfx/fx/pickups/heart-pickup)
+        const heartPulse = 1.0 + Math.sin(tick * 0.16) * 0.12;
+        const hw = 16 * heartPulse;
+        const hh = 15 * heartPulse;
+        ctx.save();
+        ctx.translate(x, y - 4 + hoverY);
+
+        // Outer glow
+        ctx.shadowColor = '#ff2255';
+        ctx.shadowBlur = 10;
+
+        // Pixel heart body
+        ctx.fillStyle = '#ff2255';
+        ctx.beginPath();
+        ctx.moveTo(0, hh * 0.4);
+        ctx.bezierCurveTo(-hw * 0.6, -hh * 0.2, -hw * 0.6, -hh * 0.6, 0, -hh * 0.2);
+        ctx.bezierCurveTo(hw * 0.6, -hh * 0.6, hw * 0.6, -hh * 0.2, 0, hh * 0.4);
+        ctx.fill();
+
+        // White/Emerald health cross at center
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-2, -hh * 0.35, 4, 10);
+        ctx.fillRect(-5, -hh * 0.35 + 3, 10, 4);
+
+        ctx.restore();
+        ctx.restore();
+        return;
+      }
+
+      if (isKeycard) {
+        // Holographic spinning security keycard (pixelfx/fx/pickups/card-pickup)
+        const spinW = Math.max(3, Math.floor(18 * Math.abs(Math.cos(tick * 0.08))));
+        const cardH = 22;
+        const cardColor = (drop.keycardType === 'keycard_blue') ? '#00e5ff' : (drop.keycardType === 'keycard_yellow' ? '#ffcc00' : (drop.keycardType === 'keycard_master' ? '#cc44ff' : '#ff3b30'));
+
+        ctx.save();
+        ctx.translate(x, y - 6 + hoverY);
+
+        ctx.shadowColor = cardColor;
+        ctx.shadowBlur = 12;
+
+        ctx.fillStyle = 'rgba(10, 20, 16, 0.95)';
+        ctx.fillRect(-spinW / 2, -cardH / 2, spinW, cardH);
+        ctx.strokeStyle = cardColor;
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(-spinW / 2, -cardH / 2, spinW, cardH);
+
+        // Gold chip at center
+        if (spinW > 8) {
+          ctx.fillStyle = '#ffd700';
+          ctx.fillRect(-spinW * 0.25, -cardH * 0.2, spinW * 0.5, 6);
+        }
+
+        ctx.restore();
+        ctx.restore();
+        return;
+      }
+
       let dropSprite = null;
       if (typeof TextureManager !== 'undefined' && TextureManager.getSprite) {
-        if (isKeycard) dropSprite = TextureManager.getSprite(drop.keycardType || 'keycard_red');
-        else if (isMed) dropSprite = TextureManager.getSprite('item_medkit_military');
-        else if (isAmmo) dropSprite = TextureManager.getSprite(isShotgun ? 'item_ammo_shotgun' : 'item_ammo_pistol');
+        if (isAmmo) dropSprite = TextureManager.getSprite(isShotgun ? 'item_ammo_shotgun' : 'item_ammo_pistol');
       }
       if (!dropSprite && typeof AssetGenerator !== 'undefined') {
-        if (isKeycard) dropSprite = AssetGenerator.get(drop.keycardType || 'keycard_red');
-        else if (isMed) dropSprite = AssetGenerator.get('item_medkit_military');
-        else if (isAmmo) dropSprite = AssetGenerator.get(isShotgun ? 'item_ammo_shotgun' : 'item_ammo_pistol');
+        if (isAmmo) dropSprite = AssetGenerator.get(isShotgun ? 'item_ammo_shotgun' : 'item_ammo_pistol');
       }
 
       if (dropSprite) {
@@ -1841,7 +1907,10 @@
     /**
      * Render Tactical Crosshair
      */
-    drawCrosshair(ctx, mx, my, tick, isOverEnemy) {
+    /**
+     * Render Tactical Crosshair & Boomer Shooter Hitmarker
+     */
+    drawCrosshair(ctx, mx, my, tick, isOverEnemy, hitmarkerTimer = 0) {
       if (!ctx || mx === undefined || my === undefined) return;
 
       ctx.save();
@@ -1867,6 +1936,31 @@
       ctx.arc(mx, my, 1.5, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
+
+      // Warhammer 40K: Boltgun Style Hitmarker Cross [X]
+      if (hitmarkerTimer > 0) {
+        ctx.strokeStyle = '#ff1122';
+        ctx.shadowColor = '#ff3b30';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2.5;
+        const hsz = 7;
+        const hgap = 2;
+        ctx.beginPath();
+        // Top-left to center-left
+        ctx.moveTo(mx - hsz, my - hsz);
+        ctx.lineTo(mx - hgap, my - hgap);
+        // Top-right to center-right
+        ctx.moveTo(mx + hsz, my - hsz);
+        ctx.lineTo(mx + hgap, my - hgap);
+        // Bottom-left to center-left
+        ctx.moveTo(mx - hsz, my + hsz);
+        ctx.lineTo(mx - hgap, my + hgap);
+        // Bottom-right to center-right
+        ctx.moveTo(mx + hsz, my + hsz);
+        ctx.lineTo(mx + hgap, my + hgap);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
 
       ctx.restore();
     },
