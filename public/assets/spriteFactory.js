@@ -403,26 +403,32 @@
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      // Check if elevator texture is loaded
-      const tex = (typeof TextureManager !== 'undefined' && TextureManager.textures) ? TextureManager.textures['elevator_pad'] : null;
-      if (tex && tex.isLoaded && tex.isLoaded()) {
-        ctx.drawImage(tex.img, x, y, w, h);
+      // Draw high-resolution procedural / PNG exit elevator platform
+      let elevImg = (typeof TextureManager !== 'undefined' && TextureManager.get) ? (TextureManager.get('exit_elevator') || TextureManager.get('elevator_pad')) : null;
+      if (!elevImg && typeof AssetGenerator !== 'undefined') {
+        elevImg = AssetGenerator.get('exit_elevator');
+      }
+
+      if (elevImg) {
+        ctx.drawImage(elevImg, x, y, w, h);
       } else {
-        // Deep industrial steel platform
         ctx.fillStyle = '#071813';
         ctx.fillRect(x, y, w, h);
-
-        // Yellow-black hazard perimeter stripes
         ctx.strokeStyle = '#ffd700';
         ctx.lineWidth = 3;
         ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
-
-        // Hexagonal mesh circle
-        ctx.fillStyle = '#0d2b24';
-        ctx.beginPath();
-        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
-        ctx.fill();
       }
+
+      // Upward volumetric light cone from elevator platform
+      const conePulse = 0.4 + Math.sin(tick * 0.1) * 0.35;
+      const coneGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 46);
+      coneGrad.addColorStop(0, `rgba(0, 255, 136, ${(0.35 * conePulse).toFixed(2)})`);
+      coneGrad.addColorStop(0.65, `rgba(0, 255, 136, ${(0.12 * conePulse).toFixed(2)})`);
+      coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = coneGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 46, 0, Math.PI * 2);
+      ctx.fill();
 
       // Pulsing cyan & neon green energy field
       const pulse = 0.5 + Math.sin(tick * 0.12) * 0.5;
@@ -530,12 +536,19 @@
       const w = 26;
       const h = 20;
 
-      // Base body - Soviet Bakelite / Gunmetal casing
-      ctx.fillStyle = '#222624';
-      ctx.fillRect(rx - w / 2, ry - h / 2, w, h);
-      ctx.strokeStyle = '#48544e';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(rx - w / 2, ry - h / 2, w, h);
+      // Use retro pixel-art tape recorder sprite
+      let recImg = (typeof TextureManager !== 'undefined' && TextureManager.getSprite) ? TextureManager.getSprite('item_recorder') : null;
+      if (!recImg && typeof AssetGenerator !== 'undefined') recImg = AssetGenerator.get('item_recorder');
+
+      if (recImg) {
+        ctx.drawImage(recImg, rx - w / 2, ry - h / 2, w, h);
+      } else {
+        ctx.fillStyle = '#222624';
+        ctx.fillRect(rx - w / 2, ry - h / 2, w, h);
+        ctx.strokeStyle = '#48544e';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(rx - w / 2, ry - h / 2, w, h);
+      }
 
       // Aluminum faceplate
       ctx.fillStyle = '#6b7570';
@@ -1376,46 +1389,38 @@
       const itemX = x - itemW / 2;
       const itemY = y - 8 + hoverY;
 
-      if (isKeycard) {
-        // High-Security Electronic RFID Keycard
+      let dropSprite = null;
+      if (typeof TextureManager !== 'undefined' && TextureManager.getSprite) {
+        if (isKeycard) dropSprite = TextureManager.getSprite(drop.keycardType || 'keycard_red');
+        else if (isMed) dropSprite = TextureManager.getSprite('item_medkit_military');
+        else if (isAmmo) dropSprite = TextureManager.getSprite(isShotgun ? 'item_ammo_shotgun' : 'item_ammo_pistol');
+      }
+      if (!dropSprite && typeof AssetGenerator !== 'undefined') {
+        if (isKeycard) dropSprite = AssetGenerator.get(drop.keycardType || 'keycard_red');
+        else if (isMed) dropSprite = AssetGenerator.get('item_medkit_military');
+        else if (isAmmo) dropSprite = AssetGenerator.get(isShotgun ? 'item_ammo_shotgun' : 'item_ammo_pistol');
+      }
+
+      if (dropSprite) {
+        ctx.drawImage(dropSprite, itemX, itemY, itemW, itemH);
+      } else if (isKeycard) {
         ctx.fillStyle = '#0a2e38';
         ctx.fillRect(itemX, itemY + 2, itemW, 14);
         ctx.strokeStyle = '#00e5ff';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(itemX, itemY + 2, itemW, 14);
-
-        // Gold chip & access badge
-        if (scaleX > 0.35) {
-          ctx.fillStyle = '#ffd700';
-          ctx.fillRect(x - 3 * scaleX, itemY + 6, 6 * scaleX, 5);
-          ctx.fillStyle = '#00e5ff';
-          ctx.fillRect(x - 5 * scaleX, itemY + 12, 10 * scaleX, 2);
-        }
       } else if (isMed) {
-        // Detailed Army Medkit with Red Cross
         ctx.fillStyle = '#e8ece9';
         ctx.fillRect(itemX, itemY + 2, itemW, 14);
         ctx.strokeStyle = '#2d4734';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(itemX, itemY + 2, itemW, 14);
-        if (scaleX > 0.3) {
-          ctx.fillStyle = '#d32f2f';
-          ctx.fillRect(x - 2 * scaleX, itemY + 4, 4 * scaleX, 10);
-          ctx.fillRect(x - 5 * scaleX, itemY + 7, 10 * scaleX, 4);
-        }
       } else if (isAmmo) {
-        // Military Ribbed Ammo Tin
         ctx.fillStyle = '#2d4427';
         ctx.fillRect(itemX, itemY + 3, itemW, 12);
         ctx.strokeStyle = '#47683d';
         ctx.lineWidth = 1.2;
         ctx.strokeRect(itemX, itemY + 3, itemW, 12);
-        if (scaleX > 0.35) {
-          ctx.fillStyle = '#ffcc00';
-          ctx.font = 'bold 6px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('AMMO', x, itemY + 11);
-        }
       } else if (isShotgun) {
         // --- Heavy Riot Shotgun KS-23 (Long heavy ribbed barrel, wooden pump forend & buttstock) ---
         ctx.save();

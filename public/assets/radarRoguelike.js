@@ -635,7 +635,13 @@
           }
         }
 
-        if (e.code === 'Digit1') {
+        if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
+          const elevDist = this.elevator ? Math.hypot(this.player.x - (this.elevator.x + 32), this.player.y - (this.elevator.y + 32)) : 999;
+          if ((this.isPlayerInElevator || elevDist < 68) && !this.emergencySiegeActive && !this.isEvacuating) {
+            e.preventDefault();
+            this.evacuateSuccess();
+            return;
+          }
           const nearbyWounded = this.getNearbyWoundedNPC();
           if (nearbyWounded && nearbyWounded.hasWeapon) {
             this.takeWeaponFromNPC(nearbyWounded);
@@ -644,7 +650,8 @@
           }
         }
         if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
-          if (this.isPlayerInElevator && !this.emergencySiegeActive && !this.isEvacuating) {
+          const elevDist = this.elevator ? Math.hypot(this.player.x - (this.elevator.x + 32), this.player.y - (this.elevator.y + 32)) : 999;
+          if ((this.isPlayerInElevator || elevDist < 68) && !this.emergencySiegeActive && !this.isEvacuating) {
             e.preventDefault();
             this.descendToNextFloor();
             return;
@@ -726,7 +733,8 @@
         if (e.code === 'KeyG') {
           this.toggleCameraMode();
         }
-        if (e.code === 'KeyI' || e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш') {
+        if (e.code === 'KeyI' || e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш' || e.keyCode === 73) {
+          e.preventDefault();
           this.toggleHUDVisibility();
         }
         if (e.code === 'F2') {
@@ -799,38 +807,66 @@
             }
             return;
           }
+
+          const rect = this.canvas.getBoundingClientRect();
+          const clickX = (e.clientX !== undefined && rect.width > 0) ? (e.clientX - rect.left) * (this.canvas.width / rect.width) : this.mouse.x;
+          const clickY = (e.clientY !== undefined && rect.height > 0) ? (e.clientY - rect.top) * (this.canvas.height / rect.height) : this.mouse.y;
+
           if (e.button === 0) {
+            // If HUD is hidden, check click on restore UI pill in top-right
+            if (this.isHUDHidden) {
+              const pillW = 160;
+              const pillH = 28;
+              const pillX = this.canvas.width - pillW - 16;
+              const pillY = 14;
+              if (clickX >= pillX && clickX <= pillX + pillW && clickY >= pillY && clickY <= pillY + pillH) {
+                this.toggleHUDVisibility();
+                return;
+              }
+            }
+
             // Click on elevator platform tactical choice overlay ([1] Evac vs [2] Descend)
-            if (this.isPlayerInElevator && !this.emergencySiegeActive && !this.isEvacuating) {
-              const optW = 360;
-              const optH = 54;
+            const elevDist = this.elevator ? Math.hypot(this.player.x - (this.elevator.x + 32), this.player.y - (this.elevator.y + 32)) : 999;
+            if ((this.isPlayerInElevator || elevDist < 68) && !this.emergencySiegeActive && !this.isEvacuating) {
+              const optW = 380;
+              const optH = 58;
               const optX = (this.canvas.width - optW) / 2;
               const optY = this.canvas.height - 165;
-              if (this.mouse.x >= optX && this.mouse.x <= optX + optW) {
-                if (this.mouse.y >= optY && this.mouse.y < optY + 28) {
+              if (clickX >= optX && clickX <= optX + optW) {
+                if (clickY >= optY && clickY < optY + 30) {
                   this.evacuateSuccess();
                   return;
-                } else if (this.mouse.y >= optY + 28 && this.mouse.y <= optY + optH) {
+                } else if (clickY >= optY + 30 && clickY <= optY + optH + 10) {
                   this.descendToNextFloor();
                   return;
                 }
               }
             }
 
-            // Check click on sidebar buttons in TDS mode
-            if (this.cameraMode === 'TDS' && !this.isTouchControlsActive && this.canvas && this.canvas.width > 580) {
+            // Check click on sidebar buttons (Controls box)
+            if (!this.isTouchControlsActive && this.canvas && this.canvas.width > 580 && (!this.isPointerLocked || this.cameraMode === 'TDS')) {
               const sbW = 208;
               const sbX = this.canvas.width - sbW - 16;
-              const sbY = 138;
-              if (this.mouse.x >= sbX && this.mouse.x <= sbX + sbW) {
-                // Click on [G] Camera mode row
-                if (this.mouse.y >= sbY + 28 && this.mouse.y <= sbY + 54) {
+              const sbY = 175; // Lowered cleanly below Loot HUD
+              if (clickX >= sbX && clickX <= sbX + sbW) {
+                // Click on [G] Camera mode row (Row 0)
+                if (clickY >= sbY + 24 && clickY <= sbY + 48) {
                   this.toggleCameraMode();
                   return;
                 }
-                // Click on [I] Hide UI row
-                if (this.mouse.y >= sbY + 144 && this.mouse.y <= sbY + 174) {
+                // Click on [I] Hide UI row (Row 6)
+                if (clickY >= sbY + 146 && clickY <= sbY + 172) {
                   this.toggleHUDVisibility();
+                  return;
+                }
+                // Click on [3] Music row (Row 7)
+                if (clickY >= sbY + 172 && clickY <= sbY + 194) {
+                  if (typeof toggleRaidMusic === 'function') toggleRaidMusic();
+                  return;
+                }
+                // Click on [4] Sounds row (Row 8)
+                if (clickY >= sbY + 194 && clickY <= sbY + 220) {
+                  if (typeof toggleRaidSfx === 'function') toggleRaidSfx();
                   return;
                 }
               }
@@ -2410,11 +2446,11 @@
 
     updateElevatorExtraction() {
       if (!this.elevator) return;
-      const elevCenterX = this.elevator.x + 16;
-      const elevCenterY = this.elevator.y + 16;
+      const elevCenterX = this.elevator.x + 32;
+      const elevCenterY = this.elevator.y + 32;
       const dist = Math.hypot(this.player.x - elevCenterX, this.player.y - elevCenterY);
 
-      if (dist < 46) {
+      if (dist < 64) {
         this.isPlayerInElevator = true;
         this.evacHoldTimer = Math.min(this.evacHoldRequired, this.evacHoldTimer + (1 / 60));
 
@@ -4602,11 +4638,11 @@
 
       if (this.elevator) {
         visibleSprites.push({
-          x: this.elevator.x + 16,
-          y: this.elevator.y + 16,
+          x: this.elevator.x + 32,
+          y: this.elevator.y + 32,
           type: 'elevator',
-          key: 'loot_crate',
-          color: '#33d4ff',
+          key: 'exit_elevator',
+          color: '#00ff88',
           name: '[E] ШАХТА ЭВАКУАЦИИ'
         });
       }
@@ -4761,7 +4797,7 @@
           x: rec.x,
           y: rec.y,
           type: 'recorder',
-          key: 'recorder',
+          key: 'item_recorder',
           recorder: rec,
           color: '#222624'
         });
@@ -5896,6 +5932,22 @@
 
       // If HUD is hidden via [I] (Cinematic immersion mode - Quest banner & dialog remain active!)
       if (this.isHUDHidden) {
+        // Draw a neat restore UI pill in the top-right corner
+        const pillW = 160;
+        const pillH = 28;
+        const pillX = w - pillW - 16;
+        const pillY = 14;
+        ctx.fillStyle = 'rgba(4, 20, 7, 0.92)';
+        ctx.fillRect(pillX, pillY, pillW, pillH);
+        ctx.strokeStyle = '#00ffaa';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(pillX, pillY, pillW, pillH);
+        ctx.font = 'bold 11px "Share Tech Mono", monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('👁️ ПОКАЗАТЬ UI [I]', pillX + pillW / 2, pillY + pillH / 2);
+
         ctx.restore();
         return;
       }
@@ -6131,7 +6183,7 @@
       if (!this.isTouchControlsActive && w > 580) {
         const sbW = 208;
         const sbX = w - sbW - 16;
-        const sbY = 138; // Positioned cleanly below Loot HUD (54 + 76 + 8 = 138px)
+        const sbY = 175; // Positioned cleanly below Loot HUD (56 + 74 = 130 + 45px padding)
         const sbH = 224;
 
         ctx.fillStyle = 'rgba(2, 14, 5, 0.92)';

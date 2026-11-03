@@ -98,10 +98,15 @@
       fallback: [180, 140, 50],
       name: 'Тяжелый гермовыход'
     },
-    'elevator_pad': {
-      src: 'assets/radar/tiles/elevator_s_pad.png',
+    'exit_elevator': {
+      src: 'assets/radar/props/exit_elevator.png',
       fallback: [0, 200, 150],
-      name: 'Шахта лифта // Эвакуация S'
+      name: 'Шахта грузового лифта [ H ]'
+    },
+    'elevator_pad': {
+      src: 'assets/radar/props/exit_elevator.png',
+      fallback: [0, 200, 150],
+      name: 'Шахта грузового лифта [ H ]'
     },
     // Floor & Ceiling Materials
     'floor_concrete': {
@@ -168,6 +173,19 @@
     'food_ration': 'assets/icons/food_ration.png',
     'chest_military': 'assets/radar/props/chest_military_box.png',
     'keycard_pass': 'assets/radar/props/keycard_pass.png',
+    'exit_elevator': 'assets/radar/props/exit_elevator.png',
+    'keycard_yellow': 'assets/radar/props/keycard_yellow.png',
+    'keycard_blue': 'assets/radar/props/keycard_blue.png',
+    'keycard_red': 'assets/radar/props/keycard_red.png',
+    'keycard_master': 'assets/radar/props/keycard_master.png',
+    'item_medkit_military': 'assets/radar/props/item_medkit_military.png',
+    'item_ammo_shotgun': 'assets/radar/props/item_ammo_shotgun.png',
+    'item_ammo_pistol': 'assets/radar/props/item_ammo_pistol.png',
+    'item_filter_box': 'assets/radar/props/item_filter_box.png',
+    'item_scrap_metal': 'assets/radar/props/item_scrap_metal.png',
+    'item_tape': 'assets/radar/props/item_tape.png',
+    'item_recorder': 'assets/radar/props/item_recorder.png',
+    'recorder': 'assets/radar/props/item_recorder.png',
     'loot_crate': 'assets/radar/tiles/crate_tech.png',
     'crate_tech': 'assets/radar/tiles/crate_tech.png',
     'crate_med': 'assets/radar/tiles/crate_med.png',
@@ -238,6 +256,10 @@
       if (entry && entry.isLoaded()) {
         return entry.img;
       }
+      if (typeof AssetGenerator !== 'undefined' && AssetGenerator.get) {
+        const gen = AssetGenerator.get(key);
+        if (gen) return gen;
+      }
       return null;
     }
 
@@ -245,6 +267,10 @@
       const entry = this.sprites[key];
       if (entry && entry.isLoaded()) {
         return entry.img;
+      }
+      if (typeof AssetGenerator !== 'undefined' && AssetGenerator.get) {
+        const gen = AssetGenerator.get(key);
+        if (gen) return gen;
       }
       // Try generic fallbacks
       if (key && (key.includes('slime') || key.includes('mutant'))) {
