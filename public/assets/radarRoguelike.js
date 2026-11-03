@@ -19,13 +19,38 @@
 (function (global) {
   'use strict';
 
-  // 4x4 Bayer Dithering Matrix for Warhammer 40K: Boltgun Boomer Shooter Style
+  // 4x4 Bayer Dithering Matrix for Assault Mode Retro Pixel Shading
   const BAYER_4X4 = [
     [ 0,  8,  2, 10],
     [12,  4, 14,  6],
     [ 3, 11,  1,  9],
     [15,  7, 13,  5]
   ];
+
+  // Fast Trigonometric Look-Up Tables (LUT) - 4096 entries (eliminates thousands of Math.sin/cos calls)
+  const TRIG_TABLE_SIZE = 4096;
+  const SIN_LUT = new Float32Array(TRIG_TABLE_SIZE);
+  const COS_LUT = new Float32Array(TRIG_TABLE_SIZE);
+  const TWO_PI = Math.PI * 2;
+  const RAD_TO_INDEX = TRIG_TABLE_SIZE / TWO_PI;
+
+  for (let i = 0; i < TRIG_TABLE_SIZE; i++) {
+    const rad = (i / TRIG_TABLE_SIZE) * TWO_PI;
+    SIN_LUT[i] = Math.sin(rad);
+    COS_LUT[i] = Math.cos(rad);
+  }
+
+  function fastSin(rad) {
+    let idx = Math.floor(rad * RAD_TO_INDEX) % TRIG_TABLE_SIZE;
+    if (idx < 0) idx += TRIG_TABLE_SIZE;
+    return SIN_LUT[idx];
+  }
+
+  function fastCos(rad) {
+    let idx = Math.floor(rad * RAD_TO_INDEX) % TRIG_TABLE_SIZE;
+    if (idx < 0) idx += TRIG_TABLE_SIZE;
+    return COS_LUT[idx];
+  }
 
   class RadarRoguelikeEngine {
     constructor() {
@@ -35,11 +60,23 @@
       this.tick = 0;
       this.animFrameId = null;
 
-      // Boltgun Mode (Key '7') — Retro Boomer Shooter Shader & Pixel Shading
-      this.isBoltgunMode = false;
+      // Virtual Offscreen Viewport (320x180 fixed resolution for zero CPU/GPU overhead)
+      this.offscreenCanvas = document.createElement('canvas');
+      this.offscreenCanvas.width = 320;
+      this.offscreenCanvas.height = 180;
+      this.offscreenCtx = this.offscreenCanvas.getContext('2d', { alpha: false });
+      this.offscreenCtx.imageSmoothingEnabled = false;
+
+      this.asciiCanvas = null;
+      this.asciiCtx = null;
+
+      // Assault Mode (Key '7') — Full RGB Retro Protocol (vs Terminal Echo Mode)
+      this.isAssaultMode = false;
       try {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('samosbor_boltgun_mode') === 'true') {
-          this.isBoltgunMode = true;
+        if (typeof localStorage !== 'undefined') {
+          if (localStorage.getItem('samosbor_assault_mode') === 'true' || localStorage.getItem('samosbor_boltgun_mode') === 'true') {
+            this.isAssaultMode = true;
+          }
         }
       } catch(e) {}
       this.hitmarkerTimer = 0;
@@ -370,15 +407,31 @@
       this.spawnFloatingNotice(text, color);
     }
 
-    toggleBoltgunMode() {
-      this.isBoltgunMode = !this.isBoltgunMode;
-      try { localStorage.setItem('samosbor_boltgun_mode', this.isBoltgunMode); } catch(err){}
-      this.showCenterToast(this.isBoltgunMode ? "⚡ РЕЖИМ: BOLTGUN (40K)" : "📟 РЕЖИМ: ТЕРМИНАЛ САМОСБОРА");
+    get isBoltgunMode() {
+      return this.isAssaultMode;
+    }
+    set isBoltgunMode(val) {
+      this.isAssaultMode = val;
+    }
+
+    toggleAssaultMode() {
+      this.isAssaultMode = !this.isAssaultMode;
+      try {
+        localStorage.setItem('samosbor_assault_mode', this.isAssaultMode);
+        localStorage.setItem('samosbor_boltgun_mode', this.isAssaultMode);
+      } catch(err){}
+      this.showCenterToast(this.isAssaultMode 
+        ? "⚡ [7] РЕЖИМ ОТОБРАЖЕНИЯ: ПОЛНОЦВЕТНЫЙ (ШТУРМ)" 
+        : "📟 [7] РЕЖИМ ОТОБРАЖЕНИЯ: ТЕРМИНАЛЬНЫЙ (ЭХО)");
       this.updateRenderPipeline();
     }
 
+    toggleBoltgunMode() {
+      this.toggleAssaultMode();
+    }
+
     updateRenderPipeline() {
-      if (this.isBoltgunMode) {
+      if (this.isAssaultMode) {
         if (typeof AsciiRenderer !== 'undefined') {
           AsciiRenderer.enabled = false;
         }
@@ -387,8 +440,11 @@
           AsciiRenderer.enabled = true;
         }
       }
+      if (typeof updateAllAssaultButtons === 'function') {
+        updateAllAssaultButtons(this.isAssaultMode);
+      }
       if (typeof updateAllBoltgunButtons === 'function') {
-        updateAllBoltgunButtons(this.isBoltgunMode);
+        updateAllBoltgunButtons(this.isAssaultMode);
       }
     }
 
@@ -816,7 +872,7 @@
           if (typeof toggleRaidSfx === 'function') toggleRaidSfx();
         } else if (e.code === 'Digit7' || e.code === 'Numpad7' || e.key === '7') {
           e.preventDefault();
-          this.toggleBoltgunMode();
+          this.toggleAssaultMode();
         } else if (e.code === 'KeyQ') {
           this.useBeltMedkit();
         }
@@ -833,6 +889,15 @@
         }
 
         if (e.code === 'Escape') {
+          const settingsModal = document.getElementById('raid-settings-modal');
+          if (settingsModal && settingsModal.style.display === 'flex') {
+            if (typeof toggleRaidSettingsModal === 'function') {
+              toggleRaidSettingsModal(false);
+            } else {
+              settingsModal.style.display = 'none';
+            }
+            return;
+          }
           if (typeof confirmExitRadarRaid === 'function') {
             confirmExitRadarRaid();
           } else {
@@ -992,39 +1057,6 @@
             }
 
             // Check click on sidebar buttons (Controls box)
-            if (!this.isTouchControlsActive && this.canvas && this.canvas.width > 580 && (!this.isPointerLocked || this.cameraMode === 'TDS')) {
-              const sbW = 208;
-              const sbX = this.canvas.width - sbW - 16;
-              const sbY = 175; // Lowered cleanly below Loot HUD
-              if (clickX >= sbX && clickX <= sbX + sbW) {
-                // Click on [G] Camera mode row (Row 0)
-                if (clickY >= sbY + 24 && clickY <= sbY + 48) {
-                  this.toggleCameraMode();
-                  return;
-                }
-                // Click on [I] Hide UI row (Row 6)
-                if (clickY >= sbY + 146 && clickY <= sbY + 172) {
-                  this.toggleHUDVisibility();
-                  return;
-                }
-                // Click on [3] Music row (Row 7)
-                if (clickY >= sbY + 172 && clickY <= sbY + 194) {
-                  if (typeof toggleRaidMusic === 'function') toggleRaidMusic();
-                  return;
-                }
-                // Click on [4] Sounds row (Row 8)
-                if (clickY >= sbY + 194 && clickY <= sbY + 220) {
-                  if (typeof toggleRaidSfx === 'function') toggleRaidSfx();
-                  return;
-                }
-                // Click on [7] Boltgun Mode row (Row 9)
-                if (clickY >= sbY + 220 && clickY <= sbY + 248) {
-                  this.toggleBoltgunMode();
-                  return;
-                }
-              }
-            }
-
             // Handle Active NPC Dialog click first
             if (this.activeDialog && this.activeDialog.npc) {
               const npc = this.activeDialog.npc;
@@ -1370,6 +1402,101 @@
           }
         }
       }
+    }
+
+    getInteractionPrompt() {
+      if (this.activeDialog && this.activeDialog.npc) return '[E] ЗАВЕРШИТЬ ДИАЛОГ';
+      if (this.activeWallNoteCard) return '[E] ЗАКРЫТЬ ЗАПИСКУ';
+
+      const px = this.player.x;
+      const py = this.player.y;
+      const pAngle = this.player.angle;
+
+      const isFacing = (tx, ty, maxAngle = 0.95) => {
+        const dx = tx - px;
+        const dy = ty - py;
+        const ang = Math.atan2(dy, dx);
+        let diff = Math.abs(ang - pAngle);
+        while (diff > Math.PI) diff = Math.abs(diff - Math.PI * 2);
+        return diff <= maxAngle;
+      };
+
+      // 1. Doors in front
+      const frontDoor = this.getDoorInFront(80);
+      if (frontDoor) {
+        if (frontDoor.isLocked) return '🔒 [E] ГЕРМОЗАТВОР ЗАБЛОКИРОВАН';
+        return frontDoor.isOpen ? '[E] ЗАКРЫТЬ ГЕРМОЗАТВОР' : '[E] ОТКРЫТЬ ГЕРМОЗАТВОР';
+      }
+      for (const d of (this.doors || [])) {
+        if (Math.hypot(px - (d.x + 16), py - (d.y + 16)) < 55 && (this.cameraMode !== 'FPS' || isFacing(d.x + 16, d.y + 16))) {
+          if (d.isLocked) return '🔒 [E] ГЕРМОЗАТВОР ЗАБЛОКИРОВАН';
+          return d.isOpen ? '[E] ЗАКРЫТЬ ГЕРМОЗАТВОР' : '[E] ОТКРЫТЬ ГЕРМОЗАТВОР';
+        }
+      }
+
+      // 2. Barricades (Repair / Construct)
+      for (const b of (this.siegeBarricades || [])) {
+        if (Math.hypot(px - (b.x + 16), py - (b.y + 16)) < 52 && (this.cameraMode !== 'FPS' || isFacing(b.x + 16, b.y + 16))) {
+          return !b.isConstructed ? '[E] ПОСТРОИТЬ БАРРИКАДУ' : (b.hp < b.maxHp ? '[E] ПОЧИНИТЬ БАРРИКАДУ' : null);
+        }
+      }
+
+      // 3. Supply Chests
+      for (const chest of (this.chests || [])) {
+        if (!chest.opened && Math.hypot(px - chest.x, py - chest.y) < 52 && (this.cameraMode !== 'FPS' || isFacing(chest.x, chest.y))) {
+          return '[E] ОТКРЫТЬ ВОЕННЫЙ ЯЩИК';
+        }
+      }
+
+      // 4. VOKhR Supply Crate
+      if (this.vokhrCrate && !this.vokhrCrate.opened && Math.hypot(px - (this.vokhrCrate.x + 16), py - (this.vokhrCrate.y + 12)) < 56) {
+        return '[E] ОБЫСКАТЬ КОНТЕЙНЕР ВОХР';
+      }
+
+      // 5. Weapon Drops & Ammo
+      for (const drop of (this.weaponDrops || [])) {
+        if (!drop.pickedUp && Math.hypot(px - drop.x, py - drop.y) < 46 && (this.cameraMode !== 'FPS' || isFacing(drop.x, drop.y))) {
+          const wName = (drop.weapon && drop.weapon.name) ? drop.weapon.name : (drop.name || 'ПРИПАСЫ');
+          return `[E] ПОДОБРАТЬ: ${wName.toUpperCase()}`;
+        }
+      }
+
+      // 6. Loot Crates
+      for (const crate of (this.crates || [])) {
+        if (!crate.opened && Math.hypot(px - crate.x, py - crate.y) < 46 && (this.cameraMode !== 'FPS' || isFacing(crate.x, crate.y))) {
+          return '[E] ОБЫСКАТЬ ЯЩИК С ПРИПАСАМИ';
+        }
+      }
+
+      // 7. Friendly NPCs
+      const nearbyNPC = (this.npcs || []).find(n => Math.hypot(px - n.x, py - n.y) < 68 && (this.cameraMode !== 'FPS' || isFacing(n.x, n.y)));
+      if (nearbyNPC) {
+        const q = nearbyNPC.quest;
+        if (q && q.completed && !q.turnedIn) return '[E] СДАТЬ ЗАДАНИЕ';
+        return '[E] ПОГОВОРИТЬ';
+      }
+
+      // 8. Nearby Wounded Liquidator
+      const nearbyWounded = this.getNearbyWoundedNPC();
+      if (nearbyWounded && (this.cameraMode !== 'FPS' || isFacing(nearbyWounded.x, nearbyWounded.y))) {
+        if (this.player.belt && this.player.belt.medkits > 0) return '[E] ВЫЛЕЧИТЬ РАНЕНОГО (АПТЕЧКА)';
+        if (nearbyWounded.hasWeapon) return '[E] ВЗЯТЬ ОРУЖИЕ РАНЕНОГО';
+        return '[E] ОСМОТРЕТЬ РАНЕНОГО';
+      }
+
+      // 9. Tape Recorders & Wall Notes
+      for (const rec of (this.recorders || [])) {
+        if (Math.hypot(px - rec.x, py - rec.y) < 50 && (this.cameraMode !== 'FPS' || isFacing(rec.x, rec.y))) {
+          return '[E] ПРОСЛУШАТЬ КАССЕТУ';
+        }
+      }
+      for (const note of (this.wallNotes || [])) {
+        if (Math.hypot(px - note.x, py - note.y) < 50 && (this.cameraMode !== 'FPS' || isFacing(note.x, note.y))) {
+          return '[E] ПРОЧИТАТЬ ЗАПИСКУ';
+        }
+      }
+
+      return null;
     }
 
     interactNearby() {
@@ -3146,6 +3273,10 @@
     drawFPSCasings(ctx) {
       if (!this.casings || this.casings.length === 0) return;
       ctx.save();
+      const normScale = (this.offscreenCanvas && ctx === this.offscreenCtx) ? (180 / 540) : 1.0;
+      if (normScale !== 1.0) {
+        ctx.scale(normScale, normScale);
+      }
       for (let i = 0; i < this.casings.length; i++) {
         const c = this.casings[i];
         ctx.save();
@@ -3173,6 +3304,13 @@
      * Render Quick Melee Combat Boot Kick Animation
      */
     drawFPSKick(ctx, w, h) {
+      const normScale = (h <= 240) ? (h / 540) : 1.0;
+      ctx.save();
+      if (normScale !== 1.0) {
+        ctx.scale(normScale, normScale);
+        w = w / normScale;
+        h = h / normScale;
+      }
       const p = this.kickProgress || 0;
       const ease = Math.sin(p * Math.PI); // 0 -> 1 -> 0
 
@@ -3236,6 +3374,7 @@
         ctx.arc(w * 0.45, h * 0.6, 95, -0.6, 0.4);
         ctx.stroke();
       }
+      ctx.restore();
     }
 
     /**
@@ -4155,8 +4294,8 @@
         }
       }
 
-      // Chunky Gibs in Warhammer 40K: Boltgun Style (3x3 - 4x4 blood & meat squares with gravity)
-      if (this.isBoltgunMode && (color === '#ff3b30' || color === '#ff3333' || color === '#880066')) {
+      // Chunky Gibs in Retro Boomer Shooter Style (3x3 - 4x4 blood & meat squares with gravity)
+      if (this.isAssaultMode && (color === '#ff3b30' || color === '#ff3333' || color === '#880066')) {
         const gibColors = ['#990011', '#bb1122', '#660008', '#dd2233', '#ddccbb'];
         for (let g = 0; g < count * 2; g++) {
           const ang = Math.random() * Math.PI * 2;
@@ -4220,16 +4359,6 @@
       const h = this.canvas.height;
       const cam = this.getCameraOffset();
 
-      // Determine target context for world rendering (supports Swaggerfall ANSI text-mode shader)
-      let worldCtx = this.ctx;
-      let offscreenCanvas = null;
-
-      if (!this.isBoltgunMode && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
-        const off = AsciiRenderer.getOffscreen(w, h);
-        worldCtx = off.ctx;
-        offscreenCanvas = off.canvas;
-      }
-
       // Screen Shake offset
       if (this.screenShakeTimer > 0) {
         const sInt = this.screenShakeIntensity || 4;
@@ -4238,25 +4367,40 @@
         this.ctx.save();
         this.ctx.translate(sX, sY);
       }
-
-      // Screen Shake offset
-      if (this.screenShakeTimer > 0) {
-        const sInt = this.screenShakeIntensity || 4;
-        const sX = (Math.random() - 0.5) * sInt * 2;
-        const sY = (Math.random() - 0.5) * sInt * 2;
-        this.ctx.save();
-        this.ctx.translate(sX, sY);
-      }
-
-      // Deep solid darkness background
-      worldCtx.fillStyle = '#020503';
-      worldCtx.fillRect(0, 0, w, h);
 
       if (this.cameraMode === 'FPS') {
-        // --- FIRST PERSON 3D RAYCASTING MODE ---
-        this.renderFPS(worldCtx, w, h);
+        // --- FIRST PERSON 3D RAYCASTING MODE (Virtual Fixed Offscreen 320x180 Buffer) ---
+        this.renderFPS(this.offscreenCtx, 320, 180);
+
+        // Instant hardware upscale to main screen (<0.1ms GPU blit)
+        this.ctx.imageSmoothingEnabled = false;
+        if (!this.isAssaultMode && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+          if (!this.asciiCanvas) {
+            this.asciiCanvas = document.createElement('canvas');
+            this.asciiCanvas.width = 320;
+            this.asciiCanvas.height = 180;
+            this.asciiCtx = this.asciiCanvas.getContext('2d', { willReadFrequently: true });
+          }
+          AsciiRenderer.render(this.offscreenCanvas, this.asciiCtx, 320, 180);
+          this.ctx.drawImage(this.asciiCanvas, 0, 0, w, h);
+        } else {
+          this.ctx.drawImage(this.offscreenCanvas, 0, 0, w, h);
+        }
       } else {
         // --- TOP-DOWN 2D TACTICAL VIEW MODE ---
+        let worldCtx = this.ctx;
+        let offscreenCanvas = null;
+
+        if (!this.isAssaultMode && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+          const off = AsciiRenderer.getOffscreen(w, h);
+          worldCtx = off.ctx;
+          offscreenCanvas = off.canvas;
+        }
+
+        // Deep solid darkness background
+        worldCtx.fillStyle = '#020503';
+        worldCtx.fillRect(0, 0, w, h);
+
         worldCtx.save();
         worldCtx.translate(-cam.x, -cam.y);
 
@@ -4467,35 +4611,25 @@
 
         // 11. Dynamic Darkness & Volumetric Flashlight
         this.drawDynamicDarkness(worldCtx, cam, w, h);
+
+        // 12. Full-Color Swaggerfall (ANSI Text-Mode) Shader Post-Process for TDS
+        if (!this.isAssaultMode && offscreenCanvas && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+          AsciiRenderer.render(offscreenCanvas, this.ctx, w, h);
+        }
+
+        // PixelFX Retro Engine in TDS 2D Mode
+        if (this.fxSystem) {
+          this.fxSystem.updateAndRender(0.016, 'TDS', {
+            x: this.player.x,
+            y: this.player.y,
+            angle: this.player.angle,
+            cameraX: cam.x / 32,
+            cameraY: cam.y / 32
+          }, null, null);
+        }
       }
 
-      // 12. Full-Color Swaggerfall (ANSI Text-Mode) Shader Post-Process!
-      if (!this.isBoltgunMode && offscreenCanvas && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
-        AsciiRenderer.render(offscreenCanvas, this.ctx, w, h);
-      }
-
-      // 13. Draw Tactical HUD & Crosshair on display context
-      // Screen Flash Damage Vignette (Red radial aura on hit)
-      if (this.screenFlashTimer > 0) {
-        const vAlpha = (this.screenFlashTimer / 10) * 0.45;
-        const vGrad = this.ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.72);
-        vGrad.addColorStop(0, 'rgba(255, 0, 0, 0)');
-        vGrad.addColorStop(0.6, 'rgba(255, 0, 0, 0.15)');
-        vGrad.addColorStop(1, `rgba(220, 0, 0, ${vAlpha.toFixed(2)})`);
-        this.ctx.fillStyle = vGrad;
-        this.ctx.fillRect(0, 0, w, h);
-      }
-
-      // PixelFX Retro Engine in TDS 2D Mode
-      if (this.cameraMode !== 'FPS' && this.fxSystem) {
-        this.fxSystem.updateAndRender(0.016, 'TDS', {
-          x: this.player.x,
-          y: this.player.y,
-          angle: this.player.angle,
-          cameraX: cam.x / 32,
-          cameraY: cam.y / 32
-        }, null, null);
-      }
+      // 13. Draw Tactical HUD & Crosshair on display context (Full Native Resolution)
 
       this.drawRadarHUD(this.ctx, w, h);
       if (this.screenShakeTimer > 0) {
@@ -4584,7 +4718,7 @@
       const halfH = Math.floor(h / 2 - (this.recoilY || 0) + (this.horizonOffset || 0));
 
       ctx.save();
-      if (this.isBoltgunMode) {
+      if (this.isAssaultMode) {
         ctx.imageSmoothingEnabled = false;
         ctx.filter = 'contrast(1.25) saturate(1.3)';
       }
@@ -4596,7 +4730,7 @@
       }
 
       // 1. High-Performance Hardware-Accelerated Ceiling & Floor
-      if (this.isBoltgunMode) {
+      if (this.isAssaultMode) {
         // Full RGB Boomer Shooter Industrial Palette
         const ceilGrad = ctx.createLinearGradient(0, 0, 0, halfH);
         ceilGrad.addColorStop(0, '#101214');
@@ -4688,16 +4822,16 @@
         ctx.stroke();
       }
 
-      // 2. DDA Raycaster for vertical wall strips
-      const colStep = 3; // Optimized 3px columns (matches 6px ASCII grid)
-      const numCols = Math.ceil(w / colStep);
+      // 2. High-Speed DDA Raycaster with Precomputed Trig LUT (Virtual 320px Buffer)
+      const colStep = 1;
+      const numCols = w;
       const zBuffer = new Float32Array(numCols);
 
       for (let i = 0; i < numCols; i++) {
-        const screenX = i * colStep;
+        const screenX = i;
         const rayAngle = pAngle - halfFov + (i / numCols) * fov;
-        const sin = Math.sin(rayAngle);
-        const cos = Math.cos(rayAngle);
+        const sin = fastSin(rayAngle);
+        const cos = fastCos(rayAngle);
 
         let mapX = Math.floor(px / TS);
         let mapY = Math.floor(py / TS);
@@ -4792,8 +4926,8 @@
 
         zBuffer[i] = perpDist * TS;
 
-        // Fish-eye correction
-        const distCorrection = Math.cos(rayAngle - pAngle);
+        // Fish-eye correction (Precomputed Cosine LUT)
+        const distCorrection = fastCos(rayAngle - pAngle);
         const correctedDist = perpDist * distCorrection;
 
         const lineH = Math.min(h * 2.5, Math.floor((h / correctedDist) * 0.95));
@@ -4871,7 +5005,7 @@
         const sideDarken = (side === 1) ? 0.75 : 1.0;
         let shade = Math.max(0.04, Math.min(1.0, 1.0 - perpDist / maxShadeDist)) * sideDarken;
 
-        if (this.isBoltgunMode) {
+        if (this.isAssaultMode) {
           // Bayer 4x4 Ordered Dithering Matrix for chunky retro lighting steps
           const steps = 12;
           const colIdx = Math.floor(screenX / colStep);
@@ -4916,7 +5050,7 @@
         // Smooth darkness falloff overlay
         const darkAlpha = 1.0 - shade;
         if (darkAlpha > 0.02) {
-          if (this.isBoltgunMode) {
+          if (this.isAssaultMode) {
             ctx.fillStyle = `rgba(5, 5, 7, ${darkAlpha.toFixed(2)})`;
           } else {
             ctx.fillStyle = `rgba(1, 8, 4, ${darkAlpha.toFixed(2)})`;
@@ -5581,7 +5715,7 @@
 
       // PixelFX Retro Engine (320x180 low-res buffer with DDA Z-buffer clipping)
       if (this.fxSystem) {
-        this.fxSystem.updateAndRender(0.016, 'FPS', this.player, zBuffer, numCols);
+        this.fxSystem.updateAndRender(0.016, 'FPS', this.player, zBuffer, numCols, ctx);
       }
 
       // 5. First-Person Weapon Model & Liquidator Hazmat Hands
@@ -5602,6 +5736,13 @@
      * First-Person Weapon Rig with Liquidator Hazmat Hand & Procedural Bobbing & Recoil
      */
     drawFPSWeapon(ctx, w, h) {
+      const normScale = (h <= 240) ? (h / 540) : 1.0;
+      ctx.save();
+      if (normScale !== 1.0) {
+        ctx.scale(normScale, normScale);
+        w = w / normScale;
+        h = h / normScale;
+      }
       const bobX = Math.cos(this.bobTimer || 0) * 4;
       const bobY = Math.abs(Math.sin(this.bobTimer || 0)) * 6;
 
@@ -5782,8 +5923,8 @@
             ctx.beginPath();
             ctx.arc(-8, -260, 75, 0, Math.PI * 2);
             ctx.fill();
-          } else if (this.isBoltgunMode) {
-            // Comic-Style Starburst Muzzle Flash (Warhammer 40K: Boltgun)
+          } else if (this.isAssaultMode) {
+            // Retro Stylized Starburst Muzzle Flash (Assault Mode)
             ctx.save();
             ctx.translate(-8, -232);
             ctx.fillStyle = '#ffea00';
@@ -5897,7 +6038,7 @@
 
         // Muzzle blast fireball & sparks
         if (this.player.isShooting && (this.player.shootProgress || 0) < 0.32) {
-          if (this.isBoltgunMode) {
+          if (this.isAssaultMode) {
             ctx.save();
             ctx.translate(-6, -214);
             ctx.fillStyle = '#ffcc00';
@@ -6001,7 +6142,7 @@
 
         // Muzzle Flash
         if (this.player.isShooting && (this.player.shootProgress || 0) < 0.35) {
-          if (this.isBoltgunMode) {
+          if (this.isAssaultMode) {
             ctx.save();
             ctx.translate(-4, -170);
             ctx.fillStyle = '#ffea00';
@@ -6046,6 +6187,7 @@
         ctx.restore();
       }
 
+      ctx.restore();
       ctx.restore();
     }
 
@@ -6324,12 +6466,209 @@
       ctx.restore();
     }
 
+    /**
+     * Organic & Clean First-Person HUD (Boomer Shooter Ergonomics, No bulky borders)
+     */
+    drawFPSOrganicHUD(ctx, w, h) {
+      ctx.save();
+
+      // 1. Thin top line bar
+      const mins = Math.floor(this.levelTimeLeft / 60);
+      const secs = Math.floor(this.levelTimeLeft % 60);
+      const timeStr = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+      const isUrgent = this.samosborActive || this.levelTimeLeft < 60;
+      const timerColor = this.samosborActive ? '#ff0033' : (this.levelTimeLeft < 60 ? '#ffaa00' : '#1fe044');
+      const timerText = this.samosborActive ? '⚠️ САМОСБОР: ПРОРЫВ БЛОКА! ⚠️' : `ДО САМОСБОРА: ${timeStr}`;
+
+      // Hairline accent line under top bar
+      ctx.strokeStyle = 'rgba(31, 224, 68, 0.22)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(16, 28);
+      ctx.lineTo(w - 70, 28);
+      ctx.stroke();
+
+      // Left: [H] СВЯЗЬ
+      ctx.font = 'bold 12px "Share Tech Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1fe044';
+      const sectorName = (this.currentRoomName || 'СЕКТОР-556').toUpperCase().slice(0, 24);
+      ctx.fillText(`[H] СВЯЗЬ: ШЛЮЗ АКТИВЕН // ${sectorName}`, 20, 20);
+
+      // Right: Countdown Timer
+      ctx.textAlign = 'right';
+      if (isUrgent && Math.floor(this.tick / 15) % 2 === 0) {
+        ctx.fillStyle = '#ff3333';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 8;
+      } else {
+        ctx.fillStyle = timerColor;
+        ctx.shadowBlur = 0;
+      }
+      ctx.fillText(timerText, w - 75, 20);
+      ctx.shadowBlur = 0;
+
+      // 2. Contextual Interaction Prompt under crosshair (ONLY when facing an interactive object)
+      const prompt = this.getInteractionPrompt();
+      if (prompt) {
+        const promptY = Math.floor(h / 2 + 34);
+        ctx.font = 'bold 12px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        const textW = ctx.measureText(prompt).width;
+
+        // Subtle dark pill background
+        ctx.fillStyle = 'rgba(2, 12, 5, 0.85)';
+        ctx.fillRect(w / 2 - textW / 2 - 12, promptY - 14, textW + 24, 24);
+        ctx.strokeStyle = '#1fe044';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(w / 2 - textW / 2 - 12, promptY - 14, textW + 24, 24);
+
+        ctx.fillStyle = '#00ffaa';
+        ctx.shadowColor = 'rgba(0, 255, 170, 0.5)';
+        ctx.shadowBlur = 6;
+        ctx.fillText(prompt, w / 2, promptY + 3);
+        ctx.shadowBlur = 0;
+      }
+
+      // 3. Compact Bottom-Left (Health, Filter, Armor)
+      const blW = 230;
+      const blH = 48;
+      const blX = 20;
+      const blY = h - blH - 18;
+
+      ctx.fillStyle = 'rgba(2, 12, 5, 0.78)';
+      ctx.fillRect(blX, blY, blW, blH);
+      ctx.strokeStyle = 'rgba(31, 224, 68, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(blX, blY, blW, blH);
+
+      // Line 1: HP with segments
+      const hpPct = Math.max(0, this.player.hp / this.player.maxHp);
+      const segments = 10;
+      const filled = Math.round(hpPct * segments);
+      let segBar = '[';
+      for (let s = 0; s < segments; s++) segBar += (s < filled) ? '|' : ' ';
+      segBar += ']';
+
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 12px "Share Tech Mono", monospace';
+      ctx.fillStyle = this.player.hp < 30 ? '#ff3b30' : '#1fe044';
+      const hpStr = `HP ${String(this.player.hp).padStart(3, ' ')}/${this.player.maxHp} ${segBar}`;
+      ctx.fillText(hpStr, blX + 12, blY + 20);
+
+      // Line 2: Filter % and Armor DEF
+      const filterPct = Math.max(0, Math.floor((this.levelTimeLeft / 300) * 100));
+      ctx.font = '11px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#88ff9e';
+      const filterArmorStr = `ФИЛЬТР ${String(filterPct).padStart(2, ' ')}%   БРОНЯ ${String(this.player.armor || 0).padStart(2, ' ')} DEF`;
+      ctx.fillText(filterArmorStr, blX + 12, blY + 38);
+
+      // 4. Compact Bottom-Right (Weapon, Ammo, Quick Slot Badges)
+      const brW = 240;
+      const brH = 48;
+      const brX = w - brW - 20;
+      const brY = h - brH - 18;
+
+      ctx.fillStyle = 'rgba(2, 12, 5, 0.78)';
+      ctx.fillRect(brX, brY, brW, brH);
+      ctx.strokeStyle = 'rgba(31, 224, 68, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(brX, brY, brW, brH);
+
+      // Active Weapon & Ammo
+      const weapon = this.player.weapon;
+      const rawWName = weapon ? String(weapon.name) : 'КУЛАКИ';
+      const wName = rawWName.toUpperCase().slice(0, 18);
+
+      let ammoStr = '∞ (БЛИЖНИЙ БОЙ)';
+      if (weapon && weapon.isRanged) {
+        const curAmmo = weapon.ammo !== undefined ? weapon.ammo : 0;
+        const maxA = weapon.maxAmmo !== undefined ? weapon.maxAmmo : 30;
+        ammoStr = `${curAmmo} / ${maxA}  [R] СМЕНА`;
+      }
+
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 12px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#1fe044';
+      ctx.fillText(wName, brX + 12, brY + 20);
+
+      ctx.font = '11px "Share Tech Mono", monospace';
+      ctx.fillStyle = (weapon && weapon.isRanged && weapon.ammo === 0) ? '#ff3b30' : '#a4ffd9';
+      ctx.fillText(ammoStr, brX + 12, brY + 38);
+
+      // Quick slot indicators on right edge of box
+      const medkits = this.player.belt ? (this.player.belt.medkits || 0) : 0;
+      ctx.textAlign = 'right';
+      ctx.font = '10px "Share Tech Mono", monospace';
+      ctx.fillStyle = medkits > 0 ? '#ffea00' : '#666666';
+      ctx.fillText(`[Q] АПТ:${medkits}`, brX + brW - 10, brY + 38);
+
+      // 5. Extraction hold gauge (if player in elevator)
+      if (this.isPlayerInElevator) {
+        const holdPct = Math.min(1.0, this.evacHoldTimer / this.evacHoldRequired);
+        const holdSecLeft = Math.max(0, this.evacHoldRequired - this.evacHoldTimer).toFixed(1);
+        const cx = w / 2;
+
+        ctx.fillStyle = 'rgba(0, 45, 15, 0.94)';
+        ctx.fillRect(cx - 180, h - 96, 360, 42);
+        ctx.strokeStyle = '#00ff66';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 180, h - 96, 360, 42);
+
+        ctx.fillStyle = '#061a0b';
+        ctx.fillRect(cx - 165, h - 70, 330, 8);
+        ctx.fillStyle = '#1fe044';
+        ctx.fillRect(cx - 165, h - 70, Math.round(330 * holdPct), 8);
+
+        ctx.fillStyle = '#88ff9e';
+        ctx.font = 'bold 12px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`⚡ УДЕРЖАНИЕ ШАХТЫ: ${holdSecLeft}с... ⚡`, cx, h - 78);
+      }
+
+      // 6. Active Tape Subtitle (if any)
+      if (this.activeTapeSubtitle && this.activeTapeSubtitle.timer > 0) {
+        this.activeTapeSubtitle.timer -= (1 / 60);
+        const subText = this.activeTapeSubtitle.text;
+        ctx.font = 'italic 12px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+        ctx.fillRect(w / 2 - 260, h - 110, 520, 24);
+        ctx.fillStyle = '#ffea00';
+        ctx.fillText(`🎙️ "${subText}"`, w / 2, h - 94);
+      }
+
+      // 7. Center Toast Notification Banner (e.g. Mode Switch, Announcements)
+      if (this.centerToast && this.centerToast.timer > 0) {
+        this.centerToast.timer--;
+        const alpha = Math.min(1.0, this.centerToast.timer / 20);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = 'bold 14px "Share Tech Mono", monospace';
+        ctx.textAlign = 'center';
+        const tW = ctx.measureText(this.centerToast.text).width + 36;
+        ctx.fillStyle = 'rgba(4, 18, 7, 0.94)';
+        ctx.fillRect(w / 2 - tW / 2, 48, tW, 30);
+        ctx.strokeStyle = this.centerToast.color || '#1fe044';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(w / 2 - tW / 2, 48, tW, 30);
+
+        ctx.fillStyle = this.centerToast.color || '#1fe044';
+        ctx.shadowColor = this.centerToast.color || '#1fe044';
+        ctx.shadowBlur = 10;
+        ctx.fillText(this.centerToast.text, w / 2, 68);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
     drawRadarHUD(ctx, w, h) {
       ctx.save();
       const cx = w / 2;
       const cy = h / 2;
 
-      // Center Toast Notification Banner (e.g. Boltgun Mode Toggle)
+      // Center Toast Notification Banner (e.g. Mode Toggle)
       if (this.centerToast && this.centerToast.timer > 0) {
         this.centerToast.timer--;
         const tAlpha = Math.min(1.0, this.centerToast.timer / 15);
@@ -6398,6 +6737,13 @@
         ctx.textBaseline = 'middle';
         ctx.fillText('👁️ ПОКАЗАТЬ UI [I]', pillX + pillW / 2, pillY + pillH / 2);
 
+        ctx.restore();
+        return;
+      }
+
+      // First-Person Mode utilizes Organic Clean Boomer Shooter HUD
+      if (this.cameraMode === 'FPS') {
+        this.drawFPSOrganicHUD(ctx, w, h);
         ctx.restore();
         return;
       }
@@ -6628,58 +6974,6 @@
       const tlY = 12;
       const tlW = 280;
       const tlH = 86;
-
-      // Vertical Tactical Controls Sidebar along Right Edge (Positioned UNDER Loot HUD, no overlap!)
-      if (!this.isTouchControlsActive && w > 580) {
-        const sbW = 208;
-        const sbX = w - sbW - 16;
-        const sbY = 175; // Positioned cleanly below Loot HUD (56 + 74 = 130 + 45px padding)
-        const sbH = 246;
-
-        ctx.fillStyle = 'rgba(2, 14, 5, 0.92)';
-        ctx.fillRect(sbX, sbY, sbW, sbH);
-        ctx.strokeStyle = '#1fe044';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(sbX, sbY, sbW, sbH);
-
-        // Header Tab
-        ctx.fillStyle = 'rgba(31, 224, 68, 0.16)';
-        ctx.fillRect(sbX + 1, sbY + 1, sbW - 2, 20);
-        ctx.font = 'bold 10px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#1fe044';
-        ctx.textAlign = 'center';
-        ctx.fillText('УПРАВЛЕНИЕ РЕЙДОМ', sbX + sbW / 2, sbY + 14);
-
-        // Control key mappings list
-        const camLabel = (this.cameraMode === 'FPS') ? '📷 [G] TDS 2D' : '📷 [G] FPS 3D';
-        const boltLabel = this.isBoltgunMode ? '⚡ [7] BOLTGUN' : '📟 [7] ANSI CRT';
-        const hints = [
-          { key: camLabel, desc: '' },
-          { key: '[WASD]', desc: 'Движение' },
-          { key: '[F]', desc: 'Пинок ногой' },
-          { key: '[R]', desc: 'Перезарядка' },
-          { key: '[1] / [2]', desc: 'Оружие' },
-          { key: '[Q]', desc: 'Аптечка' },
-          { key: '[I]', desc: 'Скрыть UI' },
-          { key: '[3]', desc: 'Музыка' },
-          { key: '[4]', desc: 'Звуки' },
-          { key: boltLabel, desc: 'Шейдер' }
-        ];
-
-        let rowY = sbY + 36;
-        ctx.textAlign = 'left';
-        for (const hint of hints) {
-          ctx.font = 'bold 10px "Share Tech Mono", monospace';
-          ctx.fillStyle = hint.key.includes('BOLTGUN') ? '#ffcc00' : '#00ffaa';
-          ctx.fillText(hint.key, sbX + 10, rowY);
-          if (hint.desc) {
-            ctx.font = '10px monospace';
-            ctx.fillStyle = '#a4ffd9';
-            ctx.fillText(hint.desc, sbX + 82, rowY);
-          }
-          rowY += 20;
-        }
-      }
 
       ctx.fillStyle = 'rgba(4, 20, 7, 0.94)';
       ctx.fillRect(tlX, tlY, tlW, tlH);

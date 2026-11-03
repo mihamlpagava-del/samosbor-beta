@@ -2876,9 +2876,6 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
       <button id="btn-toggle-create-lobby" onclick="toggleCreateLobbyView()" style="flex: 1; min-width: 220px; padding: 12px 14px; background: rgba(51,212,255,0.18); border: 2px solid #33d4ff; color: #33d4ff; font-weight: bold; font-size: 13px; cursor: pointer; font-family: inherit; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px;">
         <span>⚔️</span> СОЗДАТЬ СВОЕ ЛОББИ (Я ХОСТ)
       </button>
-      <button id="btn-modal-toggle-boltgun" onclick="toggleBoltgunModeGlobal()" style="padding: 12px 16px; background: rgba(255,204,0,0.14); border: 2px solid #ffcc00; color: #ffcc00; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px;" title="Переключить ретро-шейдер рейда (Клавиша 7)">
-        <span>⚡</span> РЕЖИМ: BOLTGUN 40K (ЦВЕТНОЙ)
-      </button>
       <button onclick="refreshFPSLobbiesList()" style="padding: 12px 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(31,224,68,0.4); color: #88ff9e; cursor: pointer; font-family: inherit; font-size: 13px;">
         🔄 ОБНОВИТЬ
       </button>
@@ -3036,12 +3033,60 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 <div id="radar-roguelike-screen" style="display: none; position: fixed; inset: 0; z-index: 99999; background: #020503; overflow: hidden; width: 100vw; height: 100vh;">
   <canvas id="radar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
   <button id="btn-toggle-gamepad-raid" class="gamepad-toggle-btn" onclick="toggleMobileTouchControls()" title="Мобильное управление [Сенсор / Геймпад]" style="position: absolute; top: 106px; left: 16px; z-index: 100020;">🎮</button>
-  <div class="raid-audio-toggles" style="position: absolute; top: 12px; right: 190px; display: flex; gap: 6px; z-index: 100000;">
-    <button id="btn-toggle-boltgun-mode" onclick="toggleBoltgunModeGlobal()" title="Режим: BOLTGUN 40K / ANSI [Клавиша 7]" style="background: rgba(4,20,7,0.92); border: 1.5px solid #ffcc00; color: #ffcc00; padding: 6px 12px; font-size: 13px; cursor: pointer; border-radius: 3px; box-shadow: 0 0 8px rgba(255,204,0,0.3); font-family: 'Share Tech Mono', monospace; font-weight: bold;">⚡ [7] BOLTGUN</button>
-    <button id="btn-raid-mute-music" onclick="toggleRaidMusic()" title="Музыка [Клавиша 3]" style="background: rgba(4,20,7,0.92); border: 1.5px solid #1fe044; color: #1fe044; padding: 6px 10px; font-size: 13px; cursor: pointer; border-radius: 3px; box-shadow: 0 0 8px rgba(31,224,68,0.3); font-family: monospace; font-weight: bold;">[3] 🎵</button>
-    <button id="btn-raid-mute-sfx" onclick="toggleRaidSfx()" title="Звуки [Клавиша 4]" style="background: rgba(4,20,7,0.92); border: 1.5px solid #1fe044; color: #1fe044; padding: 6px 10px; font-size: 13px; cursor: pointer; border-radius: 3px; box-shadow: 0 0 8px rgba(31,224,68,0.3); font-family: monospace; font-weight: bold;">[4] 🔊</button>
+  <!-- КНОПКА ШЕСТЕРЕНКИ НАСТРОЕК (ВЕРХНИЙ ПРАВЫЙ УГОЛ) -->
+  <button id="btn-raid-settings" onclick="toggleRaidSettingsModal()" title="Настройки рейда [⚙️ / ESC]" style="position: absolute; top: 12px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.88); border: 1.5px solid #1fe044; color: #1fe044; padding: 6px 12px; font-size: 15px; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(31,224,68,0.25); font-family: 'Share Tech Mono', monospace; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s ease;">⚙️</button>
+
+  <!-- МОДАЛЬНОЕ ОКНО НАСТРОЕК РЕЙДА (СОВЕТСКИЙ ТЕРМИНАЛ) -->
+  <div id="raid-settings-modal" style="display: none; position: fixed; inset: 0; z-index: 100050; background: rgba(2, 6, 3, 0.82); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+    <div style="background: rgba(4, 18, 8, 0.96); border: 2px solid #1fe044; box-shadow: 0 0 24px rgba(31, 224, 68, 0.35); border-radius: 6px; width: 440px; max-width: 92vw; padding: 20px 24px; font-family: 'Share Tech Mono', monospace; color: #e0ffe8; position: relative;">
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(31, 224, 68, 0.35); padding-bottom: 10px; margin-bottom: 16px;">
+        <div style="font-size: 15px; font-weight: bold; color: #1fe044; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+          <span>⚙️</span> ТЕРМИНАЛ НАСТРОЕК РЕЙДА
+        </div>
+        <button onclick="toggleRaidSettingsModal(false)" style="background: transparent; border: 1px solid #1fe044; color: #1fe044; font-size: 14px; width: 28px; height: 28px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center;">✕</button>
+      </div>
+      
+      <!-- Settings Controls -->
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px;">
+        <button id="btn-settings-mode" onclick="toggleAssaultModeGlobal()" style="background: rgba(8, 30, 14, 0.85); border: 1.5px solid #1fe044; color: #1fe044; padding: 9px 14px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 4px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+          <span>[7] РЕЖИМ ГРАФИКИ:</span>
+          <span id="settings-mode-label" style="color: #ffcc00;">ШТУРМОВОЙ (ПОЛНОЦВЕТ)</span>
+        </button>
+        <button id="btn-settings-music" onclick="toggleRaidMusic()" style="background: rgba(8, 30, 14, 0.85); border: 1.5px solid #1fe044; color: #1fe044; padding: 9px 14px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 4px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+          <span>[3] ФОНОВАЯ МУЗЫКА:</span>
+          <span id="settings-music-label" style="color: #1fe044;">ВКЛ</span>
+        </button>
+        <button id="btn-settings-sfx" onclick="toggleRaidSfx()" style="background: rgba(8, 30, 14, 0.85); border: 1.5px solid #1fe044; color: #1fe044; padding: 9px 14px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 4px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+          <span>[4] ЗВУКОВЫЕ ЭФФЕКТЫ:</span>
+          <span id="settings-sfx-label" style="color: #1fe044;">ВКЛ</span>
+        </button>
+      </div>
+
+      <!-- Keybindings Guide -->
+      <div style="border-top: 1px dashed rgba(31, 224, 68, 0.25); padding-top: 12px; margin-bottom: 18px;">
+        <div style="font-size: 11px; color: #88ff9e; margin-bottom: 8px; letter-spacing: 0.5px; text-transform: uppercase;">Шпаргалка управления:</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 11px; color: #c4f0d0;">
+          <div><b style="color: #1fe044;">WASD</b> — Ходьба</div>
+          <div><b style="color: #1fe044;">МЫШЬ</b> — Обзор / Огонь</div>
+          <div><b style="color: #1fe044;">[E]</b> — Действие / Открыть</div>
+          <div><b style="color: #1fe044;">[R]</b> — Перезарядка</div>
+          <div><b style="color: #1fe044;">[F]</b> — Пинок ногой</div>
+          <div><b style="color: #1fe044;">[Q]</b> — Аптечка с пояса</div>
+          <div><b style="color: #1fe044;">[1] / [2]</b> — Выбор оружия</div>
+          <div><b style="color: #1fe044;">[G]</b> — Камера (FPS/2D)</div>
+          <div><b style="color: #1fe044;">[H]</b> — Связь с блоком</div>
+          <div><b style="color: #1fe044;">[I]</b> — Скрыть интерфейс</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 10px; border-top: 1px solid rgba(31, 224, 68, 0.35); padding-top: 14px;">
+        <button onclick="confirmExitRadarRaid()" style="flex: 1; background: rgba(50, 10, 10, 0.9); border: 1.5px solid #ff3b30; color: #ff3b30; padding: 8px; font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px;">🏃 В ЖИЛ-ЯЧЕЙКУ</button>
+        <button onclick="toggleRaidSettingsModal(false)" style="flex: 1; background: rgba(10, 45, 18, 0.9); border: 1.5px solid #1fe044; color: #1fe044; padding: 8px; font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px;">ВЕРНУТЬСЯ [✕]</button>
+      </div>
+    </div>
   </div>
-  <button id="btn-radar-abort" onclick="confirmExitRadarRaid()" style="position: absolute; top: 12px; right: 16px; z-index: 100000; background: rgba(4,20,7,0.92); border: 2px solid #1fe044; color: #1fe044; padding: 7px 16px; font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-shadow: 0 0 8px #1fe044; box-shadow: 0 0 12px rgba(31,224,68,0.4);">[ESC] В ЖИЛЯЧЕЙКУ</button>
 
   <!-- СЕНСОРНОЕ МОБИЛЬНОЕ УПРАВЛЕНИЕ ДЛЯ РЕЙДА -->
   <div id="radar-touch-overlay" class="radar-touch-overlay" style="display: none;">
@@ -3065,9 +3110,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
           <span class="touch-icon">📷</span>
           <span class="touch-label">2D/3D</span>
         </button>
-        <button id="btn-touch-boltgun" class="touch-btn touch-btn-util" onclick="toggleBoltgunModeGlobal()" title="Boltgun / ANSI [7]">
-          <span class="touch-icon">⚡</span>
-          <span class="touch-label">BOLT[7]</span>
+        <button id="btn-touch-settings" class="touch-btn touch-btn-util" onclick="toggleRaidSettingsModal()" title="Настройки рейда [⚙️]">
+          <span class="touch-icon">⚙️</span>
+          <span class="touch-label">ОПЦИИ</span>
         </button>
         <button id="btn-touch-kick" class="touch-btn touch-btn-kick" title="Удар ботинком [F]">
           <span class="touch-icon">👢</span>
@@ -3218,14 +3263,9 @@ button:disabled { border-color: #333 !important; color: #444 !important; cursor:
 
     <!-- 2. Нижний блок: Клавиатурная консоль / Пульт управления со стола -->
     <div class="terminal-deck-console">
-      <div style="display: flex; gap: 8px; width: 100%;">
-        <button id="btn-exit-cell" class="btn-hazard-sortie" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell" style="flex: 1;">
-          <span style="letter-spacing: 1.5px;">[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]</span>
-        </button>
-        <button id="btn-hub-toggle-boltgun" onclick="toggleBoltgunModeGlobal()" class="term-key-btn" style="width: auto; padding: 0 16px; border: 2px solid #ffcc00; color: #ffcc00; font-weight: bold; background: rgba(255,204,0,0.12); cursor: pointer;" title="Переключить ретро-шейдер рейда: BOLTGUN 40K / ANSI [Клавиша 7]">
-          ⚡ BOLTGUN (40K)
-        </button>
-      </div>
+      <button id="btn-exit-cell" class="btn-hazard-sortie" onclick="openRadarRoguelikeModal()" data-i18n="btn_exit_cell">
+        <span style="letter-spacing: 1.5px;">[ ⚠️ ВЫЙТИ ИЗ ЖИЛ-ЯЧЕЙКИ ]</span>
+      </button>
 
       <div class="terminal-buttons-grid">
         <button id="open-notebook-btn" class="term-key-btn" data-i18n="btn_notebook">📓 ДНЕВНИК</button>
@@ -11539,6 +11579,11 @@ function toggleRaidMusic() {
     btn.style.borderColor = musicEnabled ? '#1fe044' : '#ff4444';
     btn.style.color = musicEnabled ? '#1fe044' : '#ff4444';
   }
+  const sMusicLbl = document.getElementById('settings-music-label');
+  if (sMusicLbl) {
+    sMusicLbl.textContent = musicEnabled ? 'ВКЛ' : 'ВЫКЛ';
+    sMusicLbl.style.color = musicEnabled ? '#1fe044' : '#ff4444';
+  }
   if (!musicEnabled) {
     stopRaidMusic();
   } else {
@@ -11557,6 +11602,11 @@ function toggleRaidSfx() {
     btn.innerText = sfxEnabled ? '[4] 🔊' : '[4] 🔇';
     btn.style.borderColor = sfxEnabled ? '#1fe044' : '#ff4444';
     btn.style.color = sfxEnabled ? '#1fe044' : '#ff4444';
+  }
+  const sSfxLbl = document.getElementById('settings-sfx-label');
+  if (sSfxLbl) {
+    sSfxLbl.textContent = sfxEnabled ? 'ВКЛ' : 'ВЫКЛ';
+    sSfxLbl.style.color = sfxEnabled ? '#1fe044' : '#ff4444';
   }
   if (typeof RadarAudio !== 'undefined') {
     RadarAudio.isMuted = !sfxEnabled;
@@ -11851,48 +11901,74 @@ applyLanguage();
 <!-- JAVASCRIPT CONTROLLER: FPS LOBBY DISPATCHER (HOST, PVE & PVP)        -->
 <!-- ===================================================================== -->
 <script>
-function toggleBoltgunModeGlobal() {
+function toggleAssaultModeGlobal() {
   if (window.radarRoguelikeGame) {
-    window.radarRoguelikeGame.toggleBoltgunMode();
+    window.radarRoguelikeGame.toggleAssaultMode();
   } else {
-    const cur = (localStorage.getItem('samosbor_boltgun_mode') === 'true');
+    const cur = (localStorage.getItem('samosbor_assault_mode') === 'true' || localStorage.getItem('samosbor_boltgun_mode') === 'true');
     const nxt = !cur;
-    try { localStorage.setItem('samosbor_boltgun_mode', nxt); } catch(e){}
+    try {
+      localStorage.setItem('samosbor_assault_mode', nxt);
+      localStorage.setItem('samosbor_boltgun_mode', nxt);
+    } catch(e){}
     if (typeof AsciiRenderer !== 'undefined') {
       AsciiRenderer.enabled = !nxt;
     }
-    updateAllBoltgunButtons(nxt);
+    updateAllAssaultButtons(nxt);
   }
 }
 
-function updateAllBoltgunButtons(isBoltgun) {
-  const b1 = document.getElementById('btn-toggle-boltgun-mode');
-  if (b1) {
-    b1.innerHTML = isBoltgun ? '⚡ [7] BOLTGUN' : '📟 [7] ANSI CRT';
-    b1.style.borderColor = isBoltgun ? '#ffcc00' : '#1fe044';
-    b1.style.color = isBoltgun ? '#ffcc00' : '#1fe044';
+const toggleBoltgunModeGlobal = toggleAssaultModeGlobal;
+
+function updateAllAssaultButtons(isAssault) {
+  const lbl = document.getElementById('settings-mode-label');
+  if (lbl) {
+    lbl.textContent = isAssault ? 'ШТУРМОВОЙ (ПОЛНОЦВЕТ)' : 'ТЕРМИНАЛЬНЫЙ (ЭХО)';
+    lbl.style.color = isAssault ? '#ffcc00' : '#1fe044';
   }
-  const b2 = document.getElementById('btn-modal-toggle-boltgun');
-  if (b2) {
-    b2.innerHTML = isBoltgun ? '<span>⚡</span> РЕЖИМ: BOLTGUN 40K (ЦВЕТНОЙ)' : '<span>📟</span> РЕЖИМ: ТЕРМИНАЛ САМОСБОРА (ANSI)';
-    b2.style.borderColor = isBoltgun ? '#ffcc00' : '#1fe044';
-    b2.style.color = isBoltgun ? '#ffcc00' : '#1fe044';
+  const btn = document.getElementById('btn-settings-mode');
+  if (btn) {
+    btn.style.borderColor = isAssault ? '#ffcc00' : '#1fe044';
   }
-  const b3 = document.getElementById('btn-hub-toggle-boltgun');
-  if (b3) {
-    b3.innerHTML = isBoltgun ? '⚡ BOLTGUN (40K)' : '📟 ANSI CRT';
-    b3.style.borderColor = isBoltgun ? '#ffcc00' : '#1fe044';
-    b3.style.color = isBoltgun ? '#ffcc00' : '#1fe044';
+}
+
+const updateAllBoltgunButtons = updateAllAssaultButtons;
+
+function toggleRaidSettingsModal(forceState) {
+  const modal = document.getElementById('raid-settings-modal');
+  if (!modal) return;
+  const isCurrentlyOpen = (modal.style.display === 'flex');
+  const shouldOpen = (forceState !== undefined) ? forceState : !isCurrentlyOpen;
+  modal.style.display = shouldOpen ? 'flex' : 'none';
+
+  if (shouldOpen) {
+    // Update live toggle state labels in the settings modal
+    const isAssault = window.radarRoguelikeGame ? window.radarRoguelikeGame.isAssaultMode : (localStorage.getItem('samosbor_assault_mode') === 'true');
+    updateAllAssaultButtons(isAssault);
+
+    const musicLbl = document.getElementById('settings-music-label');
+    if (musicLbl) {
+      const isMuted = (typeof RadarAudio !== 'undefined' && RadarAudio.isMuted);
+      musicLbl.textContent = isMuted ? 'ВЫКЛ' : 'ВКЛ';
+      musicLbl.style.color = isMuted ? '#888888' : '#1fe044';
+    }
+
+    const sfxLbl = document.getElementById('settings-sfx-label');
+    if (sfxLbl) {
+      const isSfxMuted = (typeof RadarAudio !== 'undefined' && RadarAudio.isSfxMuted);
+      sfxLbl.textContent = isSfxMuted ? 'ВЫКЛ' : 'ВКЛ';
+      sfxLbl.style.color = isSfxMuted ? '#888888' : '#1fe044';
+    }
   }
 }
 
 try {
-  const initBoltgun = (localStorage.getItem('samosbor_boltgun_mode') === 'true');
-  if (initBoltgun && typeof AsciiRenderer !== 'undefined') {
+  const initAssault = (localStorage.getItem('samosbor_assault_mode') === 'true' || localStorage.getItem('samosbor_boltgun_mode') === 'true');
+  if (initAssault && typeof AsciiRenderer !== 'undefined') {
     AsciiRenderer.enabled = false;
   }
   window.addEventListener('DOMContentLoaded', () => {
-    updateAllBoltgunButtons(initBoltgun);
+    updateAllAssaultButtons(initAssault);
   });
 } catch(e){}
 

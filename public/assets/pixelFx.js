@@ -1923,7 +1923,7 @@
   pixelFx.fx['scifi/laser-grid'] = laserGridModule;
   pixelFx.fx['pixelfx/fx/scifi/laser-grid'] = laserGridModule;
 
+
   global.pixelFx = pixelFx;
 
 })(typeof window !== 'undefined' ? window : global);
-

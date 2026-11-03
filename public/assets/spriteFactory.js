@@ -1937,7 +1937,7 @@
       ctx.fillStyle = color;
       ctx.fill();
 
-      // Warhammer 40K: Boltgun Style Hitmarker Cross [X]
+      // Tactical Hitmarker Cross [X]
       if (hitmarkerTimer > 0) {
         ctx.strokeStyle = '#ff1122';
         ctx.shadowColor = '#ff3b30';

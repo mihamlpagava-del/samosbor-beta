@@ -90,7 +90,7 @@
     }
 
     /**
-     * Boomer Shooter Hit Confirmation Tick (Warhammer 40K: Boltgun style)
+     * Boomer Shooter Hit Confirmation Tick
      */
     playHitmarkerTick() {
       const ctx = this.ensureContext();
