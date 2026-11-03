@@ -4369,22 +4369,34 @@
       }
 
       if (this.cameraMode === 'FPS') {
-        // --- FIRST PERSON 3D RAYCASTING MODE (Virtual Fixed Offscreen 320x180 Buffer) ---
-        this.renderFPS(this.offscreenCtx, 320, 180);
+        if (this.isAssaultMode) {
+          // --- ШТУРМОВОЙ РЕЖИМ (FPS 3D): Высокопроизводительный фиксированный буфер 320x180 ---
+          this.offscreenCtx.fillStyle = '#020503';
+          this.offscreenCtx.fillRect(0, 0, 320, 180);
+          this.renderFPS(this.offscreenCtx, 320, 180);
 
-        // Instant hardware upscale to main screen (<0.1ms GPU blit)
-        this.ctx.imageSmoothingEnabled = false;
-        if (!this.isAssaultMode && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
-          if (!this.asciiCanvas) {
-            this.asciiCanvas = document.createElement('canvas');
-            this.asciiCanvas.width = 320;
-            this.asciiCanvas.height = 180;
-            this.asciiCtx = this.asciiCanvas.getContext('2d', { willReadFrequently: true });
-          }
-          AsciiRenderer.render(this.offscreenCanvas, this.asciiCtx, 320, 180);
-          this.ctx.drawImage(this.asciiCanvas, 0, 0, w, h);
-        } else {
+          // Аппаратный апскейл на весь экран без сглаживания (<0.1ms GPU blit)
+          this.ctx.imageSmoothingEnabled = false;
           this.ctx.drawImage(this.offscreenCanvas, 0, 0, w, h);
+        } else {
+          // --- ТЕРМИНАЛЬНЫЙ РЕЖИМ САМОСБОРА (ЭХО): Аутентичный нативный ANSI вид ---
+          let worldCtx = this.ctx;
+          let offscreenCanvas = null;
+
+          if (typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+            const off = AsciiRenderer.getOffscreen(w, h);
+            worldCtx = off.ctx;
+            offscreenCanvas = off.canvas;
+          }
+
+          worldCtx.fillStyle = '#020503';
+          worldCtx.fillRect(0, 0, w, h);
+
+          this.renderFPS(worldCtx, w, h);
+
+          if (offscreenCanvas && typeof AsciiRenderer !== 'undefined' && AsciiRenderer.enabled) {
+            AsciiRenderer.render(offscreenCanvas, this.ctx, w, h);
+          }
         }
       } else {
         // --- TOP-DOWN 2D TACTICAL VIEW MODE ---
@@ -4822,13 +4834,13 @@
         ctx.stroke();
       }
 
-      // 2. High-Speed DDA Raycaster with Precomputed Trig LUT (Virtual 320px Buffer)
-      const colStep = 1;
-      const numCols = w;
+      // 2. High-Speed DDA Raycaster with Precomputed Trig LUT
+      const colStep = (w <= 320) ? 1 : 3;
+      const numCols = Math.ceil(w / colStep);
       const zBuffer = new Float32Array(numCols);
 
       for (let i = 0; i < numCols; i++) {
-        const screenX = i;
+        const screenX = i * colStep;
         const rayAngle = pAngle - halfFov + (i / numCols) * fov;
         const sin = fastSin(rayAngle);
         const cos = fastCos(rayAngle);
