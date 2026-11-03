@@ -44,6 +44,8 @@
       this.cache['item_tape'] = this.createItemTape();
       this.cache['item_recorder'] = this.createItemRecorder();
       this.cache['recorder'] = this.cache['item_recorder'];
+      this.cache['wall_note'] = this.createWallNote();
+      this.cache['item_wall_note'] = this.cache['wall_note'];
     }
 
     get(name) {
@@ -494,6 +496,47 @@
       // Handle
       ctx.fillStyle = '#4c524f';
       ctx.fillRect(x + 4, y - 3, 16, 2);
+
+      return canvas;
+    }
+
+    createWallNote() {
+      const { canvas, ctx } = this._makeCanvas(48, 64);
+      const x = 6, y = 8, w = 36, h = 48;
+
+      // Drop shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(x + 2, y + 3, w, h);
+
+      // Aged Soviet document paper
+      ctx.fillStyle = '#eedebc';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#6e5e40';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, h);
+
+      // Rusty iron pin/nail at top
+      ctx.fillStyle = '#3a2b1c';
+      ctx.beginPath();
+      ctx.arc(x + w / 2, y + 4, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Department header bar
+      ctx.fillStyle = '#8a2020';
+      ctx.fillRect(x + 4, y + 8, w - 8, 3);
+
+      // Typed text rows
+      ctx.fillStyle = '#3a3428';
+      for (let ly = y + 15; ly < y + h - 10; ly += 4) {
+        ctx.fillRect(x + 4, ly, w - 8, 1.5);
+      }
+
+      // Red Soviet round stamp at bottom right
+      ctx.strokeStyle = 'rgba(180, 20, 20, 0.85)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x + w - 10, y + h - 10, 6, 0, Math.PI * 2);
+      ctx.stroke();
 
       return canvas;
     }

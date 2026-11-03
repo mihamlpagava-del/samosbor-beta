@@ -816,8 +816,11 @@
 
         // Close Wall Note Document if open
         if (this.activeWallNoteCard) {
-          if (e.code === 'KeyE' || e.code === 'Escape' || e.code === 'Space') {
+          if (e.code === 'KeyE' || e.code === 'Escape' || e.code === 'Space' || e.key === 'e' || e.key === 'у' || e.key === 'E' || e.key === 'У') {
             this.activeWallNoteCard = null;
+            if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
+              RadarAudio.playLootPickup();
+            }
             return;
           }
         }
@@ -1012,6 +1015,13 @@
 
         this.canvas.addEventListener('mousedown', (e) => {
           if (!this.isRunning) return;
+          if (this.activeWallNoteCard) {
+            this.activeWallNoteCard = null;
+            if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
+              RadarAudio.playLootPickup();
+            }
+            return;
+          }
           if (this.player.isDead || this.player.hp <= 0) {
             if (typeof handleRadarFleeCell === 'function') {
               handleRadarFleeCell();
@@ -1404,6 +1414,15 @@
       }
     }
 
+    isPlayerFacing(tx, ty, maxAngle = 1.05) {
+      const dx = tx - this.player.x;
+      const dy = ty - this.player.y;
+      const ang = Math.atan2(dy, dx);
+      let diff = Math.abs(ang - this.player.angle);
+      while (diff > Math.PI) diff = Math.abs(diff - Math.PI * 2);
+      return diff <= maxAngle;
+    }
+
     getInteractionPrompt() {
       if (this.activeDialog && this.activeDialog.npc) return '[E] ЗАВЕРШИТЬ ДИАЛОГ';
       if (this.activeWallNoteCard) return '[E] ЗАКРЫТЬ ЗАПИСКУ';
@@ -1412,14 +1431,7 @@
       const py = this.player.y;
       const pAngle = this.player.angle;
 
-      const isFacing = (tx, ty, maxAngle = 0.95) => {
-        const dx = tx - px;
-        const dy = ty - py;
-        const ang = Math.atan2(dy, dx);
-        let diff = Math.abs(ang - pAngle);
-        while (diff > Math.PI) diff = Math.abs(diff - Math.PI * 2);
-        return diff <= maxAngle;
-      };
+      const isFacing = (tx, ty, maxAngle = 1.05) => this.isPlayerFacing(tx, ty, maxAngle);
 
       // 1. Doors in front
       const frontDoor = this.getDoorInFront(80);
@@ -1484,14 +1496,16 @@
         return '[E] ОСМОТРЕТЬ РАНЕНОГО';
       }
 
-      // 9. Tape Recorders & Wall Notes
+      // 9. Tape Recorders & Wall Notes (Extended reach in FPS mode)
       for (const rec of (this.recorders || [])) {
-        if (Math.hypot(px - rec.x, py - rec.y) < 50 && (this.cameraMode !== 'FPS' || isFacing(rec.x, rec.y))) {
+        const maxDist = (this.cameraMode === 'FPS') ? 75 : 54;
+        if (Math.hypot(px - rec.x, py - rec.y) < maxDist && (this.cameraMode !== 'FPS' || isFacing(rec.x, rec.y))) {
           return '[E] ПРОСЛУШАТЬ КАССЕТУ';
         }
       }
       for (const note of (this.wallNotes || [])) {
-        if (Math.hypot(px - note.x, py - note.y) < 50 && (this.cameraMode !== 'FPS' || isFacing(note.x, note.y))) {
+        const maxDist = (this.cameraMode === 'FPS') ? 75 : 54;
+        if (Math.hypot(px - note.x, py - note.y) < maxDist && (this.cameraMode !== 'FPS' || isFacing(note.x, note.y))) {
           return '[E] ПРОЧИТАТЬ ЗАПИСКУ';
         }
       }
@@ -1507,6 +1521,15 @@
           this.turnInNPCQuest(npc);
         } else {
           this.activeDialog = null;
+        }
+        return;
+      }
+
+      // 0b. Dismiss Wall Note Document if currently reading
+      if (this.activeWallNoteCard) {
+        this.activeWallNoteCard = null;
+        if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
+          RadarAudio.playLootPickup();
         }
         return;
       }
@@ -1549,8 +1572,9 @@
       // 4. Airtight Hermetic Blast Doors (Front check in FPS, radial in TDS)
       // Tape Recorders (PROP_RECORDER)
       for (const rec of (this.recorders || [])) {
+        const maxDist = (this.cameraMode === 'FPS') ? 75 : 54;
         const dRec = Math.hypot(this.player.x - rec.x, this.player.y - rec.y);
-        if (dRec < 48) {
+        if (dRec < maxDist && (this.cameraMode !== 'FPS' || this.isPlayerFacing(rec.x, rec.y))) {
           rec.isPlaying = true;
           rec.listened = true;
           if (typeof RadarAudio !== 'undefined' && RadarAudio.playTapeRecorderAudio) {
@@ -1572,8 +1596,9 @@
 
       // Wall Decal Notes (WALL_DECAL_NOTE)
       for (const note of (this.wallNotes || [])) {
+        const maxDist = (this.cameraMode === 'FPS') ? 75 : 54;
         const dNote = Math.hypot(this.player.x - note.x, this.player.y - note.y);
-        if (dNote < 48) {
+        if (dNote < maxDist && (this.cameraMode !== 'FPS' || this.isPlayerFacing(note.x, note.y))) {
           this.activeWallNoteCard = note;
           if (typeof RadarAudio !== 'undefined' && RadarAudio.playLootPickup) {
             RadarAudio.playLootPickup();
@@ -5437,7 +5462,7 @@
         }
 
         const isItem = (sp.type === 'weapon' || sp.type === 'crate');
-        const aspect = isItem ? (sp.isKeycard ? 1.05 : 0.68) : 0.82;
+        const aspect = (sp.type === 'wall_note') ? 0.75 : (isItem ? (sp.isKeycard ? 1.05 : 0.68) : 0.82);
         const baseSprHeight = Math.min(h * 2.2, Math.floor((h / (perpDistWorld / TS)) * 0.88));
 
         // Hover & Pseudo-3D Spin for dropped loot
@@ -5448,9 +5473,11 @@
           spinScaleX = Math.cos(Date.now() * 0.004 + sp.y);
         }
 
-        const sprHeight = baseSprHeight;
+        const sprHeight = (sp.type === 'wall_note') ? Math.floor(baseSprHeight * 0.72) : baseSprHeight;
         const sprWidth = Math.max(4, Math.floor(sprHeight * aspect * Math.abs(spinScaleX)));
-        const sprTop = Math.floor(wallBase - sprHeight - hoverYOffset);
+        const sprTop = (sp.type === 'wall_note')
+          ? Math.floor(halfH - sprHeight * 0.35)
+          : Math.floor(wallBase - sprHeight - hoverYOffset);
         const sprLeft = Math.floor(screenX - sprWidth / 2);
         const sprRight = sprLeft + sprWidth;
 
@@ -6672,6 +6699,138 @@
         ctx.restore();
       }
 
+      // 8. Active Wall Note Document Overlay (in FPS mode)
+      if (this.activeWallNoteCard) {
+        this.drawWallNoteCard(ctx, w, h);
+      }
+
+      ctx.restore();
+    }
+
+    drawWallNoteCard(ctx, w, h) {
+      if (!this.activeWallNoteCard) return;
+      ctx.save();
+
+      const note = this.activeWallNoteCard;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // Dark cinematic semi-transparent backdrop
+      ctx.fillStyle = 'rgba(2, 6, 4, 0.84)';
+      ctx.fillRect(0, 0, w, h);
+
+      // Responsive, spacious Soviet document card
+      const cardW = Math.min(w - 32, 600);
+      const cardH = Math.min(h - 40, 390);
+      const cardX = Math.floor(cx - cardW / 2);
+      const cardY = Math.floor(cy - cardH / 2);
+
+      // Outer aged document drop shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+      ctx.fillRect(cardX + 6, cardY + 6, cardW, cardH);
+
+      // Vintage Soviet aged stationery sheet background (high contrast cream)
+      ctx.fillStyle = '#f5eedb';
+      ctx.fillRect(cardX, cardY, cardW, cardH);
+
+      // Dark industrial aged paper border
+      ctx.strokeStyle = '#4a3b26';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+      // Inner fine hairline border
+      ctx.strokeStyle = 'rgba(74, 59, 38, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cardX + 8, cardY + 8, cardW - 16, cardH - 16);
+
+      // Top pin / rusty rebar stud pinning the paper
+      ctx.fillStyle = '#2b2318';
+      ctx.beginPath();
+      ctx.arc(cx, cardY + 16, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7a6242';
+      ctx.beginPath();
+      ctx.arc(cx - 1, cardY + 15, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Top Official USSR / Gigakhrushch Department Header
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 11px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#5c482e';
+      ctx.fillText('СССР // МИНИСТЕРСТВО ТЯЖЕЛОГО БЕТОНОСТРОЕНИЯ // СЛУЖБА БЕЗОПАСНОСТИ БЛОКА', cx, cardY + 38);
+
+      // Document Title (Bold & prominent)
+      ctx.font = 'bold 18px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#140f09';
+      ctx.fillText(note.title || 'СЛУЖЕБНАЯ ЗАПИСКА', cx, cardY + 66);
+
+      // Formal separator line
+      ctx.strokeStyle = '#8a7250';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cardX + 32, cardY + 78);
+      ctx.lineTo(cardX + cardW - 32, cardY + 78);
+      ctx.stroke();
+
+      // Recipient line
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 13px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#423320';
+      ctx.fillText(`КОМУ: ${note.header || 'ДЕЖУРНОМУ ПО СЕКТОРУ'}`, cardX + 34, cardY + 102);
+
+      // Main Note Body Text - Large, high-contrast, perfectly readable typewriter typography
+      ctx.font = '15px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#0a0805'; // Deep black soot ink for maximum legibility
+      const words = (note.text || '').split(' ');
+      let line = '';
+      let lineY = cardY + 132;
+      const maxLineW = cardW - 68;
+      const lineHeight = 24;
+
+      for (let wi = 0; wi < words.length; wi++) {
+        const testLine = line + words[wi] + ' ';
+        if (ctx.measureText(testLine).width > maxLineW) {
+          ctx.fillText(line.trim(), cardX + 34, lineY);
+          line = words[wi] + ' ';
+          lineY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) {
+        ctx.fillText(line.trim(), cardX + 34, lineY);
+      }
+
+      // Red Soviet Ink Stamp (Angle rotated, authentic, crisp readable font)
+      ctx.save();
+      ctx.translate(cardX + cardW - 120, cardY + cardH - 68);
+      ctx.rotate(-0.1);
+      ctx.strokeStyle = 'rgba(190, 20, 20, 0.85)';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(-90, -18, 180, 36);
+      ctx.font = 'bold 11px "Share Tech Mono", monospace';
+      ctx.fillStyle = 'rgba(190, 20, 20, 0.9)';
+      ctx.textAlign = 'center';
+      ctx.fillText(note.stamp || 'СЕКРЕТНО // ОХРАНА БЛОКА', 0, 4);
+      ctx.restore();
+
+      // Footer Action / Dismissal Pill Prompt
+      const btnW = 320;
+      const btnH = 30;
+      const btnX = cx - btnW / 2;
+      const btnY = cardY + cardH - 42;
+
+      ctx.fillStyle = '#e2d5b6';
+      ctx.fillRect(btnX, btnY, btnW, btnH);
+      ctx.strokeStyle = '#5c482e';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(btnX, btnY, btnW, btnH);
+
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 12px "Share Tech Mono", monospace';
+      ctx.fillStyle = '#22180e';
+      ctx.fillText('[ E ] / [ ПРОБЕЛ ] / [ ESC ] — ЗАКРЫТЬ ЗАПИСКУ', cx, btnY + 20);
+
       ctx.restore();
     }
 
@@ -6907,79 +7066,7 @@
 
       // Wall Note Interactive Soviet Document Card Overlay
       if (this.activeWallNoteCard) {
-        const cardW = Math.min(w - 32, 440);
-        const cardH = 260;
-        const cardX = cx - cardW / 2;
-        const cardY = cy - cardH / 2;
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.fillRect(0, 0, w, h);
-
-        ctx.fillStyle = '#dfd3b6';
-        ctx.fillRect(cardX, cardY, cardW, cardH);
-        ctx.strokeStyle = '#6e5e43';
-        ctx.lineWidth = 2.5;
-        ctx.strokeRect(cardX, cardY, cardW, cardH);
-
-        ctx.fillStyle = '#4a3d2c';
-        ctx.beginPath();
-        ctx.arc(cx, cardY + 12, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 9px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#3a3324';
-        ctx.fillText('СССР // ГИГАХРУЩ // СЛУЖБА БЕЗОПАСНОСТИ СЕКТОРА', cx, cardY + 32);
-
-        ctx.font = 'bold 12px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#1c170d';
-        ctx.fillText(this.activeWallNoteCard.title || 'СЛУЖЕБНАЯ ЗАПИСКА', cx, cardY + 54);
-
-        ctx.strokeStyle = '#998767';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(cardX + 24, cardY + 64);
-        ctx.lineTo(cardX + cardW - 24, cardY + 64);
-        ctx.stroke();
-
-        ctx.textAlign = 'left';
-        ctx.font = 'bold 10px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#524531';
-        ctx.fillText(`КОМУ: ${this.activeWallNoteCard.header || 'ДЕЖУРНОМУ'}`, cardX + 24, cardY + 84);
-
-        ctx.font = '11px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#1a160f';
-        const words = (this.activeWallNoteCard.text || '').split(' ');
-        let line = '';
-        let lineY = cardY + 108;
-        for (let wi = 0; wi < words.length; wi++) {
-          const testLine = line + words[wi] + ' ';
-          if (ctx.measureText(testLine).width > cardW - 52) {
-            ctx.fillText(line, cardX + 24, lineY);
-            line = words[wi] + ' ';
-            lineY += 18;
-          } else {
-            line = testLine;
-          }
-        }
-        ctx.fillText(line, cardX + 24, lineY);
-
-        ctx.save();
-        ctx.translate(cardX + cardW - 75, cardY + cardH - 55);
-        ctx.rotate(-0.15);
-        ctx.strokeStyle = 'rgba(180, 20, 20, 0.75)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-45, -16, 90, 32);
-        ctx.font = 'bold 8px "Share Tech Mono", monospace';
-        ctx.fillStyle = 'rgba(180, 20, 20, 0.85)';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.activeWallNoteCard.stamp || 'СЕКРЕТНО', 0, 4);
-        ctx.restore();
-
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 10px "Share Tech Mono", monospace';
-        ctx.fillStyle = '#807054';
-        ctx.fillText('[ E ] / [ ESC ] — ЗАКРЫТЬ ДОКУМЕНТ', cx, cardY + cardH - 14);
+        this.drawWallNoteCard(ctx, w, h);
       }
 
       const tlX = 16;
