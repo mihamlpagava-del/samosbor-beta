@@ -5806,6 +5806,8 @@ function checkLifterTrigger(player, sock, loc) {
         if (!raidRoomsFPS[roomCode]) {
             raidRoomsFPS[roomCode] = {
                 id: roomCode,
+                mode: (data && data.mode) || 'PVE',
+                isPvP: (data && (data.isPvP || data.mode === 'PVP')) || false,
                 players: {},
                 bullets: [],
                 createdAt: Date.now()
@@ -5831,6 +5833,8 @@ function checkLifterTrigger(player, sock, loc) {
             yourId: socket.id,
             roomCode: roomCode,
             seed: raidRoomsFPS[roomCode].seed || null,
+            mode: raidRoomsFPS[roomCode].mode || 'PVE',
+            isPvP: !!(raidRoomsFPS[roomCode].isPvP || raidRoomsFPS[roomCode].mode === 'PVP'),
             players: raidRoomsFPS[roomCode].players
         });
 
@@ -5957,6 +5961,50 @@ function checkLifterTrigger(player, sock, loc) {
                     }
                     break;
                 }
+            }
+        }
+    });
+
+    // Dedicated PvP Client-Hit Damage Resolution (Melee & Projectile Direct Contact)
+    socket.on('pvpHitPlayer', (hitData) => {
+        if (!hitData || !hitData.targetId) return;
+        const roomCode = hitData.roomCode || socket.currentRaidRoomFPS;
+        if (!roomCode || !raidRoomsFPS[roomCode]) return;
+        const room = raidRoomsFPS[roomCode];
+        if (!room.isPvP && room.mode !== 'PVP') return;
+
+        const target = room.players[hitData.targetId];
+        const shooter = room.players[socket.id];
+        if (!target || target.hp <= 0) return;
+
+        const shooterName = shooter ? shooter.name : 'Ликвидатор';
+        const dmg = Math.min(100, Math.max(5, hitData.dmg || 28));
+        const wName = hitData.weapon || 'Оружие';
+
+        target.hp = Math.max(0, target.hp - dmg);
+        io.to(roomCode).emit('playerHurtFPS', {
+            targetId: hitData.targetId,
+            hp: target.hp,
+            maxHp: target.maxHp || 100,
+            dmg: dmg,
+            attackerId: socket.id,
+            attackerName: shooterName,
+            weapon: wName
+        });
+
+        if (target.hp <= 0) {
+            io.to(roomCode).emit('playerKilledFPS', {
+                victimId: hitData.targetId,
+                victimName: target.name,
+                killerId: socket.id,
+                killerName: shooterName,
+                weapon: wName,
+                rewardTalons: 150
+            });
+            let auth = getAuthPlayer();
+            if (auth) {
+                auth.talons = (auth.talons || 0) + 150;
+                saveDB(true);
             }
         }
     });

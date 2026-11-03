@@ -974,6 +974,36 @@
             }
           }
         }
+
+        // PvP Melee Strike: hit remote players in melee arc
+        if (this.isPvP || this.raidMode === 'PVP') {
+          for (const rId in (this.remotePlayers || {})) {
+            const rp = this.remotePlayers[rId];
+            if (!rp || rp.hp <= 0) continue;
+            const dist = Math.hypot(rp.renderX - this.player.x, rp.renderY - this.player.y);
+            if (dist <= swingRange + 20) {
+              const angToP = Math.atan2(rp.renderY - this.player.y, rp.renderX - this.player.x);
+              let diff = Math.abs(angToP - pAng);
+              if (diff > Math.PI) diff = Math.PI * 2 - diff;
+              if (diff < 1.15) {
+                const meleeDmg = weapon.dmg || 35;
+                rp.hp = Math.max(0, (rp.hp || 100) - meleeDmg);
+                rp.damageFlashTimer = 10;
+                this.spawnHitParticles(rp.renderX, rp.renderY, '#ff3b30', 10);
+                this.spawnFloatingNotice(`💥 УДАР: -${meleeDmg} HP [${rp.name || 'Боец'}]`, '#ff3366');
+                if (typeof RadarAudio !== 'undefined') RadarAudio.playMeleeHit();
+                if (typeof socket !== 'undefined' && socket && socket.emit) {
+                  socket.emit('pvpHitPlayer', {
+                    roomCode: this.currentRoomCode,
+                    targetId: rId,
+                    dmg: meleeDmg,
+                    weapon: weapon.name || 'Труба'
+                  });
+                }
+              }
+            }
+          }
+        }
       } else {
         // FIREARM RANGED ATTACK
         if (now - this.lastAttackTime < 200) return;
@@ -1013,6 +1043,18 @@
             isPlayer: true,
             life: isShotgun ? 35 : 55,
             color: '#88ff9e'
+          });
+        }
+
+        // Broadcast gunshot to multiplayer room for PvP & Coop sync
+        if (typeof socket !== 'undefined' && socket && socket.emit && (this.currentRoomCode || this.isPvP || this.raidMode === 'PVP')) {
+          socket.emit('shootFPS', {
+            roomCode: this.currentRoomCode,
+            x: Math.round(this.player.x),
+            y: Math.round(this.player.y),
+            angle: Number(this.player.angle.toFixed(3)),
+            weapon: weapon.gunType || (isShotgun ? 'shotgun' : 'rifle'),
+            dmg: isShotgun ? 44 : (weapon.dmg || 32)
           });
         }
 
@@ -2419,6 +2461,8 @@
       // Join FPS multiplayer session
       socket.emit('joinRaidFPS', {
         roomCode: this.currentRoomCode,
+        isPvP: !!this.isPvP,
+        mode: this.raidMode || (this.isPvP ? 'PVP' : 'PVE'),
         x: Math.round(this.player.x),
         y: Math.round(this.player.y),
         angle: Number(this.player.angle.toFixed(2)),
@@ -2431,6 +2475,8 @@
         if (!data) return;
         this.myNetworkId = data.yourId;
         this.currentRoomCode = data.roomCode;
+        if (data.isPvP !== undefined) this.isPvP = !!data.isPvP;
+        if (data.mode) this.raidMode = data.mode;
         this.remotePlayers = {};
 
         for (const id in (data.players || {})) {
@@ -2462,10 +2508,13 @@
       socket.on('playerHurtFPS', (data) => {
         if (!data) return;
         if (data.targetId === this.myNetworkId) {
-          this.damagePlayer(data.dmg, `Пуля: ${data.attackerName || 'Ликвидатор'}`);
+          const wDesc = data.weapon ? ` [${data.weapon}]` : '';
+          this.damagePlayer(data.dmg, `Боец: ${data.attackerName || 'Ликвидатор'}${wDesc}`);
+          this.spawnFloatingNotice(`ПОЛУЧЕН УРОН: -${data.dmg} HP ОТ ${data.attackerName || 'ВРАГА'}!`, '#ff3333');
         } else if (this.remotePlayers && this.remotePlayers[data.targetId]) {
           this.remotePlayers[data.targetId].hp = data.hp;
-          this.remotePlayers[data.targetId].damageFlashTimer = 8;
+          this.remotePlayers[data.targetId].damageFlashTimer = 10;
+          this.spawnHitParticles(this.remotePlayers[data.targetId].renderX, this.remotePlayers[data.targetId].renderY, '#ff3b30', 8);
         }
       });
 
@@ -2477,6 +2526,12 @@
         if (data.victimId === this.myNetworkId) {
           this.player.isDead = true;
           this.showDeathPrompt();
+        } else if (data.killerId === this.myNetworkId) {
+          this.spawnFloatingNotice(`🏆 ВЫ УНИЧТОЖИЛИ ${data.victimName}! +150 ТАЛОНОВ`, '#ffd700');
+          this.player.talonsEarned = (this.player.talonsEarned || 0) + (data.rewardTalons || 150);
+          if (typeof RadarAudio !== 'undefined' && RadarAudio.playLevelUp) {
+            RadarAudio.playLevelUp();
+          }
         }
       });
 
@@ -3680,8 +3735,39 @@
         }
 
         if (p.isPlayer) {
-          // Check monster hit
           let hit = false;
+
+          // PvP Check: projectile collision against remote players
+          if (this.isPvP || this.raidMode === 'PVP') {
+            for (const rId in (this.remotePlayers || {})) {
+              const rp = this.remotePlayers[rId];
+              if (!rp || rp.hp <= 0) continue;
+              if (Math.hypot(p.x - rp.renderX, p.y - rp.renderY) < 24) {
+                const dmg = p.damage || 30;
+                rp.hp = Math.max(0, (rp.hp || 100) - dmg);
+                rp.damageFlashTimer = 10;
+                this.spawnHitParticles(p.x, p.y, '#ff3b30', 8);
+                this.spawnFloatingNotice(`💥 ПОПАДАНИЕ: -${dmg} HP [${rp.name || 'Боец'}]`, '#ff3366');
+                if (typeof RadarAudio !== 'undefined') RadarAudio.playMonsterHurt();
+                if (typeof socket !== 'undefined' && socket && socket.emit) {
+                  socket.emit('pvpHitPlayer', {
+                    roomCode: this.currentRoomCode,
+                    targetId: rId,
+                    dmg: dmg,
+                    weapon: (this.player.weapon && this.player.weapon.name) || 'Огнестрел'
+                  });
+                }
+                hit = true;
+                break;
+              }
+            }
+            if (hit) {
+              this.projectiles.splice(i, 1);
+              continue;
+            }
+          }
+
+          // Check monster hit
           for (let j = this.entities.length - 1; j >= 0; j--) {
             const e = this.entities[j];
             if (e.type !== 'liquidator') {
