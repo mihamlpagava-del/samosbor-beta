@@ -145,6 +145,10 @@
       // Enable custom tactical crosshair by hiding default cursor
       this.canvas.style.cursor = 'none';
 
+      if (typeof SamosborFXSystem !== 'undefined') {
+        this.fxSystem = new SamosborFXSystem(this.canvas);
+      }
+
       this.setupInputListeners();
       this.buildFloor();
       this.syncPlayerFromBase();
@@ -1074,6 +1078,12 @@
         weapon.ammo--;
         this.player.isShooting = true;
         this.player.shootProgress = 0;
+
+        if (this.fxSystem && typeof pixelFx !== 'undefined') {
+          const muzzleX = this.player.x + Math.cos(this.player.angle) * 22;
+          const muzzleY = this.player.y + Math.sin(this.player.angle) * 22;
+          this.fxSystem.trigger(pixelFx.fx.muzzleFlash, muzzleX, muzzleY);
+        }
 
         // Procedural Gunshot Audio
         if (typeof RadarAudio !== 'undefined') {
@@ -2043,6 +2053,10 @@
       const by = barrel.y;
       const aoeRadius = 95;
       const aoeDamage = 140;
+
+      if (this.fxSystem && typeof pixelFx !== 'undefined') {
+        this.fxSystem.trigger(pixelFx.fx.explosion, bx, by, 1.5);
+      }
 
       // Fiery shockwave particles
       for (let i = 0; i < 28; i++) {
@@ -3909,6 +3923,16 @@
     }
 
     spawnHitParticles(x, y, color, count) {
+      if (this.fxSystem && typeof pixelFx !== 'undefined') {
+        if (color === '#ff3b30' || color === '#ff3333' || color === '#880066') {
+          this.fxSystem.trigger(pixelFx.fx.bloodSplatter, x, y);
+        } else if (color === '#00f0ff' || color === '#ffd700' || color === '#ffaa00') {
+          this.fxSystem.trigger(pixelFx.fx.sparkBurst, x, y);
+        } else if (color === '#33cc55') {
+          this.fxSystem.trigger(pixelFx.fx.sludgeAcid, x, y);
+        }
+      }
+
       for (let i = 0; i < count; i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = Math.random() * 3 + 1;
@@ -4215,6 +4239,17 @@
         vGrad.addColorStop(1, `rgba(220, 0, 0, ${vAlpha.toFixed(2)})`);
         this.ctx.fillStyle = vGrad;
         this.ctx.fillRect(0, 0, w, h);
+      }
+
+      // PixelFX Retro Engine in TDS 2D Mode
+      if (this.cameraMode !== 'FPS' && this.fxSystem) {
+        this.fxSystem.updateAndRender(0.016, 'TDS', {
+          x: this.player.x,
+          y: this.player.y,
+          angle: this.player.angle,
+          cameraX: cam.x / 32,
+          cameraY: cam.y / 32
+        }, null, null);
       }
 
       this.drawRadarHUD(this.ctx, w, h);
@@ -5235,6 +5270,11 @@
         }
       }
       ctx.restore();
+
+      // PixelFX Retro Engine (320x180 low-res buffer with DDA Z-buffer clipping)
+      if (this.fxSystem) {
+        this.fxSystem.updateAndRender(0.016, 'FPS', this.player, zBuffer, numCols);
+      }
 
       // 5. First-Person Weapon Model & Liquidator Hazmat Hands
       this.drawFPSWeapon(ctx, w, h);

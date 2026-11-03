@@ -503,3 +503,4 @@
   global.AssetGenerator = AssetGenerator;
 
 })(typeof window !== 'undefined' ? window : this);
+
