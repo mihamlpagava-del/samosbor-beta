@@ -590,7 +590,7 @@
       npc.isWounded = false;
       npc.isLoyalFollower = true;
       this.player.talonsEarned += 30;
-      this.player.xpEarned += 45;
+      this.player.xpEarned += 12;
 
       if (typeof RadarAudio !== 'undefined') {
         if (RadarAudio.playMedkit) RadarAudio.playMedkit();
@@ -600,7 +600,7 @@
         const healMod = pixelFx.fx.healAoe || pixelFx.fx['holy/heal-aoe'];
         if (healMod) this.fxSystem.trigger(healMod, npc.x, npc.y, 1.4);
       }
-      this.spawnFloatingNotice(`💚 БОЕЦ СПАСЕН! ТЕПЕРЬ ОН ПРИКРЫВАЕТ ВАС! (+45 XP, +30 ТАЛОНОВ)`, '#00ff66');
+      this.spawnFloatingNotice(`💚 БОЕЦ СПАСЕН! ТЕПЕРЬ ОН ПРИКРЫВАЕТ ВАС! (+12 XP, +30 ТАЛОНОВ)`, '#00ff66');
 
       for (let i = 0; i < 12; i++) {
         this.particles.push({
@@ -1344,7 +1344,7 @@
         this.player.monstersKilled = (this.player.monstersKilled || 0) + 1;
         const cost = monster.cost || 2;
         const bounty = 10 + cost * 4;
-        const xp = 15 + cost * 5;
+        const xp = Math.max(2, Math.floor(3 + cost * 1.5));
         this.player.talonsEarned += bounty;
         this.player.xpEarned += xp;
         // Check NPC Quests for monster elimination
@@ -1498,6 +1498,7 @@
 
       // 9. Tape Recorders & Wall Notes (Extended reach in FPS mode)
       for (const rec of (this.recorders || [])) {
+        if (rec.listened || rec.collected) continue;
         const maxDist = (this.cameraMode === 'FPS') ? 75 : 54;
         if (Math.hypot(px - rec.x, py - rec.y) < maxDist && (this.cameraMode !== 'FPS' || isFacing(rec.x, rec.y))) {
           return '[E] ПРОСЛУШАТЬ КАССЕТУ';
@@ -1570,19 +1571,23 @@
       }
 
       // 4. Airtight Hermetic Blast Doors (Front check in FPS, radial in TDS)
-      // Tape Recorders (PROP_RECORDER)
-      for (const rec of (this.recorders || [])) {
+      // Tape Recorders (PROP_RECORDER) - One-time collection: awards XP once and disappears from the sector
+      for (let ri = (this.recorders || []).length - 1; ri >= 0; ri--) {
+        const rec = this.recorders[ri];
+        if (rec.listened || rec.collected) continue;
         const maxDist = (this.cameraMode === 'FPS') ? 75 : 54;
         const dRec = Math.hypot(this.player.x - rec.x, this.player.y - rec.y);
         if (dRec < maxDist && (this.cameraMode !== 'FPS' || this.isPlayerFacing(rec.x, rec.y))) {
           rec.isPlaying = true;
           rec.listened = true;
+          rec.collected = true;
           if (typeof RadarAudio !== 'undefined' && RadarAudio.playTapeRecorderAudio) {
             RadarAudio.playTapeRecorderAudio();
           }
           this.activeTapeSubtitle = { text: rec.text, timer: 7.0 };
-          this.player.xpEarned = (this.player.xpEarned || 0) + 25;
-          this.spawnFloatingNotice('+25 XP [КАССЕТА ЛИКВИДАТОРА]', '#00ffaa');
+          const tapeXp = 10;
+          this.player.xpEarned = (this.player.xpEarned || 0) + tapeXp;
+          this.spawnFloatingNotice(`+${tapeXp} XP [КАССЕТА ЛИКВИДАТОРА]`, '#00ffaa');
 
           if (!this.player.journal) this.player.journal = [];
           this.player.journal.push({
@@ -1590,6 +1595,9 @@
             text: rec.text,
             time: new Date().toLocaleTimeString()
           });
+
+          // Исчезает после подбора (один раз)
+          this.recorders.splice(ri, 1);
           return;
         }
       }
@@ -1653,9 +1661,11 @@
       const q = npc.quest;
       q.turnedIn = true;
 
-      const rewardTalons = q.rewardTalons || 250;
+      const rewardTalons = q.rewardTalons || 150;
+      const rewardXp = q.rewardXp ? Math.min(25, q.rewardXp) : 20;
       this.player.talonsEarned = (this.player.talonsEarned || 0) + rewardTalons;
-      this.player.xpEarned = (this.player.xpEarned || 0) + (q.rewardXp || 100);
+      this.player.xpEarned = (this.player.xpEarned || 0) + rewardXp;
+      this.spawnFloatingNotice(`🏆 ЗАДАНИЕ СДАНО: +${rewardTalons} ТАЛОНОВ, +${rewardXp} XP!`, '#00ffaa');
 
       if (q.rewardMedkits) {
         if (this.player.belt) {
@@ -1819,8 +1829,8 @@
         }
         this.player.collectedLoot.push('special_knife');
       } else {
-        const bonusTalons = crate.amount || 30;
-        const bonusXp = 20;
+        const bonusTalons = crate.amount || 25;
+        const bonusXp = 8;
         this.player.talonsEarned += bonusTalons;
         this.player.xpEarned += bonusXp;
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + 25);
@@ -2853,7 +2863,7 @@
 
       // Save player progression, health, and equipment
       const savedTalons = this.player.talonsEarned || 0;
-      const savedXp = (this.player.xpEarned || 0) + 100;
+      const savedXp = (this.player.xpEarned || 0) + 15;
       const savedHp = Math.min(this.player.maxHp, this.player.hp + 25);
       const savedLoot = (this.player.collectedLoot || []).slice();
       const savedWeapon = Object.assign({}, this.player.weapon);
@@ -2895,7 +2905,7 @@
         timer: 160
       };
 
-      this.spawnFloatingNotice(`⚡ СПУСК НА ЭТАЖ ${nextFloor}! МНОЖИТЕЛЬ ХАБАРА: x${this.floorMultiplier.toFixed(1)} (+100 XP)`, '#ffd700');
+      this.spawnFloatingNotice(`⚡ СПУСК НА ЭТАЖ ${nextFloor}! МНОЖИТЕЛЬ ХАБАРА: x${this.floorMultiplier.toFixed(1)} (+15 XP)`, '#ffd700');
     }
 
     evacuateSuccess() {
@@ -3433,7 +3443,7 @@
       }
       const l = chest.loot || { talons: 100, ammo: 15, medkits: 1 };
       this.player.talonsEarned += (l.talons || 0);
-      this.player.xpEarned += 45;
+      this.player.xpEarned += 8;
 
       // Update NPC quests regarding chests
       for (const n of (this.npcs || [])) {
@@ -3467,7 +3477,7 @@
           stopRaidMusic();
         }
 
-        const earnedXP = won ? (this.player.xpEarned + 60) : Math.floor(this.player.xpEarned * 0.4);
+        const earnedXP = won ? (this.player.xpEarned + 15) : Math.max(0, Math.floor(this.player.xpEarned * 0.25));
         const earnedTalons = won ? (this.player.talonsEarned + 100) : 0; // If dead, all loot is lost!
         const lootItems = (won && Array.isArray(this.player.collectedLoot)) ? [...this.player.collectedLoot] : [];
         const kills = this.player.monstersKilled || 0;

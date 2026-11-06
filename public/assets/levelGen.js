@@ -909,7 +909,7 @@
             title: 'Утраченная директива Главснаба',
             desc: 'Найти перфокарту в соседних комнатах',
             rewardTalons: 150,
-            rewardXp: 80,
+            rewardXp: 25,
             completed: false,
             turnedIn: false
           }
